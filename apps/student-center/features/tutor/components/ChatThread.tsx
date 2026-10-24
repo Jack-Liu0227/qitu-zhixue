@@ -36,6 +36,8 @@ export function ChatThread({
   isConfirmingProject = false,
   composer,
   learningActivity,
+  coursewareSnapshots = false,
+  projectContext,
   explorationContext,
   idle = false,
 }: {
@@ -62,6 +64,8 @@ export function ChatThread({
   isConfirmingProject?: boolean;
   composer: ReactNode;
   learningActivity?: ReactNode;
+  coursewareSnapshots?: boolean;
+  projectContext?: TutorProjectContext;
   explorationContext?: TutorProjectContext;
   idle?: boolean;
 }) {
@@ -170,6 +174,8 @@ export function ChatThread({
             onExperimentAction={onExperimentAction}
             onFeedback={onFeedback}
             projectId={projectId}
+            coursewareSnapshots={coursewareSnapshots}
+            projectContext={projectContext}
             disabled={disabled || offline}
             streaming={turn.turnId === streamingTurnId}
           />

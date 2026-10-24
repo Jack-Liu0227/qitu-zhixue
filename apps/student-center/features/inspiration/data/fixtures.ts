@@ -1,10 +1,86 @@
 import type { InspirationTemplate } from '../types';
 
 /**
- * 灵感空间项目模板仓，严格与后端数据库及 Admin Console 模板库保持一致。
- * 核心包含两大真实 PBL 课题：雷霆战机小游戏 PBL 与 动手学动能定理 PBL。
+ * 灵感空间项目模板仓，覆盖多元跨学科门类（生命科学、工程建筑、数据统计、非遗文化、游戏开发、物理科学）。
+ * 课题间完全区分，呈现真实丰富的 PBL 探究挑战。
  */
 export const INSPIRATION_TEMPLATES: InspirationTemplate[] = [
+  {
+    id: 'eco-bottle-carbon-cycle',
+    title: '校园微生态瓶的建立与碳氧平衡微观测',
+    summary: '在密闭透明容器中构建水生植物与微生物的微生态系统，持续监测光照、溶解氧与酸碱度变化，探究微环境中的动态平衡规律。',
+    subject: '生命科学 / 生态探究',
+    tags: ['生态系统', '微生态瓶', '碳氧平衡', '生物观察'],
+    difficulty: '入门',
+    lessonCount: 8,
+    lessonMinutes: 60,
+    templateVersionId: 'eco-bottle:v1',
+    stages: [
+      { id: 'eco-explore', label: '阶段一：生态观察与假设 · 观察池塘生态层级，提出密闭平衡假设' },
+      { id: 'eco-theory', label: '阶段二：核心原理探究 · 生产者与分解者物质循环原理 (TheoryMastered 门禁)' },
+      { id: 'eco-practice', label: '阶段三：微生态瓶搭建 · 7天连续记录光照、溶解氧与生物状态' },
+      { id: 'eco-reflect', label: '阶段四：成果反思答辩 · 碳氧循环平衡分析与探究档案归档' },
+    ],
+    outcome: '密闭微生态系统观察档案与碳氧平衡探究报告',
+    coverEmoji: '🌱',
+  },
+  {
+    id: 'smart-green-architecture',
+    title: '低碳未来社区：被动式绿色采光与节能建筑设计',
+    summary: '运用太阳高度角几何知识与热传导物理原理，设计并制作兼具自然采光、自遮阳与对流通风的绿色低碳微缩建筑模型。',
+    subject: '工程设计 / 环境建筑',
+    tags: ['绿色建筑', '工程结构', '采光保温', '3D建模'],
+    difficulty: '进阶',
+    lessonCount: 12,
+    lessonMinutes: 60,
+    templateVersionId: 'green-arch:v1',
+    stages: [
+      { id: 'arch-explore', label: '阶段一：建筑需求与调研 · 调研城市热岛与夏季空调能耗痛点' },
+      { id: 'arch-theory', label: '阶段二：物理热工推导 · 太阳投射角计算与热阻传导方程 (TheoryMastered 门禁)' },
+      { id: 'arch-practice', label: '阶段三：建筑模型构建 · 运用数字化工具完成采光遮阳结构建模' },
+      { id: 'arch-reflect', label: '阶段四：绿色能耗评估 · 低碳效能评估报告与答辩展示' },
+    ],
+    outcome: '被动式低碳建筑设计图纸与能耗测算评估报告',
+    coverEmoji: '🏛️',
+  },
+  {
+    id: 'youth-screen-health-survey',
+    title: '青少年数字生活与作息健康统计探究',
+    summary: '运用统计学抽样调查与数据分析方法，收集青少年屏幕使用时间与睡眠数据，绘制相关性分布图表并提出健康作息倡议。',
+    subject: '应用数学 / 数据统计',
+    tags: ['数据分析', '问卷设计', '统计分布', '健康生活'],
+    difficulty: '进阶',
+    lessonCount: 8,
+    lessonMinutes: 60,
+    templateVersionId: 'health-survey:v1',
+    stages: [
+      { id: 'survey-explore', label: '阶段一：社会问题洞察 · 确定调研核心假设与问卷设计规范' },
+      { id: 'survey-theory', label: '阶段二：统计理论方法 · 抽样误差控制与皮尔逊相关系数 (TheoryMastered 门禁)' },
+      { id: 'survey-practice', label: '阶段三：数据清洗分析 · 使用图表工具生成箱线图与散点回归图' },
+      { id: 'survey-reflect', label: '阶段四：倡议发布与反思 · 撰写数据调研报告并在班级发起健康作息倡议' },
+    ],
+    outcome: '青少年作息健康数据分析报告与健康倡议书',
+    coverEmoji: '📊',
+  },
+  {
+    id: 'mortise-tenon-digital-craft',
+    title: '中华古建筑榫卯结构数字化三维复原',
+    summary: '探究中国传统木作营造中燕尾榫、透榫的抗拉受力机理与空间自锁几何原理，运用数字化建模工具复原经典榫卯构件。',
+    subject: '艺术设计 / 传统文化',
+    tags: ['传统建筑', '榫卯结构', '空间几何', '非遗传承'],
+    difficulty: '入门',
+    lessonCount: 10,
+    lessonMinutes: 60,
+    templateVersionId: 'mortise-tenon:v1',
+    stages: [
+      { id: 'craft-explore', label: '阶段一：非遗文化探秘 · 观察经典古建筑木作并选择典型榫卯构型' },
+      { id: 'craft-theory', label: '阶段二：力学与咬合原理 · 界面摩擦剪力与三维自锁拓扑 (TheoryMastered 门禁)' },
+      { id: 'craft-practice', label: '阶段三：三维数字复原 · 绘制尺寸图并进行三维拆装动态建模' },
+      { id: 'craft-reflect', label: '阶段四：传承答辩反思 · 撰写营造技艺力学手册并做公开展示' },
+    ],
+    outcome: '数字化榫卯三维拆解模型与木作力学解析报告',
+    coverEmoji: '🏮',
+  },
   {
     id: 'thunder-fighter',
     title: '雷霆战机小游戏 PBL',

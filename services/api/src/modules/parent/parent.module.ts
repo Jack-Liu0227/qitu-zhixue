@@ -13,6 +13,10 @@ import { GrowthExportStore } from './growth-export.types';
 import { ParentAcceptedProfileService } from './accepted-profile.service';
 import { LearningPlanStorageModule } from '../learning-plan/learning-plan-storage.module';
 import { WorksModule } from '../works/works.module';
+import { LearningInsightsModule } from '../learning-insights/learning-insights.module';
+import { ParentCommunicationService } from './parent-communication.service';
+import { ParentLearningReadService } from './parent-learning-read.service';
+import { StudentLearningController } from './student-learning.controller';
 
 /**
  * 家长陪伴中心模块。
@@ -28,9 +32,11 @@ import { WorksModule } from '../works/works.module';
  * 由 `ParentGrowthExportService` 诚实返回 503——不退回内存假装成功。
  */
 @Module({
-  imports: [AuthModule, DirectoryModule, GrowthModule, PlatformDataModule, FeedbackModule, LearningPlanStorageModule, WorksModule],
-  controllers: [ParentController],
+  imports: [AuthModule, DirectoryModule, GrowthModule, PlatformDataModule, FeedbackModule, LearningPlanStorageModule, WorksModule, LearningInsightsModule],
+  controllers: [ParentController, StudentLearningController],
   providers: [
+    ParentLearningReadService,
+    ParentCommunicationService,
     ParentAcceptedProfileService,
     ParentGrowthExportService,
     {

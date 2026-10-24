@@ -1,5 +1,5 @@
 import { WorksModule } from '../works/works.module';
-import { LearningSessionProgressController } from './learning-session-progress.controller';
+import { CoursewareStorageModule } from '../knowledge/courseware-storage.module';
 import { LearningSessionProgressService } from './learning-session-progress.service';
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../identity-auth/auth.module';
@@ -7,7 +7,6 @@ import { MasteryModule } from '../mastery/mastery.module';
 import { TeamRuntimeModule } from '../team-runtime/team-runtime.module';
 import { TemplatesModule } from '../templates/templates.module';
 import { LearningPlanStorageModule } from './learning-plan-storage.module';
-import { LearningPlanController } from './learning-plan.controller';
 import { LearningPlanService } from './learning-plan.service';
 import { DeterministicPlanGenerator, PlanGenerator } from './plan-generator';
 
@@ -23,8 +22,8 @@ import { DeterministicPlanGenerator, PlanGenerator } from './plan-generator';
  * 依赖是单向的（team-runtime 不依赖 learning-plan），因此无循环导入。
  */
 @Module({
-  imports: [WorksModule, AuthModule, LearningPlanStorageModule, MasteryModule, TeamRuntimeModule, TemplatesModule],
-  controllers: [LearningPlanController, LearningSessionProgressController],
+  imports: [CoursewareStorageModule, WorksModule, AuthModule, LearningPlanStorageModule, MasteryModule, TeamRuntimeModule, TemplatesModule],
+  // HTTP adapters are composed in ProjectsModule so they can synchronize the lifecycle owner.
   providers: [LearningSessionProgressService, LearningPlanService, { provide: PlanGenerator, useFactory: () => new DeterministicPlanGenerator() }],
   exports: [LearningSessionProgressService, LearningPlanService, LearningPlanStorageModule],
 })

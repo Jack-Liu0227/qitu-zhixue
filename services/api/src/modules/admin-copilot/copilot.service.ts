@@ -1,3 +1,4 @@
+import { BUILTIN_ASSISTANTS } from '@qitu/ai-client';
 import { ConflictException, ForbiddenException, HttpException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import { ADMIN_COPILOT_CONTRACT_VERSION, ADMIN_COPILOT_OPERATIONS, ADMIN_COPILOT_SCOPES, type AdminCopilotConfirmationRequest, type AdminCopilotCapabilities, type AdminCopilotPlan, type AdminCopilotReceipt, type AdminCopilotRequest, type AdminCopilotResponse, type CurrentUser } from '@qitu/contracts';
@@ -171,7 +172,10 @@ export class CopilotService {
       o.templates.listGovernedTemplates(actor), o.registry.listAssistants(), o.registry.listTeams(),
       o.registry.getSnapshot(), o.knowledge.configuration(), o.knowledge.bases(),
     ]);
-    if (!assistants.some(a => a.id === input.assistantId && a.enabled)) throw new NotFoundException('所选助手不可用');
+    const assistant = assistants.find(a => a.id === input.assistantId) ?? BUILTIN_ASSISTANTS.find(b => b.id === input.assistantId);
+    if (!assistant || (!assistant.enabled && input.assistantId !== 'qitu-assistant')) {
+      throw new NotFoundException('所选助手不可用');
+    }
     const team = input.teamId ? teams.find(t => t.id === input.teamId && t.enabled) : null;
     if (input.teamId && !team) throw new NotFoundException('所选团队不可用');
     const models = o.models.listAgentModelOptions();
@@ -194,7 +198,6 @@ export class CopilotService {
       scope: requestScope(input), scopeResources,
       runtimePolicy: { id: skillCatalog.policy.id, version: skillCatalog.policy.version,
         contentHash: skillCatalog.policy.contentHash, status: skillCatalog.policy.status },
-      teamVersions: o.teamVersions ? await o.teamVersions.catalog(actor) : [],
       currentTemplate, currentVersion, selectedTeam: team,
       templates: templates.map(t => ({ id: t.id, title: t.title, status: t.status })),
       versions: versions.map(v => ({ id: v.id, version: v.version, status: v.status })),

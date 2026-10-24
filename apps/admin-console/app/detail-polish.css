@@ -1,0 +1,84 @@
+/* Shared detail pages keep the same controls and hierarchy as their parent screens. */
+.admin-console-content.qitu-page-transition, .admin-console-content.qitu-page-transition > *, .admin-console-content.qitu-page-transition > * > *, .settings-columns { animation-fill-mode: backwards; }
+.admin-console-content.qitu-page-transition { will-change: auto; }
+.admin-console-main :is(.admin-template-editor-view, .admin-assistant-editor-view, .team-detail-view, .admin-settings-page) { min-width: 0; max-width: 100%; }
+.admin-template-editor-topbar, .admin-assistant-editor-topbar { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 14px; padding: 18px 0; margin-bottom: 18px; border-bottom: 1px solid var(--qitu-border, #e2e8f0); }
+.admin-template-editor-topbar > div, .admin-assistant-editor-topbar > div { min-width: 0; max-width: 100%; flex-wrap: wrap; }
+.admin-template-editor-topbar h1, .admin-assistant-editor-topbar h1 { overflow-wrap: anywhere; line-height: 1.6; }
+.admin-template-editor-view :is(input, select, textarea), .admin-assistant-editor-view :is(input, select, textarea) { min-width: 0; max-width: 100%; font: inherit; }
+.admin-template-editor-view :is(h2, h3, h4), .admin-assistant-editor-view :is(h2, h3, h4) { line-height: 1.5; }
+.admin-template-editor-view details > summary { line-height: 1.6; }
+.admin-template-editor-view :is(.admin-form-label, label), .admin-assistant-editor-view :is(.admin-form-label, label) { line-height: 1.6; }
+.settings-main :is(.admin-page-header, .provider-toolbar, .provider-stats, .provider-list) { min-width: 0; max-width: 100%; }
+.admin-page-header-title, .admin-page-header-title > div { min-width: 0; }
+.admin-page-header-title :is(h1, p) { overflow-wrap: anywhere; }
+.admin-profile-growth-section { min-width: 0; }
+.admin-console-main :is(.modal-overlay, .admin-modal-overlay) { padding: 16px; }
+.admin-console-main :is(.modal-content, .admin-modal, [role='dialog']) { min-width: 0; width: min(760px, 100%); max-width: calc(100vw - 32px); max-height: calc(100dvh - 32px); overflow-y: auto; overscroll-behavior: contain; }
+.admin-console-main :is(.modal-header, .modal-footer) { flex-wrap: wrap; gap: 12px; }
+.admin-console-main .modal-body { min-width: 0; }
+.admin-console-main :is(.modal-content, .admin-modal) :is(input:not([type='checkbox']):not([type='radio']), select, textarea) { max-width: 100%; min-width: 0; }
+.admin-console-main .qitu-resizable-panel :is(article, section, aside) { min-width: 0; }
+.admin-console-main .qitu-resizable-panel code { white-space: pre-wrap; overflow-wrap: anywhere; }
+.admin-console-main .qitu-resizable-panel fieldset { min-width: 0; border: 1px solid var(--qitu-border, #e2e8f0); border-radius: 9px; }
+.admin-detail-grid.qitu-resizable-panels { grid-template-columns: var(--qitu-panel-tracks); gap: 0; }
+.admin-governance-grid.qitu-resizable-panels, .admin-profile-growth-grid.qitu-resizable-panels { grid-template-columns: var(--qitu-panel-tracks); gap: 0; }
+.admin-profile-growth-grid > .qitu-resizable-panel > section { height: 100%; width: 100%; }
+.admin-profile-growth-section :is(select, input, .admin-growth-assistant-box, .admin-growth-sub-card) { min-width: 0; max-width: 100%; }
+.admin-profile-growth-section .admin-growth-sub-card > div { min-width: 0; }
+.copilot-columns { min-height: 0; height: 100%; }
+.copilot-columns > .qitu-resizable-panel { height: 100%; min-height: 0; }
+.copilot-columns .copilot-sidebar { width: 100% !important; height: 100%; }
+.copilot-columns > .qitu-resizable-panel > .copilot-main { height: 100%; min-width: 0; }
+.admin-console-main :is(.admin-stats-page, .admin-relationships-page) { min-width: 0; max-width: 100%; }
+.admin-console-main :is(.admin-hero-copy, .admin-hero-badges) { min-width: 0; max-width: 100%; flex-wrap: wrap; }
+.admin-console-main .member-editor-container { position: relative; inset: auto; z-index: auto; height: auto; min-height: 560px; border: 1px solid var(--qitu-border); border-radius: 14px; overflow: hidden; }
+.admin-console-main .member-editor-header { flex-wrap: wrap; gap: 12px; padding: 16px; }
+.admin-console-main .member-editor-tabs { flex-wrap: wrap; }
+.admin-console-main .member-editor-identity { display: flex; align-items: center; gap: 12px; padding: 20px; border-bottom: 1px solid var(--qitu-border); }
+.admin-console-main .member-editor-identity p { margin: 5px 0 0; color: var(--qitu-muted); font-size: 12px; }
+.admin-console-main .member-editor-body.qitu-resizable-panels { display: grid; grid-template-columns: var(--qitu-panel-tracks); overflow: visible; min-height: 380px; }
+.admin-console-main .member-editor-body.qitu-resizable-panels[data-stacked='true'] { display: flex; }
+.admin-console-main .member-editor-body .member-editor-sidebar { width: 100%; min-width: 0; height: 100%; }
+.admin-console-main .member-editor-body .member-editor-content { padding: 24px; min-width: 0; }
+.admin-console-main .member-editor-note { color: var(--qitu-muted); font-size: 13px; line-height: 1.8; }
+.admin-console-main .member-instruction-readonly { padding: 18px; border: 1px solid var(--qitu-border); border-radius: 10px; background: var(--qitu-page); white-space: pre-wrap; overflow-wrap: anywhere; font-family: inherit; font-size: 13px; line-height: 1.8; max-height: 480px; overflow-y: auto; }
+.admin-console-main .member-editor-links { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0; }
+.admin-console-main .member-editor-form { display: grid; gap: 18px; max-width: 620px; }
+.admin-console-main .member-editor-form label { display: grid; gap: 8px; font-size: 13px; }
+.admin-console-main .member-capability-section + .member-capability-section { margin-top: 24px; border-top: 1px solid var(--qitu-border); padding-top: 16px; }
+.admin-console-main .member-capability-section header { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; justify-content: space-between; }
+.admin-console-main .member-capability-section ul { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; padding: 0; }
+.admin-console-main .member-capability-section li { padding: 8px 10px; border: 1px solid var(--qitu-border); border-radius: 8px; font-size: 12px; overflow-wrap: anywhere; }
+.admin-console-main .member-overview { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; }
+.admin-console-main .member-overview > div { padding: 16px; background: var(--qitu-page); border-radius: 10px; }
+.admin-console-main .member-overview dt { font-size: 12px; color: var(--qitu-muted); }.member-overview dd { margin: 8px 0 0; }
+.admin-console-main .member-editor-error { padding: 12px 18px; color: #b4233b; background: #fff0f3; }
+@media (max-width: 760px) {
+  .copilot-page { margin: 0 !important; width: 100%; height: auto !important; min-height: calc(100dvh - 160px); }
+  .copilot-page .copilot-columns { height: auto; }
+  .copilot-control-pill { max-width: 100%; min-width: 0; }
+  .copilot-control-select { flex: 1; min-width: 0; max-width: 100%; }
+  .settings-mobile-nav-toggle { min-height: 44px; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--qitu-border); background: var(--qitu-surface); color: var(--qitu-heading); font-size: 13px; text-align: left; }
+  .admin-page-header-title, .admin-page-header-title > div, .provider-toolbar, .provider-stats { width: 100%; min-width: 0 !important; }
+  .admin-template-editor-topbar, .admin-assistant-editor-topbar { padding: 12px 0; }
+  .admin-template-editor-topbar > div, .admin-assistant-editor-topbar > div { width: 100%; }
+  .admin-template-editor-topbar h1 { font-size: 16px !important; }
+  .admin-profile-growth-grid, .admin-profile-growth-section { min-width: 0 !important; grid-template-columns: minmax(0, 1fr) !important; }
+  .admin-profile-growth-section { padding: 16px !important; }
+  .admin-profile-growth-section h3 { flex-wrap: wrap; }
+  .admin-profile-growth-section > div[style*='grid'] { grid-template-columns: minmax(0, 1fr) !important; }
+  .admin-profile-growth-section div[style*='grid-template-columns'] { grid-template-columns: minmax(0, 1fr) !important; }
+  .admin-console-main :is(.admin-stats-hero, .admin-relationships-hero) { min-width: 0; width: 100%; overflow-wrap: anywhere; }
+  .admin-console-main .admin-hero-copy h1 { white-space: normal; }
+  .provider-presets-catalog { padding: 14px !important; }
+  .provider-preset-active-card > div { min-width: 0 !important; }
+  .provider-preset-select { min-width: 0 !important; max-width: 100%; }
+  .copilot-columns.qitu-resizable-panels[data-stacked='true'] { overflow-y: auto; }
+  .copilot-columns[data-stacked='true'] > .qitu-resizable-panel { height: auto; flex: 0 0 auto; }
+  .copilot-columns[data-stacked='true'] .copilot-sidebar { max-height: 220px; }
+  .copilot-columns[data-stacked='true'] > .qitu-resizable-panel:has(.copilot-main) { height: 90dvh; min-height: 680px; }
+  .admin-console-main :is(.admin-detail-grid, .runtime-form-grid) { grid-template-columns: minmax(0, 1fr); }
+  .admin-console-main :is(.modal-content, .admin-modal) { margin: 0; border-radius: 14px; }
+  .admin-console-main .modal-body { padding: 16px; }
+}

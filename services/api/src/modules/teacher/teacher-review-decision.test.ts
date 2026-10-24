@@ -470,6 +470,18 @@ describe('班主任复核审批 — 控制器', () => {
       'IDEMPOTENCY_CONFLICT',
     );
   });
+
+  it('a transferred teacher cannot replay an earlier cached approval', async () => {
+    const assignments = { 'stu-1': 'mentor-1' };
+    const isolated = makeHarness(assignments);
+    isolated.reviews.seed(seedReview());
+    const { controller, idempotency } = makeController(isolated, MENTOR);
+    await controller.decideReview('qitu_session=t', 'transfer-key', 'mr-1', { decision: 'approved' });
+    assignments['stu-1'] = 'mentor-2';
+    await assertHttpError(() => controller.decideReview('qitu_session=t', 'transfer-key', 'mr-1', { decision: 'approved' }), 403, 'STUDENT_NOT_ASSIGNED');
+    assert.equal(idempotency.executions, 1);
+    assert.equal(isolated.reviews.writeCalls, 1);
+  });
 });
 
 /* ------------------------------------------------------------------ *

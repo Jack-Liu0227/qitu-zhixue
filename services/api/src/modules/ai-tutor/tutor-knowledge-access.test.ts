@@ -9,6 +9,27 @@ import type { TemplateBindingService } from '../templates/templates-binding.serv
 import type { ImaReadEvidence } from './ima-project-scope';
 import { verifyLessonEvidence } from './tutor-activity-context';
 
+test('a separately frozen lesson team retains its own knowledge scope and loses it when the current lesson changes', async () => {
+  const h = teachingContextFixture();
+  const second = structuredClone(h.teaching);
+  second.teamVersion = { ...second.teamVersion, teamVersionId: 'lesson-team-2', teamId: 'team-2' };
+  second.sessionRoutes = [{ sessionIndex: 2, roleSlotId: 'role-frozen' }];
+  second.knowledgeGrant = { serverId: 'ima-knowledge', knowledgeBaseIds: ['original'], allowedTools: ['ima_read_document'] };
+  second.roles[0]!.tools = [{ toolId: 'ima_read_document', mcpServerId: 'ima-knowledge', schemaDigest: 'digest', handlerVersion: 'ima-mcp.v1' }];
+  h.teaching.sessionRoutes = [{ sessionIndex: 1, roleSlotId: 'role-frozen' }];
+  h.teaching.sessionAssignments = [{ sessionIndex: 1, teamVersionId: h.teaching.teamVersion.teamVersionId, kind: 'team' }, { sessionIndex: 2, teamVersionId: 'lesson-team-2', kind: 'team' }];
+  h.teaching.sessionTeamBundles = [second];
+  h.completed.add('plan-frozen:lesson-1');
+  const teaching = await resolveTutorTeachingContext(h.store, h.project, h.teaching);
+  const settings = { canCall: async () => true, currentKnowledgeBaseIds: async () => ['original'] } as unknown as ImaSettingsService;
+  const bindings = { getFrozenTeachingBundle: async () => h.teaching } as unknown as TemplateBindingService;
+  const access = createTutorKnowledgeAccess(teaching, h.project.id, h.project.studentId, teaching.role.assistantId, settings, h.store, bindings);
+  assert.deepEqual(await access.scope!.refreshAllowedKnowledgeBaseIds(), ['original']);
+  assert.equal(await access.authorize!('ima_read_document'), true);
+  h.completed.clear();
+  assert.deepEqual(await access.scope!.refreshAllowedKnowledgeBaseIds(), []);
+});
+
 test('managed source receipts enter this project turn only while owner, frozen scope and current tool grants agree', async () => {
   const h = teachingContextFixture();
   h.teaching.knowledgeGrant = { serverId: 'ima-knowledge', knowledgeBaseIds: ['original'], allowedTools: ['ima_read_document'] };

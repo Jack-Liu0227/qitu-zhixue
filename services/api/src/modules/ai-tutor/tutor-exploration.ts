@@ -7,7 +7,7 @@ import type { CompiledTeachingRole } from '../templates/teaching-bundle.types';
 export async function resolveExplorationHandoff(input: {
   ownerId: string; exploration?: ExplorationView; fallback: TutorTeamIdentity;
   bindings?: TemplateBindingService; registry?: PlatformRegistryService;
-  loadTeam: (id: string) => Promise<AdminTeamConfig | null>;
+  loadTeam: (id: string, bindingId: string) => Promise<AdminTeamConfig | null>;
 }): Promise<{ team: TutorTeamIdentity; teamConfig: AdminTeamConfig | null; exploration: NonNullable<TutorProjectContext['exploration']>; role: CompiledTeachingRole | null }> {
   const { exploration, bindings, registry } = input;
   const meta: NonNullable<TutorProjectContext['exploration']> = {
@@ -25,7 +25,7 @@ export async function resolveExplorationHandoff(input: {
     meta.drivingQuestion = theme.drivingQuestion;
   }
   if (!preview.binding) return { team: input.fallback, teamConfig: null, exploration: meta, role: null };
-  const team = await input.loadTeam(preview.binding.teamVersionId);
+  const team = await input.loadTeam(preview.binding.teamVersionId, preview.binding.id);
   const assistants = await registry.listAssistants();
   const assistant = assistants.find((entry) => entry.id === team?.leaderAssistantId && entry.enabled);
   if (!team?.enabled || !assistant || !team.members.some((entry) => entry.assistantId === assistant.id)) {

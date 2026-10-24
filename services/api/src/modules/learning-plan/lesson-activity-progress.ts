@@ -1,4 +1,4 @@
-import type { LearningEvidenceProof, LessonActivityProgress, PblTemplateSession } from '@qitu/contracts';
+import type { CoursewareInstance, LearningEvidenceProof, LessonActivityProgress, PblTemplateSession } from '@qitu/contracts';
 
 /** Derived from existing evidence/assessment receipts; no parallel activity state store. */
 export function projectLessonActivities(input: {
@@ -6,6 +6,7 @@ export function projectLessonActivities(input: {
   sessionId: string;
   proofs: readonly LearningEvidenceProof[];
   masteryAccepted: boolean;
+  teachingDeliveries?: readonly CoursewareInstance[];
   sessionCompleted?: boolean;
   locked?: boolean;
 }): LessonActivityProgress[] {
@@ -17,7 +18,16 @@ export function projectLessonActivities(input: {
       && (proof.activityId === activityId || requirement.evidence === 'experiment_observation')
       && (input.lesson.checkpoint?.requiredGate !== 'review_completed_and_archived' || requirement.activity !== 'reflect' || proof.sourceKind === 'reflection')
       && proof.quality?.status === 'accepted').map(proof => proof.ref);
-    const accepted = requirement.evidence === 'mastery' ? input.masteryAccepted : refs.length > 0;
+    const deliveries = (input.teachingDeliveries ?? []).filter(v => v.learningSessionId === input.sessionId
+      && v.activityId === activityId && v.acknowledgedAt !== null);
+    const taught = new Set(deliveries.flatMap(v => v.objectiveRefs));
+    const delivered = !!input.lesson.teachingSpec && input.lesson.teachingSpec.concepts.every(c => taught.has(c.objectiveId));
+    if (requirement.evidence === 'teaching_delivery' && delivered) refs.push(...deliveries.map(v => `courseware:${v.id}`));
+    const minimumObservations = Math.max(1, ...(input.lesson.completionSpec?.requiredEvidence ?? [])
+      .filter(item => item.kind === 'experiment_observation' && item.scope === 'session').map(item => item.minimumCount));
+    const accepted = requirement.evidence === 'mastery' ? input.masteryAccepted
+      : requirement.evidence === 'teaching_delivery' ? delivered
+      : requirement.evidence === 'experiment_observation' ? new Set(refs).size >= minimumObservations : refs.length > 0;
     const status = input.locked ? 'locked' : input.sessionCompleted || (!blocked && accepted) ? 'completed' : blocked ? 'locked' : 'current';
     if (status !== 'completed') blocked = true;
     return { activityId, kind: requirement.activity, evidence: requirement.evidence, status,

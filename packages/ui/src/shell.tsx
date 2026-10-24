@@ -3,6 +3,7 @@ import { PRODUCT_NAME, colors } from '@qitu/design-tokens';
 import { BrandMark } from './brand';
 import { NavigationArtwork } from './navigation-artwork';
 import { RobotMascot } from './assistant';
+import { SidebarResizeHandle } from './sidebar-resize';
 export { RobotMascot } from './assistant';
 
 export interface NavItem {
@@ -130,6 +131,7 @@ export function NavSidebar({
         />
       ) : null}
       <aside className={collapsed ? 'qitu-sidebar is-collapsed' : 'qitu-sidebar is-expanded'}>
+        <SidebarResizeHandle disabled={collapsed} />
         <div className="qitu-sidebar-brand">
         <span className="qitu-sidebar-logo">
           <BrandMark size={40} decorative />

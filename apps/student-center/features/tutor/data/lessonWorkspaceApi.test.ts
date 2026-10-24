@@ -10,6 +10,15 @@ const progress = { planId: scope.planId, projectId: scope.projectId, planRevisio
   currentSessionId: scope.learningSessionId, completedCount: 0, totalCount: 1, contractReady: true,
   sessions: [{ sessionId: scope.learningSessionId, lessonIndex: 1, title: 'Fixture', status: 'current', completedAt: null, canComplete: true, blockers: [] }] };
 
+test('source-grounded teaching delivery is a valid activity but unknown completion claims are rejected', async () => {
+  const activity = { activityId: `${scope.learningSessionId}:activity:theory`, kind: 'theory', evidence: 'teaching_delivery',
+    status: 'current', guidance: 'Read the explanation before assessment.', minutes: 10, evidenceRefs: [] };
+  const value = { ...progress, sessions: [{ ...progress.sessions[0]!, activities: [activity] }] };
+  assert.equal((await getLessonProgress(async () => ({ data: value }), scope.planId, scope.projectId)).sessions[0]!.activities![0]!.evidence, 'teaching_delivery');
+  await assert.rejects(getLessonProgress(async () => ({ data: { ...value, sessions: [{ ...value.sessions[0],
+    activities: [{ ...activity, evidence: 'read_means_mastered' }] }] } }), scope.planId, scope.projectId), { code: 'LESSON_PROGRESS_INVALID' });
+});
+
 test('quality feedback remains attached to the exact proof and malformed owner receipts are rejected', async () => {
   const evidence = { scope:proof.scope,sessionType:'theory',allowedActions:['respond'],submissions:[{ ...proof,
     quality:{ status:'needs_revision',subjectDigest:'a'.repeat(64),feedback:[{ criterionId:'criterion',meets:false,feedback:'Connect the observation to your explanation.' }] } }],

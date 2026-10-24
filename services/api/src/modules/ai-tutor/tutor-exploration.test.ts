@@ -73,7 +73,7 @@ test('exploration binding requires published validated configuration and never f
   assert.equal(await h.store.findSnapshot('synthetic-project'), null);
   await assert.rejects(h.bindings.getExplorationBinding('synthetic-owner', 'unavailable-version'));
   h.team.enabled = false;
-  h.store.seedTeamVersion(h.team);
+  h.store.seedBindingTeams(h.binding.id, [h.team]);
   assert.equal((await preview()).binding, null);
 });
 

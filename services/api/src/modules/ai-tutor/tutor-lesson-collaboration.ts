@@ -33,7 +33,7 @@ function candidates(teaching: TutorTeachingContext, input: Input) {
   return (lesson.collaborators ?? []).filter(entry => entry.activity === activity.kind
     && (entry.trigger === 'on_request' ? input.requested : refs.length > 0)).map(entry => ({
     config: entry, scope: { projectId: input.projectId!, studentId: input.studentId,
-      templateVersionId: teaching.bundle.templateVersionId, teamVersionId: teaching.bundle.teamVersion.teamVersionId,
+      templateVersionId: teaching.bundle.templateVersionId, teamVersionId: teaching.bindingTeamVersionId ?? teaching.bundle.teamVersion.teamVersionId,
       planId: teaching.planId, planRevision: teaching.planRevision, learningSessionId: teaching.session.id,
       activityId: activity.activityId, recipientAssistantId: entry.assistantId, purpose: entry.purpose, evidenceRefs: refs } satisfies LessonCollaborationScope,
   }));

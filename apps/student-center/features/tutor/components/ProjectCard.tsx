@@ -15,7 +15,7 @@ export function ProjectCard({ project }: { project: ProjectSummary }) {
         <h3 className="qitu-tutor-project-title">{project.title}</h3>
         <div className="qitu-tutor-project-meta">
           <StageBadge label={stageLabel(project.stage)} tone="current" />
-          <TagChips tags={['进行中']} tone="primary" />
+          {project.stage !== 'completed' && project.stage !== 'published' ? <TagChips tags={['进行中']} tone="primary" /> : null}
         </div>
       </div>
     </SectionCard>

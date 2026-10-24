@@ -1,0 +1,365 @@
+{
+  "productionMigration": {
+    "finishedAt": "2026-10-23T16:08:42Z",
+    "runId": "run-1792771094449-2441781",
+    "before": {
+      "bindingCount": 17,
+      "projectCount": 8,
+      "bindingFingerprint": "5a686b080f084b5e4d93cfbe92e9c5c2",
+      "projectFingerprint": "c26f1747b093ec13e2a8cc3aaed0aa5c",
+      "legacyCount": 16
+    },
+    "after": {
+      "bindingCount": 17,
+      "projectCount": 8,
+      "bindingFingerprint": "5a686b080f084b5e4d93cfbe92e9c5c2",
+      "projectFingerprint": "c26f1747b093ec13e2a8cc3aaed0aa5c"
+    },
+    "oldTableAbsent": true,
+    "missingProjectReferences": 0,
+    "services": {
+      "qitu-api": "active",
+      "qitu-workers": "active",
+      "qitu-profile-growth": "active",
+      "qitu-admin": "active"
+    },
+    "drizzleLedgerUpdated": true,
+    "backupBytes": 3508222
+  },
+  "isolationMigration": {
+    "database": "qitu_team_migration_20261023",
+    "before": {
+      "bindings": "2a14fdec69b7886ab8b3f6c66c81663f",
+      "projects": "c26f1747b093ec13e2a8cc3aaed0aa5c",
+      "legacyCount": "16",
+      "bindingCount": "16",
+      "projectCount": "8"
+    },
+    "after": {
+      "bindings": "2a14fdec69b7886ab8b3f6c66c81663f",
+      "projects": "c26f1747b093ec13e2a8cc3aaed0aa5c",
+      "oldTableAbsent": "t",
+      "missingPrimary": "0",
+      "missingProject": "0"
+    },
+    "replay": true,
+    "rollback": true,
+    "reapplied": true,
+    "backupBytes": 3434413
+  },
+  "isolationBehavior": {
+    "isolated": true,
+    "productionWrites": false,
+    "results": [
+      {
+        "sessionCount": 8,
+        "saved": true,
+        "replayed": true,
+        "readback": true,
+        "validated": true,
+        "activated": true
+      },
+      {
+        "sessionCount": 16,
+        "saved": true,
+        "replayed": true,
+        "readback": true,
+        "validated": true,
+        "activated": true
+      }
+    ]
+  },
+  "historicalIntegrity": {
+    "bindings": 16,
+    "embeddedTeams": 18,
+    "teamDigestValid": 16,
+    "teamDigestInvalid": [
+      {
+        "bindingId": "bnd-5af21ca738dc65dc",
+        "status": "retired",
+        "projectReferenced": false,
+        "code": "TEAM_VERSION_DIGEST_MISMATCH"
+      },
+      {
+        "bindingId": "bnd-4f1a274b280348f5",
+        "status": "active",
+        "projectReferenced": true,
+        "code": "TEAM_VERSION_DIGEST_MISMATCH"
+      }
+    ],
+    "bundleDigestValid": 8,
+    "bundleDigestInvalid": [],
+    "projectBindings": 2
+  },
+  "liveAssistants": {
+    "url": "http://122.51.130.204",
+    "finishedAt": "2026-10-23T16:10:16.588Z",
+    "results": [
+      {
+        "id": "qitu-assistant",
+        "status": 201,
+        "outcome": "answered",
+        "replyLength": 3663,
+        "receipts": 0,
+        "durationMs": 18721
+      },
+      {
+        "id": "feishu-reporting-assistant",
+        "status": 201,
+        "outcome": "answered",
+        "replyLength": 100,
+        "receipts": 0,
+        "durationMs": 2147
+      },
+      {
+        "id": "fighter-code-guide",
+        "status": 201,
+        "outcome": "answered",
+        "replyLength": 119,
+        "receipts": 0,
+        "durationMs": 2688
+      },
+      {
+        "id": "fighter-concept-coach",
+        "status": 201,
+        "outcome": "answered",
+        "replyLength": 152,
+        "receipts": 0,
+        "durationMs": 2773
+      },
+      {
+        "id": "fighter-review-assessor",
+        "status": 201,
+        "outcome": "answered",
+        "replyLength": 133,
+        "receipts": 0,
+        "durationMs": 2447
+      },
+      {
+        "id": "growth-trajectory-assistant",
+        "status": 201,
+        "outcome": "answered",
+        "replyLength": 112,
+        "receipts": 0,
+        "durationMs": 1777
+      },
+      {
+        "id": "kinetic-concept-coach",
+        "status": 201,
+        "outcome": "answered",
+        "replyLength": 94,
+        "receipts": 0,
+        "durationMs": 1642
+      },
+      {
+        "id": "kinetic-experiment-guide",
+        "status": 201,
+        "outcome": "answered",
+        "replyLength": 130,
+        "receipts": 0,
+        "durationMs": 2554
+      },
+      {
+        "id": "kinetic-leader",
+        "status": 201,
+        "outcome": "answered",
+        "replyLength": 109,
+        "receipts": 0,
+        "durationMs": 1676
+      },
+      {
+        "id": "kinetic-review-assessor",
+        "status": 201,
+        "outcome": "answered",
+        "replyLength": 131,
+        "receipts": 0,
+        "durationMs": 2575
+      },
+      {
+        "id": "optics-concept-coach",
+        "status": 201,
+        "outcome": "answered",
+        "replyLength": 119,
+        "receipts": 0,
+        "durationMs": 2544
+      },
+      {
+        "id": "optics-experiment-guide",
+        "status": 201,
+        "outcome": "answered",
+        "replyLength": 125,
+        "receipts": 0,
+        "durationMs": 1977
+      },
+      {
+        "id": "optics-leader",
+        "status": 201,
+        "outcome": "answered",
+        "replyLength": 96,
+        "receipts": 0,
+        "durationMs": 1762
+      },
+      {
+        "id": "optics-review-assessor",
+        "status": 201,
+        "outcome": "answered",
+        "replyLength": 313,
+        "receipts": 0,
+        "durationMs": 3955
+      },
+      {
+        "id": "profile-analyst-assistant",
+        "status": 201,
+        "outcome": "answered",
+        "replyLength": 110,
+        "receipts": 0,
+        "durationMs": 2143
+      },
+      {
+        "id": "qitu-intake-assistant",
+        "status": 201,
+        "outcome": "answered",
+        "replyLength": 99,
+        "receipts": 0,
+        "durationMs": 3990
+      },
+      {
+        "id": "tutor-leader",
+        "status": 201,
+        "outcome": "answered",
+        "replyLength": 71,
+        "receipts": 0,
+        "durationMs": 1666
+      }
+    ]
+  },
+  "liveRetirement": {
+    "checkedAt": "2026-10-23T16:10:05.947Z",
+    "contractVersion": "1.4.0",
+    "operationCount": 50,
+    "removedEndpoints": [
+      {
+        "method": "GET",
+        "status": 404
+      },
+      {
+        "method": "POST",
+        "status": 404
+      },
+      {
+        "method": "POST",
+        "status": 404
+      }
+    ],
+    "oldPublishControls": 0,
+    "pageErrors": []
+  },
+  "sourceVerification": {
+    "runId": "run-1792771094449-2441781",
+    "finishedAt": "2026-10-23T16:00:34.612Z",
+    "success": true,
+    "steps": [
+      {
+        "name": "build-contracts",
+        "exitCode": 0,
+        "log": "services/api/.tmp/pbl-capability/run-1792771094449-2441781/1-build-contracts.log"
+      },
+      {
+        "name": "contracts-esm",
+        "exitCode": 0,
+        "log": "services/api/.tmp/pbl-capability/run-1792771094449-2441781/2-contracts-esm.log"
+      },
+      {
+        "name": "build-database",
+        "exitCode": 0,
+        "log": "services/api/.tmp/pbl-capability/run-1792771094449-2441781/3-build-database.log"
+      },
+      {
+        "name": "build-infra",
+        "exitCode": 0,
+        "log": "services/api/.tmp/pbl-capability/run-1792771094449-2441781/4-build-infra.log"
+      },
+      {
+        "name": "build-agent-memory",
+        "exitCode": 0,
+        "log": "services/api/.tmp/pbl-capability/run-1792771094449-2441781/5-build-agent-memory.log"
+      },
+      {
+        "name": "build-ai-client",
+        "exitCode": 0,
+        "log": "services/api/.tmp/pbl-capability/run-1792771094449-2441781/6-build-ai-client.log"
+      },
+      {
+        "name": "build-model-runtime",
+        "exitCode": 0,
+        "log": "services/api/.tmp/pbl-capability/run-1792771094449-2441781/7-build-model-runtime.log"
+      },
+      {
+        "name": "build-api",
+        "exitCode": 0,
+        "log": "services/api/.tmp/pbl-capability/run-1792771094449-2441781/8-build-api.log"
+      },
+      {
+        "name": "behavior",
+        "exitCode": 0,
+        "log": "services/api/.tmp/pbl-capability/run-1792771094449-2441781/9-behavior.log"
+      },
+      {
+        "name": "build-workers",
+        "exitCode": 0,
+        "log": "services/api/.tmp/pbl-capability/run-1792771094449-2441781/10-build-workers.log"
+      },
+      {
+        "name": "workers-esm",
+        "exitCode": 0,
+        "log": "services/api/.tmp/pbl-capability/run-1792771094449-2441781/11-workers-esm.log"
+      },
+      {
+        "name": "worker-behavior",
+        "exitCode": 0,
+        "log": "services/api/.tmp/pbl-capability/run-1792771094449-2441781/12-worker-behavior.log"
+      },
+      {
+        "name": "model-runtime-behavior",
+        "exitCode": 0,
+        "log": "services/api/.tmp/pbl-capability/run-1792771094449-2441781/13-model-runtime-behavior.log"
+      },
+      {
+        "name": "sdk-behavior",
+        "exitCode": 0,
+        "log": "services/api/.tmp/pbl-capability/run-1792771094449-2441781/14-sdk-behavior.log"
+      },
+      {
+        "name": "admin-copilot-types",
+        "exitCode": 0,
+        "log": "services/api/.tmp/pbl-capability/run-1792771094449-2441781/15-admin-copilot-types.log"
+      },
+      {
+        "name": "student-pbl-types",
+        "exitCode": 0,
+        "log": "services/api/.tmp/pbl-capability/run-1792771094449-2441781/16-student-pbl-types.log"
+      }
+    ],
+    "scope": "source dependencies, API + workers compilation, copilot/registry/growth/knowledge/tutor/SDK and worker behavior, admin page import graphs; fixtures only, no live provider/database calls"
+  },
+  "behaviorCounts": {
+    "api": {
+      "passed": 824,
+      "failed": 0,
+      "skipped": 1
+    },
+    "workers": {
+      "passed": 39,
+      "failed": 0
+    },
+    "modelRuntime": {
+      "passed": 42,
+      "failed": 0
+    },
+    "adminCatalog": {
+      "passed": 6,
+      "failed": 0
+    }
+  },
+  "verificationScope": "Candidate release built from current production sources plus this task; source changes already present in the shared workspace were preserved. No student learning evidence was manufactured."
+}

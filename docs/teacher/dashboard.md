@@ -1,5 +1,7 @@
 # 班主任工作台 · 总览
 
+2026-10-24 问题处理中的家长反馈已支持私有附件：当前班主任可下载已提交工单中的文件，也可在回复中添加 PNG/JPEG/PDF/UTF-8 文本，每文件最多 2 MiB、每条回复最多 5 个。家长未提交的草稿文件不可见，分配撤销后立即停止访问。实现与验收见 [家校反馈附件](../issues/20261024-feedback-attachments.md)。
+
 > 文档基线：`2026-10-19`，版本标识：`v2026.10.19`。
 > 核心定位：**项目式学习（PBL）驱动的 AI 育人共成长**。作为人机协同育人中“教师引导与人工干预”的核心工作面。
 >
@@ -62,3 +64,8 @@ Teacher **不能**直接：
 - [`knowledge.md`](./knowledge.md)
 - [`../admin/permissions.md`](../admin/permissions.md)
 - [`../admin/platform-governance.md`](../admin/platform-governance.md)
+## 2026-10-24 接入补充
+
+名册、学生详情和统计复用 `learning-activity.v1`。学习时长标为估算；兼容字段 `weeklyTasks`/`tasksCompletedThisWeek` 当前只计服务端课时完成回执，界面统一显示“完成课时”。成长摘要使用已有安全投影。
+
+学习支持请求读取当前分配学生项目中的 `escalation_event` 证据。确认接手和完成处理写通信回执并审计，不批准作品、不改变项目阶段或掌握度；换班主任后旧教师失去访问权。反馈继续复用已有 Feedback owner。

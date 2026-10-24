@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ConflictException } from '@nestjs/common';
-import { adminTeamVersions } from '@qitu/database';
+import { pblTemplateTeamBindings } from '@qitu/database';
 import type { AdminTeamConfig } from '@qitu/contracts';
 import type { LearningPlanStore, LearningProjectRecord } from '../learning-plan/learning-plan.store';
 import type { TemplateBindingService } from '../templates/templates-binding.service';
@@ -28,13 +28,13 @@ function fixture(frozen = false) {
     phase: 'concept_mastery', title: 'Synthetic concept phase', assignedAssistantId: h.assistant.id,
     assignedRoleLabel: 'Synthetic concept role', gateCondition: 'TheoryMastered', learningObjectives: [],
   }];
-  const team: typeof adminTeamVersions.$inferSelect = {
+  const team: import('../templates/templates-binding.types').TeamVersionRecord = {
     id: 'synthetic-team-version', teamId: 'synthetic-team', version: 1, name: 'Frozen actual team', description: '',
     workspaceMode: 'shared', sessionMode: 'supervised', leaderAssistantId: h.assistant.id,
     members: [{ assistantId: h.assistant.id, role: 'coach', roleLabel: 'Actual phase coach', pblPhase: 'concept_mastery' }],
     pblSpec: { phases }, enabled: true, createdBy: null, createdAt: new Date(),
   };
-  h.extraRows.set(adminTeamVersions, [team]);
+  h.extraRows.set(pblTemplateTeamBindings, [{ id: 'synthetic-binding', teamSnapshots: { [team.id]: { ...team, createdAt: team.createdAt.toISOString() } } }]);
   const teaching = teachingContextFixture(h.assistant.id);
   const store = {
     ...(frozen ? teaching.store : {}),

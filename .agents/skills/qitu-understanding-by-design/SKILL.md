@@ -1,7 +1,7 @@
 ---
 name: qitu-understanding-by-design
 description: Draft a Qitu project backwards from transferable understanding and performance evidence.
-version: 1.0.0
+version: 1.0.1
 runtime: admin
 status: published
 references: references/qitu-contract.md

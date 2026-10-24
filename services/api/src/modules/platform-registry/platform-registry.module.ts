@@ -1,6 +1,5 @@
 import { Module, forwardRef } from '@nestjs/common';
-import { TeamVersionService } from './team-version.service';
-import { TeamVersionController } from './team-version.controller';
+import { TeachingTeamCaptureService } from './teaching-team-capture.service';
 import { AuthModule } from '../identity-auth/auth.module';
 import { PlatformRegistryController } from './platform-registry.controller';
 import { PlatformRegistryService } from './platform-registry.service';
@@ -13,8 +12,8 @@ import { ToolBindingMigrationService } from './tool-binding-migration.service';
 
 @Module({
   imports: [AuthModule, ModelRegistryModule, forwardRef(() => KnowledgeModule)],
-  controllers: [ToolBindingMigrationController, TeamVersionController, PlatformRegistryController, ImaSettingsController],
-  providers: [ToolBindingMigrationService, TeamVersionService, PlatformRegistryService, ImaSettingsService],
-  exports: [TeamVersionService, PlatformRegistryService, ImaSettingsService],
+  controllers: [ToolBindingMigrationController, PlatformRegistryController, ImaSettingsController],
+  providers: [ToolBindingMigrationService, TeachingTeamCaptureService, PlatformRegistryService, ImaSettingsService],
+  exports: [TeachingTeamCaptureService, PlatformRegistryService, ImaSettingsService],
 })
 export class PlatformRegistryModule {}

@@ -3,6 +3,12 @@ import assert from 'node:assert/strict';
 import { buildAuditDetail } from './audit-entry';
 import { CIRCULAR_VALUE, REDACTED_VALUE, isSensitiveKey, redactSensitive } from './audit-redaction';
 
+test('persistence redaction repairs lone model-output surrogates while preserving valid Unicode and secrets redaction', () => {
+  const input = { text: '光学🔬\uD83D尾\uDC00', nested: ['\uD800', '𠮷'], token: '\uD800secret' };
+  assert.deepEqual(redactSensitive(input), { text: '光学🔬\uFFFD尾\uFFFD', nested: ['\uFFFD', '𠮷'], token: REDACTED_VALUE });
+  assert.equal(input.text, '光学🔬\uD83D尾\uDC00');
+});
+
 /**
  * `audit-redaction` / `buildAuditDetail` 的纯函数单测。
  *

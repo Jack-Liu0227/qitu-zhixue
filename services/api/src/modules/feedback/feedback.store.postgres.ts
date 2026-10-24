@@ -1,4 +1,5 @@
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
+import { claimFeedbackAttachments } from './feedback-attachment.claim';
 import {
   feedbackTicketEntries,
   feedbackTickets,
@@ -77,6 +78,9 @@ export class PostgresFeedbackStore extends FeedbackStore {
         const existing = await loadTicket(tx, command.ticket.id);
         if (existing !== null) return existing;
         await insertTicket(tx, command.ticket);
+        for (const entry of command.ticket.entries) await claimFeedbackAttachments(tx, {
+          actorId: entry.authorId, childId: command.ticket.childId, ticketId: command.ticket.id, refs: entry.attachmentRefs,
+        });
         await this.audit.write(command.audit, tx);
         await this.outbox.write(command.event, tx);
         const created = await loadTicket(tx, command.ticket.id);
@@ -116,6 +120,8 @@ export class PostgresFeedbackStore extends FeedbackStore {
         if (existingEntry !== undefined) {
           return loadTicket(tx, command.ticketId);
         }
+        await claimFeedbackAttachments(tx, { actorId: command.entry.authorId, childId: ticket.childUserId,
+          ticketId: command.ticketId, refs: command.entry.attachmentRefs });
 
         const [maxRow] = await tx
           .select({ maxSeq: sql<number>`coalesce(max(${feedbackTicketEntries.seq}), -1)` })

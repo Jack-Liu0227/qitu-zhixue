@@ -1,7 +1,7 @@
 ---
 name: qitu-stage-design
 description: Design one Qitu session from an objective, learner action, evidence requirement and authorized next-action choices.
-version: 1.0.0
+version: 1.0.1
 runtime: admin
 status: published
 references: references/qitu-contract.md

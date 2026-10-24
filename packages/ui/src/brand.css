@@ -25,6 +25,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 button, input, select, textarea { font-family: inherit; }
+.qitu-page-transition { animation-fill-mode: backwards; }
 button, [role='tab'] { touch-action: manipulation; }
 button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
   outline: 2px solid var(--qitu-primary);
@@ -199,3 +200,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   }
 }
 html[data-qitu-reduced-motion='true'] .home-page * { animation: none !important; transition: none !important; }
+
+.qitu-navigation-divider { display: none; }
+@media (min-width: 1024px) {
+  .qitu-sidebar[data-resizable-sidebar='true']:not(.is-collapsed),
+  .qtx-sidebar[data-resizable-sidebar='true'] { width: var(--qitu-navigation-width); min-width: var(--qitu-navigation-width); flex-basis: var(--qitu-navigation-width); flex-shrink: 0; }
+  .qitu-navigation-divider:not([hidden]) { display: flex; position: absolute; z-index: 12; right: 0; top: 0; bottom: 0; width: 8px; align-items: center; justify-content: center; cursor: col-resize; touch-action: none; }
+  .qitu-navigation-divider span { width: 3px; height: 38px; border-radius: 4px; background: var(--qitu-border); transition: background .15s; }
+  .qitu-navigation-divider:hover span, .qitu-navigation-divider:focus-visible span { background: var(--qitu-primary); }
+  .qitu-navigation-divider:focus-visible { outline: 2px solid var(--qitu-primary); outline-offset: -2px; }
+}

@@ -1,5 +1,17 @@
 # PBL 能力链架构与实施入口
 
+- 2026-10-24：[两模板逐课工具、课件与问答重测](../../issues/20261024-tools-courseware-full-retest.md)：工具参数修正、IMA 调用诊断、动态条纹与课件重播、正式问答求助及线上逐课验收；执行进度和验证边界以该记录为准。
+
+- 2026-10-24：[两个模板的自然学习链路复核](../../issues/20261024-learning-chain-gap-audit.md)：历史实验门禁误报的实际复现与修复，以及两模板 16 课的教学、课件、巩固、评价和续学断点；修正合成流程通过不等于自然教学闭环的验收口径。
+
+- 2026-10-24：[家校反馈私有附件](../../issues/20261024-feedback-attachments.md)：上传、工单事务归属、双方下载及部署验收，已补齐此前的附件缺口。
+
+- 2026-10-24：[三端学习数据与家长模块接入](../../issues/20261023-family-learning-integration.md)：学习足迹、共享统计、家校沟通的部署与验证记录，含账号场景及附件边界。
+
+- 2026-10-23：[课时级助手与团队绑定](./template-session-bindings-20261023.md)，包含绑定限制诊断、逐课冻结路由、验证和四阶段兼容边界。
+
+- 2026-10-23 新增量计划：[零基础理论教学与可迭代课件资产](./tutor-course-team-redesign-20261022/07-zero-base-teaching-and-courseware-assets.md)。先依据知识库讲解与动态演示，再出题、补救和完成课时；课件按项目实例、候选审核、版本发布和按需复用推进。仅更新计划，提示词接线和资产机制尚待实施。
+
 - 2026-10-23 当前专题：[干涉与衍射八课设计](./tutor-course-team-redesign-20261022/05-interference-diffraction-curriculum.md)、[实施与验收记录](./tutor-course-team-redesign-20261022/06-implementation-and-acceptance.md)。新专题已部署为受治理试点，正式课堂验收与课件资产库自动归档仍按记录中的边界推进。下方 2026-10-19 交付状态属于当时基线。
 
 - [知识中心配置与助手绑定矩阵](./knowledge-center-config-matrix-20261022.md)：2026-10-22 已确认的配置界面、增量授权、IMA 重新关联与验证边界。
@@ -80,7 +92,7 @@ Implementation and rollout boundaries: [16-session template](../../admin/optics-
 
 ## AI 搭档团队与逐课闭环重设计（2026-10-22）
 
-[本轮核查与方案](./tutor-course-team-redesign-20261022/README.md) 区分接待助手、领域总导师、逐课主讲与协作，以及服务端完成 owner。用户最新要求只考虑干涉与衍射，[当前 8 课时设计](./tutor-course-team-redesign-20261022/05-interference-diffraction-curriculum.md) 包含动态课件／题目、双缝模型缺口与完成证据。原 16 课及散射方案保留为历史；当前仍是设计稿，未实施或发布，团队版本 v5 不代表新课程已上线。
+[本轮核查与方案](./tutor-course-team-redesign-20261022/README.md) 区分接待助手、领域总导师、逐课主讲与协作，以及服务端完成 owner。专题范围为干涉与衍射，[当前 8 课时设计](./tutor-course-team-redesign-20261022/05-interference-diffraction-curriculum.md) 的核心已进入受治理试点，实际边界见 [实施记录](./tutor-course-team-redesign-20261022/06-implementation-and-acceptance.md)。原 16 课及散射方案保留为历史；新一轮零基础教学接线与课件资产机制以 [07 计划](./tutor-course-team-redesign-20261022/07-zero-base-teaching-and-courseware-assets.md) 为准，尚未实施。
 
 ## New implementation slices (2026-10-20)
 
@@ -116,3 +128,16 @@ Implementation and rollout boundaries: [16-session template](../../admin/optics-
 ## Feishu assistant messages (2026-10-21)
 
 [Assistant-scoped binding and bidirectional messages](../../admin/feishu-assistant-messages.md): implementation, migration 0044, identity checks, durable delivery and verification boundaries.
+
+
+[双光学模板逐课自动化、课件清晰度与远端重启验收（2026-10-23）](../../issues/20261023-dual-optics-student-e2e.md)：16 + 8 课时主模板及额外 8 课时零基础版本完成；问题闭环、427 项回归、18 服务重启及结构化证据。
+
+
+[两个可选项目模板与雷霆战机课程（2026-10-23）](../../admin/two-project-catalog-20261023.md)：保留零基础干涉衍射，新增雷霆战机，旧模板归档与远端回读记录。
+
+- [移除独立团队版本资源与管家恢复验证](../../issues/20261023-remove-team-version-resource.md)：教学安排归绑定 owner，历史项目数据迁移后删除旧表。
+
+
+## 2026-10-24 线上逐课验收
+
+- [雷霆战机与零基础干涉衍射：生产16课记录、问题修复及重启验收](../../issues/20261024-live-two-projects-fullflow.md)。

@@ -75,6 +75,22 @@ function changeAssistant(source: TeachingBundleSource, patch: Partial<TeachingAs
   source.assistants = source.assistants.map((assistant) => ({ ...assistant, ...patch }));
 }
 
+it('explicit lesson scopes decouple teacher allocation while historical team locks remain enforced', () => {
+  const source = fixture();
+  source.teamVersion.teamId = 'another-published-team';
+  assert.throws(() => compileTeachingBundle(source), (error: unknown) =>
+    error instanceof TeachingBundleCompilationError && error.issue === 'TEMPLATE_TEAM_MISMATCH');
+  source.sessionScope = [2];
+  source.sessionRoutes = [{ sessionIndex: 2, roleSlotId: 'lead' }];
+  const compiled = compileTeachingBundle(source);
+  assert.equal(compiled.payload.sessionRoutes.length, 1);
+  assert.equal(compiled.payload.sessionRoutes[0]!.sessionIndex, 2);
+  assert.deepEqual(compiled.payload.template.phases, source.template.phases, 'governance gates are not rewritten');
+  source.sessionRoutes = [{ sessionIndex: 3, roleSlotId: 'lead' }];
+  assert.throws(() => compileTeachingBundle(source), (error: unknown) =>
+    error instanceof TeachingBundleCompilationError && error.issue === 'SESSION_ROUTE_INVALID');
+});
+
 function imaFixture(): TeachingBundleSource {
   const source = fixture();
   const toolIds = ['ima_search_knowledge', 'ima_read_document'];

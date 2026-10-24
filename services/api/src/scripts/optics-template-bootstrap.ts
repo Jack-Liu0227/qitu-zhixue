@@ -9,6 +9,8 @@ import { AccessModule } from '../common/access/access.module';
 import { IdempotencyModule } from '../common/idempotency/idempotency.module';
 import { hashRequest } from '../common/idempotency/idempotency.hash';
 import { DatabaseModule } from '../database';
+import { TeachingTeamCaptureService } from '../modules/platform-registry/teaching-team-capture.service';
+import { PlatformRegistryService } from '../modules/platform-registry/platform-registry.service';
 import { TemplateBindingService } from '../modules/templates/templates-binding.service';
 import { TemplateBindingStore } from '../modules/templates/templates-binding.store';
 import { TemplateGovernanceService } from '../modules/templates/templates-governance.service';
@@ -27,6 +29,7 @@ import {
 import { assertTemplateTeachingContent } from '../modules/templates/templates.content-validator';
 import { WAVE_OPTICS_TEMPLATE_SLUG, WAVE_OPTICS_BOOTSTRAP_KEY, WAVE_OPTICS_TEMPLATE_INPUT,
   WAVE_OPTICS_VERSION_INPUT } from '../modules/templates/content/wave-optics';
+import { WAVE_TEACHING_TEMPLATE_SLUG, WAVE_TEACHING_BOOTSTRAP_KEY, WAVE_TEACHING_TEMPLATE_INPUT, WAVE_TEACHING_VERSION_INPUT } from '../modules/templates/content/wave-teaching';
 import type {
   ProjectTemplateRecord,
   ProjectTemplateVersionRecord,
@@ -36,7 +39,7 @@ import type {
  * 光学 PBL 模板引导脚本（server 端 CLI，编译后执行）：
  *
  *   pnpm --filter @qitu/api build
- *   node services/api/dist/scripts/optics-template-bootstrap.js --team-version-id <id>
+ *   node services/api/dist/scripts/optics-template-bootstrap.js --team-id <id>
  *
  * 全程只走治理服务（audited / idempotent / ordered），**不写 seed SQL**：
  *   resolve-or-create 模板 → resolve-or-create 版本 → 结构校验 → pilot →
@@ -66,10 +69,12 @@ export interface OpticsBootstrapDeps {
 }
 
 export interface OpticsBootstrapArgs {
+  zeroBase?: boolean;
   waveOptics?: boolean;
   guidedLessons?: boolean;
   qualityReview?: boolean;
   teamVersionId: string;
+  capturedTeam?: import('../modules/templates/templates-binding.types').TeamVersionRecord;
   actor: CurrentUser;
   pilotReason: string;
   teachingBundle?: Omit<TeachingBundleDraft, 'templateVersionId' | 'teamVersionId'>;
@@ -94,19 +99,19 @@ export async function runOpticsTemplateBootstrap(
   deps: OpticsBootstrapDeps,
   args: OpticsBootstrapArgs,
 ): Promise<OpticsBootstrapReport> {
-  if (args.waveOptics && (args.guidedLessons || args.qualityReview)) throw new OpticsBootstrapError('波动专题不能与旧课程版本类型混用');
-  const slug = args.waveOptics ? WAVE_OPTICS_TEMPLATE_SLUG : args.guidedLessons ? OPTICS_GUIDED_TEMPLATE_SLUG : args.qualityReview ? OPTICS_16_QUALITY_TEMPLATE_SLUG : OPTICS_16_COMPLETION_TEMPLATE_SLUG;
-  const templateInput = args.waveOptics ? WAVE_OPTICS_TEMPLATE_INPUT : args.guidedLessons ? OPTICS_GUIDED_TEMPLATE_INPUT : args.qualityReview ? OPTICS_16_QUALITY_TEMPLATE_INPUT : OPTICS_16_COMPLETION_TEMPLATE_INPUT;
-  const versionInput = args.waveOptics ? WAVE_OPTICS_VERSION_INPUT : args.guidedLessons ? OPTICS_GUIDED_VERSION_INPUT : args.qualityReview ? OPTICS_16_QUALITY_VERSION_INPUT : OPTICS_16_COMPLETION_VERSION_INPUT;
-  const bootstrapKey = args.waveOptics ? WAVE_OPTICS_BOOTSTRAP_KEY : args.guidedLessons ? OPTICS_GUIDED_BOOTSTRAP_KEY : args.qualityReview ? OPTICS_16_QUALITY_BOOTSTRAP_KEY : OPTICS_16_COMPLETION_BOOTSTRAP_KEY;
-  const keyPrefix = args.waveOptics ? 'wave8-bootstrap' : args.guidedLessons ? 'optics16-guided-bootstrap' : args.qualityReview ? 'optics16-quality-bootstrap' : 'optics16-completion-bootstrap';
+  if ((args.waveOptics || args.zeroBase) && (args.guidedLessons || args.qualityReview)) throw new OpticsBootstrapError('波动专题不能与旧课程版本类型混用');
+  const slug = args.zeroBase ? WAVE_TEACHING_TEMPLATE_SLUG : args.waveOptics ? WAVE_OPTICS_TEMPLATE_SLUG : args.guidedLessons ? OPTICS_GUIDED_TEMPLATE_SLUG : args.qualityReview ? OPTICS_16_QUALITY_TEMPLATE_SLUG : OPTICS_16_COMPLETION_TEMPLATE_SLUG;
+  const templateInput = args.zeroBase ? WAVE_TEACHING_TEMPLATE_INPUT : args.waveOptics ? WAVE_OPTICS_TEMPLATE_INPUT : args.guidedLessons ? OPTICS_GUIDED_TEMPLATE_INPUT : args.qualityReview ? OPTICS_16_QUALITY_TEMPLATE_INPUT : OPTICS_16_COMPLETION_TEMPLATE_INPUT;
+  const versionInput = args.zeroBase ? WAVE_TEACHING_VERSION_INPUT : args.waveOptics ? WAVE_OPTICS_VERSION_INPUT : args.guidedLessons ? OPTICS_GUIDED_VERSION_INPUT : args.qualityReview ? OPTICS_16_QUALITY_VERSION_INPUT : OPTICS_16_COMPLETION_VERSION_INPUT;
+  const bootstrapKey = args.zeroBase ? WAVE_TEACHING_BOOTSTRAP_KEY : args.waveOptics ? WAVE_OPTICS_BOOTSTRAP_KEY : args.guidedLessons ? OPTICS_GUIDED_BOOTSTRAP_KEY : args.qualityReview ? OPTICS_16_QUALITY_BOOTSTRAP_KEY : OPTICS_16_COMPLETION_BOOTSTRAP_KEY;
+  const keyPrefix = args.zeroBase ? 'wave8-zero-base-bootstrap-v2' : args.waveOptics ? 'wave8-bootstrap' : args.guidedLessons ? 'optics16-guided-bootstrap' : args.qualityReview ? 'optics16-quality-bootstrap' : 'optics16-completion-bootstrap';
   assertOpticsTemplateStructure();
   assertTemplateTeachingContent(versionInput.content ?? {}, versionInput.stages);
 
   const steps: OpticsBootstrapStep[] = [];
 
   // 0. 团队版本必须已存在；否则 fail loudly（不创建团队快照）。
-  const teamVersion = await deps.bindingStore.findTeamVersion(args.teamVersionId);
+  const teamVersion = args.capturedTeam ?? await deps.bindingStore.findTeamVersion(args.teamVersionId);
   if (teamVersion === null) {
     throw new OpticsBootstrapError(`团队版本不存在：${args.teamVersionId}`);
   }
@@ -198,7 +203,7 @@ export async function runOpticsTemplateBootstrap(
   }
 
   // 4. binding：create（若需要）→ validate → activate。
-  const bindingId = await ensureActiveBinding(deps, args, template, version, steps);
+  const bindingId = await ensureActiveBinding(deps, { ...args, capturedTeam: teamVersion }, template, version, steps);
 
   return {
     templateId: template.id,
@@ -235,7 +240,7 @@ async function ensureActiveBinding(
   version: ProjectTemplateVersionRecord,
   steps: OpticsBootstrapStep[],
 ): Promise<string> {
-  const keyPrefix = args.waveOptics ? 'wave8-bootstrap' : args.guidedLessons ? 'optics16-guided-bootstrap' : args.qualityReview ? 'optics16-quality-bootstrap' : 'optics16-completion-bootstrap';
+  const keyPrefix = args.zeroBase ? 'wave8-zero-base-bootstrap-v2' : args.waveOptics ? 'wave8-bootstrap' : args.guidedLessons ? 'optics16-guided-bootstrap' : args.qualityReview ? 'optics16-quality-bootstrap' : 'optics16-completion-bootstrap';
   const active = await deps.bindingStore.findActiveBinding(version.id);
   if (active !== null) {
     if (active.teamVersionId === args.teamVersionId) {
@@ -260,7 +265,7 @@ async function ensureActiveBinding(
       args.actor,
       template.id,
       version.id,
-      { teamVersionId: args.teamVersionId },
+      { teamVersionId: args.teamVersionId, teamSnapshots: { [args.teamVersionId]: args.capturedTeam! } },
       `${keyPrefix}:binding`,
     );
     bindingId = created.binding.id;
@@ -331,6 +336,7 @@ async function ensureActiveBinding(
 /* ============================ CLI ============================ */
 
 interface CliArgs {
+  zeroBase: boolean;
   waveOptics: boolean;
   guidedLessons: boolean;
   qualityReview: boolean;
@@ -343,6 +349,7 @@ interface CliArgs {
 
 function parseCliArgs(argv: string[]): CliArgs {
   const out: CliArgs = {
+    zeroBase: false,
     waveOptics: false,
     guidedLessons: false,
     qualityReview: false,
@@ -354,10 +361,11 @@ function parseCliArgs(argv: string[]): CliArgs {
   };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
+    if (arg === '--zero-base') out.zeroBase = true;
     if (arg === '--wave-optics') out.waveOptics = true;
     if (arg === '--guided-lessons') out.guidedLessons = true;
     if (arg === '--quality-review') out.qualityReview = true;
-    if (arg === '--team-version-id') out.teamVersionId = argv[index + 1] ?? null;
+    if (arg === '--team-id') out.teamVersionId = argv[index + 1] ?? null;
     if (arg === '--teaching-bundle-file') out.teachingBundleFile = argv[index + 1] ?? null;
     if (arg === '--admin-user-id') out.adminUserId = argv[index + 1] ?? null;
     if (arg === '--pilot-reason') out.pilotReason = argv[index + 1] ?? out.pilotReason;
@@ -386,7 +394,7 @@ async function main(): Promise<void> {
   }
 
   if (cli.teamVersionId === null) {
-    console.error('[optics-bootstrap] 缺少必填参数 --team-version-id <id>');
+    console.error('[optics-bootstrap] 缺少必填参数 --team-id <id>');
     process.exitCode = 2;
     return;
   }
@@ -408,10 +416,14 @@ async function main(): Promise<void> {
     const templates = app.select(TemplatesModule).get(TemplateStore);
     const bindingStore = app.select(TemplatesModule).get(TemplateBindingStore);
 
+    const managedTeam = (await app.get(PlatformRegistryService).listTeams()).find(team => team.id === cli.teamVersionId && team.enabled);
+    if (!managedTeam) throw new OpticsBootstrapError('Managed team unavailable');
+    const capturedTeam = await app.get(TeachingTeamCaptureService).capture(actor, managedTeam.id, { expectedUpdatedAt: managedTeam.updatedAt }, `bootstrap:${managedTeam.id}:${managedTeam.updatedAt}`);
     const report = await runOpticsTemplateBootstrap(
       { governance, bindings, templates, bindingStore },
-      { teamVersionId: cli.teamVersionId, actor, pilotReason: cli.pilotReason,
+      { teamVersionId: capturedTeam.id, capturedTeam, actor, pilotReason: cli.pilotReason,
         waveOptics: cli.waveOptics,
+        zeroBase: cli.zeroBase,
         qualityReview: cli.qualityReview,
         guidedLessons: cli.guidedLessons,
         ...(cli.teachingBundleFile ? { teachingBundle: JSON.parse(readFileSync(cli.teachingBundleFile, 'utf8')) } : {}) },

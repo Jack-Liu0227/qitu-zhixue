@@ -4,7 +4,6 @@ import { MODEL_APIS } from '../model-registry/manual-model.validation';
 import { PlatformRegistryService } from '../platform-registry/platform-registry.service';
 import { parseAssistantCreate, parseAssistantUpdate, parseTeamCreate, parseTeamUpdate } from '../platform-registry/admin-ai-config.validation';
 import { ImaSettingsService } from '../platform-registry/ima-settings.service';
-import { TeamVersionService } from '../platform-registry/team-version.service';
 import { GrowthProjectionSettingsService } from '../growth/growth-projection-settings.service';
 import { TemplateBindingService } from '../templates/templates-binding.service';
 import { executeBinding } from './copilot.bindings';
@@ -35,7 +34,6 @@ export class CopilotOperations {
     readonly ima: ImaSettingsService,
     @Optional() readonly bindings?: TemplateBindingService,
     @Optional() readonly growthSettings?: GrowthProjectionSettingsService,
-    @Optional() readonly teamVersions?: TeamVersionService,
     @Optional() readonly lifecycle?: CopilotLifecycle,
     @Optional() readonly connection?: KnowledgeConnectionService,
     @Optional() readonly teamRuntime?: TeamRuntimeService,
@@ -76,11 +74,6 @@ export class CopilotOperations {
         const update = parseAssistantUpdate(patch());
         if (update.enabledSkills && loadTutorRuntimeSource().skillsSource?.status !== 'ready') invalid('技能目录不可用，拒绝替换 enabledSkills');
         return this.registry.updateAssistant(actor, id(), update, text(input.expectedUpdatedAt, 'expectedUpdatedAt'));
-      }
-      case 'team.version': {
-        if (!this.teamVersions) throw new ServiceUnavailableException('团队版本发布服务不可用');
-        exact(input, ['id', 'expectedUpdatedAt']);
-        return this.teamVersions.publish(actor, id(), { expectedUpdatedAt: input.expectedUpdatedAt }, key);
       }
       case 'team.create': return this.registry.createTeam(actor, parseTeamCreate(input), `team-copilot-${key}`);
       case 'team.update':
@@ -224,7 +217,7 @@ export class CopilotOperations {
     if (!this.bindings) throw new ServiceUnavailableException({ code: 'COPILOT_SCOPE_UNAVAILABLE', message: '无法读取模板绑定，配置范围不可确认。' });
     const activeBinding = await this.bindings.resolveActiveBinding(versionId);
     if (activeBinding) {
-      const team = await this.resources.readTeamVersion(activeBinding.teamVersionId);
+      const team = await this.resources.readBindingTeam(activeBinding.id, activeBinding.teamVersionId);
       const members = team.members as Record<string, unknown>[];
       return { bindingStatus: 'active', teamIds: [team.teamId], assistantIds: [...new Set([
         team.leaderAssistantId, ...members.map(member => member.assistantId).filter((id): id is string => typeof id === 'string'),
@@ -284,10 +277,6 @@ export class CopilotOperations {
       return { ...live.binding, templateId, versionId };
     }
     if (kind.startsWith('assistant.')) return find(await this.registry.listAssistants());
-    if (kind === 'team.version') {
-      if (!this.teamVersions) throw new ServiceUnavailableException('团队版本发布服务不可用');
-      return this.teamVersions.read(actor, text(result.teamId, 'teamId'), text(result.id, 'id'));
-    }
     if (kind.startsWith('team.') || kind === 'workflow.update') return find(await this.registry.listTeams());
     if (kind === 'template.version') return find(await this.templates.listGovernedVersions(actor, text(result.templateId, 'templateId')));
     if (kind.startsWith('template.')) return find(await this.templates.listGovernedTemplates(actor));

@@ -29,6 +29,8 @@ import {
   PlanGenerationError,
 } from './plan-generator';
 import { LearningPlanService } from './learning-plan.service';
+import { ProjectLearningLifecycleService } from '../projects/project-learning-lifecycle.service';
+import { hashIdempotentInput } from '../../common/idempotency/idempotency.hash';
 
 /**
  * 学习计划 HTTP 接口（产品文档 §4.5 / §9.3–9.4）。
@@ -55,6 +57,7 @@ export class LearningPlanController {
   constructor(
     private readonly plans: LearningPlanService,
     private readonly auth: AuthService,
+    private readonly lifecycle: ProjectLearningLifecycleService,
   ) {}
 
   @Post()
@@ -151,7 +154,10 @@ export class LearningPlanController {
     assertNoServerOwnedFields(body);
     const request = pickFields<SubmitAnswerRequest>(body, ['questionId', 'answer']);
     const key = requireIdempotencyKey(idempotencyKey);
-    return { data: await this.plans.submitAnswer(user, id, sessionId, request, key) };
+    const answer = await this.plans.submitAnswer(user, id, sessionId, request, key);
+    if (answer.assessmentMode !== 'formative' && answer.theoryMastered) await this.lifecycle.syncAfterAnswer(user, id,
+      hashIdempotentInput('formal.answer.sync', { sessionId, questionId: request.questionId }, { key }));
+    return { data: answer };
   }
 
   @Post(':id/sessions/:sessionId/evidence')

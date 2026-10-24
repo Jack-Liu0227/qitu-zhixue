@@ -92,6 +92,23 @@ test('image-only models cannot execute a copilot conversation or mutation', asyn
   assert.equal(fixture.executions.length, 0);
 });
 
+test('copilot and assistant preview never load an obsolete history catalog', async () => {
+  for (const assistantId of ['qitu-assistant', 'coach-preview']) {
+    const h = harness({ reply: 'Analysis available', actions: [] });
+    Object.assign(h.operations, { teamVersions: { catalog: async () => { throw new Error('obsolete catalog accessed'); } } });
+    const result = await h.service.run(actor, { ...request, assistantId, permission: 'read_only' }, `no-history-${assistantId}`);
+    assert.equal(result.status, 'answered'); assert.equal(h.calls(), 1);
+    assert.equal(h.executions.length, 0); assert.deepEqual(result.receipts, []);
+  }
+});
+
+test('reply-only plans are answers; malformed or unsupported actions still fail closed', () => {
+  assert.deepEqual(parsePlan(JSON.stringify({reply:'Answer'})), {reply:'Answer',actions:[]});
+  for (const actions of [null, {}, 'none', Array(25).fill({}), [{id:'old',kind:'team.version',label:'Removed',input:{}}]]) {
+    assert.throws(()=>parsePlan(JSON.stringify({reply:'Answer',actions})));
+  }
+});
+
 test('request rejects missing provider, invalid permission, client-selected student facts and cross-template versions', () => {
   assert.deepEqual(parseRequest(request), request);
   for (const bad of [
@@ -231,7 +248,8 @@ test('capability discovery exposes the checked catalog and rejects all non-admin
   assert.equal(discovery.readiness, 'ready');
   assert.deepEqual(discovery.scopes, ['global', 'selected_template']);
   assert.ok(discovery.operations.some(operation => operation.kind === 'binding.activate'));
-  assert.equal(discovery.references?.resources.length, 10);
+  assert.ok(discovery.references?.resources.some(r => r.resource === 'references/templates-bindings.md'));
+  assert.equal(discovery.operations.some(operation => String(operation.kind) === 'team.version'), false);
   assert.match(discovery.references?.digest ?? '', /^[a-f0-9]{64}$/);
   assert.equal(discovery.references?.resources.flatMap(entry => entry.operations).length, discovery.operations.length);
   for (const role of ['student', 'teacher', 'parent'] as const) {

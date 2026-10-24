@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useCurrentUser } from '@qitu/auth';
 import { Button, ErrorState, Field, IconButton, OfflineBanner, PermissionDenied } from '@qitu/ui';
+import { FeedbackAttachmentPicker } from '@qitu/ui';
+import { uploadFeedbackAttachment, removeFeedbackAttachment } from '@qitu/api-client';
 import { parentApi, ParentOfflineError, ParentPermissionError, type ChildRef } from './parentApi';
 import {
   FEEDBACK_CONTENT_MAX,
@@ -31,8 +33,7 @@ import {
  *  - 反馈必须绑定到一个**有效孩子**，可选关联一个项目；
  *  - 提交中禁用表单，成功后展示工单编号，网络失败保留本机草稿（复用同一幂等键），
  *    退出登录时清空草稿；
- *  - 附件能力尚未接入（`services/api` 无 presign 端点），此处只做**禁用占位**并说明，
- *    既不假装上传成功，也不静默丢弃用户选择。
+ *  - 附件经服务端确认保存后才加入草稿，失败或上传中阻止提交。
  */
 
 type PanelState = 'loading' | 'ready' | 'empty' | 'error' | 'offline' | 'permission';
@@ -57,6 +58,7 @@ export function ParentFeedbackWidget() {
   const [submitState, setSubmitState] = useState<SubmitState>('idle');
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
   const [ticketId, setTicketId] = useState<string | null>(null);
+  const [attachmentsBlocked, setAttachmentsBlocked] = useState(false);
 
   const loadedRef = useRef(false);
   const hadUserRef = useRef(false);
@@ -186,13 +188,14 @@ export function ParentFeedbackWidget() {
   const submitting = submitState === 'submitting';
 
   const updateDraft = useCallback((patch: Partial<FeedbackDraft>) => {
-    setDraft((prev) => ({ ...prev, ...patch }));
+    setDraft((prev) => ({ ...prev, ...patch, ...(patch.childId !== undefined && patch.childId !== prev.childId ? { attachments: [] } : {}),
+      idempotencyKey: createFeedbackIdempotencyKey() }));
     setSubmitState((prev) => (prev === 'submitting' ? prev : 'idle'));
     setValidationMessage(null);
   }, []);
 
   const handleSubmit = async () => {
-    if (submitting || panelState !== 'ready') return;
+    if (submitting || attachmentsBlocked || panelState !== 'ready') return;
 
     if (draft.type === 'project' && !draft.childId) {
       setValidationMessage('项目安排反馈需要先选择一个已绑定的孩子。');
@@ -224,6 +227,7 @@ export function ParentFeedbackWidget() {
         projectId: draft.type === 'project' ? draft.projectId : null,
         // 重试复用草稿里的幂等键，避免响应丢失时重复建单。
         idempotencyKey: draft.idempotencyKey,
+        attachmentRefs: draft.attachments?.map(file => file.id),
       });
       setTicketId(result.ticketId);
       setSubmitState('success');
@@ -231,6 +235,7 @@ export function ParentFeedbackWidget() {
       setDraft((prev) => ({
         ...prev,
         content: '',
+        attachments: [],
         projectId: null,
         idempotencyKey: createFeedbackIdempotencyKey(),
       }));
@@ -364,11 +369,10 @@ export function ParentFeedbackWidget() {
           />
         </Field>
 
-        <Field
-          label="附件"
-          hint="附件上传能力尚未接入，暂不支持添加附件；如需提供文件，请在反馈内容中说明。"
-        >
-          <input type="file" disabled aria-disabled="true" />
+        <Field label="附件">
+          <FeedbackAttachmentPicker key={draft.childId} value={draft.attachments ?? []}
+            onChange={attachments => updateDraft({ attachments })} upload={file => uploadFeedbackAttachment(file, draft.childId)}
+            remove={removeFeedbackAttachment} disabled={submitting || !draft.childId} onBlockedChange={setAttachmentsBlocked} />
         </Field>
 
         <div className="parent-feedback-actions">
@@ -380,7 +384,7 @@ export function ParentFeedbackWidget() {
             <Button
               type="submit"
               loading={submitting}
-              disabled={submitting || contentLength === 0}
+              disabled={submitting || attachmentsBlocked || contentLength === 0}
             >
               提交反馈
             </Button>

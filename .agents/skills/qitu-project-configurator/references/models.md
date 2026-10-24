@@ -33,4 +33,4 @@
 
 回读目录中真实 provider/model 对、enabled、available、模态；保存目录不等于请求测试成功。新模型未出现在可用目录时不引用它发布团队。模型更换后，既有冻结团队与学生项目继续依各自版本合同运行。
 
-`model.test {providerId,modelId}` 已接入原模型探测 owner，使用固定安全请求。失败返回失败检查，不返回“已保存”。同一请求的探测回执可复用；配置变动后要求新请求重测。model.delete {providerId,modelId} 复用模型 owner，仅删除未被用途、Agent 和历史团队版本引用的手工模型；等待管理员逐项二次确认。自动发现模型不能物理删除，使用现有 enabled=false 流程。provider.delete 仍未提供，供应商配置和凭据生命周期走原模型工作区。
+`model.test {providerId,modelId}` 已接入原模型探测 owner，使用固定安全请求。失败返回失败检查，不返回“已保存”。同一请求的探测回执可复用；配置变动后要求新请求重测。model.delete {providerId,modelId} 复用模型 owner，仅删除未被用途、Agent 和教学绑定冻结配置引用的手工模型；等待管理员逐项二次确认。自动发现模型不能物理删除，使用现有 enabled=false 流程。provider.delete 仍未提供，供应商配置和凭据生命周期走原模型工作区。

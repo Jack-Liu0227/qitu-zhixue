@@ -94,6 +94,14 @@
   .settings-permission-matrix tr > :first-child { min-width: 148px !important; max-width: 148px; white-space: normal; overflow-wrap: anywhere; }
 }
 .settings-permission-matrix::after { display: none !important; content: none !important; }
+.settings-columns { flex: 1; min-width: 0; }
+.settings-columns > .qitu-resizable-panel > .settings-sider { width: 100%; min-width: 0; max-width: 100%; height: 100%; }
+.settings-columns .settings-main { min-width: 0; width: 100%; height: 100%; }
+@media (max-width: 860px) {
+  .settings-columns.qitu-resizable-panels { display: flex; flex-direction: column; }
+  .settings-columns > .qitu-panel-divider, .settings-columns > .qitu-resizable-gap { display: none; }
+  .settings-shell:not(.is-navigation-open) .settings-columns > .qitu-resizable-panel:has(> .settings-sider) { display: none; }
+}
 
 
 @media (max-width: 860px) {

@@ -36,6 +36,8 @@ export type GrowthEvidenceSourceKind =
   | 'mastery_event'
   /** Opaque owned Tutor turn locator; never raw text or proof of mastery. */
   | 'learning_interaction'
+  | 'intent_confirmation'
+  | 'experiment_observation'
   | 'help_request';
 
 /** Versioned, closed contract exchanged between projection workers and Growth owners. */
@@ -139,7 +141,7 @@ export interface GrowthProjectionValidation {
   value?: GrowthProjectionResult;
 }
 
-const GROWTH_EVIDENCE_RE = /^(student_answer|theory_check|artifact|reflection|project_event|mastery_event|help_request|learning_interaction):[A-Za-z0-9._:-]{1,180}$/u;
+const GROWTH_EVIDENCE_RE = /^(student_answer|theory_check|artifact|reflection|project_event|mastery_event|help_request|learning_interaction|intent_confirmation|experiment_observation):[A-Za-z0-9._:-]{1,180}$/u;
 const PROFILE_KEYS = [
   'version', 'priorKnowledge', 'targetLevel', 'timeBudgetMinutesPerWeek',
   'preferences', 'interests', 'strengths', 'nextQuestions',

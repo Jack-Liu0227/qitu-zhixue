@@ -1,3 +1,5 @@
+import { CoursewareStore } from '../knowledge/courseware.store';
+import { WAVE_TEACHING_TEMPLATE_SLUG } from '../templates/content/wave-teaching';
 import { createHash } from 'node:crypto';
 import {
   BadRequestException,
@@ -156,6 +158,7 @@ export class LearningPlanService {
     @Optional() private readonly teamRuntime?: TeamRuntimeService,
     @Optional() private readonly templateBindings?: TemplateBindingService,
     @Optional() private readonly learningEvidence?: WorksLearningEvidenceService,
+    @Optional() private readonly courseware?: CoursewareStore,
   ) {
     this.masteryDomain = mastery ?? new MasteryDomainService(store, new MasteryReadService(store, access), access, audit, outbox);
   }
@@ -196,7 +199,7 @@ export class LearningPlanService {
     let generated: GeneratedPlan;
     let teachingTemplate: ProjectTemplateSpec | undefined;
     if (input.curriculumSlug !== undefined) {
-      if (![OPTICS_16_TEMPLATE_SLUG, OPTICS_16_COMPLETION_TEMPLATE_SLUG, OPTICS_16_QUALITY_TEMPLATE_SLUG, OPTICS_GUIDED_TEMPLATE_SLUG, WAVE_OPTICS_TEMPLATE_SLUG].includes(input.curriculumSlug)) {
+      if (![OPTICS_16_TEMPLATE_SLUG, OPTICS_16_COMPLETION_TEMPLATE_SLUG, OPTICS_16_QUALITY_TEMPLATE_SLUG, OPTICS_GUIDED_TEMPLATE_SLUG, WAVE_OPTICS_TEMPLATE_SLUG, WAVE_TEACHING_TEMPLATE_SLUG].includes(input.curriculumSlug)) {
         throw new BadRequestException({
           code: 'CURRICULUM_TEMPLATE_UNAVAILABLE',
           message: `课程 ${input.curriculumSlug} 尚未通过模板授权。`,
@@ -426,7 +429,7 @@ export class LearningPlanService {
     await this.assertPracticeGate(session, states, actor, bundle);
     return {
       session: this.toSessionView(bundle, session, states),
-      nextStep: await this.nextStepView(bundle, session, states),
+      nextStep: await this.getNextStep(actor, planId, sessionId),
     };
   }
 
@@ -441,7 +444,25 @@ export class LearningPlanService {
     const session = await this.requireSession(bundle, sessionId);
     const states = await this.loadStates(actor, bundle);
     await this.assertPracticeGate(session, states, actor, bundle);
+    await this.assertTeachingDelivered(bundle, session);
     return this.nextStepView(bundle, session, states);
+  }
+
+  private async assertTeachingDelivered(bundle: PlanBundle, session: SessionRecord) {
+    if (!this.templateBindings || !bundle.plan.projectId || !bundle.plan.templateVersion) return;
+    const snapshot = await this.templateBindings.findFrozenSnapshotForProject?.(bundle.plan.projectId, bundle.plan.templateVersion);
+    if (!snapshot?.bundleDigest) return;
+    const teaching = await this.templateBindings.getFrozenTeachingBundle(bundle.plan.projectId, bundle.plan.templateVersion);
+    const lesson = teaching.template.curriculum?.profiles.find(p => p.id === teaching.scheduleProfileId)
+      ?.sessions.find(s => s.sessionIndex === session.lessonIndex);
+    if (!lesson?.teachingSpec) return;
+    const instances = await this.courseware?.instances(bundle.plan.projectId, bundle.plan.id, bundle.plan.version, session.id) ?? [];
+    const ready = lesson.activityRequirements?.filter(r => r.evidence === 'teaching_delivery').every(requirement => {
+      const taught = new Set(instances.filter(i => i.activityId === `${session.id}:activity:${requirement.activity}` && i.acknowledgedAt)
+        .flatMap(i => i.objectiveRefs));
+      return lesson.teachingSpec!.concepts.every(c => taught.has(c.objectiveId));
+    });
+    if (!ready) throw new ConflictException({ code: 'TEACHING_DELIVERY_REQUIRED', message: '请先学习本课讲解和课件，再检查理解。' });
   }
 
   /* ==================== 作答（判分 + 掌握） ==================== */
@@ -686,14 +707,15 @@ export class LearningPlanService {
           }
           const card = scoped.pendingToCard(pending);
           const grade = gradeAnswer(card, body.answer as string, 'awaiting');
-          const existing = await scoped.store.listAttempts(fresh.plan.studentUserId, objective.id);
           const attempt = scoped.buildAttempt({
             studentId: fresh.plan.studentUserId,
             planId,
             objective,
             card,
             grade,
-            attemptCount: existing.length + 1,
+            // Each issued question accepts one answer. The sequence index selects new questions;
+            // it must not penalize later independent evidence for the same objective.
+            attemptCount: 1,
             now: new Date(),
           });
           const wasMastered = computeTheoryMastered(freshSession.theoryObjectiveIds, freshStates);
@@ -950,6 +972,7 @@ export class LearningPlanService {
         this.teamRuntime,
         this.templateBindings,
         this.learningEvidence,
+        this.courseware,
       );
       return work(scoped);
     });

@@ -1,4 +1,5 @@
 'use client';
+import { ResizablePanels } from '@qitu/ui';
 
 import { OfflineBanner, SectionCard } from '@qitu/ui';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -6,6 +7,7 @@ import { useCurrentUser } from '@qitu/auth';
 import { StudentLink } from '../../components/student-link';
 import { DeviceManagement } from './DeviceManagement';
 import { CompetencyRadar } from './CompetencyRadar';
+import { FamilyLearningCard } from './FamilyLearningCard';
 import { loadStudentProfile, ProfileOfflineError, ProfilePermissionError } from './api';
 import type { StudentProfileProjection } from './types';
 import { AnalysisStatus } from '../growth/components/AnalysisStatus';
@@ -83,10 +85,11 @@ function ProfileContent({ data }: { data: StudentProfileProjection }) {
   return <>
     <header className={styles.pageHeader}>
       <div><h1>我的学习画像</h1><p>{user?.displayName ? `${user.displayName}，` : ''}每一点变化，都有学习证据。</p></div>
-      <details className={styles.help}><summary>了解六维画像</summary><p>六个维度帮助你回看探究过程。只有经过确认的评价才会显示在图中；待观察不代表零分。兴趣、学习记录和项目数量不会直接变成能力等级。</p></details>
+      <details className={styles.help}><summary>了解六维画像</summary><p>学习足迹根据已有对话和保存的学习记录自动更新。可以切换到正式评价，查看经过确认的结果。没有记录时显示起始示意；记录数量不会直接变成能力等级。</p></details>
     </header>
     <CompetencyRadar overview={data.competencyOverview ?? null} />
-    <div className={styles.supportGrid}>
+    <FamilyLearningCard />
+    <ResizablePanels storageKey="student-profile" initialSizes={[52, 48]} minWidths={[300, 300]} className={styles.supportGrid}>
       <section className={styles.section} aria-labelledby="profile-interests-title">
         <div className={styles.sectionHeader}><h2 id="profile-interests-title">我的兴趣与学习方式</h2><StudentLink className={styles.textLink} href="/student/inspiration">去探索 →</StudentLink></div>
         <AnalysisStatus analysis={data.analysis} />
@@ -117,7 +120,7 @@ function ProfileContent({ data }: { data: StudentProfileProjection }) {
           </> : <p className={styles.muted}>目前还没有已确认的成长归纳。已有记录可以在成长轨迹中继续查看。</p>}
         </div>
       </section>
-    </div>
+    </ResizablePanels>
     <DeviceManagement />
   </>;
 }

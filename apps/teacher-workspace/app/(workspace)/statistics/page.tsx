@@ -1,5 +1,7 @@
 'use client';
 
+import { projectStageLabel } from '@qitu/contracts';
+
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { AttentionStudents } from '../../../components/attention-students';
@@ -88,18 +90,6 @@ const stageColors: Record<string, string> = {
   completed: '#16a34a',
 };
 
-const stageLabels: Record<string, string> = {
-  exploration: '灵感探索',
-  intent_confirmed: '确认意图',
-  theory_learning: '理论学习',
-  theory_check: '理论检验',
-  practice_ready: '实践就绪',
-  practice_building: '动手制作',
-  artifact_review: '作品评审',
-  reflection: '反思记录',
-  published: '已发布',
-  completed: '已完成',
-};
 
 export default function StatisticsPage() {
   const [data, setData] = useState<TeacherStatisticsPageData | null>(null);
@@ -156,8 +146,8 @@ export default function StatisticsPage() {
               onClick={() => {
                 const rows = [['指标', '数值'], ['学生总数', String(data.totals.studentCount)],
                   ['本周学习次数', data.signalsAvailable === false ? '暂未接入' : String(data.totals.sessionsThisWeek)],
-                  ['本周学习时长（分钟）', data.signalsAvailable === false ? '暂未接入' : String(data.totals.minutesThisWeek)],
-                  ...data.stageDistribution.map((item) => [stageLabels[item.stage] ?? '状态待确认', String(item.count)])];
+                  ['本周学习时长估算（分钟）', data.signalsAvailable === false ? '暂未接入' : String(data.totals.minutesThisWeek)],
+                  ...data.stageDistribution.map((item) => [projectStageLabel(item.stage), String(item.count)])];
                 const url = URL.createObjectURL(new Blob(['\uFEFF' + rows.map((row) => row.join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' }));
                 const link = document.createElement('a'); link.href = url; link.download = '班级项目统计.csv'; link.click();
                 window.setTimeout(() => URL.revokeObjectURL(url), 1000);
@@ -207,14 +197,14 @@ export default function StatisticsPage() {
           tone="#4f46e5"
         />
         <MetricCard
-          label="本周学习时长"
+          label="本周学习时长（估算）"
           value={data.signalsAvailable === false ? '—' : `${data.totals.minutesThisWeek}分钟`}
           delta={null}
           icon={<TrendingUpIcon size={22} />}
           tone="#0d9488"
         />
         <MetricCard
-          label="本周完成任务"
+          label="本周完成课时"
           value={data.signalsAvailable === false ? '—' : String(data.totals.tasksCompletedThisWeek)}
           delta={null}
           icon={<HeartIcon size={22} />}
@@ -260,7 +250,7 @@ export default function StatisticsPage() {
                         }}
                       >
                         <span style={{ color: '#64748b' }}>
-                          {stageLabels[item.stage] ?? item.stage}
+                          {projectStageLabel(item.stage)}
                         </span>
                         <strong style={{ color: '#334155' }}>{item.count}</strong>
                       </div>

@@ -1,5 +1,5 @@
 import { createImaScopeGuard, type ImaKnowledgeScope } from './ima-tool-scope';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import type { ModelRuntimeTool } from '@qitu/model-runtime';
 import type { TutorAgentMcpDescriptor } from '@qitu/contracts';
 import { ImaProjectBoundary, type ImaProjectScope } from './ima-project-scope';
@@ -17,6 +17,7 @@ const MAX_RESPONSE_BYTES = 1024 * 1024;
  * by the API; each turn has its own protocol state and textbook references. */
 @Injectable()
 export class ImaMcpClient {
+  private readonly logger = new Logger(ImaMcpClient.name);
   constructor(private readonly env: NodeJS.ProcessEnv = process.env) {}
 
   isBound(servers: readonly TutorAgentMcpDescriptor[]): boolean {
@@ -175,6 +176,7 @@ export class ImaMcpClient {
         description: String(tool.description ?? '').slice(0, 2000),
         inputSchema: tool.inputSchema as Record<string, unknown>,
         execute: async (args, signal) => {
+          try {
           if (authorize && !(await authorize(tool.name as string)))
             throw new Error('IMA_MCP_ACCESS_REVOKED');
           const kb = project ? await project.before(tool.name as string, args) : guard ? await guard.before(tool.name as string, args) : null;
@@ -194,9 +196,24 @@ export class ImaMcpClient {
             : '';
           if (!text) throw new Error('IMA_MCP_EMPTY_RESULT');
           if (authorize && !(await authorize(tool.name as string))) throw new Error('IMA_MCP_ACCESS_REVOKED');
-          if (guard && result.isError) throw new Error('IMA_PROJECT_RETRIEVAL_FAILED');
+          if (result.isError) {
+            let code = 'IMA_PROJECT_RETRIEVAL_FAILED';
+            try {
+              const detail = JSON.parse(text) as { error?: unknown };
+              if (typeof detail.error === 'string' && /^(IMA_[A-Z0-9_]{1,48}|READ_FAILED|INVALID_REFERENCE)$/u.test(detail.error)) code = detail.error;
+            } catch { /* Never log the upstream body or its message. */ }
+            this.logger.warn(JSON.stringify({ event: 'ima.tool.upstream_failed', tool: tool.name, code }));
+            if (code === 'IMA_ACCESS_DENIED') return { isError: true,
+              text: 'KNOWLEDGE_UPSTREAM_DENIED. The knowledge provider denied this operation. Do not retry it or claim a successful search. Ask the administrator to check access; use only other independently authorized read tools.' };
+            if (guard) throw new Error('IMA_PROJECT_RETRIEVAL_FAILED');
+          }
           const scoped = guard ? await guard.after(tool.name as string, kb, text) : text;
           return { text: project ? await project.after(tool.name as string, kb, scoped, args.document_ref) : scoped.slice(0, 48_000), isError: result.isError === true };
+          } catch (cause) {
+            const code = cause instanceof Error && /^IMA_[A-Z0-9_]{1,48}$/u.test(cause.message) ? cause.message : 'IMA_TOOL_FAILED';
+            this.logger.warn(JSON.stringify({ event: 'ima.tool.failed', tool: tool.name, code }));
+            throw cause;
+          }
         },
       }; });
   }

@@ -1,0 +1,100 @@
+{
+  "deployedAt": "2026-10-23T18:39:47+08:00",
+  "baseUrl": "http://122.51.130.204",
+  "automated": {
+    "api": {
+      "passed": 184,
+      "failed": 0
+    },
+    "admin": {
+      "passed": 7,
+      "failed": 0
+    },
+    "bootstrap": {
+      "passed": 1,
+      "failed": 0
+    },
+    "productionBuilds": [
+      "contracts and runtime dependencies",
+      "API",
+      "workers",
+      "Admin Next.js"
+    ]
+  },
+  "live": {
+    "saveStatus": 200,
+    "idempotency": true,
+    "readback": {
+      "lessons": 8,
+      "teams": 2
+    },
+    "compiledValid": true,
+    "ui": {
+      "lessonTeamCount": 8,
+      "secondTeam": "team-optics-inquiry",
+      "manualVersionControls": 0,
+      "manualPublishButtons": 0,
+      "mobile": {
+        "viewport": 390,
+        "lessonSelectorVisible": true
+      },
+      "savedAndReadBack": true,
+      "savedDraftId": "bnd-12b09810bead8f14",
+      "thirdTeam": "team-optics-inquiry",
+      "validation": {
+        "status": 200,
+        "valid": true
+      }
+    },
+    "browserErrors": [],
+    "permissions": {
+      "anonymousStatus": 401,
+      "permissionFailureVisible": true,
+      "saveDisabledOn403": true,
+      "retryRecovered": true,
+      "offlineSaveDisabled": true,
+      "studentStatus": 403
+    },
+    "cleanup": [
+      {
+        "id": "bnd-efa82bb5b06a7a18",
+        "status": 200,
+        "state": "retired",
+        "replayed": true
+      },
+      {
+        "id": "bnd-12b09810bead8f14",
+        "status": 200,
+        "state": "retired",
+        "replayed": true
+      }
+    ],
+    "activeId": "bnd-4f1a274b280348f5",
+    "activeUnchanged": true,
+    "legacyWarningVisible": true,
+    "legacyDoesNotBlockNewArrangement": true,
+    "health": {
+      "status": 200,
+      "mode": "live",
+      "database": "ok",
+      "redis": "ok"
+    }
+  },
+  "assets": {
+    "pages": [
+      "/admin/settings/templates",
+      "/admin/settings/teams",
+      "/admin/settings/knowledge",
+      "/student/tutor",
+      "/parent",
+      "/teacher/dashboard",
+      "/login"
+    ],
+    "allPassed": true
+  },
+  "limits": [
+    "No new production learner project, mastery or artifact state was created.",
+    "No production model tutoring turn was used for this binding acceptance.",
+    "Existing invalid legacy snapshots were reported, not rewritten."
+  ]
+}

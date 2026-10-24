@@ -17,6 +17,7 @@ import { KnowledgeModule } from '../knowledge/knowledge.module';
 import { GrowthProjectionReviewWorker } from './growth-projection-review.worker';
 import { GrowthDomainEvidenceWorker } from './growth-domain-evidence.worker';
 import { LearningPlanStorageModule } from '../learning-plan/learning-plan-storage.module';
+import { LearningInsightsModule } from '../learning-insights/learning-insights.module';
 
 /**
  * 成长轨迹模块。
@@ -35,7 +36,7 @@ import { LearningPlanStorageModule } from '../learning-plan/learning-plan-storag
  * 但 HTTP 层永远不提供写接口。
  */
 @Module({
-  imports: [DirectoryModule, AuthModule, MasteryModule, KnowledgeModule, LearningPlanStorageModule],
+  imports: [DirectoryModule, AuthModule, MasteryModule, KnowledgeModule, LearningPlanStorageModule, LearningInsightsModule],
   controllers: [GrowthProjectionSettingsController, GrowthProjectionAdminController, GrowthController, ParentGrowthController],
   providers: [
     GrowthService,

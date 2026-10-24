@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import type { SQL } from 'drizzle-orm';
 import { PgDialect } from 'drizzle-orm/pg-core';
 import { test } from 'node:test';
-import { adminTeamVersions, projectTemplateVersions, pblGateEvidence, type Database } from '@qitu/database';
+import { pblTemplateTeamBindings, projectTemplateVersions, pblGateEvidence, type Database } from '@qitu/database';
 import { TutorService } from './tutor.service';
 import type { TutorModelGateway } from './gateway-tutor.provider';
 import { AuditWriter } from '../../common/audit/audit.service';
@@ -43,9 +43,9 @@ function fakeDb(input: { frozenTeam?: unknown; binding?: unknown }): Database {
         assert.ok(query.params.includes(project.studentId), 'gate display must retain the student scope');
         return [];
       } }) };
-      if (table === adminTeamVersions) {
+      if (table === pblTemplateTeamBindings) {
         return {
-          where: () => ({ limit: async () => (input.frozenTeam === undefined ? [] : [input.frozenTeam]) }),
+          where: () => ({ limit: async () => (input.frozenTeam === undefined ? [] : [{ teamSnapshots: { [(input.frozenTeam as { id: string }).id]: input.frozenTeam } }]) }),
         };
       }
       if (table === projectTemplateVersions) {
@@ -239,6 +239,7 @@ function opticsTutor(options: { disabled?: string; missing?: string; runtimeStat
       boundAt: new Date().toISOString(), backfilled: false,
     }) } as unknown as TemplateBindingService,
     database: fakeDb({ frozenTeam: frozenTeamRow({
+      id: 'tv-optics-1',
       leaderAssistantId: 'optics-concept-coach',
       members: opticsMembers as unknown as AdminTeamConfig['members'],
       enabled: options.teamEnabled ?? true,

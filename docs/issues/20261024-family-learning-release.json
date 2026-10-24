@@ -1,0 +1,26 @@
+{
+  "date": "2026-10-24",
+  "host": "study-remote",
+  "origin": "http://122.51.130.204",
+  "workspace": "/root/qitu-zhixue",
+  "verification": {
+    "freshSourceRun": "run-1792772376813-2453665",
+    "familyBehaviorPassed": 77,
+    "httpRequestKeyRegressionPassed": 1,
+    "fullApplicationTypes": ["student-center", "parent-companion", "teacher-workspace", "auth-portal"],
+    "productionBuilds": ["api", "workers", "student-center", "parent-companion", "teacher-workspace", "auth-portal"],
+    "isolatedHttpChecks": ["shared activity", "profile observations without scores", "object permissions", "encouragement replay", "message receipts", "private artifact versions", "feedback context", "teacher response receipts"],
+    "primaryBrowserWrites": { "encouragement": 201, "messageRead": 200, "parentFeedback": 201, "teacherReply": 200 },
+    "primaryProfile": { "observedDimensions": 6, "automaticAssessmentScores": false },
+    "viewportWidths": [390, 1440]
+  },
+  "scenarioAccounts": ["student-demo", "parent-demo", "teacher-demo"],
+  "scenarioProject": { "id": "proj-fb46f78e-78a2-4f49-8b4a-c2946b8f0c42", "stage": "intent_confirmed", "firstTask": "条纹从哪里来？", "recreatedOnExplicitUserRequest": true, "visibleOnAllThreePlatforms": true },
+  "scenarioCounts": { "encouragements": 3, "feedback": 4, "originalArtifacts": 3 },
+  "migration": { "schema": "0051_parent_communication", "journalAdvanced": false, "reason": "Preserve pending migration 0050 order" },
+  "preservedConcurrentChanges": ["Admin binding configuration", "courseware and Tutor", "runtime skills", "unrelated documentation"],
+  "backup": "/root/qitu-backups/family-learning-20261024",
+  "logs": "/root/qitu-validation/family-learning-20261023",
+  "attachmentFollowup": { "deployedAt": "2026-10-24T01:54:09+08:00", "privateStorage": "PostgreSQL bytea", "maxFileBytes": 2097152, "maxFilesPerEntry": 5, "ownerQuotaBytes": 20971520, "totalQuotaBytes": 268435456, "unsubmittedRetentionHours": 24, "migration": "0052_feedback_attachments", "dualPartyBrowserUploadDownloadPassed": true, "persistenceAfterRestartPassed": true, "report": "20261024-feedback-attachments.md" },
+  "remaining": []
+}

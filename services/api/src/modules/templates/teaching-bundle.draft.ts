@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import type { ProjectTemplateSpec, TeachingBundleDraft } from '@qitu/contracts';
+import type { ProjectTemplateSpec, TeachingBundleDraft, TeachingSessionAssignment } from '@qitu/contracts';
 import { readPublishedAssistant } from '../platform-registry/team-version.snapshot';
 import type { TeamVersionRecord } from './templates-binding.types';
 
@@ -7,6 +7,7 @@ import type { TeamVersionRecord } from './templates-binding.types';
 export function draftFromPublishedTeam(
   versionId: string, template: ProjectTemplateSpec, team: TeamVersionRecord,
   approvalPolicyVersion: string, scheduleProfileId?: string, phaseAssignments: Readonly<Record<string, string>> = {},
+  sessionAssignments?: readonly TeachingSessionAssignment[],
 ): TeachingBundleDraft {
   const reject = (message: string): never => {
     throw new BadRequestException({ code: 'BUNDLE_DRAFT_MAPPING_REQUIRED', message });
@@ -26,10 +27,15 @@ export function draftFromPublishedTeam(
   });
   if (new Set(members.map((member) => member.slotId)).size !== members.length
     || new Set(members.map((member) => member.assistantId)).size !== members.length) reject('团队成员标识重复，请重新发布团队。');
-  const sessionRoutes = profile.sessions.map((session) => {
+  const sessions = sessionAssignments ? profile.sessions.filter(session => sessionAssignments.some(assignment =>
+    assignment.sessionIndex === session.sessionIndex && assignment.teamVersionId === team.id)) : profile.sessions;
+  const sessionRoutes = sessions.map((session) => {
+    const selection = sessionAssignments?.find(assignment => assignment.sessionIndex === session.sessionIndex);
     const assigned = template.lessonPolicy === 'lesson-guided.v1' ? session.leadAssistantId
       : template.phases.find((phase) => phase.phase === session.phase)?.assignedAssistantId;
-    const selectedMemberId = template.lessonPolicy === 'lesson-guided.v1' ? undefined : phaseAssignments[session.phase];
+    const selectedMemberId = selection ? selection.kind === 'assistant' ? selection.memberId
+      : members.find(candidate => candidate.assistantId === team.leaderAssistantId)?.slotId
+      : template.lessonPolicy === 'lesson-guided.v1' ? undefined : phaseAssignments[session.phase];
     const member = selectedMemberId
       ? members.find((candidate) => candidate.slotId === selectedMemberId)
       : assigned
@@ -38,14 +44,15 @@ export function draftFromPublishedTeam(
     if (!member) return reject(`第 ${session.sessionIndex} 课没有明确匹配的团队成员，请先配置课程阶段的指定助手。`);
     return { sessionIndex: session.sessionIndex, roleSlotId: member.slotId };
   });
-  const collaboratorIds = new Set(profile.sessions.flatMap(session => session.collaborators?.map(role => role.assistantId) ?? []));
-  if ([...collaboratorIds].some(id => !members.some(member => member.assistantId === id))) reject('协作导师不在已发布团队版本中。');
+  const collaboratorIds = new Set(sessions.flatMap(session => session.collaborators?.map(role => role.assistantId) ?? []));
+  if ([...collaboratorIds].some(id => !members.some(member => member.assistantId === id))) reject('协作导师不在当前教学安排中的团队中。');
   const used = members.filter((member) => member.assistantId === team.leaderAssistantId || collaboratorIds.has(member.assistantId)
     || sessionRoutes.some((route) => route.roleSlotId === member.slotId));
   if (!used.some((member) => member.assistantId === team.leaderAssistantId)) reject('团队负责人不在已发布成员中。');
   const purposes = ['outline', 'session', 'dialogue'] as const;
   return {
     templateVersionId: versionId, teamVersionId: team.id, scheduleProfileId: profile.id,
+    ...(sessionAssignments ? { sessionAssignments } : {}),
     approvalPolicyVersion, sessionRoutes,
     roleMap: used.map((member) => ({ roleSlotId: member.slotId, memberId: member.slotId, purposes })),
     skillPins: used.flatMap((member) => member.snapshot.skills.map((pin) => ({ roleSlotId: member.slotId, ...pin }))),

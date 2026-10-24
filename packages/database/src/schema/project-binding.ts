@@ -1,7 +1,6 @@
 import {
   boolean,
   index,
-  integer,
   jsonb,
   pgTable,
   text,
@@ -9,21 +8,11 @@ import {
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
-import { adminAssistants, adminTeams } from './admin-ai-config';
 import { projects } from './projects';
 import { projectTemplateVersions } from './project-templates';
 import { users } from './identity';
 
-/**
- * F2 / F3：模板版本 ↔ 团队版本绑定 + 项目创建时冻结的绑定快照。
- *
- * 与迁移 `0032_pbl_template_team_bindings` 逐列一致。三张表均不可原地改写：
- * - `admin_team_versions`：团队不可变快照（绑定引用版本而非可变的 `admin_teams` 行）；
- * - `pbl_template_team_bindings`：状态机 `draft → validated → active → retired`；
- * - `project_binding_snapshots`：正式完整快照不可覆盖；旧回填或缺摘要快照仅可经审计修复命令重新确认。
- */
-
-/** 服务端计算的绑定校验结果。`checkedAt` 为 null 表示尚未校验。 */
+/** Bindings own frozen teaching teams; projects freeze binding identity and digests. */
 export interface PblBindingValidationShape {
   valid: boolean;
   errors: string[];
@@ -31,41 +20,13 @@ export interface PblBindingValidationShape {
   checkedAt: string | null;
 }
 
-/** 团队不可变版本快照。 */
-export const adminTeamVersions = pgTable(
-  'admin_team_versions',
-  {
-    id: text('id').primaryKey(),
-    teamId: text('team_id')
-      .notNull()
-      .references(() => adminTeams.id, { onDelete: 'restrict' }),
-    version: integer('version').notNull(),
-    name: text('name').notNull(),
-    description: text('description').notNull().default(''),
-    workspaceMode: text('workspace_mode').notNull().default('shared'),
-    sessionMode: text('session_mode').notNull().default('supervised'),
-    leaderAssistantId: text('leader_assistant_id')
-      .notNull()
-      .references(() => adminAssistants.id, { onDelete: 'restrict' }),
-    members: jsonb('members')
-      .$type<unknown[]>()
-      .notNull()
-      .default(sql`'[]'::jsonb`),
-    pblSpec: jsonb('pbl_spec')
-      .$type<Record<string, unknown>>()
-      .notNull()
-      .default(sql`'{}'::jsonb`),
-    enabled: boolean('enabled').notNull().default(true),
-    createdBy: text('created_by'),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => ({
-    teamVersionUniqueIdx: uniqueIndex('admin_team_versions_team_version_unique_idx').on(
-      table.teamId,
-      table.version,
-    ),
-  }),
-);
+/** Embedded source configuration. Historical v1 fields remain hash-compatible. */
+export interface FrozenTeachingTeam {
+  id: string; teamId: string; version: number; name: string; description: string;
+  workspaceMode: string; sessionMode: string; leaderAssistantId: string;
+  members: unknown[]; pblSpec: Record<string, unknown>; enabled: boolean;
+  createdBy: string | null; createdAt: string;
+}
 
 /** 模板版本与团队版本的绑定。 */
 export const pblTemplateTeamBindings = pgTable(
@@ -76,8 +37,8 @@ export const pblTemplateTeamBindings = pgTable(
       .notNull()
       .references(() => projectTemplateVersions.id, { onDelete: 'restrict' }),
     teamVersionId: text('team_version_id')
-      .notNull()
-      .references(() => adminTeamVersions.id, { onDelete: 'restrict' }),
+      .notNull(),
+    teamSnapshots: jsonb('team_snapshots').$type<Record<string, FrozenTeachingTeam>>().notNull().default(sql`'{}'::jsonb`),
     status: text('status').notNull().default('draft'),
     bindingHash: text('binding_hash').notNull(),
     bundleDigest: text('bundle_digest'),
@@ -118,8 +79,7 @@ export const projectBindingSnapshots = pgTable('project_binding_snapshots', {
     .notNull()
     .references(() => pblTemplateTeamBindings.id, { onDelete: 'restrict' }),
   teamVersionId: text('team_version_id')
-    .notNull()
-    .references(() => adminTeamVersions.id, { onDelete: 'restrict' }),
+    .notNull(),
   bindingHash: text('binding_hash').notNull(),
   bundleDigest: text('bundle_digest'),
   boundAt: timestamp('bound_at', { withTimezone: true }).notNull(),

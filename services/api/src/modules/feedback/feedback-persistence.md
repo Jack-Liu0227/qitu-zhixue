@@ -79,11 +79,13 @@
 
 ## 附件
 
-附件归属仍走 `FeedbackAttachmentRegistry` 端口，**不**实现对象存储：
+2026-10-24 已实现受鉴权保护的 PostgreSQL 私有附件存储，沿用 FeedbackAttachmentRegistry 校验端口。有数据库时使用 FeedbackAttachmentService，无数据库的隔离单测保留内存 registry；缺数据库的上传返回 503。
 
-- `demo` / `test`：`InMemoryFeedbackAttachmentRegistry`；
-- `live`：`RejectingFeedbackAttachmentRegistry` **失败关闭**——无法证明归属时一律拒绝
-  非空 `attachmentRefs`，绝不退回进程内登记表（多实例下不共享，会静默放过越权引用）。
+支持 PNG、JPEG、PDF、UTF-8 文本，每文件最多 2 MiB，每条工单事件最多 5 个。服务端校验扩展名、类型、基础签名、UTF-8 和字节数。单账号最多 20 MiB，总存储最多 256 MiB，并发上传通过事务锁核算额度。未提交附件 24 小时后不可访问，并在后续上传时清理。
+
+上传以 owner/key 唯一索引保证幂等，内容不同返回 409。附件绑定与工单写入在同一事务，检查上传者、孩子和唯一工单归属；失败整体回滚。家长与当前教师只能下载有权限的工单附件，未提交的附件仅上传者可读；关系撤销立即生效。下载使用 attachment、no-store、nosniff 和 sandbox 头，不提供公开存储链接。上传、下载、移除和过期清理均留最小审计，不记录文件字节或文件名。
+
+接口：POST /api/v1/feedback/attachments；GET /api/v1/feedback/attachments/:id/content；DELETE /api/v1/feedback/attachments/:id 仅移除自己的未提交附件。上传请求为 childId、fileName、contentType、base64，并要求 Idempotency-Key。原有提交、补充、回复继续使用 attachmentRefs；工单详情增补最小 attachments 元数据，供双方下载。
 
 ## 如何运行测试
 

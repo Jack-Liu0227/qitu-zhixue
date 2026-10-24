@@ -25,6 +25,10 @@ export class PostgresProjectHistoryStore extends ProjectHistoryStore {
         LEFT JOIN project_template_versions v ON v.id=e.template_version_id
         LEFT JOIN project_templates tpl ON tpl.id=v.template_id
         WHERE e.student_user_id=${studentId} AND e.status IN ('exploring','awaiting_confirmation')
+          AND (nullif(btrim(i.goal_user),'') IS NOT NULL OR jsonb_array_length(coalesce(i.core_interests,'[]'::jsonb)) > 0
+            OR EXISTS (SELECT 1 FROM tutor_sessions s JOIN tutor_turns t ON t.session_id=s.id
+              WHERE s.exploration_id=e.id AND s.student_id=${studentId} AND t.student_id=${studentId}
+                AND t.role='student'))
         UNION ALL
         SELECT 'plan', l.id, left(l.goal,200), left(l.interest,300), '[]'::jsonb, 'exploration',
           coalesce(l.template_version_id,'unknown'), 0, 0, 0, l.created_at, NULL::timestamptz, 'draft'

@@ -1,7 +1,7 @@
 ---
 name: qitu-pro-editing
 description: Revise an existing Qitu lesson draft with a localized evidence-linked change and version readback.
-version: 1.0.0
+version: 1.0.1
 runtime: admin
 status: published
 references: references/qitu-contract.md

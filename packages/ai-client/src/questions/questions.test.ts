@@ -6,6 +6,8 @@ import {
   isQuestionKind,
   toPublicQuestion,
 } from './index.js';
+import { QUIZ_BANK } from '../quiz-bank/index.js';
+import { gradeAnswer } from '../grading/index.js';
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -13,6 +15,18 @@ function assert(condition: unknown, message: string): asserts condition {
 
 /** 题库题面边界断言，由 `pnpm --filter @qitu/ai-client test` 调用。 */
 export function runQuestionAssertions(): void {
+  for (const conceptId of ['optics.reflection.law', 'optics.refraction.law', 'optics.tir.critical_angle', 'optics.lens.ray_rules']) {
+    for (let index = 0; index < 4; index++) {
+      const input = { objective: { id: `isolated:${conceptId}`, name: 'Fixture objective', type: 'memory' as const, conceptId }, index };
+      const formal = buildQuestion(input);
+      assert(QUIZ_BANK.some(entry => entry.conceptId === conceptId && entry.stem === formal.prompt), '正式光学考核必须来自目标对应的注册题库');
+      assert(!JSON.stringify(formal).includes('关键点'), '正式题目不能使用占位答案');
+      assertNoAnswerLeak(toPublicQuestion(formal), formal);
+      const option = formal.options.find(option => option.body === formal.expectedAnswer);
+      assert(option && gradeAnswer(formal, option.id, 'awaiting').isCorrect, '公开选项 ID 必须能通过既有判分 owner 判分');
+      assert(JSON.stringify(formal) === JSON.stringify(buildQuestion(input)), '同一题实例应稳定恢复');
+    }
+  }
   const card = buildQuestion({
     objective: { id: 'obj-1', name: '光合作用', type: 'memory' },
     index: 0,

@@ -117,11 +117,12 @@ export function LessonWorkPanel({ scope, lesson, refreshKey, disabled, onSaved, 
         {activity.evidence === 'mastery' ? <p>请在正式目标考核中作答；聊天求助不会替你提交。</p>
           : activity.evidence === 'experiment_observation' ? <p>请在本课注册实验中保存观察记录。</p> : null}</div> : null}
       {lesson.blockers.length ? <ul>{lesson.blockers.map((reason) => <li key={reason}>{lessonBlockerLabel(reason)}</li>)}</ul> : null}
+      {activity?.evidence === 'teaching_delivery' ? <p>先跟随 AI搭档阅读本课课件；看完后可继续，也可以再听一次解释或看一个例子。</p> : null}
       {loading ? <p role="status">正在读取已保存的证据…</p> : null}
       {error ? <p role="alert">{error}</p> : null}
       {notice ? <p role="status">{notice}</p> : null}
       <button type="button" disabled={pending || disabled} onClick={() => { setError(null); void reload(); }}>刷新学习记录</button>
-      {evidence ? <>
+      {evidence && activity?.evidence !== 'teaching_delivery' ? <>
         {evidence.qualityCriteria?.length ? <div role="note">
           <strong>本课产物需经班主任按质量标准评价</strong>
           <ul>{evidence.qualityCriteria.map(criterion => <li key={criterion.id}>{criterion.description}</li>)}</ul>

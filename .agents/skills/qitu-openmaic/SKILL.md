@@ -1,7 +1,7 @@
 ---
 name: qitu-openmaic
 description: Configure the adapted teaching capabilities through Qitu Admin and its existing runtime owners.
-version: 1.0.0
+version: 1.0.1
 runtime: admin
 status: published
 references: references/qitu-contract.md

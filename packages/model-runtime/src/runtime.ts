@@ -1,4 +1,5 @@
 import { Compile } from 'typebox/compile';
+import { describeToolArguments, type ToolArgumentIssue } from './tool-validation.js';
 import { anthropicMessagesApi } from './pi/api/anthropic-messages.lazy.js';
 import { googleGeminiApi } from './gemini-native.lazy.js';
 import { openAICompletionsApi } from './pi/api/openai-completions.lazy.js';
@@ -57,16 +58,18 @@ export interface ModelRuntimeRequest {
   onToolEvent?: (event: ModelRuntimeToolEvent) => void;
 }
 
+export type ModelToolOutcome = 'empty' | 'retrieved' | 'accepted' | 'unchanged';
+
 export interface ModelRuntimeTool {
   name: string;
   description: string;
   inputSchema: Record<string, unknown>;
-  execute(args: Record<string, unknown>, signal?: AbortSignal): Promise<{ text: string; isError?: boolean }>;
+  execute(args: Record<string, unknown>, signal?: AbortSignal): Promise<{ text: string; isError?: boolean; outcome?: ModelToolOutcome }>;
 }
 
 export type ModelRuntimeToolEvent =
   | { type: 'call'; callId: string; name: string }
-  | { type: 'result'; callId: string; name: string; isError: boolean };
+  | { type: 'result'; callId: string; name: string; isError: boolean; errorCode?: string; outcome?: ModelToolOutcome; argumentIssues?: ToolArgumentIssue[] };
 
 export interface ModelRuntimeUsage {
   inputTokens: number | null;
@@ -173,9 +176,10 @@ async function* runWithPi(resolver: ModelRuntimeResolver, input: ModelRuntimeReq
   context.tools = [...tools.values()].map(({ tool }) => ({
     name: tool.name, description: tool.description, parameters: tool.inputSchema as Tool['parameters'],
   }));
-  const receipts = new Map<string, { fingerprint: string; output: { text: string; isError?: boolean } }>();
+  const receipts = new Map<string, { fingerprint: string; output: Awaited<ReturnType<ModelRuntimeTool['execute']>> }>();
   const usage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
   let toolCount = 0;
+  let finalizing = false;
   for (;;) {
     let message: AssistantMessage | undefined;
     try {
@@ -197,21 +201,29 @@ async function* runWithPi(resolver: ModelRuntimeResolver, input: ModelRuntimeReq
       yield { type: 'done', result: { ...toResult(target, message, text), usage } };
       return;
     }
+    if (finalizing) throw new ModelRuntimeError('MODEL_REQUEST_INVALID', 'Tool call budget exceeded');
     context.messages.push(message);
     for (const call of calls) {
       if (signal.aborted) throw transport.failure();
-      if (++toolCount > 8) throw new ModelRuntimeError('MODEL_REQUEST_INVALID', 'Tool call budget exceeded');
+      const exhausted = toolCount >= 8;
+      if (!exhausted) toolCount++;
       const configured = tools.get(call.name);
       const fingerprint = JSON.stringify([call.name, call.arguments]);
-      let output: { text: string; isError?: boolean } = { text: 'TOOL_NOT_ALLOWED', isError: true };
+      let output: Awaited<ReturnType<ModelRuntimeTool['execute']>> = { text: 'TOOL_NOT_ALLOWED', isError: true };
+      let argumentIssues: ToolArgumentIssue[] | undefined;
       input.onToolEvent?.({ type: 'call', callId: call.id, name: call.name });
       yield { type: 'tool-call', callId: call.id, toolName: call.name, arguments: call.arguments as Record<string, unknown> };
       const previous = receipts.get(call.id);
-      if (previous) output = previous.fingerprint === fingerprint ? previous.output : { text: 'TOOL_CALL_ID_CONFLICT', isError: true };
+      if (exhausted) output = { text: 'TOOL_BUDGET_EXHAUSTED. This call was not executed. Finish using existing verified receipts only.', isError: true };
+      else if (previous) output = previous.fingerprint === fingerprint ? previous.output : { text: 'TOOL_CALL_ID_CONFLICT', isError: true };
       else if (configured) {
         const args = call.arguments;
         if (!args || typeof args !== 'object' || Array.isArray(args) || fingerprint.length > 64_000 || !configured.check.Check(args)) {
-          output = { text: 'TOOL_ARGUMENT_INVALID', isError: true };
+          const diagnostic = describeToolArguments(configured.tool.inputSchema, args);
+          argumentIssues = diagnostic.issues;
+          output = { text: 'TOOL_ARGUMENT_INVALID. This call was not executed. Correct only the reported fields; keep other required fields. '
+            + 'Omit unused fields and nulls. Invalid fields: ' + JSON.stringify(diagnostic.issues)
+            + '. Allowed fields for this candidate: ' + JSON.stringify(diagnostic.fields), isError: true };
         } else {
           try {
             output = await withAbort(configured.tool.execute(args as Record<string, unknown>, signal), signal);
@@ -222,10 +234,18 @@ async function* runWithPi(resolver: ModelRuntimeResolver, input: ModelRuntimeReq
         }
       }
       receipts.set(call.id, { fingerprint, output });
-      input.onToolEvent?.({ type: 'result', callId: call.id, name: call.name, isError: output.isError === true });
+      const errorCode = output.isError === true ? output.text.match(/^(?:TOOL|COURSEWARE|TUTOR|BOARD|OPTICS|CHOICE|PENDING|KNOWLEDGE|LEARNER)_[A-Z_]{1,65}(?=[.\s(:]|$)/)?.[0] ?? 'TOOL_EXECUTION_FAILED' : undefined;
+      input.onToolEvent?.({ type: 'result', callId: call.id, name: call.name, isError: output.isError === true,
+        ...(errorCode ? { errorCode } : {}), ...(output.outcome ? { outcome: output.outcome } : {}),
+        ...(argumentIssues ? { argumentIssues } : {}) });
       if (signal.aborted) throw transport.failure();
       context.messages.push({ role: 'toolResult', toolCallId: call.id, toolName: call.name,
         content: [{ type: 'text', text: call.name === 'skill_read' ? output.text : output.text.slice(0, 48_000) }], isError: output.isError === true, timestamp: Date.now() });
+    }
+    if (toolCount >= 8) {
+      finalizing = true;
+      context.tools = [];
+      context.messages.push({ role: 'user', content: 'The tool budget is exhausted. Give a short final response using only existing receipts. State any missing evidence; do not claim unexecuted actions succeeded.', timestamp: Date.now() });
     }
   }
 }

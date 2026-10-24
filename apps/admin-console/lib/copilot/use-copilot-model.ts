@@ -28,9 +28,14 @@ export function useCopilotModel() {
       const binding = usages.bindings.find((row) => row.usageId === USAGE);
       const selection = binding?.resolved;
       const current = selection ? models.find((row) => row.providerId === selection.providerId && row.id === selection.modelId) : undefined;
-      setSelectedModel(current ? configuredModelKey(current) : '');
+      const fallback = models[0] ? configuredModelKey(models[0]) : '';
+      setSelectedModel(current ? configuredModelKey(current) : fallback);
       setModelIsDefault(Boolean(binding?.providerId && binding.modelId));
-      if (current) setModelNotice(binding?.providerId ? '已读取保存的管家默认模型。' : '当前跟随平台用途模型，可将当前模型设为管家默认。');
+      if (current) {
+        setModelNotice(binding?.providerId ? '已读取保存的管家默认模型。' : '当前跟随平台用途模型，可将当前模型设为管家默认。');
+      } else if (fallback) {
+        setModelNotice('已选择可用模型，可切换或设为管家默认。');
+      }
       if (selection && !current) setModelError('已保存的管家默认模型当前不可用，请重新选择。');
     } catch (failure) {
       if (request === identity.current) {

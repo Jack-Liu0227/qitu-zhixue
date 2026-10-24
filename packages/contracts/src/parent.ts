@@ -167,6 +167,8 @@ export type ParentMessageKind =
 
 export type ParentMessageStatus =
   | 'unread'
+  | 'read'
+  | 'muted'
   | 'pending_confirm'
   | 'processing'
   | 'resolved';
@@ -329,6 +331,7 @@ export interface ParentFeedbackEntry {
   content: string;
   /** 附件引用 id；只包含已通过归属校验的附件。 */
   attachmentRefs: string[];
+  attachments?: import('./feedback-attachments.js').FeedbackAttachmentInfo[];
   /** 仅家长确认事件有值：true=确认已解决，false=确认未解决；其他事件为 null。 */
   resolved: boolean | null;
   createdAt: string;

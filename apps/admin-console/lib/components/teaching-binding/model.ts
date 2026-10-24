@@ -1,5 +1,5 @@
-import type { AdminTeamConfig, TeachingBundleDraft } from '@qitu/contracts';
-import type { PublishedTeamMember } from '../../api/template-bindings';
+import type { AdminTeamConfig, ProjectTemplateSpec, TeachingBundleDraft, TeachingSessionAssignment, TeachingSessionSelection } from '@qitu/contracts';
+import type { PublishedTeamMember, PublishedTeamVersion } from '../../api/template-bindings';
 
 export type DraftPreview = { kind: 'empty' } | { kind: 'invalid'; message: string }
   | { kind: 'ready'; draft: TeachingBundleDraft };
@@ -19,6 +19,12 @@ function isDraft(value: unknown): value is TeachingBundleDraft {
   if (!strings(value.mcpServerIds) || !strings(value.knowledgeBaseIds) || !record(value.modelByPurpose)) return false;
   if (!Object.values(value.modelByPurpose).every((models) => record(models) && Object.entries(models).every(([purpose, model]) =>
     ['outline', 'session', 'dialogue'].includes(purpose) && fields(model, ['modelProviderId', 'modelId'])))) return false;
+  if (value.sessionAssignments !== undefined && (!Array.isArray(value.sessionAssignments) || value.sessionAssignments.length < 1
+    || value.sessionAssignments.length > 128 || !value.sessionAssignments.every((entry: unknown) => record(entry)
+      && typeof entry.sessionIndex === 'number' && Number.isSafeInteger(entry.sessionIndex) && entry.sessionIndex > 0
+      && typeof entry.teamVersionId === 'string' && entry.teamVersionId.length > 0
+      && (entry.kind === 'team' && entry.memberId === undefined || entry.kind === 'assistant' && typeof entry.memberId === 'string' && entry.memberId.length > 0))
+    || new Set(value.sessionAssignments.map(entry => entry.sessionIndex)).size !== value.sessionAssignments.length)) return false;
   return value.sessionRoutes === undefined || Array.isArray(value.sessionRoutes) && value.sessionRoutes.every((route: unknown) =>
     record(route) && typeof route.sessionIndex === 'number' && Number.isInteger(route.sessionIndex)
     && route.sessionIndex >= 1 && typeof route.roleSlotId === 'string');
@@ -35,8 +41,33 @@ export function parseDraftPreview(text: string): DraftPreview {
   }
 }
 
+export function initialSessionAssignments(profile: NonNullable<ProjectTemplateSpec['curriculum']>['profiles'][number] | undefined,
+  phases: ProjectTemplateSpec['phases'], members: readonly PublishedTeamMember[], teamVersionId: string,
+  draft: TeachingBundleDraft | null): readonly TeachingSessionAssignment[] {
+  if (draft?.sessionAssignments) return draft.sessionAssignments;
+  if (!profile || !teamVersionId) return [];
+  return profile.sessions.flatMap(session => {
+    const route = draft?.sessionRoutes?.find(entry => entry.sessionIndex === session.sessionIndex);
+    const role = draft?.roleMap.find(entry => entry.roleSlotId === route?.roleSlotId);
+    const explicitId = session.leadAssistantId ?? phases.find(phase => phase.phase === session.phase)?.assignedAssistantId;
+    const member = role ? members.find(entry => entry.slotId === role.memberId) : members.find(entry => entry.assistantId === explicitId);
+    return member && member.assistantId !== 'qitu-intake-assistant'
+      ? [{ sessionIndex: session.sessionIndex, teamVersionId, kind: 'assistant' as const, memberId: member.slotId }] : [];
+  });
+}
+
 export function publishedMemberName(member: PublishedTeamMember, team?: AdminTeamConfig): string {
   return team?.members.find((item) => item.assistantId === member.assistantId)?.assistantName || member.assistantId;
+}
+
+export function sessionSelectionsFromSnapshots(assignments: readonly TeachingSessionAssignment[], versions: readonly PublishedTeamVersion[]): readonly TeachingSessionSelection[] {
+  return assignments.flatMap((assignment): TeachingSessionSelection[] => {
+    const version = versions.find(item => item.id === assignment.teamVersionId);
+    if (!version) return [];
+    if (assignment.kind === 'team') return [{ sessionIndex: assignment.sessionIndex, teamId: version.teamId, kind: 'team' }];
+    const member = version.members?.find(item => item.slotId === assignment.memberId);
+    return member ? [{ sessionIndex: assignment.sessionIndex, teamId: version.teamId, kind: 'assistant', assistantId: member.assistantId }] : [];
+  });
 }
 
 export function routeSession(draft: TeachingBundleDraft, sessionIndex: number, roleSlotId: string): TeachingBundleDraft {

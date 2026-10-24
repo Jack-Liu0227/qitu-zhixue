@@ -33,8 +33,8 @@ export async function runQituSDKAssertions() {
   assert.throws(() => sdk.mastery.getCurrent({ studentId: 'other' } as never), /SDK_SCOPE_MISMATCH/);
   assert.throws(() => sdk.project.advance(''), /IDEMPOTENCY_KEY_REQUIRED/);
   assert.throws(() => createQituSDK(scope, {} as never), /SDK_PORT_NOT_CONFIGURED/);
-  assert.equal(BUILTIN_ASSISTANTS.every((assistant) => assistant.enabledSkills.every((skillId) => skillId === 'tutor-guided-learning')), true);
-  assert.equal(BUILTIN_ASSISTANTS.every((assistant) => assistant.defaults.skills.value.every((skillId) => skillId === 'tutor-guided-learning')), true);
+  assert.equal(BUILTIN_ASSISTANTS.every((assistant) => assistant.enabledSkills.every((skillId) => /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(skillId))), true);
+  assert.equal(BUILTIN_ASSISTANTS.every((assistant) => assistant.defaults.skills.value.every((skillId) => assistant.enabledSkills.includes(skillId))), true);
   const rejects = async (work: Promise<unknown>, code: string) => {
     try { await work; } catch (error) { assert.equal((error as Error).message, code); return; }
     throw new Error('Expected SDK rejection: ' + code);

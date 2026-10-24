@@ -25,7 +25,7 @@ export function LessonDraftEditor({ spec, teams, disabled, onChange }: {
   }
   function name(id: string) { return members.find(entry => entry.assistantId === id)?.assistantName ?? id; }
   return <section className={styles.editor} aria-label="编辑课时课程草稿">
-    <header><div><h3>逐课教学设计</h3><p>修改保存在新课程草稿中。发布团队版本、编译并启用后，才供新项目使用。</p></div>
+    <header><div><h3>逐课教学设计</h3><p>修改保存在新课程草稿中。保存教学安排、编译并启用后，才供新项目使用。</p></div>
       <a href="/settings/teams">管理导师团队与成员 →</a></header>
     {!members.length ? <p role="alert">课程团队尚未加载，暂不能选择导师。请先在团队管理中配置真实成员。</p> : null}
     {profiles.length > 1 ? <label>课时安排<select value={profile.id} onChange={event => setSelectedProfileId(event.target.value)}>

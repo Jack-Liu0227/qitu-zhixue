@@ -1,7 +1,7 @@
 ---
 name: qitu-curriculum-planner
 description: Plan a versioned Qitu multi-session project curriculum with explicit evidence and role routes.
-version: 1.0.0
+version: 1.0.1
 runtime: admin
 status: published
 references: references/qitu-contract.md
@@ -15,7 +15,7 @@ references: references/qitu-contract.md
 
 3. Specify real member slots for each session route and model purpose. Preserve all required theory objectives; a session number is never completion or mastery.
 
-4. Use a new template version/bootstrap identity, existing template validation, published team snapshots and teaching-bundle compilation. Return gaps before activation; never silently fill missing grants.
+4. Use a new template version/bootstrap identity, existing template validation, binding-owned teaching configuration and teaching-bundle compilation. Return gaps before activation; never silently fill missing grants.
 
 Use the declared Qitu contract resource for scope, owner handoff and lifecycle constraints.
 

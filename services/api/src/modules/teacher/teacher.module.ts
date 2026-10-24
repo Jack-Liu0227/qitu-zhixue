@@ -17,6 +17,9 @@ import { TeamRuntimeModule } from '../team-runtime/team-runtime.module';
 import { LearningPlanStorageModule } from '../learning-plan/learning-plan-storage.module';
 import { WorksModule } from '../works/works.module';
 import { InMemoryWorksStore, WorksStore } from '../works/works.store';
+import { LearningInsightsModule } from '../learning-insights/learning-insights.module';
+import { GrowthModule } from '../growth/growth.module';
+import { TeacherInterventionService } from './teacher-intervention.service';
 
 /**
  * 班主任工作台模块。
@@ -33,10 +36,11 @@ import { InMemoryWorksStore, WorksStore } from '../works/works.store';
  * `AuditWriter` / `IdempotencyStore` 由 `@Global()` 横切模块提供，这里不再 import。
  */
 @Module({
-  imports: [DirectoryModule, AuthModule, FeedbackModule, PlatformDataModule, TeamRuntimeModule, LearningPlanStorageModule, WorksModule],
+  imports: [DirectoryModule, AuthModule, FeedbackModule, PlatformDataModule, TeamRuntimeModule, LearningPlanStorageModule, WorksModule, LearningInsightsModule, GrowthModule],
   controllers: [TeacherController],
   providers: [
     TeacherService,
+    TeacherInterventionService,
     {
       provide: TeacherReviewRepository,
       inject: [DATABASE_TOKEN, AuditWriter, DATA_MODE_TOKEN, WorksStore],

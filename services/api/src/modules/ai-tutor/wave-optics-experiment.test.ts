@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { ConflictException } from '@nestjs/common';
 import type { GetTutorSessionResponse } from '@qitu/contracts';
 import { WAVE_OPTICS_TEMPLATE_SPEC, WAVE_OPTICS_READINESS_IDS } from '@qitu/ai-client/quiz-bank';
 import type { AuditWriter } from '../../common/audit';
@@ -87,9 +88,24 @@ test('v2 owner persists prediction/run/observation idempotently and restores sco
   assert.equal(restoredBlock.savedExperiment?.runs[0]?.actionId, run.actionId);
   assert.deepEqual(restoredBlock.savedExperiment?.runs[0]?.projection, run.simulationResult?.waveProjection);
   assert.equal(h.project.status, 'practice_ready');
+  assert.deepEqual(restoredBlock.allowedActions, block.allowedActions);
   await assert.rejects(call('record_observation', { ...input, parameters: { ...h.candidate.parameters, slitSeparation: 160 } }, 'wrong-run'));
   h.endPractice();
   await assert.rejects(call('run', { mode: 'interference', parameters: h.candidate.parameters }, 'late-run'));
+  const historical = await h.owner.restore(record, response);
+  const historicalBlock = historical.turns[0]?.blocks[0]; assert.ok(historicalBlock?.kind === 'optics_experiment');
+  assert.deepEqual(historicalBlock.allowedActions, []);
+  assert.equal(historicalBlock.savedExperiment?.runs[0]?.actionId, run.actionId);
+  assert.equal(historicalBlock.savedObservation?.evidenceRef, saved.observationReceipt?.evidenceRef);
+  assert.equal(block.allowedActions.length, 3, 'the stored teaching turn must remain unchanged');
+  h.project.status = 'completed';
+  await assert.rejects(call('run', { mode: 'interference', parameters: h.candidate.parameters }, 'archived-run'),
+    (error: unknown) => error instanceof ConflictException
+      && (error.getResponse() as { code: string }).code === 'TUTOR_EXPERIMENT_PRACTICE_CLOSED');
+  const archived = await h.owner.restore(record, response);
+  const archivedBlock = archived.turns[0]?.blocks[0]; assert.ok(archivedBlock?.kind === 'optics_experiment');
+  assert.deepEqual(archivedBlock.allowedActions, []);
+  assert.deepEqual(archivedBlock.savedExperiment, historicalBlock.savedExperiment);
 });
 
 test('new model requires exact project/lesson/activity and live tool/mastery grants', async () => {

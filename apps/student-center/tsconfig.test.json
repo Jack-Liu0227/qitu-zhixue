@@ -12,6 +12,7 @@
     "incremental": false
   },
   "files": [
+    "next-env.d.ts",
     "types/mermaid.d.ts",
     "features/growth/data/projectStudentEntry.ts",
     "features/growth/data/projectStudentEntry.test.ts",
@@ -22,6 +23,7 @@
     "features/tutor/components/MarkdownMathView.test.tsx",
     "features/tutor/components/OpticsDiffractionScatteringCard.test.tsx",
     "features/tutor/lib/opticsPreviewModel.test.ts",
+    "features/tutor/lib/experimentAvailability.test.ts",
     "features/inspiration/data/inspiration-api-data-source.test.ts",
     "features/projects/data/api-projects-data-source.test.ts",
     "features/tutor/data/tutor-confirmation.test.ts",

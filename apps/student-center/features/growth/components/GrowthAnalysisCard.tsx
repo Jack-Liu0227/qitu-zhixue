@@ -1,6 +1,6 @@
 'use client';
 
-import { SectionCard } from '@qitu/ui';
+import { SectionCard, ResizablePanels } from '@qitu/ui';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { StudentGrowthAnalysisView } from '@qitu/contracts';
 import { GrowthOfflineError, GrowthPermissionError } from '../data/growthDataSource';
@@ -37,18 +37,26 @@ export function GrowthAnalysisCard({ load }: { load: () => Promise<StudentGrowth
     return () => { window.removeEventListener('online', online); window.removeEventListener('offline', offline); };
   }, []);
 
-  return <SectionCard title="成长助手的最新归纳">
+  return <div className="qitu-growth-analysis"><SectionCard title="成长助手的最新归纳">
     {state.status === 'loading' ? <p role="status">正在读取已确认的成长归纳…</p>
       : state.status !== 'ready' ? <div role="alert"><p>{state.message}</p>
         {state.status !== 'permission' && <button type="button" className="qitu-button" onClick={() => setRevision(value => value + 1)}>重新读取</button>}</div>
         : <>
           <AnalysisStatus analysis={state.value.analysis} />
           {state.value.trajectory ? <>
-            <p>{state.value.trajectory.studentSummary ?? '新的探究记录正在积累。'}</p>
-            {state.value.trajectory.milestones.length > 0 && <ul>{state.value.trajectory.milestones.map(item => <li key={item}>{item}</li>)}</ul>}
-            {state.value.trajectory.nextQuestions.length > 0 && <div><strong>接下来可以探索</strong>
-              <ul>{state.value.trajectory.nextQuestions.map(item => <li key={item}>{item}</li>)}</ul></div>}
+            <p className="qitu-growth-analysis-lead">{state.value.trajectory.studentSummary ?? '新的探究记录正在积累。'}</p>
+            <ResizablePanels storageKey="student-growth-summary" initialSizes={[56, 44]} minWidths={[300, 260]} className="qitu-growth-analysis-grid" labels={['成长足迹', '探索建议']}>
+              {state.value.trajectory.milestones.length > 0 && <div>
+                <h3>最近的成长足迹</h3>
+                <ul className="qitu-growth-milestones">{state.value.trajectory.milestones.slice(0, 4).map(item => <li key={item}>{item}</li>)}</ul>
+                {state.value.trajectory.milestones.length > 4 && <details className="qitu-growth-more"><summary>查看其余 {state.value.trajectory.milestones.length - 4} 条足迹</summary>
+                  <ul className="qitu-growth-milestones">{state.value.trajectory.milestones.slice(4).map(item => <li key={item}>{item}</li>)}</ul>
+                </details>}
+              </div>}
+              {state.value.trajectory.nextQuestions.length > 0 && <div className="qitu-growth-next"><h3>带着问题继续探索</h3>
+                <ul>{state.value.trajectory.nextQuestions.map(item => <li key={item}>{item}</li>)}</ul></div>}
+            </ResizablePanels>
           </> : <p>分享兴趣、探究过程和反思后，专任助手会继续整理你的成长线索。</p>}
         </>}
-  </SectionCard>;
+  </SectionCard></div>;
 }

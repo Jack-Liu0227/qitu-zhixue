@@ -1,4 +1,5 @@
 'use client';
+import { ResizablePanels } from '@qitu/ui';
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -137,7 +138,7 @@ export default async function AdminStudentDetailPage({ params }: { params: Promi
         {student.stuck ? <Badge tone="attention">需要关注</Badge> : null}
       </div>
 
-      <div className="admin-detail-grid">
+      <ResizablePanels storageKey="admin-students-detail" initialSizes={[55, 45]} minWidths={[280, 280]} className="admin-detail-grid">
         <SectionCard title="基本信息">
           <InfoRow label="学生ID" value={student.studentId} />
           <InfoRow label="年级" value={student.gradeLabel ?? '—'} />
@@ -152,7 +153,7 @@ export default async function AdminStudentDetailPage({ params }: { params: Promi
           <InfoRow label="学习时长" value={`${data.minutesThisWeek} 分钟`} />
           <InfoRow label="最近活动" value={formatDateTime(student.lastActivityAt)} />
         </SectionCard>
-      </div>
+      </ResizablePanels>
 
       {data.projects.length > 0 ? (
         <SectionCard title="项目列表">
@@ -169,7 +170,7 @@ export default async function AdminStudentDetailPage({ params }: { params: Promi
               <tbody>
                 {data.projects.map((project) => (
                   <tr key={project.projectId}>
-                    <td>{project.title}</td>
+                    <td>{normalizeProjectTitle(project.title)}</td>
                     <td>
                       <ProjectStageLabel stage={project.stage} />
                     </td>

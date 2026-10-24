@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { OPTICS_16_VERSION_INPUT } from './content/optics';
 import { opticsTeachingFixture } from './teaching-bundle.test-fixture';
 import { freezeTeamAssistant, TEAM_PUBLICATION_SCHEMA } from '../platform-registry/team-version.snapshot';
-import { teamVersionContentDigest } from '../platform-registry/team-version.service';
+import { teamVersionContentDigest } from '../platform-registry/teaching-team-capture.service';
 import { loadTutorRuntimeSource } from '../../common/tutor-runtime/runtime-source';
 import type { EffectiveAgentRuntime, PlatformRegistryService } from '../platform-registry/platform-registry.service';
 import type { TeamVersionRecord } from './templates-binding.types';

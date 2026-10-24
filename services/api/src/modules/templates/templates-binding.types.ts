@@ -8,7 +8,7 @@ import type { TeachingBundleDraft } from '@qitu/contracts';
 /**
  * 模板版本 ↔ 团队版本绑定的领域类型与纯函数（F2 / F3）。
  *
- * 绑定是服务端拥有的不可变引用：模板版本指向 `admin_team_versions` 快照。
+ * 绑定是服务端拥有的不可变引用：模板版本指向 教学绑定内的冻结团队配置 快照。
  * 项目创建时把生效绑定冻结成 `ProjectBindingSnapshot`；之后退役 / 重新激活
  * 绑定都不会改写既有项目。
  */
@@ -38,6 +38,7 @@ export interface BindingRecord {
   status: PblBindingStatus;
   bindingHash: string;
   bundleDigest?: string | null;
+  teamSnapshots?: Record<string, TeamVersionRecord>;
   bundleDraft: TeachingBundleDraft | null;
   bundlePayload: CompiledTeachingBundle['payload'] | null;
   validation: PblTemplateTeamBindingValidation;
@@ -61,6 +62,7 @@ export interface SnapshotRecord {
 }
 
 export interface CreateBindingRecordInput {
+  teamSnapshots?: Record<string, TeamVersionRecord>;
   id: string;
   templateVersionId: string;
   teamVersionId: string;

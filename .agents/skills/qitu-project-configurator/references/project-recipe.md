@@ -1,35 +1,24 @@
-# 光学项目组合配置示例
+# 项目配置组合顺序
 
-输入目标：“为已有光学模板配置教学技能、知识库、团队与课时，供学生确认项目后使用。”先核对所选模板版本、用户授权范围和真实课程正文，读取涉及的模块手册。不要因为标题叫光学就选择任意团队或模板。
+1. 读取当前模板、课时 profile、助手和团队目录，使用服务端 ID。
+2. 通过 assistant.create/update 配置真实 provider/model 对、canonical 教学技能和工具；技能先审核发布。
+3. 通过 team.create/update 维护团队成员和负责人。课程门禁与课时由现有模板 owner 管理。
+4. 模板变更创建新 template.version，保留实际目标、curriculum、rubric 和 TheoryMastered 门禁。
+5. 使用 binding.prepare 提交所选模板版本、teamId、scheduleProfileId、全部 sessions 及 teams 的 expectedUpdatedAt。每课明确选择团队或该团队的真实助手。
+6. 服务端保存并回读新教学安排，自动冻结对应配置。没有独立团队版本发布或历史版本选择。
+7. 如需调整知识库授权，读取该绑定实际 bundleDraft 后用 binding.draft 保存；新增权限不得超出当前 Admin 授权。
+8. binding.validate 校验，模板通过原审核 owner 后 binding.activate。每一步分别报告回执，不以保存代表已启用或真实运行。
 
-建议按依赖组织 actions；各步只在用户明确要求且当前目录支持时执行：
-
-1. 检查可用 provider/model 对、教学 Skill、注册工具与知识引擎。缺凭据/驱动/教材时明确缺口。
-2. 新技能用 skill.create → skill.publish。已有技能直接用已发布 canonical ID。
-3. assistant.create/update 配置概念教练、探究教练、评审等实际需要的角色，并分别绑定模型、Skills、工具/MCP。成员可以少于角色槽数量，以实际模板角色合同为准。
-4. 需要新本地空库时 knowledge.create → knowledge.bind。现有库合并授权；平台总授权与 IMA 配置属于 global，不能在 selected_template 越权修改。
-5. team.create/update + workflow.update 保留四阶段与 TheoryMastered 门禁，随后 team.version 冻结真实成员配置。
-6. template.version 从选定版本克隆，保留课程 objectives、themes、sessions、排期 profile 与 rubric，只修改目标字段。新增 16 课时是新版本。
-7. binding.create 引用模板版本 ID 与团队版本 ID，binding.draft 写 roleMap、skillPins、toolIds、知识 grant 和各用途模型，binding.validate 校验。
-8. 用 template.test 检查课时合同，template.verify 检查既有真实发布证据；只有原 owner 的 template.publish 通过后再 binding.activate。未发布模板不能靠管家生成证据绕过原审核 owner。
-
-关键引用：
+binding.prepare 输入形状：
 
 ```json
-[
-  {"id":"publish_team","kind":"team.version","label":"发布团队版本","input":{
-    "id":{"$ref":"team.id"},"expectedUpdatedAt":{"$ref":"workflow.updatedAt"}
-  }},
-  {"id":"binding","kind":"binding.create","label":"创建教学绑定","input":{
-    "templateId":"<选定模板 ID>","versionId":{"$ref":"version.id"},"teamVersionId":{"$ref":"publish_team.id"}
-  }}
-]
+{"templateId":"<模板 ID>","versionId":"<课程版本 ID>","arrangement":{
+  "teamId":"<默认团队 ID>","scheduleProfileId":"<实际排期 ID>",
+  "sessions":[{"sessionIndex":1,"teamId":"<该课团队 ID>","kind":"assistant","assistantId":"<团队成员 ID>"}],
+  "teams":[{"teamId":"<所有被使用的团队 ID>","expectedUpdatedAt":"<团队回读时间>"}]
+}}
 ```
 
-这是依赖片段，team/workflow/version 必须已在同一计划前序声明；不要直接当独立计划提交。所有“<...>”均需替换为实际目录或 owner 返回值，不能把占位符送入执行器。
+示例仅表示条目形状，sessions 必须覆盖实际 profile 的每一课，teams 必须覆盖全部选中团队。修改原安排时携带 sourceBinding:{id,updatedAt}，让 owner 保留原授权范围。不能把占位符、阶段序号或名称当作 ID。
 
-新建团队回执中的 slotId、发布后的 Skill digest、课程角色槽或排期详情只有在 owner 返回后才完整可知时，分轮保存、回读、再生成教学包。不要凭空构造快照 hash。当前管家 context 提供已发布 teamVersions 的实际成员 pins；先复用已有合格版本通常更直接。
-
-最终分别报告：助手/团队配置是否保存、Skill 是否发布、知识库是否有内容且索引就绪、MCP 是否有真实驱动、团队版本是否发布、模板是否审核、绑定是否 active。不要把这些状态合并为“学生端已全部可用”。
-
-学生确认项目后由原 confirmIntent/confirmPlan 冻结模板/绑定/团队/hash。自由探索仍由启途智学助手处理。教学课时路由取冻结课程任务，实验交互和题目判分走原 action/evidence/answer owner；管家不创建第二套学习状态机。
+学生确认后由既有 confirmIntent/confirmPlan 冻结教学绑定。管家不创建学生项目、学习证据、掌握度或第二套状态机。

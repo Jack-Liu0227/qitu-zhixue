@@ -3,6 +3,26 @@ import { test } from 'node:test';
 import { ConflictException } from '@nestjs/common';
 import { teachingContextFixture } from './tutor-teaching-context.test-fixture';
 import { resolveTutorTeachingContext } from './tutor-teaching-context';
+
+test('current lesson selects its frozen team independently of governance stage and previous team', async () => {
+  const h = teachingContextFixture();
+  const second = structuredClone(h.teaching);
+  second.teamVersion = { teamVersionId: 'second-version', teamId: 'second-team', leaderAssistantId: 'second-mentor', members: [{ memberId: 'member-2', assistantId: 'second-mentor' }] };
+  second.roles = second.roles.map(role => ({ ...role, memberId: 'member-2', assistantId: 'second-mentor' }));
+  second.sessionRoutes = [{ sessionIndex: 2, roleSlotId: 'role-frozen' }];
+  h.teaching.sessionRoutes = [{ sessionIndex: 1, roleSlotId: 'role-frozen' }];
+  h.teaching.sessionAssignments = [{ sessionIndex: 1, teamVersionId: h.teaching.teamVersion.teamVersionId, kind: 'team' }, { sessionIndex: 2, teamVersionId: 'second-version', kind: 'team' }];
+  h.teaching.sessionTeamBundles = [second];
+  assert.equal((await resolveTutorTeachingContext(h.store, h.project, h.teaching)).role.assistantId, 'session-mentor');
+  h.completed.add('plan-frozen:lesson-1');
+  const context = await resolveTutorTeachingContext(h.store, h.project, h.teaching);
+  assert.equal(context.role.assistantId, 'second-mentor');
+  assert.equal(context.bundle.teamVersion.teamVersionId, 'second-version');
+  assert.equal(context.bindingTeamVersionId, 'synthetic-team-version');
+  assert.equal(h.project.status, 'theory_learning');
+  second.templateVersionId = 'other-template';
+  await assert.rejects(resolveTutorTeachingContext(h.store, h.project, h.teaching), ConflictException);
+});
 test('awaiting question selects its persisted session and task instead of stage, title or first missing mastery', async () => {
   const h = teachingContextFixture();
   h.completed.add('plan-frozen:lesson-1');

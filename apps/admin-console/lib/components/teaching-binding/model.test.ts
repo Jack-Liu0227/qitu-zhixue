@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { TeachingBundleDraft } from '@qitu/contracts';
 import type { PublishedTeamMember } from '../../api/template-bindings';
-import { parseDraftPreview, routeSession, routeSessionToMember, togglePublishedSkill, togglePublishedTool } from './model';
+import { initialSessionAssignments, parseDraftPreview, routeSession, routeSessionToMember, togglePublishedSkill, togglePublishedTool, sessionSelectionsFromSnapshots } from './model';
 
 const member = {
   slotId: 'member-b', assistantId: 'assistant-b', roleLabel: 'Inquiry guide', runtimeSnapshot: {
@@ -12,6 +12,13 @@ const member = {
     mcpPermissions: [{ serverId: 'ima-knowledge', toolIds: ['ima_search_knowledge'] }],
   },
 } satisfies PublishedTeamMember;
+
+test('saved snapshots display only real managed teams and their assistant identities', () => {
+  const versions = [{ id: 'internal-snapshot', teamId: 'managed-team', version: 4, name: 'Team', runtimeSnapshotStatus: 'published' as const, members: [member] }];
+  assert.deepEqual(sessionSelectionsFromSnapshots([{ sessionIndex: 2, teamVersionId: 'internal-snapshot', kind: 'assistant', memberId: member.slotId }], versions),
+    [{ sessionIndex: 2, teamId: 'managed-team', kind: 'assistant', assistantId: member.assistantId }]);
+  assert.deepEqual(sessionSelectionsFromSnapshots([{ sessionIndex: 2, teamVersionId: 'missing', kind: 'team' }], versions), []);
+});
 
 function draft(): TeachingBundleDraft {
   return {
@@ -23,6 +30,20 @@ function draft(): TeachingBundleDraft {
     toolIds: [], mcpServerIds: [], knowledgeBaseIds: ['kb-existing'],
   };
 }
+
+test('per-lesson targets survive readback and invalid targets are not rendered as valid drafts', () => {
+  const saved = { ...draft(), sessionAssignments: [
+    { sessionIndex: 7, teamVersionId: 'different-version', kind: 'team' as const },
+    { sessionIndex: 11, teamVersionId: 'team-v3', kind: 'assistant' as const, memberId: 'member-a' },
+  ] };
+  assert.equal(parseDraftPreview(JSON.stringify(saved)).kind, 'ready');
+  assert.deepEqual(initialSessionAssignments(undefined, [], [], 'team-v3', saved), saved.sessionAssignments);
+  assert.deepEqual(initialSessionAssignments(undefined, [], [], 'team-v3', null), []);
+  for (const assignments of [[{ sessionIndex: 1.5, teamVersionId: 'v1', kind: 'team' }],
+    [{ sessionIndex: 1, teamVersionId: 'v1', kind: 'assistant' }], [saved.sessionAssignments[0], saved.sessionAssignments[0]]]) {
+    assert.equal(parseDraftPreview(JSON.stringify({ ...saved, sessionAssignments: assignments })).kind, 'invalid');
+  }
+});
 
 test('preview keeps invalid JSON intact and rejects malformed role/model fields', () => {
   const text = '{"roleMap": [invalid';

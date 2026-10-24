@@ -1,6 +1,8 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
-import { OPTICS_16_COMPLETION_TEMPLATE_SPEC, OPTICS_16_QUALITY_TEMPLATE_SPEC, OPTICS_GUIDED_TEMPLATE_SPEC, WAVE_OPTICS_TEMPLATE_SPEC } from '@qitu/ai-client/quiz-bank';
+import { OPTICS_16_COMPLETION_TEMPLATE_SPEC, OPTICS_16_QUALITY_TEMPLATE_SPEC, OPTICS_GUIDED_TEMPLATE_SPEC, WAVE_OPTICS_TEMPLATE_SPEC, WAVE_TEACHING_TEMPLATE_SPEC } from '@qitu/ai-client/quiz-bank';
+import { InMemoryCoursewareStore } from '../knowledge/courseware.store';
+import { CoursewareService } from '../knowledge/courseware.service';
 import type { CurrentUser } from '@qitu/contracts';
 import type { AccessPolicy } from '../../common/access/access-policy';
 import type { AuditWriter } from '../../common/audit/audit.service';
@@ -46,6 +48,7 @@ import { LearningPlanService } from './learning-plan.service';
 import { InMemoryLearningPlanStore, type LearningProjectRecord } from './learning-plan.store';
 import { LearningSessionProgressService } from './learning-session-progress.service';
 import { DeterministicPlanGenerator } from './plan-generator';
+import { THUNDER_TEMPLATE_SPEC, THUNDER_TEMPLATE_INPUT, THUNDER_VERSION_INPUT } from '../templates/content/thunder-fighter';
 
 export const STUDENT = actor('student', 'fullflow-student');
 export const TEACHER = actor('teacher', 'fullflow-teacher');
@@ -62,8 +65,8 @@ class FixtureDirectory extends WorksDirectory {
 }
 
 /** Only storage, authorization directory and model catalog are synthetic. All learning decisions use production owners. */
-export async function fullflowHarness(qualityReview = false, guidedLessons = false, waveOptics = false) {
-  guidedLessons ||= waveOptics;
+export async function fullflowHarness(qualityReview = false, guidedLessons = false, waveOptics = false, zeroBase = false, thunder = false) {
+  guidedLessons ||= waveOptics || thunder;
   qualityReview ||= guidedLessons;
   const store = new InMemoryLearningPlanStore();
   const templates = new InMemoryTemplateStore();
@@ -77,13 +80,14 @@ export async function fullflowHarness(qualityReview = false, guidedLessons = fal
   const directory = new FixtureDirectory();
   const access = { canReadStudent: async (user: CurrentUser, student: string) =>
     user.role === 'student' && user.id === student || user.role === 'teacher' && await directory.isMentorOf(user.id, student) } as AccessPolicy;
-  const spec = waveOptics ? WAVE_OPTICS_TEMPLATE_SPEC : guidedLessons ? OPTICS_GUIDED_TEMPLATE_SPEC
+  const spec = thunder ? THUNDER_TEMPLATE_SPEC : zeroBase ? WAVE_TEACHING_TEMPLATE_SPEC : waveOptics ? WAVE_OPTICS_TEMPLATE_SPEC : guidedLessons ? OPTICS_GUIDED_TEMPLATE_SPEC
     : qualityReview ? OPTICS_16_QUALITY_TEMPLATE_SPEC : OPTICS_16_COMPLETION_TEMPLATE_SPEC;
   const fixture = opticsTeachingFixture(spec);
   const source = loadTutorRuntimeSource();
   const skill = source.skills.find((entry) => entry.id === 'pbl-dynamic-lesson');
   assert.ok(skill && skill.status === 'ready' && skill.version);
-  const tools = builtinToolRegistry.listForAgentIds(['tutor.propose_lesson_activity', ...(waveOptics ? ['tutor.propose_wave_activity'] : [])]);
+  const tools = builtinToolRegistry.listForAgentIds(['tutor.propose_lesson_activity', ...(waveOptics ? ['tutor.propose_wave_activity'] : []),
+    ...(zeroBase ? ['tutor.propose_courseware_activity', 'knowledge_search', 'knowledge_read'] : [])]);
   const skillsFor = (id: string) => guidedLessons ? source.skills.filter(skill =>
     spec.curriculum!.profiles[0]!.sessions.filter(session => session.leadAssistantId === id)
       .some(session => session.requiredSkillIds?.includes(skill.id))) : [skill];
@@ -115,9 +119,21 @@ export async function fullflowHarness(qualityReview = false, guidedLessons = fal
     enabled: true, createdBy: ADMIN.id, createdAt: new Date() });
   const governance = new TemplateGovernanceService(templates, new InMemoryTemplateEvidenceSource(), new InMemoryTemplateVerificationStore(), viewer, keys, audit);
   const bindings = new TemplateBindingService(templates, viewer, bindingStore, keys, audit, catalog);
-  const boot = await runOpticsTemplateBootstrap({ governance, bindings, templates, bindingStore }, {
+  const boot = thunder ? await (async () => {
+    const { template } = await governance.createTemplate(ADMIN, THUNDER_TEMPLATE_INPUT, 'thunder-template');
+    const { version } = await governance.createVersion(ADMIN, template.id, THUNDER_VERSION_INPUT, 'thunder-version');
+    await governance.pilotVersion(ADMIN, template.id, version.id, 'thunder-pilot', 'Disposable novice fullflow verification');
+    const team = await bindingStore.findTeamVersion('fullflow-team-v1'); assert.ok(team);
+    const { binding } = await bindings.createBinding(ADMIN, template.id, version.id,
+      { teamVersionId: team.id, teamSnapshots: { [team.id]: team } }, 'thunder-binding');
+    await bindings.saveTeachingBundleDraft(ADMIN, template.id, version.id, binding.id,
+      { ...fixture.draft, templateVersionId: version.id, teamVersionId: team.id }, 'thunder-bundle');
+    await bindings.validateBinding(ADMIN, template.id, version.id, binding.id, 'thunder-validate');
+    await bindings.activateBinding(ADMIN, template.id, version.id, binding.id, 'thunder-activate');
+    return { versionId: version.id };
+  })() : await runOpticsTemplateBootstrap({ governance, bindings, templates, bindingStore }, {
     teamVersionId: 'fullflow-team-v1', actor: ADMIN, pilotReason: 'Isolated full lifecycle behavior test', teachingBundle: fixture.draft,
-    waveOptics, qualityReview: !waveOptics && qualityReview, guidedLessons: !waveOptics && guidedLessons,
+    waveOptics, zeroBase, qualityReview: !waveOptics && qualityReview, guidedLessons: !waveOptics && guidedLessons,
   });
   const mastery = new MasteryDomainService(store, new MasteryReadService(store, access), access, audit, outbox);
   const artifacts = new InMemoryWorksStore();
@@ -126,8 +142,9 @@ export async function fullflowHarness(qualityReview = false, guidedLessons = fal
   const projects: WorksProjectReader = { findProject: (id: string) => store.findProject(id) };
   const teamRuntime = new TeamRuntimeService(null, audit, outbox);
   const works = new WorksService(artifacts, directory, projects, evidence, new UnconfiguredObjectStoragePresigner(), keys, audit, teamRuntime);
-  const learningEvidence = new WorksLearningEvidenceService(store, bindings, directory, mastery, works, artifacts, evidence, facts, keys, audit);
-  const plans = new LearningPlanService(store, new DeterministicPlanGenerator(), keys, audit, outbox, access, mastery, teamRuntime, bindings, learningEvidence);
+  const coursewareStore = new InMemoryCoursewareStore(), courseware = new CoursewareService(coursewareStore, audit);
+  const learningEvidence = new WorksLearningEvidenceService(store, bindings, directory, mastery, works, artifacts, evidence, facts, keys, audit, coursewareStore);
+  const plans = new LearningPlanService(store, new DeterministicPlanGenerator(), keys, audit, outbox, access, mastery, teamRuntime, bindings, learningEvidence, coursewareStore);
   const confirmedProject: LearningProjectRecord = { id: 'fullflow-project', studentId: STUDENT.id, templateVersionId: boot.versionId,
     status: 'intent_confirmed', currentStageIndex: 1, stageTotal: 10, progressPercent: 10, title: 'Optics investigation',
     subtitle: 'Compare models, observations and evidence', tags: [], createdAt: new Date(), completedAt: null };
@@ -145,16 +162,17 @@ export async function fullflowHarness(qualityReview = false, guidedLessons = fal
     }
     return context;
   };
+  const progress = new LearningSessionProgressService(store, access, bindings, mastery, learningEvidence, audit, coursewareStore);
+  const lifecycle = new ProjectLearningLifecycleService(store, progress, bindings, mastery, learningEvidence, keys, audit, outbox);
   const assessment = new TutorLessonAssessmentService({ getProjectContext: async (id: string, student: string) => {
     assert.equal(id, confirmedProject.id); assert.equal(student, STUDENT.id);
     const context = await current(); return { project: { id }, lesson: context.lesson };
-  } } as unknown as TutorService, plans, store);
-  const progress = new LearningSessionProgressService(store, access, bindings, mastery, learningEvidence, audit);
-  const lifecycle = new ProjectLearningLifecycleService(store, progress, bindings, mastery, learningEvidence, keys, audit, outbox);
+  } } as unknown as TutorService, plans, store, lifecycle);
   const teacherDirectory = { studentsOfMentor: async (id: string) => (await directory.studentsOfMentor(id)).map((userId) => ({ userId })) } as DirectoryService;
   const teacher = new TeacherService(teacherDirectory, {} as PlatformDataService, undefined,
     new InMemoryTeacherReviewRepository(audit, artifacts), store, works);
-  const experiments = new TutorExperimentService(store, bindings, evidence, keys, audit, null, mastery, registry, progress);
+  const experiments = new TutorExperimentService(store, bindings, evidence, keys, audit, null, mastery, registry, progress, lifecycle);
   return { store, templates, bindings, teaching, current, plan, planId, directory, projectId: confirmedProject.id, registry,
-    mastery, plans, assessment, progress, lifecycle, teacher, works, artifacts, facts, evidence, learningEvidence, experiments, events, auditLog };
+    mastery, plans, assessment, progress, lifecycle, teacher, works, artifacts, facts, evidence, learningEvidence, experiments, events, auditLog,
+    coursewareStore, courseware };
 }

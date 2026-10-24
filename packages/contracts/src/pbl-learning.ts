@@ -1,6 +1,8 @@
 import type { EvidenceProfile, GateConditionId, PblPhase } from './team-runtime.js';
 import { isGateConditionId } from './team-runtime.js';
 import type { KnowledgeType } from './learning-plan.js';
+import type { LessonTeachingSpec } from './courseware.js';
+import { validateLessonTeachingSpec } from './courseware.validation.js';
 
 /** Versioned contracts for the planned project-based learning workflow. */
 export const PBL_LEARNING_CONTRACT_VERSION = 'qitu.pbl-learning.v1' as const;
@@ -269,6 +271,7 @@ export function hasLearningSessionCompletion(session: Pick<PblTemplateSession, '
 }
 
 export interface PblTemplateSession {
+  teachingSpec?: LessonTeachingSpec;
   opening?: {
     version: 'lesson-opening.v1';
     scenario: string;
@@ -288,7 +291,7 @@ export interface PblTemplateSession {
   leadAssistantId?: string;
   activityRequirements?: readonly {
     activity: LessonActivity;
-    evidence: 'session_response' | 'experiment_observation' | 'submitted_artifact' | 'mastery';
+    evidence: 'session_response' | 'experiment_observation' | 'submitted_artifact' | 'mastery' | 'teaching_delivery';
   }[];
   teachingRequirements?: readonly ('dynamic_lesson' | 'project_knowledge')[];
   /** Explicit canonical skill requirements frozen with this session, never inferred from its title. */
@@ -656,7 +659,8 @@ function validateActivityRequirements(session: Record<string, unknown>, path: st
     templateKeys(item, ['activity', 'evidence'], path, issue);
     if (!templateEnum(item.activity, TEMPLATE_ACTIVITIES) || seen.has(String(item.activity))
       || !templateInteger(session.blocks[String(item.activity)], 1, 120)
-      || !templateEnum(item.evidence, ['session_response', 'experiment_observation', 'submitted_artifact', 'mastery'])
+      || !templateEnum(item.evidence, ['session_response', 'experiment_observation', 'submitted_artifact', 'mastery', 'teaching_delivery'])
+      || (item.evidence === 'teaching_delivery' && (!session.teachingSpec || !['review', 'theory'].includes(String(item.activity))))
       || (item.evidence === 'mastery' && (item.activity !== 'check' || !templateRecord(session.completionSpec)
         || !Array.isArray(session.completionSpec.requiredMasteryObjectiveIds) || !session.completionSpec.requiredMasteryObjectiveIds.length))) {
       issue(path, 'invalid or duplicate activity evidence requirement');
@@ -751,7 +755,8 @@ function validateTemplateProfile(
     const sessionPath = `${path}.sessions[${index}]`;
     if (!templateRecord(session)) { issue(sessionPath, 'session must be an object'); continue; }
     templateKeys(session, ['id', 'sessionIndex', 'title', 'phase', 'sessionType', 'objectiveIds',
-      'durationMinutes', 'blocks', 'learningGoal', 'activityGuidance', 'evidenceRequirements', 'completionSpec', 'checkpoint', 'interactiveSpec', 'teachingRequirements', 'requiredSkillIds', 'requiredToolIds', 'leadAssistantId', 'activityRequirements', 'opening', 'contentStrategy', 'collaborators'], sessionPath, issue);
+      'durationMinutes', 'blocks', 'learningGoal', 'activityGuidance', 'evidenceRequirements', 'completionSpec', 'checkpoint', 'interactiveSpec', 'teachingRequirements', 'requiredSkillIds', 'requiredToolIds', 'leadAssistantId', 'activityRequirements', 'opening', 'contentStrategy', 'collaborators', 'teachingSpec'], sessionPath, issue);
+    if (session.teachingSpec !== undefined) validateLessonTeachingSpec(session, sessionPath, issue);
     validateLessonAuthoring(session, sessionPath, issue);
     if (session.leadAssistantId !== undefined && !templateText(session.leadAssistantId)) issue(`${sessionPath}.leadAssistantId`, 'invalid lead assistant');
     if (session.activityRequirements !== undefined) validateActivityRequirements(session, sessionPath, issue);

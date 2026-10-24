@@ -6,6 +6,7 @@ import type { LearningPlanService } from '../learning-plan/learning-plan.service
 import type { LearningPlanStore } from '../learning-plan/learning-plan.store';
 import type { TutorService } from './tutor.service';
 import { TutorLessonAssessmentService } from './tutor-lesson-assessment.service';
+import type { ProjectLearningLifecycleService } from '../projects/project-learning-lifecycle.service';
 
 const actor: CurrentUser = { id: 'learner', role: 'student', displayName: 'Synthetic learner', email: 'learner@example.invalid' };
 const scope = { planId: 'plan', planRevision: 3, learningSessionId: 'lesson-3' };
@@ -14,21 +15,28 @@ const next: NextStepView = { action: 'probe', objectiveId: 'objective', knowledg
   threshold: 0.9, reason: '检查理解', theoryMastered: false, practiceUnlocked: false, question };
 const grade: SubmitAnswerResponse = { questionId: question.questionId, result: 'correct', isCorrect: true, score: 1, explanation: '角度以法线为基准。',
   errorType: null, remediation: null, mastery: null, theoryMastered: false, practiceUnlocked: false, replayed: false };
-function fixture() {
+function fixture(theoryMastered = false) {
   const calls: unknown[][] = [];
+  const syncs: unknown[][] = [];
+  let failSync = false;
   let pending: Record<string, unknown> | null = null;
   const tutor = { getProjectContext: async (projectId: string, studentId: string) => {
     assert.equal(projectId, 'project'); assert.equal(studentId, actor.id);
     return { project: { id: projectId }, lesson: { ...scope, status: 'current' } };
   } } as unknown as TutorService;
   const plans = { getNextStep: async (...args: unknown[]) => { calls.push(args); return next; },
-    submitAnswer: async (...args: unknown[]) => { calls.push(args); return grade; } } as unknown as LearningPlanService;
+    submitAnswer: async (...args: unknown[]) => { calls.push(args); return { ...grade, theoryMastered }; } } as unknown as LearningPlanService;
   const store = {
     findAwaitingQuestion: async () => pending,
     findPendingQuestion: async () => pending,
     findBundle: async () => ({ sessions: [{ id: scope.learningSessionId, theoryObjectiveIds: ['objective'], practiceObjectiveIds: [] }] }),
   } as unknown as LearningPlanStore;
-  return { service: new TutorLessonAssessmentService(tutor, plans, store), calls, pending: (value: Record<string, unknown> | null) => { pending = value; } };
+  const lifecycle = { syncAfterAnswer: async (...args: unknown[]) => {
+    syncs.push(args);
+    if (failSync) { failSync = false; throw new Error('temporary synchronization failure'); }
+  } } as unknown as ProjectLearningLifecycleService;
+  return { service: new TutorLessonAssessmentService(tutor, plans, store, lifecycle), calls, syncs,
+    failNextSync: () => { failSync = true; }, pending: (value: Record<string, unknown> | null) => { pending = value; } };
 }
 const code = (expected: string) => (error: unknown) => (error as { getResponse(): { code: string } }).getResponse().code === expected;
 
@@ -70,4 +78,18 @@ test('answers require actual same-student, same-plan, same-session formal questi
   const result = await f.service.answer(actor, 'project', { ...scope, questionId: question.questionId, answer: '法线' }, 'stable-key');
   assert.deepEqual(result.answer, grade);
   assert.deepEqual(f.calls[0], [actor, scope.planId, scope.learningSessionId, { questionId: question.questionId, answer: '法线' }, 'stable-key']);
+  assert.equal(f.syncs.length, 0);
+});
+
+test('a mastered answer synchronizes the lifecycle, and a failed sync is retried with the same grading key', async () => {
+  const f = fixture(true);
+  f.pending({ id: question.questionId, studentUserId: actor.id, planId: scope.planId, sessionId: scope.learningSessionId, assessmentType: 'qualitative' });
+  const input = { ...scope, questionId: question.questionId, answer: '法线' };
+  f.failNextSync();
+  await assert.rejects(f.service.answer(actor, 'project', input, 'retry-answer'), /temporary synchronization failure/);
+  assert.equal((await f.service.answer(actor, 'project', input, 'retry-answer')).answer.theoryMastered, true);
+  assert.equal(f.syncs.length, 2);
+  assert.deepEqual(f.syncs[0], f.syncs[1]);
+  assert.deepEqual(f.syncs[0]!.slice(0, 2), [actor, scope.planId]);
+  assert.deepEqual(f.calls[0], f.calls[1]);
 });

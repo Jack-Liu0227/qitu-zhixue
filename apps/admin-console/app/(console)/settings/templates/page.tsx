@@ -223,7 +223,13 @@ export default function AdminTemplatesPage() {
   const [saving, setSaving] = useState(false);
   const courseSaveAttempt = useRef<{ signature: string; key: string; version: string } | null>(null);
 
-  const displayedTemplates = templates;
+  const [filterArchived, setFilterArchived] = useState<'active' | 'all'>('active');
+  const displayedTemplates = useMemo(() => {
+    if (filterArchived === 'active') {
+      return templates.filter((t) => t.status !== 'archived');
+    }
+    return templates;
+  }, [templates, filterArchived]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1247,140 +1253,194 @@ export default function AdminTemplatesPage() {
           </p>
         </div>
       ) : (
-        <div className="admin-templates-cards-grid">
-          {displayedTemplates.map((template) => {
-            const is16Sessions =
-              template.slug.includes('16s') || template.title.includes('16');
-            return (
-              <div key={template.id} className="admin-template-item-card">
-                <div className="admin-template-item-head">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <VisualAsset assetId={template.iconAssetId ?? 'subject-interdisciplinary-v1'} size={40} />
-                    <strong className="admin-template-item-title">{template.title}</strong>
-                  </div>
-                  <span
-                    className="admin-template-status-pill"
-                    style={{
-                      backgroundColor:
-                        template.status === 'published'
-                          ? '#e6f8ea'
-                          : template.status === 'archived'
-                            ? '#f2f3f5'
-                            : '#e8f3ff',
-                      color:
-                        template.status === 'published'
-                          ? '#00b42a'
-                          : template.status === 'archived'
-                            ? '#86909c'
-                            : '#165dff',
-                    }}
-                  >
-                    {STATUS_LABELS[template.status] ?? template.status}
-                  </span>
-                </div>
+        <>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', alignItems: 'center' }}>
+            <button
+              type="button"
+              className={`settings-action-btn ${filterArchived === 'active' ? 'is-primary' : ''}`}
+              onClick={() => setFilterArchived('active')}
+            >
+              有效项目模板 ({templates.filter((t) => t.status !== 'archived').length})
+            </button>
+            <button
+              type="button"
+              className={`settings-action-btn ${filterArchived === 'all' ? 'is-primary' : ''}`}
+              onClick={() => setFilterArchived('all')}
+            >
+              全部模板（含已归档） ({templates.length})
+            </button>
+          </div>
 
-                {is16Sessions ? (
+          <div className="admin-templates-cards-grid">
+            {displayedTemplates.map((template) => {
+              const is16Sessions =
+                template.slug.includes('16s') || template.title.includes('16');
+              const is8Sessions =
+                template.slug.includes('8s') || template.title.includes('8') || template.slug.includes('wave');
+
+              const tagLabel = is16Sessions
+                ? '📅 16 课时项目教学编排'
+                : is8Sessions
+                ? '📅 8 课时项目教学编排'
+                : '📚 课时计划教学编排';
+
+              const scheduleLabel = is16Sessions
+                ? '16 课时（60 分钟/课时）'
+                : is8Sessions
+                ? '8 课时（45 分钟/课时）'
+                : '按课时自主规划（标准课时轨道）';
+
+              const policyLabel = is16Sessions
+                ? '🛡️ standard-stem-pbl:v1'
+                : is8Sessions
+                ? '🛡️ wave-optics-pbl:v1'
+                : '🛡️ standard-curriculum-pbl:v1';
+
+              const gateLabel = is16Sessions || is8Sessions
+                ? '理论核验通过后开放实践'
+                : '逐课循序推进与作品审批';
+
+              const buttonLabel = is16Sessions
+                ? '查看 16 课时教学编排 →'
+                : is8Sessions
+                ? '查看 8 课时教学编排 →'
+                : '配置项目与团队绑定 →';
+
+              return (
+                <div
+                  key={template.id}
+                  className="admin-template-item-card"
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    height: '100%',
+                    opacity: template.status === 'archived' ? 0.75 : 1,
+                  }}
+                >
+                  <div className="admin-template-item-head">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <VisualAsset assetId={template.iconAssetId ?? 'subject-interdisciplinary-v1'} size={40} />
+                      <strong className="admin-template-item-title">{template.title}</strong>
+                    </div>
+                    <span
+                      className="admin-template-status-pill"
+                      style={{
+                        backgroundColor:
+                          template.status === 'published'
+                            ? '#e6f8ea'
+                            : template.status === 'archived'
+                              ? '#f2f3f5'
+                              : '#e8f3ff',
+                        color:
+                          template.status === 'published'
+                            ? '#00b42a'
+                            : template.status === 'archived'
+                              ? '#86909c'
+                              : '#165dff',
+                      }}
+                    >
+                      {STATUS_LABELS[template.status] ?? template.status}
+                    </span>
+                  </div>
+
                   <div
                     className="admin-template-16session-tag"
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '6px',
-                      backgroundColor: '#eff6ff',
-                      color: '#1d4ed8',
-                      border: '1px solid #bfdbfe',
+                      backgroundColor: is16Sessions ? '#eff6ff' : is8Sessions ? '#f0fdf4' : '#f8fafc',
+                      color: is16Sessions ? '#1d4ed8' : is8Sessions ? '#15803d' : '#475569',
+                      border: `1px solid ${is16Sessions ? '#bfdbfe' : is8Sessions ? '#bbf7d0' : '#e2e8f0'}`,
                       borderRadius: '6px',
                       padding: '4px 8px',
                       fontSize: '12px',
                       fontWeight: 600,
                       marginTop: '6px',
                       marginBottom: '8px',
+                      width: 'fit-content',
                     }}
                   >
-                    <span>📅 16 课时项目教学编排</span>
+                    <span>{tagLabel}</span>
                   </div>
-                ) : null}
 
-                <p className="admin-template-item-desc">{template.summary || '暂无描述'}</p>
-                <div style={{ display: 'flex', gap: 8, margin: '10px 0', flexWrap: 'wrap' }}>
-                  <VisualSelector owner={{ kind: 'template', id: template.id }} usage="icon" label="选择主题图标" onSaved={() => void load()} />
-                  <VisualSelector owner={{ kind: 'template', id: template.id }} usage="cover" label="选择主题封面" onSaved={() => void load()} />
-                  {template.latestPublishedVersionId && <VisualSelector owner={{ kind: 'template-version', id: template.latestPublishedVersionId }} usage="icon" label="版本图标" onSaved={() => void load()} />}
-                </div>
-
-                <div className="admin-template-info-list">
-                  <div className="admin-template-info-row">
-                    <span className="admin-template-info-label">适用领域:</span>
-                    <span className="admin-template-info-val">{template.domain || '未设置'}</span>
+                  <p className="admin-template-item-desc">{template.summary || '暂无描述'}</p>
+                  <div style={{ display: 'flex', gap: 8, margin: '10px 0', flexWrap: 'wrap' }}>
+                    <VisualSelector owner={{ kind: 'template', id: template.id }} usage="icon" label="选择主题图标" onSaved={() => void load()} />
+                    <VisualSelector owner={{ kind: 'template', id: template.id }} usage="cover" label="选择主题封面" onSaved={() => void load()} />
+                    {template.latestPublishedVersionId && <VisualSelector owner={{ kind: 'template-version', id: template.latestPublishedVersionId }} usage="icon" label="版本图标" onSaved={() => void load()} />}
                   </div>
-                  <div className="admin-template-info-row">
-                    <span className="admin-template-info-label">课时规划:</span>
-                    <span
-                      className="admin-template-info-val"
-                      style={{
-                        fontWeight: is16Sessions ? 600 : 'normal',
-                        color: is16Sessions ? '#165dff' : undefined,
-                      }}
+
+                  <div className="admin-template-info-list" style={{ marginTop: 'auto' }}>
+                    <div className="admin-template-info-row">
+                      <span className="admin-template-info-label">适用领域:</span>
+                      <span className="admin-template-info-val">{template.domain || '自然科学 / 物理'}</span>
+                    </div>
+                    <div className="admin-template-info-row">
+                      <span className="admin-template-info-label">课时规划:</span>
+                      <span
+                        className="admin-template-info-val"
+                        style={{
+                          fontWeight: 600,
+                          color: '#165dff',
+                        }}
+                      >
+                        {scheduleLabel}
+                      </span>
+                    </div>
+                    <div className="admin-template-info-row">
+                      <span className="admin-template-info-label">治理策略:</span>
+                      <span
+                        className="admin-template-info-val"
+                        style={{ color: '#0f766e', fontWeight: 600 }}
+                        title={`解耦治理：${policyLabel}`}
+                      >
+                        {policyLabel}
+                      </span>
+                    </div>
+                    <div className="admin-template-info-row">
+                      <span className="admin-template-info-label">核心门禁:</span>
+                      <span
+                        className="admin-template-info-val"
+                        style={{ color: '#dc2626', fontWeight: 600 }}
+                      >
+                        {gateLabel}
+                      </span>
+                    </div>
+                    <div className="admin-template-info-row">
+                      <span className="admin-template-info-label">发布版本:</span>
+                      <span className="admin-template-info-val">
+                        {template.latestPublishedVersionId ? '已有发布版本' : '尚无发布版本'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div
+                    className="admin-template-card-footer"
+                    style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: 'auto', paddingTop: '14px' }}
+                  >
+                    <button
+                      type="button"
+                      className="settings-action-btn is-primary"
+                      style={{ flex: 1 }}
+                      onClick={() => openEditor(template)}
                     >
-                      {is16Sessions ? '16 课时（60 分钟/课时）' : '课时轨道尚未配置'}
-                    </span>
-                  </div>
-                  {is16Sessions ? (
-                    <>
-                      <div className="admin-template-info-row">
-                        <span className="admin-template-info-label">治理策略:</span>
-                        <span
-                          className="admin-template-info-val"
-                          style={{ color: '#0f766e', fontWeight: 600 }}
-                          title="解耦治理：STEM 物理项目式探究标准治理策略 (standard-stem-pbl:v1)"
-                        >
-                          🛡️ standard-stem-pbl:v1
-                        </span>
-                      </div>
-                      <div className="admin-template-info-row">
-                        <span className="admin-template-info-label">核心门禁:</span>
-                        <span
-                          className="admin-template-info-val"
-                          style={{ color: '#dc2626', fontWeight: 600 }}
-                        >
-                          理论核验通过后开放实践
-                        </span>
-                      </div>
-                    </>
-                  ) : null}
-                  <div className="admin-template-info-row">
-                    <span className="admin-template-info-label">发布版本:</span>
-                    <span className="admin-template-info-val">
-                      {template.latestPublishedVersionId ? '已有发布版本' : '尚无发布版本'}
-                    </span>
+                      {buttonLabel}
+                    </button>
+                    <button
+                      type="button"
+                      className="settings-action-btn is-danger"
+                      onClick={() => handleDeleteTemplate(template.id, template.title)}
+                      title="删除项目模板"
+                    >
+                      🗑️ 删除
+                    </button>
                   </div>
                 </div>
-
-                <div
-                  className="admin-template-card-footer"
-                  style={{ display: 'flex', gap: '8px', alignItems: 'center' }}
-                >
-                  <button
-                    type="button"
-                    className="settings-action-btn is-primary"
-                    style={{ flex: 1 }}
-                    onClick={() => openEditor(template)}
-                  >
-                    {is16Sessions ? '查看 16 课时教学编排 →' : '配置项目与团队绑定 →'}
-                  </button>
-                  <button
-                    type="button"
-                    className="settings-action-btn is-danger"
-                    onClick={() => handleDeleteTemplate(template.id, template.title)}
-                    title="删除项目模板"
-                  >
-                    🗑️ 删除
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        </>
       )}
     </div>
   );

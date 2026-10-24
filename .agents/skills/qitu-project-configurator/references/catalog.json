@@ -1,6 +1,6 @@
 {
-  "contractVersion": "1.3.0",
-  "operationsDigest": "f22d1ec4f546b5194ee65e25c29f72b67d14177a0f15c8b7ecea9ed94ad39db3",
+  "contractVersion": "1.4.0",
+  "operationsDigest": "9f97744b2246409fcdd93063b33bc38d1490ecd1991a1210b4bb6116c3d97303",
   "resources": [
     {
       "resource": "references/protocol.md",
@@ -19,12 +19,11 @@
     },
     {
       "resource": "references/teams-workflows.md",
-      "description": "成员、工作流和不可变团队版本",
+      "description": "成员、工作流和教学安排",
       "operations": [
         "team.create",
         "team.update",
         "workflow.update",
-        "team.version",
         "team.test",
         "team.delete",
         "team.run",
@@ -38,7 +37,7 @@
         "template.create",
         "template.update",
         "template.version",
-        "binding.create",
+        "binding.prepare",
         "binding.draft",
         "binding.validate",
         "binding.activate",

@@ -1,15 +1,17 @@
-import { BadRequestException, Injectable, ServiceUnavailableException } from '@nestjs/common';
-import { parseProjectTemplateSpec, type TeachingBundleDraft } from '@qitu/contracts';
+import { BadRequestException, Injectable, Optional, ServiceUnavailableException } from '@nestjs/common';
+import { parseProjectTemplateSpec, type TeachingBundleDraft, type TeachingSessionAssignment } from '@qitu/contracts';
 import { loadTutorRuntimeSource } from '../../common/tutor-runtime/runtime-source';
 import { readPublishedAssistant, publishedRuntimeSource } from '../platform-registry/team-version.snapshot';
-import { teamVersionView } from '../platform-registry/team-version.service';
+import { teamVersionView } from '../platform-registry/teaching-team-capture.service';
 import { PlatformRegistryService } from '../platform-registry/platform-registry.service';
 import { ModelRegistryService } from '../model-registry/model-registry.service';
 import { KnowledgeCenterService } from '../knowledge/knowledge-center.service';
 import { KnowledgeToolCatalogService } from '../knowledge/knowledge-tool-catalog.service';
 import { builtinToolRegistry } from '../platform-registry/built-in-tools';
 import { compileTeachingBundle } from './teaching-bundle.compiler';
-import { teachingValueDigest } from './teaching-bundle.canonical';
+import { canonicalTeachingJson, teachingValueDigest } from './teaching-bundle.canonical';
+import { TemplateBindingStore } from './templates-binding.store';
+import { parseSessionAssignments } from './teaching-session-assignments';
 import {
   TeachingBundleCompilationError,
   type TeachingAssistantSource,
@@ -28,10 +30,12 @@ export class TeachingBundleCatalog {
     private readonly models: ModelRegistryService,
     private readonly knowledge: KnowledgeCenterService,
     private readonly tools: KnowledgeToolCatalogService,
+    @Optional() private readonly bindings?: TemplateBindingStore,
   ) {}
 
-  async compile(version: ProjectTemplateVersionRecord, team: TeamVersionRecord, draft: TeachingBundleDraft) {
+  async compile(version: ProjectTemplateVersionRecord, team: TeamVersionRecord, draft: TeachingBundleDraft, teamSnapshots?: Readonly<Record<string, TeamVersionRecord>>) {
     try {
+      if (draft.sessionAssignments) return await this.compileSessions(version, team, draft, teamSnapshots);
       return compileTeachingBundle(await this.resolve(version, team, draft));
     } catch (error) {
       if (error instanceof TeachingBundleCompilationError) {
@@ -42,13 +46,63 @@ export class TeachingBundleCatalog {
     }
   }
 
-  prepareDraft(version: ProjectTemplateVersionRecord, team: TeamVersionRecord, profileId?: string, phaseAssignments?: Readonly<Record<string, string>>) {
+  prepareDraft(version: ProjectTemplateVersionRecord, team: TeamVersionRecord, profileId?: string, phaseAssignments?: Readonly<Record<string, string>>,
+    sessionAssignments?: readonly TeachingSessionAssignment[]) {
     teamVersionView(team);
     const runtime = loadTutorRuntimeSource();
     if (runtime.policy.status !== 'ready' || runtime.skillsSource?.status !== 'ready') {
       throw new ServiceUnavailableException({ code: 'BUNDLE_CATALOG_UNAVAILABLE', message: '教学策略或技能目录不可用' });
     }
-    return draftFromPublishedTeam(version.id, parseProjectTemplateSpec(version.content.pbl), team, runtime.policy.version, profileId, phaseAssignments);
+    const assignments = sessionAssignments ? parseSessionAssignments(sessionAssignments) : undefined;
+    return draftFromPublishedTeam(version.id, parseProjectTemplateSpec(version.content.pbl), team, runtime.policy.version, profileId, phaseAssignments, assignments);
+  }
+
+  private async compileSessions(version: ProjectTemplateVersionRecord, primary: TeamVersionRecord, draft: TeachingBundleDraft, teamSnapshots?: Readonly<Record<string, TeamVersionRecord>>) {
+    if (draft.teamVersionId !== primary.id || draft.templateVersionId !== version.id) throw new TeachingBundleCompilationError('BUNDLE_DRAFT_SCOPE_MISMATCH', 'draft');
+    const assignments = parseSessionAssignments(draft.sessionAssignments);
+    const template = parseProjectTemplateSpec(version.content.pbl);
+    const profile = template.curriculum?.profiles.find(entry => entry.id === draft.scheduleProfileId);
+    if (!profile || assignments.length !== profile.sessions.length || assignments.some(entry => !profile.sessions.some(session => session.sessionIndex === entry.sessionIndex))) {
+      throw new TeachingBundleCompilationError('SESSION_ROUTE_INCOMPLETE', 'sessionAssignments');
+    }
+    const teamIds = [primary.id, ...[...new Set(assignments.map(entry => entry.teamVersionId))].filter(id => id !== primary.id).sort()];
+    const bundles = [];
+    for (const teamId of teamIds) {
+      const team = teamId === primary.id ? primary : teamSnapshots?.[teamId];
+      if (!team?.enabled || !team.pblSpec.teamVersionPublication) throw new TeachingBundleCompilationError('TEAM_VERSION_UNAVAILABLE', 'sessionAssignments.teamVersionId');
+      teamVersionView(team);
+      const generated = this.prepareDraft(version, team, draft.scheduleProfileId, undefined, assignments);
+      // Primary-team capability edits remain explicit; other teams use their published pins.
+      const scoped = teamId === primary.id ? draft : {
+        ...generated, knowledgeBaseIds: draft.knowledgeBaseIds, mcpServerIds: draft.mcpServerIds,
+      };
+      if (teamId !== primary.id) for (const role of scoped.roleMap) {
+        const raw = team.members.find(raw => raw && typeof raw === 'object' && 'slotId' in raw && raw.slotId === role.memberId) as Record<string, unknown> | undefined;
+        if (!raw || typeof raw.assistantId !== 'string') throw new TeachingBundleCompilationError('ROLE_MEMBER_UNRESOLVED', role.memberId);
+        const snapshot = readPublishedAssistant(raw.runtimeSnapshot, raw.assistantId);
+        const granted = snapshot.mcpPermissions.filter(permission => draft.mcpServerIds.includes(permission.serverId));
+        scoped.toolIds = [...scoped.toolIds, ...granted.flatMap(permission => permission.toolIds)
+          .filter(toolId => !scoped.toolIds.some(tool => tool.roleSlotId === role.roleSlotId && tool.toolId === toolId))
+          .map(toolId => ({ roleSlotId: role.roleSlotId, toolId }))];
+      }
+      const source = await this.resolve(version, team, scoped);
+      source.sessionScope = assignments.filter(entry => entry.teamVersionId === teamId).map(entry => entry.sessionIndex);
+      // Routes are server-derived from the explicit target, never from stale client role labels.
+      if (canonicalTeachingJson(scoped.sessionRoutes) !== canonicalTeachingJson(generated.sessionRoutes)
+        || generated.roleMap.some(role => !scoped.roleMap.some(candidate => candidate.roleSlotId === role.roleSlotId && candidate.memberId === role.memberId))) {
+        throw new TeachingBundleCompilationError('SESSION_ASSIGNMENT_ROUTE_MISMATCH', 'sessionRoutes');
+      }
+      bundles.push(compileTeachingBundle(source).payload);
+    }
+    const grants = bundles.flatMap(bundle => bundle.knowledgeGrant ? [bundle.knowledgeGrant] : []);
+    const payload = { ...bundles[0]!, sessionAssignments: [...assignments].sort((a, b) => a.sessionIndex - b.sessionIndex), sessionTeamBundles: bundles.slice(1),
+      knowledgeGrant: grants.length ? { serverId: 'ima-knowledge' as const,
+        knowledgeBaseIds: [...new Set(grants.flatMap(grant => grant.knowledgeBaseIds))].sort(),
+        allowedTools: [...new Set(grants.flatMap(grant => grant.allowedTools))].sort() } : null };
+    const canonicalPayload = canonicalTeachingJson(payload);
+    const freeze = (value: object): void => { for (const child of Object.values(value)) if (child && typeof child === 'object') freeze(child); Object.freeze(value); };
+    freeze(payload);
+    return Object.freeze({ payload, canonicalPayload, digest: teachingValueDigest(payload) });
   }
 
   private async resolve(

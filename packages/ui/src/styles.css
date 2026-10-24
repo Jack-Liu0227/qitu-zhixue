@@ -1,4 +1,6 @@
 @import './visual-assets.css';
+@import './interface-controls.css';
+@import './resizable-panels.css';
 
 :root {
   color-scheme: light;

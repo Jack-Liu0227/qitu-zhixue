@@ -1,7 +1,7 @@
 ---
 name: qitu-page-clone
 description: Reuse an authorized lesson block layout while replacing its task-specific content and evidence references.
-version: 1.0.0
+version: 1.0.1
 runtime: admin
 status: published
 references: references/qitu-contract.md

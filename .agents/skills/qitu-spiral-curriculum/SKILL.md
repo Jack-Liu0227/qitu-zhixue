@@ -1,7 +1,7 @@
 ---
 name: qitu-spiral-curriculum
 description: Plan explicit concept revisits across a versioned Qitu session profile without changing mastery semantics.
-version: 1.0.0
+version: 1.0.1
 runtime: admin
 status: published
 references: references/qitu-contract.md

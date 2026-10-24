@@ -8,13 +8,13 @@ import { exact, text } from './copilot.protocol';
 export async function executeBinding(owner: TemplateBindingService | undefined, actor: CurrentUser,
   kind: AdminCopilotActionKind, input: Record<string, unknown>, key: string) {
   if (!owner) throw new ServiceUnavailableException({ code: 'COPILOT_BINDING_UNAVAILABLE', message: '模板绑定服务不可用。' });
-  const extra = kind === 'binding.create' ? ['teamVersionId'] : kind === 'binding.draft' ? ['bindingId', 'draft'] :
+  const extra = kind === 'binding.prepare' ? ['arrangement'] : kind === 'binding.draft' ? ['bindingId', 'draft'] :
     kind === 'binding.retire' ? ['bindingId', 'reason'] : ['bindingId'];
   exact(input, ['templateId', 'versionId', ...extra]);
   const templateId = text(input.templateId, 'templateId');
   const versionId = text(input.versionId, 'versionId');
-  if (kind === 'binding.create') {
-    const result = await owner.createBinding(actor, templateId, versionId, { teamVersionId: text(input.teamVersionId, 'teamVersionId') }, key);
+  if (kind === 'binding.prepare') {
+    const result = await owner.prepareCurrentTeams(actor, templateId, versionId, input.arrangement, key);
     return { ...result.binding, templateId, versionId };
   }
   const bindingId = text(input.bindingId, 'bindingId');

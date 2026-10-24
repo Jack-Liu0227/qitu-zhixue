@@ -1,4 +1,5 @@
 'use client';
+import { ResizablePanels } from '@qitu/ui';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
@@ -121,11 +122,11 @@ export default function HomePage() {
 
             {!data.currentProject ? (
               <section className="empty-project">
-                <h2>还没有正式学习项目</h2>
-                <p>孩子确认学习意图后，项目进度会显示在这里。</p>
+                <h2>{data.hasAnyProject ? '当前项目已告一段落' : '还没有正式学习项目'}</h2>
+                <p>{data.hasAnyProject ? '可以到学习进展中回看孩子保存的成果与成长记录。' : '孩子确认学习意图后，项目进度会显示在这里。'}</p>
               </section>
             ) : (
-              <div className="home-grid">
+              <ResizablePanels storageKey="parent-home-project" initialSizes={[62, 38]} minWidths={[360, 280]} className="home-grid" labels={['当前项目', '关注提醒']}>
                 <SectionCard title="当前学习项目">
                   <div className="project-panel">
                     <div className="project-visual-wrapper">
@@ -136,7 +137,7 @@ export default function HomePage() {
                     </div>
                     <div className="project-details">
                       <div className="project-title-row">
-                        <h2>{data.currentProject?.title}</h2>
+                        <h2>{normalizeProjectTitle(data.currentProject?.title)}</h2>
                         {data.currentProject && (
                           <Badge tone="primary">{data.currentProject.stageLabel}</Badge>
                         )}
@@ -236,11 +237,11 @@ export default function HomePage() {
                     </div>
                   </div>
                 </SectionCard>
-              </div>
+              </ResizablePanels>
             )}
 
             {data.hasAnyProject ? (
-              <div className="home-grid lower">
+              <ResizablePanels storageKey="parent-home-growth" initialSizes={[56, 44]} minWidths={[320, 280]} className="home-grid lower">
                 <SectionCard title="本周成长摘要">
                   <div className="summary-columns">
                     {[
@@ -272,7 +273,7 @@ export default function HomePage() {
                   {data.recentArtifacts.length ? (
                     <div className="artifact-grid">
                       {data.recentArtifacts.map((a) => (
-                        <Link href="/progress" className="artifact-tile" key={a.artifactRef}>
+                        <Link href={{ pathname: '/progress', query: { childId, artifactRef: a.artifactRef } }} className="artifact-tile" key={a.artifactRef}>
                       <div className="artifact-icon-wrap"><VisualAsset assetId="growth-artifact-v1" size={40} /></div>
                           <span className="artifact-title">{a.title}</span>
                           <small className="artifact-date">{formatShortDate(a.createdAt)}</small>
@@ -283,7 +284,7 @@ export default function HomePage() {
                     <p className="empty-inline">孩子发布第一件作品后，这里会显示成果。</p>
                   )}
                 </SectionCard>
-              </div>
+              </ResizablePanels>
             ) : null}
           </>
         ) : null}

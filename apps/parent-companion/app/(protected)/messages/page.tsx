@@ -1,6 +1,9 @@
 'use client';
+import { ResizablePanels } from '@qitu/ui';
 
 import { RobotMascot } from '@qitu/ui';
+import { ParentFeedbackDetail } from '../../../features/feedback/ParentFeedbackDetail';
+import { createIdempotencyKey } from '@qitu/api-client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Badge, Button, SectionCard } from '@qitu/ui';
@@ -31,6 +34,7 @@ export default function MessagesPage() {
   const [data, setData] = useState<ParentMessagesPageData | null>(null);
   const [state, setState] = useState('loading');
   const [selected, setSelected] = useState('');
+  const [selectedTicket, setSelectedTicket] = useState<string | null>(null);
 
   const [acting, setActing] = useState(false);
   const pendingAction = useRef<{ key: string; resource: string; action: 'read' | 'mute' } | null>(null);
@@ -93,7 +97,7 @@ export default function MessagesPage() {
     setActing(true);
     const resource = `${actionChildId}:${selected}`;
     if (pendingAction.current?.resource !== resource || pendingAction.current.action !== action) {
-      pendingAction.current = { key: crypto.randomUUID(), resource, action };
+      pendingAction.current = { key: createIdempotencyKey(), resource, action };
     }
     const actionKey = pendingAction.current.key;
     try {
@@ -154,7 +158,7 @@ export default function MessagesPage() {
                 </div>
               ))}
             </div>
-            <div className="messages-grid">
+            <ResizablePanels storageKey="parent-messages" initialSizes={[55, 45]} minWidths={[300, 280]} className="messages-grid">
               <section className="message-list">
                 {data.messages.map((m) => {
                   const icon =
@@ -256,7 +260,7 @@ export default function MessagesPage() {
                   <p>请选择一条消息查看详情。</p>
                 )}
               </SectionCard>
-            </div>
+            </ResizablePanels>
             <SectionCard title="最近服务工单">
               <div className="ticket-table">
                 <div className="ticket-head">
@@ -270,7 +274,7 @@ export default function MessagesPage() {
                 {data.tickets.length ? (
                   data.tickets.map((t) => (
                     <div key={t.id}>
-                      <strong>{t.id}</strong>
+                      <button type="button" onClick={() => setSelectedTicket(t.id)} aria-label={`查看反馈：${t.problem}`}>{t.id}</button>
                       <span>{t.problem}</span>
                       <span>{t.projectTitle ?? '—'}</span>
                       <span>{t.owner}</span>
@@ -285,6 +289,8 @@ export default function MessagesPage() {
                 )}
               </div>
             </SectionCard>
+            {selectedTicket && data.tickets.some(ticket => ticket.id === selectedTicket) && <ParentFeedbackDetail
+              key={`${childId}:${selectedTicket}`} ticketId={selectedTicket} childId={childId} />}
           </>
         ) : null}
       </DataState>

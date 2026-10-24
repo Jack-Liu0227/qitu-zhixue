@@ -1,7 +1,7 @@
 'use client';
 
 import { LogoutButton, useCurrentUser } from '@qitu/auth';
-import { Avatar, BrandMark, NavigationArtwork } from '@qitu/ui';
+import { Avatar, BrandMark, NavigationArtwork, SidebarResizeHandle } from '@qitu/ui';
 import { PreferencesMenu } from '@qitu/ui/preferences';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -89,6 +89,7 @@ export function TeacherShell({ children }: { children: ReactNode }) {
         />
       ) : null}
       <aside className={`qtx-sidebar ${isMobileOpen ? 'is-mobile-open' : 'is-mobile-closed'}`}>
+        <SidebarResizeHandle />
         <div>
           <Link href="/dashboard" className="qtx-brand" onClick={() => setIsMobileOpen(false)}>
             <span className="qtx-brand-logo">

@@ -176,31 +176,13 @@ test('drizzle schema declares the same three tables, columns and index names as 
   const root = repoRoot();
   const schema = readSchema(root);
 
-  // admin_team_versions
-  assert.match(schema, new RegExp(`pgTable\\(\\s*'${TEAM_VERSIONS}'`));
-  assert.match(schema, /id: text\('id'\)\.primaryKey\(\)/);
-  assert.match(schema, /teamId: text\('team_id'\)\s*\.notNull\(\)\s*\.references\(\(\) => adminTeams\.id, \{ onDelete: 'restrict' \}\)/);
-  assert.match(schema, /version: integer\('version'\)\.notNull\(\)/);
-  assert.match(schema, /name: text\('name'\)\.notNull\(\)/);
-  assert.match(schema, /description: text\('description'\)\.notNull\(\)\.default\(''\)/);
-  assert.match(schema, /workspaceMode: text\('workspace_mode'\)\.notNull\(\)\.default\('shared'\)/);
-  assert.match(schema, /sessionMode: text\('session_mode'\)\.notNull\(\)\.default\('supervised'\)/);
-  assert.match(schema, /leaderAssistantId: text\('leader_assistant_id'\)\s*\.notNull\(\)\s*\.references\(\(\) => adminAssistants\.id, \{ onDelete: 'restrict' \}\)/);
-  assert.match(schema, /members: jsonb\('members'\)/);
-  assert.match(schema, /pblSpec: jsonb\('pbl_spec'\)/);
-  assert.match(schema, /enabled: boolean\('enabled'\)\.notNull\(\)\.default\(true\)/);
-  assert.match(schema, /createdBy: text\('created_by'\)/);
-  assert.match(schema, /createdAt: timestamp\('created_at', \{ withTimezone: true \}\)\.notNull\(\)\.defaultNow\(\)/);
-  assert.match(
-    schema,
-    new RegExp(`uniqueIndex\\('${TEAM_VERSION_UNIQUE_IDX}'\\)\\s*\\.on\\(\\s*table\\.teamId,\\s*table\\.version,?\\s*\\)`),
-  );
+  assert.doesNotMatch(schema, /export const adminTeamVersions/);
+  assert.match(schema, /teamSnapshots: jsonb\('team_snapshots'\)/);
 
   // pbl_template_team_bindings
   assert.match(schema, new RegExp(`pgTable\\(\\s*'${BINDINGS}'`));
   assert.match(schema, /id: text\('id'\)\.primaryKey\(\)/);
   assert.match(schema, /templateVersionId: text\('template_version_id'\)\s*\.notNull\(\)\s*\.references\(\(\) => projectTemplateVersions\.id, \{ onDelete: 'restrict' \}\)/);
-  assert.match(schema, /teamVersionId: text\('team_version_id'\)\s*\.notNull\(\)\s*\.references\(\(\) => adminTeamVersions\.id, \{ onDelete: 'restrict' \}\)/);
   assert.match(schema, /status: text\('status'\)\.notNull\(\)\.default\('draft'\)/);
   assert.match(schema, /bindingHash: text\('binding_hash'\)\.notNull\(\)/);
   assert.match(schema, /validation: jsonb\('validation'\)/);
@@ -229,7 +211,6 @@ test('drizzle schema declares the same three tables, columns and index names as 
   assert.match(schema, /projectId: text\('project_id'\)\s*\.primaryKey\(\)\s*\.references\(\(\) => projects\.id, \{ onDelete: 'restrict' \}\)/);
   assert.match(schema, /templateVersionId: text\('template_version_id'\)\s*\.notNull\(\)\s*\.references\(\(\) => projectTemplateVersions\.id, \{ onDelete: 'restrict' \}\)/);
   assert.match(schema, /bindingId: text\('binding_id'\)\s*\.notNull\(\)\s*\.references\(\(\) => pblTemplateTeamBindings\.id, \{ onDelete: 'restrict' \}\)/);
-  assert.match(schema, /teamVersionId: text\('team_version_id'\)\s*\.notNull\(\)\s*\.references\(\(\) => adminTeamVersions\.id, \{ onDelete: 'restrict' \}\)/);
   assert.match(schema, /bindingHash: text\('binding_hash'\)\.notNull\(\)/);
   assert.match(schema, /boundAt: timestamp\('bound_at', \{ withTimezone: true \}\)\.notNull\(\)/);
   assert.match(schema, /backfilled: boolean\('backfilled'\)\.notNull\(\)\.default\(false\)/);

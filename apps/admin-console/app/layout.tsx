@@ -3,6 +3,7 @@ import '@qitu/ui/styles.css';
 import '@qitu/ui/preferences.css';
 import './globals.css';
 import '@qitu/ui/brand.css';
+import './detail-polish.css';
 
 export const metadata: Metadata = {
   title: '启途智学 · 平台管理后台',

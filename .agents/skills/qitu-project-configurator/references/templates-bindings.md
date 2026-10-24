@@ -1,13 +1,18 @@
-# 模板库与教学绑定
+# 模板与教学绑定
 
-先读取 currentTemplate、currentVersion、versions、teamVersions。模板元数据、模板版本、团队版本、绑定各自有 ID；student project ID 不参与管理模板的身份匹配。
+新建或更换教学安排使用 binding.prepare，提交 arrangement:{teamId,scheduleProfileId,sessions,teams,sourceBinding?}。完整字段见 project-recipe.md。服务端自动捕获当前团队并保存在该绑定中；不查找、发布或选择独立团队版本。客户端不能构造快照。
+
+已有绑定的 draft 中 teamVersionId 是 v1 冻结合同的内部标识，只能沿用该绑定回读值，不能在全局选择或用于旧创建接口。保存新安排时使用真实 teamId/assistantId。绑定仍使用 draft → validated → active → retired，保留当前权限、知识范围、并发修订和幂等回执。
+
+
+先读取 currentTemplate、currentVersion、versions、teams、assistants。模板元数据、模板版本、当前团队、教学绑定各自有 ID；student project ID 不参与管理模板的身份匹配。
 
 | action | input / 返回字段 |
 | --- | --- |
 | template.create | `{schoolId:null,slug,title,summary,...}`，仅 global。可选 domain、ageRange、difficulty、estimatedDurationMinutes、requiredMaterials、learningObjectives、outcomeForm、safetyNotes |
 | template.update | `{id,patch}`，patch 不含 slug/schoolId，已发布元数据不能直接编辑 |
 | template.version | `{templateId,sourceVersionId?,stages?,content?,contentPatch?,rubric?}`，返回新版本 id |
-| binding.create | `{templateId,versionId,teamVersionId}`，返回草稿 binding id |
+| binding.prepare | `{templateId,versionId,teamVersionId}`，返回草稿 binding id |
 | binding.draft | `{templateId,versionId,bindingId,draft}`，保存 canonical 教学配置 |
 | binding.validate | `{templateId,versionId,bindingId}`，返回 validation/errors |
 | binding.activate | 同上，验证并通过既有模板审核门禁后才可 active |
@@ -22,16 +27,16 @@
 }}
 ```
 
-content 和 contentPatch 互斥。若修改 contentPatch.pbl，应提交完整的 pbl，保留原目标、阶段、curriculum profiles/themes/sessions、课时与完成门禁。stages 是展示阶段，不是课时列表。新增排期或调整 12/16 课时必须产生新模板版本；不得改写旧 optics-physical-inquiry:v1。linkedTeamId 只关联配置草稿，不是已发布团队版本或 active binding。
+content 和 contentPatch 互斥。若修改 contentPatch.pbl，应提交完整的 pbl，保留原目标、阶段、curriculum profiles/themes/sessions、课时与完成门禁。stages 是展示阶段，不是课时列表。新增排期或调整 12/16 课时必须产生新模板版本；不得改写旧 optics-physical-inquiry:v1。linkedTeamId 只关联配置草稿，不是已启用教学安排。
 
 TeachingBundleDraft 字段：
 
 ```json
 {
-  "templateVersionId":"<新版本 ID>","teamVersionId":"<team.version 回执 ID>",
+  "templateVersionId":"<新版本 ID>","teamVersionId":"<该绑定回读的内部配置标识>",
   "scheduleProfileId":"<该 pbl.curriculum.profiles 中的 ID>",
   "approvalPolicyVersion":"<runtimePolicy.version>",
-  "roleMap":[{"roleSlotId":"<模板课程中的角色槽 ID>","memberId":"<团队版本成员 slotId>","purposes":["outline","session","dialogue"]}],
+  "roleMap":[{"roleSlotId":"<模板课程中的角色槽 ID>","memberId":"<绑定成员 slotId>","purposes":["outline","session","dialogue"]}],
   "skillPins":[{"roleSlotId":"<角色槽>","canonicalId":"<已发布教学 Skill ID>","version":"<该 Skill 版本>","packageDigest":"<该 Skill 真实 SHA-256>"}],
   "toolIds":[{"roleSlotId":"<角色槽>","toolId":"<实际授权工具 ID>"}],
   "mcpServerIds":["ima-knowledge"],"knowledgeBaseIds":["<实际授权的上游 IMA KB ID>"],
@@ -42,7 +47,7 @@ TeachingBundleDraft 字段：
 
 示例中的路由只是一个条目形状，实际必须覆盖所选 schedule 的全部课时，不能将阶段序号当课时序号。modelByPurpose 按角色槽及用途嵌套；已发布团队的模型/技能 pins 必须与其真实快照一致，不能用当前助手新配置冒充旧版本。approvalPolicyVersion、成员 slotId、课程角色槽或 hash 缺失时先读取来源，必要时分轮完成，不编造。
 
-roleMap.memberId 是团队版本的 slotId，roleSlotId 是模板课程角色槽；assignedAssistantId 是助手 ID。这三个字段不可混用。知识授权只引用当前 grant 支持的 IMA ID，新增库不会自动扩展历史项目。空数组表示不授予能力，不能当通配符。
+roleMap.memberId 是该绑定冻结成员的 slotId，roleSlotId 是模板课程角色槽；assignedAssistantId 是助手 ID。这三个字段不可混用。知识授权只引用当前 grant 支持的 IMA ID，新增库不会自动扩展历史项目。空数组表示不授予能力，不能当通配符。
 
 | owner HTTP API | 说明 |
 | --- | --- |

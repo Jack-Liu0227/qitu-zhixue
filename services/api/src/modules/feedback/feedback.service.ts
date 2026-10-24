@@ -5,6 +5,7 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import type {
   ConfirmParentFeedbackRequest,
@@ -19,8 +20,11 @@ import type {
 import { DirectoryService } from '../directory/directory.service';
 import { PlatformDataService } from '../platform-data/platform-data.service';
 import { FeedbackAttachmentRegistry } from './feedback.attachments';
+import { FEEDBACK_ATTACHMENT_MAX_COUNT } from '@qitu/contracts';
 import { FeedbackStore, type FeedbackTicketRecord } from './feedback.store';
-import { DATA_MODE_TOKEN, type DataMode } from '../../database';
+import { DATA_MODE_TOKEN, DATABASE_TOKEN, type DataMode } from '../../database';
+import { growthRecords, projects, type Database } from '@qitu/database';
+import { eq } from 'drizzle-orm';
 import { IdempotencyStore } from '../../common/idempotency/idempotency.service';
 import { hashIdempotentInput } from '../../common/idempotency/idempotency.hash';
 import { throwHttpForIdempotencyError } from '../../common/idempotency/idempotency.errors';
@@ -76,6 +80,7 @@ export class FeedbackService {
     private readonly store: FeedbackStore,
     private readonly idempotency: IdempotencyStore,
     @Inject(DATA_MODE_TOKEN) private readonly mode: DataMode,
+    @Optional() @Inject(DATABASE_TOKEN) private readonly db: Database | null = null,
   ) {}
 
   /* ==================== 家长读接口 ==================== */
@@ -114,13 +119,13 @@ export class FeedbackService {
 
     const source = assertSource(input.source);
     const content = assertContent(input.content, '反馈内容');
-    const resolved = this.resolveTarget(source, input);
+    const resolved = await this.resolveTarget(source, input);
     if (resolved.childId !== null) {
       await this.assertParentOfChild(parentId, resolved.childId);
     }
     const attachmentRefs = await this.validatedAttachments(parentId, input.attachmentRefs);
 
-    const scope = 'parent.feedback.submit';
+    const scope = `parent.feedback.submit:${parentId}`;
     const requestHash = hashIdempotentInput(scope, {}, {
       source,
       childId: resolved.childId,
@@ -468,15 +473,15 @@ export class FeedbackService {
 
   /* ==================== 内部：校验 ==================== */
 
-  private resolveTarget(
+  private async resolveTarget(
     source: ParentFeedbackSource,
     input: SubmitParentFeedbackRequest,
-  ): {
+  ): Promise<{
     childId: string | null;
     messageId: string | null;
     projectId: string | null;
     projectTitle: string | null;
-  } {
+  }> {
     const declared =
       typeof input.childId === 'string' && input.childId.trim().length > 0
         ? input.childId.trim()
@@ -489,7 +494,21 @@ export class FeedbackService {
           message: 'source 为 message 时 messageId 必填',
         });
       }
-      const message = this.platformData.getMessage(input.messageId);
+      if (this.db && input.messageId.startsWith('growth:')) {
+        const [record] = await this.db.select({ id: growthRecords.id, studentUserId: growthRecords.studentUserId,
+          projectId: growthRecords.projectId }).from(growthRecords).where(eq(growthRecords.id, input.messageId.slice(7))).limit(1);
+        if (!record || declared !== null && record.studentUserId !== declared) throw new BadRequestException({ code: 'FEEDBACK_INVALID', message: '关联消息不可用' });
+        const [project] = record.projectId ? await this.db.select({ title: projects.title }).from(projects).where(eq(projects.id, record.projectId)).limit(1) : [];
+        return { childId: record.studentUserId, messageId: input.messageId, projectId: record.projectId, projectTitle: project?.title ?? null };
+      }
+      if (this.db && input.messageId.startsWith('feedback:')) {
+        const [, ticketId, entryId] = input.messageId.split(':');
+        const ticket = ticketId ? await this.store.findTicket(ticketId) : null;
+        if (!ticket?.childId || !ticket.entries.some(entry => entry.id === entryId)
+          || declared !== null && declared !== ticket.childId) throw new BadRequestException({ code: 'FEEDBACK_INVALID', message: '关联消息不可用' });
+        return { childId: ticket.childId, messageId: input.messageId, projectId: ticket.projectId, projectTitle: ticket.projectTitle };
+      }
+      const message = this.mode !== 'live' ? this.platformData.getMessage(input.messageId) : null;
       if (message === null) {
         throw new BadRequestException({ code: 'FEEDBACK_INVALID', message: '关联消息不存在' });
       }
@@ -514,7 +533,13 @@ export class FeedbackService {
           message: 'source 为 project 时 projectId 必填',
         });
       }
-      const project = this.platformData.getProject(input.projectId);
+      if (this.db) {
+        const [project] = await this.db.select({ id: projects.id, studentUserId: projects.studentUserId, title: projects.title })
+          .from(projects).where(eq(projects.id, input.projectId)).limit(1);
+        if (!project || declared !== null && declared !== project.studentUserId) throw new BadRequestException({ code: 'FEEDBACK_INVALID', message: '关联项目不可用' });
+        return { childId: project.studentUserId, messageId: null, projectId: project.id, projectTitle: project.title };
+      }
+      const project = this.mode !== 'live' ? this.platformData.getProject(input.projectId) : null;
       if (project === null) {
         throw new BadRequestException({ code: 'FEEDBACK_INVALID', message: '关联项目不存在' });
       }
@@ -541,7 +566,8 @@ export class FeedbackService {
     raw: readonly string[] | null | undefined,
   ): Promise<string[]> {
     if (raw === null || raw === undefined) return [];
-    if (!Array.isArray(raw)) {
+    if (!Array.isArray(raw) || raw.length > FEEDBACK_ATTACHMENT_MAX_COUNT || raw.some(id => typeof id !== 'string' || !id.trim())
+      || new Set(raw.map(id => id.trim())).size !== raw.length) {
       throw new BadRequestException({
         code: 'FEEDBACK_ATTACHMENT_INVALID',
         message: 'attachmentRefs 必须为数组',
@@ -599,16 +625,17 @@ export class FeedbackService {
             this.directory.mentorOfStudent(ticket.childId),
           ]);
 
-    const entries: ParentFeedbackEntry[] = ticket.entries.map((e) => ({
+    const entries: ParentFeedbackEntry[] = await Promise.all(ticket.entries.map(async (e) => ({
       id: e.id,
       kind: e.kind,
       authorRole: e.authorRole,
       authorDisplayName: e.authorDisplayName,
       content: e.content,
       attachmentRefs: [...e.attachmentRefs],
+      ...(e.attachmentRefs.length ? { attachments: await this.attachments.describe(e.attachmentRefs) } : {}),
       resolved: e.resolved,
       createdAt: e.createdAt.toISOString(),
-    }));
+    })));
 
     return {
       id: ticket.id,

@@ -5,7 +5,7 @@ import type {
 } from '@qitu/contracts' with { 'resolution-mode': 'import' };
 import type { Database } from './client';
 import {
-  adminTeamVersions, agentConfigs, agentProjectionCandidates, agentTeamEvents, agentTeamRuns,
+  agentConfigs, agentProjectionCandidates, agentTeamEvents, agentTeamRuns,
   artifacts, artifactVersions, learningObjectives, learningPlans, learningSessions, masteryEvents,
   masteryRecords, mentorAssignments, mentorReviews, outbox, pblTemplateTeamBindings,
   projectBindingSnapshots, projectEvidence, projects,
@@ -33,7 +33,7 @@ export async function readGrowthDomainObservation(db: Reader, source: Source): P
   const [snapshot] = await db.select().from(projectBindingSnapshots).where(eq(projectBindingSnapshots.projectId, project.id)).limit(1);
   if (!snapshot || snapshot.backfilled || snapshot.templateVersionId !== project.templateVersionId) fail('PROJECTION_FROZEN_BINDING_REQUIRED');
   const [binding] = await db.select().from(pblTemplateTeamBindings).where(eq(pblTemplateTeamBindings.id, snapshot.bindingId)).limit(1);
-  const [team] = await db.select().from(adminTeamVersions).where(eq(adminTeamVersions.id, snapshot.teamVersionId)).limit(1);
+  const team = binding?.teamSnapshots?.[snapshot.teamVersionId];
   if (!binding || !team || !team.enabled || binding.templateVersionId !== snapshot.templateVersionId
     || binding.teamVersionId !== snapshot.teamVersionId || binding.bindingHash !== snapshot.bindingHash
     || (binding.bundleDigest ?? null) !== (snapshot.bundleDigest ?? null)) fail('PROJECTION_FROZEN_BINDING_REQUIRED');

@@ -1,4 +1,4 @@
-import { SectionCard, StatTriple } from '@qitu/ui';
+import { SectionCard } from '@qitu/ui';
 import type { StudentGrowthSummary } from '../types';
 
 /**
@@ -22,7 +22,10 @@ export function GrowthSummaryCard({
 
   return (
     <SectionCard title={brandNew ? '从今天开始记录' : '我的成长小计'}>
-      <StatTriple items={items} />
+      <dl className="qitu-growth-stats">{items.map((item, index) => <div key={item.label}>
+        <span className="qitu-growth-stat-symbol" aria-hidden="true">{['◷', '⚑', '◎', '▤'][index]}</span>
+        <dt>{item.label}</dt><dd>{item.value}</dd>
+      </div>)}</dl>
       <p className="qitu-growth-summary-note">
         {brandNew
           ? '完成第一个小目标后，这里就会亮起来。'

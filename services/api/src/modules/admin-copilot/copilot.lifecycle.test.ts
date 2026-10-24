@@ -13,7 +13,7 @@ import { CopilotLifecycle } from './copilot.lifecycle';
 import { CopilotResources } from './copilot.resources';
 import { KnowledgeLibraryService } from '../knowledge/knowledge-library.service';
 import { PlatformRegistryService } from '../platform-registry/platform-registry.service';
-import { adminAssistants, adminTeamMembers, adminTeams, adminTeamVersions, agentConfigs, agentSkillBindings, agentToolBindings, agentMcpBindings, runtimeMcpServers } from '@qitu/database';
+import { adminAssistants, adminTeamMembers, adminTeams, pblTemplateTeamBindings, agentConfigs, agentSkillBindings, agentToolBindings, agentMcpBindings, runtimeMcpServers } from '@qitu/database';
 
 const admin = actor('admin', 'lifecycle-admin');
 function fixture() {
@@ -150,10 +150,10 @@ test('assistant deletion never reassigns leaders or removes a team; stale revisi
   await assert.rejects(service.deleteAssistant(admin, 'coach', f.now.toISOString()), /仍被团队/);
   assert.equal(f.removed.length, 0);
   f.tables.set(adminTeams, []); f.tables.set(adminTeamMembers, []);
-  f.tables.set(adminTeamVersions, [{ id: 'frozen' }]);
+  f.tables.set(pblTemplateTeamBindings, [{ id: 'frozen' }]);
   await assert.rejects(service.deleteAssistant(admin, 'coach', f.now.toISOString()));
   assert.equal(f.removed.length, 0);
-  f.tables.set(adminTeamVersions, []);
+  f.tables.set(pblTemplateTeamBindings, []);
   f.purposeInUse(true);
   await assert.rejects(service.deleteAssistant(admin, 'coach', f.now.toISOString()), /用途关联/);
   assert.equal(f.removed.length, 0);
@@ -165,9 +165,9 @@ test('assistant deletion never reassigns leaders or removes a team; stale revisi
 test('team and MCP deletion reject frozen or current bindings and remove only unused registrations', async () => {
   const f = deletionDatabase();
   const service = new PlatformRegistryService(f.db as never, 'live', { write: async () => 'audit' } as never, {} as never);
-  f.tables.set(adminTeamVersions, [{ id: 'version' }]);
+  f.tables.set(pblTemplateTeamBindings, [{ id: 'version' }]);
   await assert.rejects(service.deleteTeam(admin, 'team', f.now.toISOString()));
-  f.tables.set(adminTeamVersions, []);
+  f.tables.set(pblTemplateTeamBindings, []);
   await service.deleteTeam(admin, 'team', f.now.toISOString());
   const resources = new CopilotResources(f.db as never, { write: async () => 'audit' } as never);
   f.tables.set(agentMcpBindings, [{ agentId: 'agent' }]);

@@ -1,6 +1,6 @@
-.dock { margin: 20px 0; border: 1px solid #dce5f6; border-radius: 16px; background: #f7faff; color: #1c3357; }
-.dock > summary { cursor: pointer; padding: 18px 20px; font-weight: 650; }
-.dock > summary small { display: block; margin: 6px 0 0 16px; color: #64748b; font-weight: 400; }
-.content { display: grid; gap: 16px; padding: 0 20px 20px; }
+.dock { margin: 0; border: 1px solid var(--qitu-border, #dce5f6); border-radius: 12px; background: var(--qitu-surface, #fff); color: var(--qitu-heading, #1c3357); }
+.dock > summary { cursor: pointer; padding: 14px; font-size: 14px; font-weight: 650; line-height: 1.6; }
+.dock > summary small { display: block; margin: 4px 0 0; color: var(--qitu-muted, #64748b); font-size: 12px; font-weight: 400; }
+.content { display: grid; gap: 14px; padding: 0 14px 14px; border-top: 1px solid var(--qitu-border, #dce5f6); }
 .content textarea, .content select, .content input:not([type='checkbox']):not([type='radio']) { box-sizing: border-box; max-width: 100%; }
 @media (max-width: 640px) { .content { padding: 0 12px 12px; } .dock > summary { padding: 16px 12px; } }

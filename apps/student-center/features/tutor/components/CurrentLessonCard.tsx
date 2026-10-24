@@ -5,6 +5,8 @@ import type { LearningSessionProgressView, TutorProjectContext } from '@qitu/con
 import { useTutorDataSource } from '../TutorDataSourceProvider';
 import { LessonWorkPanel } from './LessonWorkPanel';
 import { lessonBlockerLabel } from './lessonBlockers';
+import { LessonHistory } from './LessonHistory';
+import { createIdempotencyKey } from '../idempotency';
 
 interface CurrentLessonCardProps {
   projectId: string;
@@ -39,6 +41,7 @@ function LessonProgressPanel({ projectId, planId, refreshKey, onProgressChanged,
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [error, setError] = useState<string | null>(null);
   const [syncPending, setSyncPending] = useState<{ planRevision: number; key: string } | null>(null);
+  const [historySessionId, setHistorySessionId] = useState<string | null>(null);
   const generation = useRef(0);
   const alive = useRef(true);
   useEffect(() => {
@@ -63,6 +66,22 @@ function LessonProgressPanel({ projectId, planId, refreshKey, onProgressChanged,
   }, [planId, projectId, source]);
   useEffect(() => { void reload(); }, [reload, refreshKey]);
 
+  const refreshWithContext = async () => {
+    setStatus('loading');
+    setError(null);
+    try {
+      if (progress?.contractReady && source.reconcileLearning) {
+        await source.reconcileLearning(projectId, { planId, planRevision: progress.planRevision }, createIdempotencyKey());
+      }
+      await onProgressChanged();
+      if (alive.current) await reload();
+    } catch (cause) {
+      if (!alive.current) return;
+      setError(cause instanceof Error ? cause.message : '课时与评价刷新失败，请重试。');
+      setStatus('error');
+    }
+  };
+
   const synchronize = async (planRevision: number, key: string) => {
     const pending = { planRevision, key };
     setSyncPending(pending);
@@ -81,10 +100,11 @@ function LessonProgressPanel({ projectId, planId, refreshKey, onProgressChanged,
   const current = progress?.sessions.find((item) => item.sessionId === progress.currentSessionId) ?? null;
   return (
     <div className="qitu-tutor-phase-details">
-      {mode === 'work' ? <button type="button" disabled={disabled || status === 'loading'} onClick={() => { void reload(); }}>刷新课时与评价</button> : null}
+      {mode === 'work' ? <button type="button" disabled={disabled || status === 'loading'} onClick={() => { void refreshWithContext(); }}>刷新课时与评价</button> : null}
       {status === 'loading' ? <p role="status" aria-busy="true">正在读取课时进度…</p> : null}
       {error ? <div role="alert"><p>{error}</p><button type="button" disabled={disabled} onClick={() => {
-        if (syncPending) void synchronize(syncPending.planRevision, syncPending.key); else void reload();
+        if (syncPending) void synchronize(syncPending.planRevision, syncPending.key);
+        else if (mode === 'work') void refreshWithContext(); else void reload();
       }}>{syncPending ? '重试同步进度' : '重新读取课表'}</button></div> : null}
       {progress ? <>
         {mode === 'schedule' ? <><p>已完成 {progress.completedCount} / {progress.totalCount} 课时</p>
@@ -102,6 +122,13 @@ function LessonProgressPanel({ projectId, planId, refreshKey, onProgressChanged,
           {progress.sessions.map((item) => <li key={item.sessionId} aria-current={item.status === 'current' ? 'step' : undefined}>
             <strong>第 {item.lessonIndex} 课 · {item.title}</strong>
             <span> · {item.status === 'completed' ? '已完成' : item.status === 'current' ? '当前课时' : '待解锁'}</span>
+            {item.status !== 'locked' ? <button type="button" aria-expanded={historySessionId === item.sessionId}
+              onClick={() => setHistorySessionId(value => value === item.sessionId ? null : item.sessionId)}>
+              {historySessionId === item.sessionId ? '收起本课记录' : '查看本课记录'}
+            </button> : null}
+            {historySessionId === item.sessionId && item.status !== 'locked' ? <LessonHistory
+              key={`${projectId}:${planId}:${progress.planRevision}:${item.sessionId}`}
+              scope={{ projectId, planId, planRevision: progress.planRevision, learningSessionId: item.sessionId }} lesson={item} /> : null}
             {item.status === 'current' && item.blockers.length ? <ul>{item.blockers.map((reason) => <li key={reason}>{lessonBlockerLabel(reason)}</li>)}</ul> : null}
           </li>)}
         </ol> : null}
@@ -121,7 +148,8 @@ function LessonProgressPanel({ projectId, planId, refreshKey, onProgressChanged,
               { projectId, planRevision: progress.planRevision, evidenceRefs }, key);
             if (!alive.current) return;
             setProgress(result.progress);
-            await synchronize(progress.planRevision, `${key}:reconcile`);
+            await onProgressChanged();
+            await reload();
           }}
         /> : !current && progress.contractReady ? <p role="status">课时安排已完成，项目成果状态仍以服务端审核结果为准。</p> : null}
       </> : status === 'ready' ? <p>暂无课时安排。</p> : null}

@@ -1,7 +1,7 @@
 ---
 name: qitu-pptx-import
 description: Turn owner-parsed PowerPoint material into a governed Qitu session draft with explicit provenance.
-version: 1.0.0
+version: 1.0.1
 runtime: admin
 status: published
 references: references/qitu-contract.md

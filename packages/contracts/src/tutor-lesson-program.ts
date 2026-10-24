@@ -3,6 +3,7 @@ import type { LessonActivityProgress } from './learning-session-progress.js';
 
 /** Server projection of one actual frozen lesson. It grants no execution authority. */
 export interface TutorLessonProgram {
+  teachingSpec?: import('./courseware.js').LessonTeachingSpec;
   currentActivity?: LessonActivityProgress | null;
   templateVersionId: string;
   planId: string;

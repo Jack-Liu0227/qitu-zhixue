@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, realpath, writeFile, rename, unlink, stat } from 'node:fs/promises';
 import { join, relative, isAbsolute } from 'node:path';
 import { eq, sql } from 'drizzle-orm';
-import { runtimeMcpServers, adminTeamVersions, adminAssistants, agentMcpBindings, type Database } from '@qitu/database';
+import { runtimeMcpServers, pblTemplateTeamBindings, adminAssistants, agentMcpBindings, type Database } from '@qitu/database';
 import { archiveTeachingSkill } from './copilot.skill-archive';
 import { ADMIN_COPILOT_CONTRACT_VERSION, ADMIN_COPILOT_OPERATIONS, type CurrentUser } from '@qitu/contracts';
 import { DATABASE_TOKEN } from '../../database';
@@ -55,7 +55,7 @@ export class CopilotResources {
       if (current.enabled || current.secretRef) throw new ConflictException('已启用或带驱动凭据的 MCP 须由其 owner 管理');
       const assistants = await tx.select({ id: adminAssistants.id }).from(adminAssistants).where(sql`${adminAssistants.mcpServerIds} @> ${JSON.stringify([id])}::jsonb`).limit(1);
       const agents = await tx.select({ id: agentMcpBindings.agentId }).from(agentMcpBindings).where(eq(agentMcpBindings.mcpServerId, id)).limit(1);
-      const versions = await tx.select({ id: adminTeamVersions.id }).from(adminTeamVersions).where(sql`${adminTeamVersions.members} @> ${JSON.stringify([{ runtimeSnapshot: { mcpPermissions: [{ serverId: id }] } }])}::jsonb`).limit(1);
+      const versions = await tx.select({ id: pblTemplateTeamBindings.id }).from(pblTemplateTeamBindings).where(sql`EXISTS (SELECT 1 FROM jsonb_each(${pblTemplateTeamBindings.teamSnapshots}) AS frozen WHERE frozen.value->'members' @> ${JSON.stringify([{ runtimeSnapshot: { mcpPermissions: [{ serverId: id }] } }])}::jsonb)`).limit(1);
       if (assistants.length || agents.length || versions.length) throw new ConflictException({ code: 'MCP_IN_USE', message: 'MCP 仍被助手、Agent 或冻结团队引用，请先解除关联' });
       await tx.delete(runtimeMcpServers).where(eq(runtimeMcpServers.id, id));
       await this.audit.write({ actorId: actor.id, actorRole: actor.role, action: 'admin.copilot.mcp.delete',
@@ -126,10 +126,11 @@ export class CopilotResources {
     }
   }
 
-  async readTeamVersion(id: string) {
-    if (!this.db) throw new ServiceUnavailableException({ code: 'COPILOT_SCOPE_UNAVAILABLE', message: '团队版本存储不可用，无法确认模板关联范围。' });
-    const [team] = await this.db.select().from(adminTeamVersions).where(eq(adminTeamVersions.id, id));
-    if (!team) throw new ServiceUnavailableException({ code: 'COPILOT_SCOPE_UNAVAILABLE', message: '绑定的团队版本不存在，不能改用草稿关联。' });
+  async readBindingTeam(bindingId: string, id: string) {
+    if (!this.db) throw new ServiceUnavailableException({ code: 'COPILOT_SCOPE_UNAVAILABLE', message: 'Teaching configuration storage unavailable' });
+    const [binding] = await this.db.select().from(pblTemplateTeamBindings).where(eq(pblTemplateTeamBindings.id, bindingId));
+    const team = binding?.teamSnapshots[id];
+    if (!team) throw new ServiceUnavailableException({ code: 'COPILOT_SCOPE_UNAVAILABLE', message: 'Binding configuration unavailable' });
     return team;
   }
 

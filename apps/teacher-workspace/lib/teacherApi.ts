@@ -12,6 +12,9 @@ import type {
   TeacherArtifactVersionView,
   TeacherReviewDecisionRequest,
   TeacherReviewDecisionResponse,
+  TeacherFeedbackListPageData,
+  TeacherFeedbackDetail,
+  ReplyTeacherFeedbackRequest,
 } from '@qitu/contracts';
 import type { TeamActivityItem, TeamRunNode } from '@qitu/ui';
 
@@ -78,6 +81,10 @@ function readErrorStatus(error: unknown): number | undefined {
 }
 
 export const teacherApi = {
+  feedback: () => get<{ data: TeacherFeedbackListPageData }>('/api/v1/teacher/feedback'),
+  feedbackDetail: (ticketId: string) => get<{ data: TeacherFeedbackDetail }>(`/api/v1/teacher/feedback/${encodeURIComponent(ticketId)}`),
+  replyFeedback: (ticketId: string, body: ReplyTeacherFeedbackRequest, key: string) =>
+    post<{ data: TeacherFeedbackDetail }>(`/api/v1/teacher/feedback/${encodeURIComponent(ticketId)}/replies`, body, key),
   lessonQuality: (studentId: string,cursor?:string) => get<{ data: { items: LessonQualityQueueItem[]; hasMore: boolean; nextCursor:string|null; unavailablePlans: number } }>(
     `/api/v1/teacher/students/${encodeURIComponent(studentId)}/lesson-quality${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`),
   reviewLessonQuality: (planId: string, sessionId: string, body: LessonQualityDecision, key: string) =>

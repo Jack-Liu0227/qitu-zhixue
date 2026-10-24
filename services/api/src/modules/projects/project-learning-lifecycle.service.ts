@@ -28,6 +28,30 @@ export class ProjectLearningLifecycleService {
     private readonly outbox: OutboxWriter,
   ) {}
 
+  /** Called after a durable answer, including retries; grading remains owned by learning-plan. */
+  async syncAfterAnswer(actor: CurrentUser, planId: string, key: string): Promise<void> {
+    const plan = await this.store.findPlan(planId);
+    if (!plan || plan.studentUserId !== actor.id || actor.role !== 'student') throw new ForbiddenException('无权同步该学习计划');
+    if (!plan.projectId || plan.status !== 'active' || !plan.confirmedAt) return;
+    const project = await this.store.findProject(plan.projectId);
+    if (!project || project.studentId !== actor.id || !project.templateVersionId) this.reject('LEARNING_PLAN_VERSION_MISMATCH');
+    const teaching = await this.bindings.getFrozenTeachingBundle(project.id, project.templateVersionId);
+    const profile = teaching.template.curriculum?.profiles.find(item => item.id === teaching.scheduleProfileId);
+    // Legacy plans retain their existing lifecycle; never invent a completion contract for them.
+    if (!profile?.sessions.length || profile.sessions.some(session => !session.completionSpec)) return;
+    await this.reconcile(actor, project.id, { planId, planRevision: plan.version },
+      hashIdempotentInput('answer.learning.sync', { planId }, { key }));
+  }
+
+  /** Completion is durable first. Retrying the same request also retries a failed stage synchronization. */
+  async completeLesson(actor: CurrentUser, planId: string, sessionId: string, body: unknown, key: string | undefined) {
+    const completed = await this.progress.complete(actor, planId, sessionId, body, key);
+    await this.reconcile(actor, completed.progress.projectId,
+      { planId, planRevision: completed.progress.planRevision },
+      hashIdempotentInput('lesson.completion.sync', { planId, sessionId }, { key }));
+    return completed;
+  }
+
   async reconcile(actor: CurrentUser, projectId: string, input: ReconcileLearningInput, key: string): Promise<ReconcileLearningResult> {
     if (actor.role !== 'student') throw new ForbiddenException('仅学生本人可提交学习进度请求');
     if (typeof input.planId !== 'string' || !input.planId || !Number.isSafeInteger(input.planRevision) || input.planRevision < 1) {
@@ -53,7 +77,7 @@ export class ProjectLearningLifecycleService {
         let target: ProjectStage = 'intent_confirmed';
         if (frozen.phase === 'concept_mastery') target = frozen.checkpoint?.requiredGate === 'TheoryMastered' ? 'theory_check' : 'theory_learning';
         if (frozen.phase === 'guided_practice') {
-          target = frozen.checkpoint?.requiredGate === 'experiment_report_validated' && proofs.submissions.some(proof => proof.kind === 'submitted_artifact')
+          target = ['experiment_report_validated', 'code_playable_run_verified', 'practice_artifact_approved'].includes(frozen.checkpoint?.requiredGate ?? '') && proofs.submissions.some(proof => proof.kind === 'submitted_artifact')
             ? 'artifact_review' : 'practice_building';
         }
         if (frozen.phase === 'deliverable_review') {
@@ -64,10 +88,12 @@ export class ProjectLearningLifecycleService {
           if (progress.completedCount !== profile.sessions.length || !proofs.approvedArtifacts.length || !proofs.reflections.length) this.reject('PROJECT_ARCHIVE_EVIDENCE_REQUIRED');
           target = 'completed';
         }
-        if (PROJECT_STAGE_ORDER.indexOf(target) >= PROJECT_STAGE_ORDER.indexOf('practice_ready')) {
+        if (frozen.phase === 'concept_mastery' || PROJECT_STAGE_ORDER.indexOf(target) >= PROJECT_STAGE_ORDER.indexOf('practice_ready')) {
           const theoryIds = [...new Set(profile.sessions.filter(item => item.phase === 'concept_mastery').flatMap(item => item.objectiveIds))]
             .map(id => `${input.planId}:${id}`);
-          if (!theoryIds.length || !await this.mastery.checkRequiredObjectives(actor, actor.id, input.planId, theoryIds, store)) this.reject('THEORY_MASTERED_REQUIRED');
+          const theoryReady = theoryIds.length > 0 && await this.mastery.checkRequiredObjectives(actor, actor.id, input.planId, theoryIds, store);
+          if (frozen.phase === 'concept_mastery' && theoryReady) target = 'practice_ready';
+          if (PROJECT_STAGE_ORDER.indexOf(target) >= PROJECT_STAGE_ORDER.indexOf('practice_ready') && !theoryReady) this.reject('THEORY_MASTERED_REQUIRED');
         }
         const fromIndex = PROJECT_STAGE_ORDER.indexOf(project.status), targetIndex = PROJECT_STAGE_ORDER.indexOf(target);
         for (let index = fromIndex + 1; index <= targetIndex; index++) {

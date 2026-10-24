@@ -11,6 +11,7 @@ interface TeamDetailViewProps {
   onBack: () => void;
   onUpdateTeam: (updates: AdminTeamUpdateInput) => Promise<void>;
   onOpenMemberEdit: (member: AdminTeamMember) => void;
+  onAddMember: () => void;
   onRemoveMember: (slotId: string, memberName: string) => Promise<void>;
   onSetLeader: (assistantId: string) => Promise<void>;
 }
@@ -21,6 +22,7 @@ export function TeamDetailView({
   onBack,
   onUpdateTeam,
   onOpenMemberEdit,
+  onAddMember,
   onRemoveMember,
   onSetLeader,
 }: TeamDetailViewProps) {
@@ -72,6 +74,7 @@ export function TeamDetailView({
             team={team}
             allAssistants={allAssistants}
             onOpenMemberEdit={onOpenMemberEdit}
+            onAddMember={onAddMember}
             onRemoveMember={onRemoveMember}
             onSetLeader={onSetLeader}
           />
@@ -100,12 +103,14 @@ function MembersPanel({
   team,
   allAssistants,
   onOpenMemberEdit,
+  onAddMember,
   onRemoveMember,
   onSetLeader,
 }: {
   team: AdminTeamConfig;
   allAssistants: AdminAssistantConfig[];
   onOpenMemberEdit: (member: AdminTeamMember) => void;
+  onAddMember: () => void;
   onRemoveMember: (slotId: string, memberName: string) => Promise<void>;
   onSetLeader: (assistantId: string) => Promise<void>;
 }) {
@@ -113,7 +118,7 @@ function MembersPanel({
     <div className="members-panel">
       <div className="members-panel-header">
         <h3>团队成员 ({team.members.length})</h3>
-        <button type="button" className="add-member-btn">
+        <button type="button" className="add-member-btn" onClick={onAddMember}>
           + 添加成员
         </button>
       </div>
@@ -140,7 +145,7 @@ function MembersPanel({
                   {isLeader && <span className="leader-badge">👑 队长</span>}
                 </div>
                 <div className="member-card-role">{displayRole}</div>
-                <div className="member-card-status">在线 · 最近活动 刚刚</div>
+                <div className="member-card-status">{assistant?.enabled ? '助手已启用' : '助手未启用'}</div>
               </div>
               <div className="member-card-actions" onClick={(e) => e.stopPropagation()}>
                 {!isLeader && (

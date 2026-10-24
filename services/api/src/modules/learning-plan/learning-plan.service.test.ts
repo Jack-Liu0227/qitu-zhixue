@@ -231,6 +231,25 @@ describe('LearningPlanService（4/8 周计划 + 掌握度门禁）', () => {
     harness = makeHarness();
   });
 
+  it('a novice can recover after an incorrect answer without cumulative sequence penalties', async () => {
+    const user = student('student-recovery');
+    const generated = await harness.service.generatePlan(user, { interest: '园艺', lessonCount: 4 });
+    const { plan } = await harness.service.confirmPlan(user, generated.plan.id, 'recovery-confirm');
+    const session = plan.sessions[0]!;
+    const first = await harness.service.getNextStep(user, plan.id, session.id);
+    assert.ok(first.question && first.objectiveId);
+    await harness.service.submitAnswer(user, plan.id, session.id, { questionId: first.question.questionId, answer: 'incorrect-fixture-answer' }, 'recovery-wrong');
+    let mastered = false;
+    for (let i = 0; i < 12 && !mastered; i++) {
+      mastered = (await submitCorrectAnswer(harness, user, plan, session.id, `recovery-correct-${i}`)).theoryMastered;
+    }
+    assert.equal(mastered, true, 'later independent evidence must permit recovery');
+    const attempts = await harness.store.listAttempts(user.id, first.objectiveId);
+    assert.ok(attempts.length >= 4);
+    assert.ok(attempts.every(a => a.attemptCount === 1));
+    assert.equal(harness.audit.count('learning_plan.theory_mastered'), 1);
+  });
+
   it('生成计划只产生 draft，绝不创建项目', async () => {
     const { service, store, audit } = harness;
     const user = student('student-1');

@@ -189,7 +189,12 @@ export function compileTeachingBundle(source: TeachingBundleSource): CompiledTea
   const profile = template.curriculum?.profiles.find((entry) => entry.id === source.scheduleProfileId);
   if (profile === undefined) reject('SCHEDULE_PROFILE_UNRESOLVED', 'scheduleProfileId');
   requireId(source.teamVersion.teamVersionId, 'teamVersion.teamVersionId');
-  if (source.teamVersion.teamId !== template.teamId) reject('TEMPLATE_TEAM_MISMATCH', 'teamVersion.teamId');
+  if (!source.sessionScope && source.teamVersion.teamId !== template.teamId) reject('TEMPLATE_TEAM_MISMATCH', 'teamVersion.teamId');
+  const scopedSessions = source.sessionScope ? profile.sessions.filter(session => source.sessionScope!.includes(session.sessionIndex)) : profile.sessions;
+  if (source.sessionScope && (new Set(source.sessionScope).size !== source.sessionScope.length
+    || source.sessionScope.some(index => !Number.isSafeInteger(index) || !profile.sessions.some(session => session.sessionIndex === index)))) {
+    reject('SESSION_ROUTE_INVALID', 'sessionScope');
+  }
   requireId(source.teamVersion.leaderAssistantId, 'teamVersion.leaderAssistantId');
   assertDomainLeader(source.teamVersion.leaderAssistantId);
   indexBy(source.teamVersion.members, (member) => member.memberId, 'teamVersion.members');
@@ -206,11 +211,11 @@ export function compileTeachingBundle(source: TeachingBundleSource): CompiledTea
     .map((role) => compileRole(source, role));
   // Historical contracts included intake in their pre-confirmation exploration phase.
   // Explicit lesson-guided contracts describe formal lessons and may never route to intake.
-  if (template.lessonPolicy === 'lesson-guided.v1') for (const role of roles) assertFormalTeachingAssistant(role.assistantId);
+  if (template.lessonPolicy === 'lesson-guided.v1' || source.sessionScope) for (const role of roles) assertFormalTeachingAssistant(role.assistantId);
   const routeIndices = new Set<number>();
   const sessionRoutes = source.sessionRoutes.map((route) => {
     if (!Number.isSafeInteger(route.sessionIndex) ||
-      !profile.sessions.some((session) => session.sessionIndex === route.sessionIndex)) {
+      !scopedSessions.some((session) => session.sessionIndex === route.sessionIndex)) {
       reject('SESSION_ROUTE_INVALID', 'sessionRoutes.sessionIndex');
     }
     if (routeIndices.has(route.sessionIndex)) reject('DUPLICATE_REFERENCE', 'sessionRoutes.sessionIndex');
@@ -246,12 +251,12 @@ export function compileTeachingBundle(source: TeachingBundleSource): CompiledTea
     }
     const phase = template.phases.find((entry) => entry.phase === session.phase);
     const assigned = template.lessonPolicy === 'lesson-guided.v1' ? session.leadAssistantId : phase?.assignedAssistantId;
-    if (assigned != null && assigned !== role.assistantId) {
+    if (!source.sessionScope && assigned != null && assigned !== role.assistantId) {
       reject('TEMPLATE_ROLE_MISMATCH', 'sessionRoutes.roleSlotId');
     }
     return { sessionIndex: route.sessionIndex, roleSlotId: route.roleSlotId };
   }).sort((a, b) => a.sessionIndex - b.sessionIndex);
-  if (routeIndices.size !== profile.sessions.length) reject('SESSION_ROUTE_INCOMPLETE', 'sessionRoutes');
+  if (routeIndices.size !== scopedSessions.length) reject('SESSION_ROUTE_INCOMPLETE', 'sessionRoutes');
   const payload: TeachingBundlePayload = structuredClone({
     schemaVersion: TEACHING_BUNDLE_SCHEMA_VERSION,
     compilerVersion: TEACHING_BUNDLE_COMPILER_VERSION,

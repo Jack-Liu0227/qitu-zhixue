@@ -142,7 +142,7 @@ export class TeacherController {
           withoutGuardianCount,
         },
         dataSource: 'live',
-        signalsAvailable: false,
+        signalsAvailable: students.every(student => student.signalsAvailable === true),
       },
     };
   }
@@ -181,12 +181,12 @@ export class TeacherController {
       data: {
         items,
         totals: {
-          open: 0,
-          acknowledged: 0,
-          resolved: 0,
+          open: items.filter(item => item.status === 'open').length,
+          acknowledged: items.filter(item => item.status === 'acknowledged').length,
+          resolved: items.filter(item => item.status === 'resolved').length,
         },
         dataSource: 'live',
-        signalsAvailable: false,
+        signalsAvailable: true,
       },
     };
   }
@@ -228,13 +228,17 @@ export class TeacherController {
     if (idempotencyKey === undefined || idempotencyKey.trim().length === 0 || idempotencyKey.length > 160) {
       throw new BadRequestException({ code: 'IDEMPOTENCY_KEY_REQUIRED', message: '缺少或无效的 Idempotency-Key 请求头' });
     }
-    const scope = `teacher.intervention.action:${id}`;
+    const scope = `teacher.intervention.action:${user.id}:${id}`;
+    if (input.note !== null && input.note !== undefined && (typeof input.note !== 'string' || input.note.length > 1000)) {
+      throw new BadRequestException('说明内容不能超过 1000 字');
+    }
+    await this.teacherService.getInterventionDetail(user.id, id);
     try {
       const result = await this.idempotency.execute(
         scope,
         idempotencyKey,
         hashIdempotentInput(scope, { interventionId: id }, input),
-        async () => ({ status: 200, body: await this.teacherService.recordInterventionAction(user.id, id, input.action!) }),
+        async () => ({ status: 200, body: await this.teacherService.recordInterventionAction(user.id, id, input.action!, input.note ?? null) }),
       );
       return { data: result.body };
     } catch (error) {
@@ -274,6 +278,7 @@ export class TeacherController {
     }
 
     const input = parseReviewDecisionInput(body);
+    await this.teacherService.requireAssignedReview(user, reviewId);
     const scope = `teacher.review.decision:${reviewId}`;
     try {
       const result = await this.idempotency.execute(

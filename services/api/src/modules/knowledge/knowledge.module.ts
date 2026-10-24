@@ -1,4 +1,7 @@
 import { TemplatesModule } from '../templates/templates.module';
+import { CoursewareStorageModule } from './courseware-storage.module';
+import { CoursewareService } from './courseware.service';
+import { CoursewareController } from './courseware.controller';
 import { Module, forwardRef } from '@nestjs/common';
 import type { Database } from '@qitu/database';
 import { DATA_MODE_TOKEN, DATABASE_TOKEN, type DataMode } from '../../database';
@@ -48,18 +51,21 @@ import { PlatformRegistryModule } from '../platform-registry/platform-registry.m
  */
 @Module({
   imports: [
+    CoursewareStorageModule,
     forwardRef(() => TemplatesModule),
     AuthModule,
     ModelRegistryModule,
     forwardRef(() => PlatformRegistryModule),
   ],
   controllers: [
+    CoursewareController,
     KnowledgeController,
     KnowledgeAdminController,
     KnowledgeCenterController,
     KnowledgeRetrievalController,
   ],
   providers: [
+    CoursewareService,
     KnowledgeMatrixService,
     KnowledgeConnectionCheckService,
     KnowledgeUploadService,
@@ -98,6 +104,7 @@ import { PlatformRegistryModule } from '../platform-registry/platform-registry.m
     { provide: KnowledgeScopeAuthorizer, useClass: DefaultKnowledgeScopeAuthorizer },
   ],
   exports: [
+    CoursewareService,
     KnowledgeConnectionService,
     KnowledgeUploadService,
     KnowledgeLibraryService,

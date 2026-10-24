@@ -1,0 +1,21 @@
+.panel { margin: 24px; padding: 24px; border: 1px solid var(--border-color, #d8e0e8); border-radius: 16px; background: var(--surface, #fff); }
+.panel header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.panel h2, .panel h3 { margin: 0 0 10px; }
+.panel p, .panel small { color: #4b5868; line-height: 1.6; }
+.workspace { grid-template-columns: var(--qitu-panel-tracks); margin-top: 20px; }
+.workspace ul { list-style: none; padding: 0 8px 0 0; margin: 0; max-height: 680px; overflow: auto; }
+.workspace article { padding: 4px 12px; }
+.workspace article > label { margin-top: 18px; font-size: 13px; font-weight: 600; }
+.workspace article > fieldset { margin: 16px 0; padding: 14px; border: 1px solid #dce5f2; border-radius: 10px; }
+.workspace article > fieldset label { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; line-height: 1.6; }
+.workspace :global(.qitu-resizable-panel) { min-width: 0; }
+.workspace li button { text-align: left; width: 100%; margin-bottom: 8px; }
+.panel button { padding: 10px 14px; border: 1px solid #b6c7d3; border-radius: 8px; background: #f6fafc; color: #173e52; cursor: pointer; margin: 4px; }
+.panel button[aria-pressed=true] { border-color: #21879b; background: #e8f5f6; }
+.panel button:disabled { opacity: .55; cursor: default; }
+.panel small, .panel label { display: block; margin-top: 8px; }
+.panel input:not([type=checkbox]), .panel textarea { display: block; width: 100%; padding: 8px; border: 1px solid #bccbd4; border-radius: 6px; }
+.panel textarea { min-height: 72px; }
+.step { border-bottom: 1px solid #e5eaee; padding: 16px 0; }
+.nodes { display: flex; flex-wrap: wrap; gap: 8px; }.nodes span { padding: 8px 12px; background: #edf4f7; border-radius: 8px; }
+@media (max-width: 800px) { .panel { margin: 12px; padding: 16px; } }

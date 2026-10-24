@@ -1,0 +1,13 @@
+.qitu-resizable-panels { display: grid; grid-template-columns: var(--qitu-panel-tracks); gap: 0; min-width: 0; width: 100%; align-items: stretch; }
+.qitu-resizable-panel { min-width: 0; min-height: 0; overflow-wrap: anywhere; }
+.qitu-resizable-panel > * { max-width: 100%; }
+.qitu-panel-divider { position: relative; display: flex; align-items: center; justify-content: center; min-height: 72px; cursor: col-resize; touch-action: none; outline: none; border-radius: 6px; }
+.qitu-panel-divider::before { content: ''; width: 1px; height: calc(100% - 24px); background: var(--qitu-border, #dce5f2); transition: background .15s; }
+.qitu-panel-divider > span { position: absolute; width: 5px; height: 34px; border-radius: 5px; background: #b1bfd3; box-shadow: 0 0 0 3px var(--qitu-page, #f4f7fb); }
+.qitu-panel-divider:hover, .qitu-panel-divider:focus-visible { background: var(--qitu-primary-soft, #eaf1ff); }
+.qitu-panel-divider:hover > span, .qitu-panel-divider:focus-visible > span, [data-resizing='true'] > .qitu-panel-divider > span { background: var(--qitu-primary, #2563eb); }
+.qitu-panel-divider:focus-visible { outline: 2px solid var(--qitu-primary, #2563eb); outline-offset: -2px; }
+.qitu-resizable-panels[data-resizing='true'] { user-select: none; cursor: col-resize; }
+.qitu-resizable-panels[data-stacked='true'] { display: flex; flex-direction: column; gap: 16px; }
+.qitu-resizable-panels[data-stacked='true'] > .qitu-panel-divider, .qitu-resizable-panels[data-stacked='true'] > .qitu-resizable-gap { display: none; }
+@media (prefers-reduced-motion: reduce) { .qitu-panel-divider::before { transition: none; } }

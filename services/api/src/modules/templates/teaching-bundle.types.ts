@@ -1,4 +1,4 @@
-import type { ProjectTemplateSpec } from '@qitu/contracts';
+import type { ProjectTemplateSpec, TeachingSessionAssignment } from '@qitu/contracts';
 export type { TeachingBundleDraft } from '@qitu/contracts';
 
 export const TEACHING_BUNDLE_SCHEMA_VERSION = 'qitu.teaching-bundle.v1' as const;
@@ -80,6 +80,8 @@ export interface TeachingApprovalPolicy {
 }
 
 export interface TeachingBundleSource {
+  /** Server-resolved scope for explicit per-lesson bindings. Absent on legacy bundles. */
+  sessionScope?: readonly number[];
   templateVersionId: string;
   template: ProjectTemplateSpec;
   scheduleProfileId: string;
@@ -110,6 +112,8 @@ export interface CompiledTeachingRole {
 }
 
 export interface TeachingBundlePayload {
+  sessionAssignments?: readonly TeachingSessionAssignment[];
+  sessionTeamBundles?: readonly TeachingBundlePayload[];
   schemaVersion: typeof TEACHING_BUNDLE_SCHEMA_VERSION;
   compilerVersion: typeof TEACHING_BUNDLE_COMPILER_VERSION;
   templateVersionId: string;

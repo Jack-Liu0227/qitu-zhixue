@@ -1,0 +1,2790 @@
+{
+  "schemaVersion": 1,
+  "verifiedAt": "2026-10-23T14:05:52.026748+00:00",
+  "environment": "isolated PostgreSQL; live Admin-governed model/IMA; synthetic students and teachers; no injected mastery or experiment cards",
+  "ownerFacts": [
+    {
+      "target": "optics16",
+      "project": {
+        "id": "proj-310eff29-e3d2-4b9b-bc4a-41bcd0fe5dc3",
+        "status": "completed",
+        "template_version_id": "tplv-eddfd12e-3c9f-460e-a8fc-840160c009d3"
+      },
+      "binding": {
+        "template_version_id": "tplv-eddfd12e-3c9f-460e-a8fc-840160c009d3",
+        "binding_id": "bnd-cf791c9f41bae62b",
+        "team_version_id": "team-version-dd8606f23902734c2d8a544973bc4d40",
+        "binding_hash": "439b43df5bccb01e8483505745579ad450e76f672deb1fb80db8bfca38c36344",
+        "bundle_digest": "6e10c5bb03cf3945d1177150f0568bb99ab0e73103e5a1128f7d9895987af4c7"
+      },
+      "plan": {
+        "id": "plan-3590799d-751d-453e-8d5d-7fce6ed86788",
+        "version": 1,
+        "status": "completed"
+      },
+      "sessions": [
+        {
+          "lesson_index": 1,
+          "title": "光的宏观现象与观察指标",
+          "completed_at": "2026-10-23T12:56:31.510Z",
+          "evidence_count": 4
+        },
+        {
+          "lesson_index": 2,
+          "title": "提出探究假设与实验方案",
+          "completed_at": "2026-10-23T12:57:36.696Z",
+          "evidence_count": 4
+        },
+        {
+          "lesson_index": 3,
+          "title": "光的直线传播与平面镜成像原理",
+          "completed_at": "2026-10-23T13:09:49.709Z",
+          "evidence_count": 3
+        },
+        {
+          "lesson_index": 4,
+          "title": "反射定律公式与光路可逆性",
+          "completed_at": "2026-10-23T13:12:37.526Z",
+          "evidence_count": 3
+        },
+        {
+          "lesson_index": 5,
+          "title": "折射定律与介质折射率定义",
+          "completed_at": "2026-10-23T13:14:11.781Z",
+          "evidence_count": 3
+        },
+        {
+          "lesson_index": 6,
+          "title": "全反射发生条件与临界角推导",
+          "completed_at": "2026-10-23T13:18:07.595Z",
+          "evidence_count": 3
+        },
+        {
+          "lesson_index": 7,
+          "title": "凸透镜与凹透镜成像特殊光线作图",
+          "completed_at": "2026-10-23T13:20:00.979Z",
+          "evidence_count": 3
+        },
+        {
+          "lesson_index": 8,
+          "title": "理论综合闯关与门禁评测",
+          "completed_at": "2026-10-23T13:33:25.015Z",
+          "evidence_count": 3
+        },
+        {
+          "lesson_index": 9,
+          "title": "光具座搭建、法线与光轴校准",
+          "completed_at": "2026-10-23T13:34:51.217Z",
+          "evidence_count": 5
+        },
+        {
+          "lesson_index": 10,
+          "title": "折射角与物像距数据采集",
+          "completed_at": "2026-10-23T13:36:28.814Z",
+          "evidence_count": 5
+        },
+        {
+          "lesson_index": 11,
+          "title": "单缝衍射现象与条纹特征探究",
+          "completed_at": "2026-10-23T13:38:15.693Z",
+          "evidence_count": 5
+        },
+        {
+          "lesson_index": 12,
+          "title": "封闭细雾室介质散射探究",
+          "completed_at": "2026-10-23T13:40:15.411Z",
+          "evidence_count": 5
+        },
+        {
+          "lesson_index": 13,
+          "title": "数据线性化拟合与实验求参",
+          "completed_at": "2026-10-23T13:41:55.174Z",
+          "evidence_count": 5
+        },
+        {
+          "lesson_index": 14,
+          "title": "实验报告撰写与 CER 科学论证",
+          "completed_at": "2026-10-23T13:43:44.518Z",
+          "evidence_count": 6
+        },
+        {
+          "lesson_index": 15,
+          "title": "实验探究成果答辩与同行质疑",
+          "completed_at": "2026-10-23T13:45:18.180Z",
+          "evidence_count": 4
+        },
+        {
+          "lesson_index": 16,
+          "title": "学习反思与学科素养成长归档",
+          "completed_at": "2026-10-23T13:46:44.784Z",
+          "evidence_count": 5
+        }
+      ],
+      "gates": [
+        {
+          "gate": "student_confirmed_intent",
+          "source": "projects.confirm-intent",
+          "project_id": "proj-310eff29-e3d2-4b9b-bc4a-41bcd0fe5dc3",
+          "created_at": "2026-10-23T12:55:18.945Z"
+        },
+        {
+          "gate": "student_confirmed_intent",
+          "source": "projects.confirm-intent",
+          "project_id": "proj-310eff29-e3d2-4b9b-bc4a-41bcd0fe5dc3",
+          "created_at": "2026-10-23T12:55:32.706Z"
+        },
+        {
+          "gate": "TheoryMastered",
+          "source": "learning-plan.theory-mastered",
+          "project_id": "proj-310eff29-e3d2-4b9b-bc4a-41bcd0fe5dc3",
+          "created_at": "2026-10-23T13:09:34.112Z"
+        },
+        {
+          "gate": "TheoryMastered",
+          "source": "learning-plan.theory-mastered",
+          "project_id": "proj-310eff29-e3d2-4b9b-bc4a-41bcd0fe5dc3",
+          "created_at": "2026-10-23T13:13:53.865Z"
+        },
+        {
+          "gate": "TheoryMastered",
+          "source": "learning-plan.theory-mastered",
+          "project_id": "proj-310eff29-e3d2-4b9b-bc4a-41bcd0fe5dc3",
+          "created_at": "2026-10-23T13:17:48.833Z"
+        },
+        {
+          "gate": "TheoryMastered",
+          "source": "learning-plan.theory-mastered",
+          "project_id": "proj-310eff29-e3d2-4b9b-bc4a-41bcd0fe5dc3",
+          "created_at": "2026-10-23T13:19:44.062Z"
+        },
+        {
+          "gate": "review_completed_and_archived",
+          "source": "works.publish-approved",
+          "project_id": "proj-310eff29-e3d2-4b9b-bc4a-41bcd0fe5dc3",
+          "created_at": "2026-10-23T13:43:33.089Z"
+        }
+      ],
+      "facts": [
+        {
+          "source_kind": "artifact",
+          "count": 1
+        },
+        {
+          "source_kind": "experiment_observation",
+          "count": 2
+        },
+        {
+          "source_kind": "reflection",
+          "count": 1
+        },
+        {
+          "source_kind": "task_submission",
+          "count": 126
+        }
+      ],
+      "courseware": [],
+      "observations": {
+        "first_at": "2026-10-23T13:38:00.123Z",
+        "count": 2
+      },
+      "gatePrecedesPractice": true
+    },
+    {
+      "target": "wave8",
+      "project": {
+        "id": "proj-ac198760-a9c5-431b-827a-d5f20aafc033",
+        "status": "completed",
+        "template_version_id": "tplv-efd7f9b0-3e59-4824-85c9-2f271a33eeb8"
+      },
+      "binding": {
+        "template_version_id": "tplv-efd7f9b0-3e59-4824-85c9-2f271a33eeb8",
+        "binding_id": "bnd-4f1a274b280348f5",
+        "team_version_id": "team-version-97648af88b3a44bf19ada41589126ad3",
+        "binding_hash": "55df9db9c550c500470ad01c1804f8c2e227d5c44e014ca6f6c9351390e36ff4",
+        "bundle_digest": "29833aaaf76cab3f98011c663ac6f5ec3a6fc24a7e0d317732b173fff252535e"
+      },
+      "plan": {
+        "id": "plan-7332ab8b-1e11-4d1f-8ecd-535f06161ec6",
+        "version": 1,
+        "status": "completed"
+      },
+      "sessions": [
+        {
+          "lesson_index": 1,
+          "title": "条纹从哪里来？",
+          "completed_at": "2026-10-23T13:11:37.261Z",
+          "evidence_count": 4
+        },
+        {
+          "lesson_index": 2,
+          "title": "两列波相遇会怎样？",
+          "completed_at": "2026-10-23T13:13:05.364Z",
+          "evidence_count": 3
+        },
+        {
+          "lesson_index": 3,
+          "title": "双缝为什么出现明暗？",
+          "completed_at": "2026-10-23T13:15:14.982Z",
+          "evidence_count": 5
+        },
+        {
+          "lesson_index": 4,
+          "title": "怎样改变干涉条纹间距？",
+          "completed_at": "2026-10-23T13:18:57.658Z",
+          "evidence_count": 6
+        },
+        {
+          "lesson_index": 5,
+          "title": "一条缝为什么仍有条纹？",
+          "completed_at": "2026-10-23T13:21:02.907Z",
+          "evidence_count": 5
+        },
+        {
+          "lesson_index": 6,
+          "title": "缝变窄，图样怎样变化？",
+          "completed_at": "2026-10-23T13:23:08.626Z",
+          "evidence_count": 6
+        },
+        {
+          "lesson_index": 7,
+          "title": "干涉与衍射怎样联系？",
+          "completed_at": "2026-10-23T13:25:07.524Z",
+          "evidence_count": 6
+        },
+        {
+          "lesson_index": 8,
+          "title": "别人能复核我的探究吗？",
+          "completed_at": "2026-10-23T13:26:26.871Z",
+          "evidence_count": 5
+        }
+      ],
+      "gates": [
+        {
+          "gate": "student_confirmed_intent",
+          "source": "projects.confirm-intent",
+          "project_id": "proj-ac198760-a9c5-431b-827a-d5f20aafc033",
+          "created_at": "2026-10-23T13:10:25.779Z"
+        },
+        {
+          "gate": "student_confirmed_intent",
+          "source": "projects.confirm-intent",
+          "project_id": "proj-ac198760-a9c5-431b-827a-d5f20aafc033",
+          "created_at": "2026-10-23T13:10:36.511Z"
+        },
+        {
+          "gate": "TheoryMastered",
+          "source": "learning-plan.theory-mastered",
+          "project_id": "proj-ac198760-a9c5-431b-827a-d5f20aafc033",
+          "created_at": "2026-10-23T13:12:54.373Z"
+        },
+        {
+          "gate": "review_completed_and_archived",
+          "source": "works.publish-approved",
+          "project_id": "proj-ac198760-a9c5-431b-827a-d5f20aafc033",
+          "created_at": "2026-10-23T13:24:57.805Z"
+        }
+      ],
+      "facts": [
+        {
+          "source_kind": "artifact",
+          "count": 1
+        },
+        {
+          "source_kind": "experiment_observation",
+          "count": 7
+        },
+        {
+          "source_kind": "reflection",
+          "count": 1
+        },
+        {
+          "source_kind": "task_submission",
+          "count": 69
+        }
+      ],
+      "courseware": [],
+      "observations": {
+        "first_at": "2026-10-23T13:14:59.515Z",
+        "count": 7
+      },
+      "gatePrecedesPractice": true
+    },
+    {
+      "target": "zero8",
+      "project": {
+        "id": "proj-ed5d20a8-e9a5-4aaf-b989-46ff476b140b",
+        "status": "completed",
+        "template_version_id": "tplv-e6e78f26-9943-4450-adb7-67a9f288cc40"
+      },
+      "binding": {
+        "template_version_id": "tplv-e6e78f26-9943-4450-adb7-67a9f288cc40",
+        "binding_id": "bnd-8e056bfef49a4728",
+        "team_version_id": "team-version-19932d5641ef882926993c31deb624f8",
+        "binding_hash": "d7748ac81ea784e1644541c4b998faaedd397052f337ca57d137b4fdb7bbc42a",
+        "bundle_digest": "b6b0bb24314a65dadba68e1ec1f186e339b88aca8df7aa96e5e468461a69121b"
+      },
+      "plan": {
+        "id": "plan-c0d669aa-af9c-47f1-8c77-0a64bcba45e2",
+        "version": 1,
+        "status": "completed"
+      },
+      "sessions": [
+        {
+          "lesson_index": 1,
+          "title": "条纹从哪里来？",
+          "completed_at": "2026-10-23T12:58:01.798Z",
+          "evidence_count": 4
+        },
+        {
+          "lesson_index": 2,
+          "title": "两列波相遇会怎样？",
+          "completed_at": "2026-10-23T13:03:46.598Z",
+          "evidence_count": 5
+        },
+        {
+          "lesson_index": 3,
+          "title": "双缝为什么出现明暗？",
+          "completed_at": "2026-10-23T13:06:43.558Z",
+          "evidence_count": 5
+        },
+        {
+          "lesson_index": 4,
+          "title": "怎样改变干涉条纹间距？",
+          "completed_at": "2026-10-23T13:16:58.322Z",
+          "evidence_count": 6
+        },
+        {
+          "lesson_index": 5,
+          "title": "一条缝为什么仍有条纹？",
+          "completed_at": "2026-10-23T13:27:56.302Z",
+          "evidence_count": 5
+        },
+        {
+          "lesson_index": 6,
+          "title": "缝变窄，图样怎样变化？",
+          "completed_at": "2026-10-23T13:33:45.390Z",
+          "evidence_count": 6
+        },
+        {
+          "lesson_index": 7,
+          "title": "干涉与衍射怎样联系？",
+          "completed_at": "2026-10-23T13:39:17.875Z",
+          "evidence_count": 6
+        },
+        {
+          "lesson_index": 8,
+          "title": "别人能复核我的探究吗？",
+          "completed_at": "2026-10-23T13:44:17.600Z",
+          "evidence_count": 6
+        }
+      ],
+      "gates": [
+        {
+          "gate": "student_confirmed_intent",
+          "source": "projects.confirm-intent",
+          "project_id": "proj-ed5d20a8-e9a5-4aaf-b989-46ff476b140b",
+          "created_at": "2026-10-23T12:55:18.915Z"
+        },
+        {
+          "gate": "student_confirmed_intent",
+          "source": "projects.confirm-intent",
+          "project_id": "proj-ed5d20a8-e9a5-4aaf-b989-46ff476b140b",
+          "created_at": "2026-10-23T12:55:27.590Z"
+        },
+        {
+          "gate": "TheoryMastered",
+          "source": "learning-plan.theory-mastered",
+          "project_id": "proj-ed5d20a8-e9a5-4aaf-b989-46ff476b140b",
+          "created_at": "2026-10-23T13:03:39.341Z"
+        },
+        {
+          "gate": "review_completed_and_archived",
+          "source": "works.publish-approved",
+          "project_id": "proj-ed5d20a8-e9a5-4aaf-b989-46ff476b140b",
+          "created_at": "2026-10-23T13:38:52.672Z"
+        }
+      ],
+      "facts": [
+        {
+          "source_kind": "artifact",
+          "count": 1
+        },
+        {
+          "source_kind": "experiment_observation",
+          "count": 7
+        },
+        {
+          "source_kind": "reflection",
+          "count": 1
+        },
+        {
+          "source_kind": "task_submission",
+          "count": 37
+        }
+      ],
+      "courseware": [
+        {
+          "session_id": "plan-c0d669aa-af9c-47f1-8c77-0a64bcba45e2:wave-session-1",
+          "activity_id": "plan-c0d669aa-af9c-47f1-8c77-0a64bcba45e2:wave-session-1:activity:review",
+          "instances": 1,
+          "acknowledged": 1
+        },
+        {
+          "session_id": "plan-c0d669aa-af9c-47f1-8c77-0a64bcba45e2:wave-session-1",
+          "activity_id": "plan-c0d669aa-af9c-47f1-8c77-0a64bcba45e2:wave-session-1:activity:theory",
+          "instances": 1,
+          "acknowledged": 1
+        },
+        {
+          "session_id": "plan-c0d669aa-af9c-47f1-8c77-0a64bcba45e2:wave-session-2",
+          "activity_id": "plan-c0d669aa-af9c-47f1-8c77-0a64bcba45e2:wave-session-2:activity:review",
+          "instances": 2,
+          "acknowledged": 2
+        },
+        {
+          "session_id": "plan-c0d669aa-af9c-47f1-8c77-0a64bcba45e2:wave-session-2",
+          "activity_id": "plan-c0d669aa-af9c-47f1-8c77-0a64bcba45e2:wave-session-2:activity:theory",
+          "instances": 2,
+          "acknowledged": 2
+        },
+        {
+          "session_id": "plan-c0d669aa-af9c-47f1-8c77-0a64bcba45e2:wave-session-3",
+          "activity_id": "plan-c0d669aa-af9c-47f1-8c77-0a64bcba45e2:wave-session-3:activity:review",
+          "instances": 1,
+          "acknowledged": 1
+        },
+        {
+          "session_id": "plan-c0d669aa-af9c-47f1-8c77-0a64bcba45e2:wave-session-3",
+          "activity_id": "plan-c0d669aa-af9c-47f1-8c77-0a64bcba45e2:wave-session-3:activity:theory",
+          "instances": 1,
+          "acknowledged": 1
+        },
+        {
+          "session_id": "plan-c0d669aa-af9c-47f1-8c77-0a64bcba45e2:wave-session-4",
+          "activity_id": "plan-c0d669aa-af9c-47f1-8c77-0a64bcba45e2:wave-session-4:activity:review",
+          "instances": 1,
+          "acknowledged": 1
+        },
+        {
+          "session_id": "plan-c0d669aa-af9c-47f1-8c77-0a64bcba45e2:wave-session-4",
+          "activity_id": "plan-c0d669aa-af9c-47f1-8c77-0a64bcba45e2:wave-session-4:activity:theory",
+          "instances": 1,
+          "acknowledged": 1
+        },
+        {
+          "session_id": "plan-c0d669aa-af9c-47f1-8c77-0a64bcba45e2:wave-session-5",
+          "activity_id": "plan-c0d669aa-af9c-47f1-8c77-0a64bcba45e2:wave-session-5:activity:review",
+          "instances": 1,
+          "acknowledged": 1
+        },
+        {
+          "session_id": "plan-c0d669aa-af9c-47f1-8c77-0a64bcba45e2:wave-session-5",
+          "activity_id": "plan-c0d669aa-af9c-47f1-8c77-0a64bcba45e2:wave-session-5:activity:theory",
+          "instances": 1,
+          "acknowledged": 1
+        },
+        {
+          "session_id": "plan-c0d669aa-af9c-47f1-8c77-0a64bcba45e2:wave-session-6",
+          "activity_id": "plan-c0d669aa-af9c-47f1-8c77-0a64bcba45e2:wave-session-6:activity:practice",
+          "instances": 2,
+          "acknowledged": 0
+        },
+        {
+          "session_id": "plan-c0d669aa-af9c-47f1-8c77-0a64bcba45e2:wave-session-6",
+          "activity_id": "plan-c0d669aa-af9c-47f1-8c77-0a64bcba45e2:wave-session-6:activity:review",
+          "instances": 1,
+          "acknowledged": 1
+        },
+        {
+          "session_id": "plan-c0d669aa-af9c-47f1-8c77-0a64bcba45e2:wave-session-6",
+          "activity_id": "plan-c0d669aa-af9c-47f1-8c77-0a64bcba45e2:wave-session-6:activity:theory",
+          "instances": 1,
+          "acknowledged": 1
+        },
+        {
+          "session_id": "plan-c0d669aa-af9c-47f1-8c77-0a64bcba45e2:wave-session-7",
+          "activity_id": "plan-c0d669aa-af9c-47f1-8c77-0a64bcba45e2:wave-session-7:activity:review",
+          "instances": 1,
+          "acknowledged": 1
+        },
+        {
+          "session_id": "plan-c0d669aa-af9c-47f1-8c77-0a64bcba45e2:wave-session-7",
+          "activity_id": "plan-c0d669aa-af9c-47f1-8c77-0a64bcba45e2:wave-session-7:activity:theory",
+          "instances": 1,
+          "acknowledged": 1
+        },
+        {
+          "session_id": "plan-c0d669aa-af9c-47f1-8c77-0a64bcba45e2:wave-session-8",
+          "activity_id": "plan-c0d669aa-af9c-47f1-8c77-0a64bcba45e2:wave-session-8:activity:review",
+          "instances": 1,
+          "acknowledged": 1
+        },
+        {
+          "session_id": "plan-c0d669aa-af9c-47f1-8c77-0a64bcba45e2:wave-session-8",
+          "activity_id": "plan-c0d669aa-af9c-47f1-8c77-0a64bcba45e2:wave-session-8:activity:theory",
+          "instances": 2,
+          "acknowledged": 2
+        }
+      ],
+      "observations": {
+        "first_at": "2026-10-23T13:06:33.231Z",
+        "count": 7
+      },
+      "gatePrecedesPractice": true
+    }
+  ],
+  "browserFlows": [
+    {
+      "target": "optics16",
+      "projectId": "proj-310eff29-e3d2-4b9b-bc4a-41bcd0fe5dc3",
+      "fromLesson": 1,
+      "throughLesson": 16,
+      "passedActivities": 83,
+      "realModelTurns": 21,
+      "modelErrorCodes": [
+        "MODEL_CALL_FAILED"
+      ],
+      "startedAt": "2026-10-23T12:55:16.180Z",
+      "finishedAt": "2026-10-23T13:46:45.608Z",
+      "negativeChecks": {
+        "pendingReload": true,
+        "wrongAnswer": true,
+        "answerReplay": true
+      },
+      "activities": [
+        {
+          "lesson": 1,
+          "title": "光的宏观现象与观察指标",
+          "activity": "review",
+          "evidence": "session_response",
+          "at": "2026-10-23T12:55:24.533Z",
+          "passed": true
+        },
+        {
+          "lesson": 1,
+          "title": "光的宏观现象与观察指标",
+          "activity": "theory",
+          "evidence": "session_response",
+          "at": "2026-10-23T12:55:28.046Z",
+          "passed": true
+        },
+        {
+          "lesson": 1,
+          "title": "光的宏观现象与观察指标",
+          "activity": "check",
+          "evidence": "session_response",
+          "at": "2026-10-23T12:56:11.200Z",
+          "passed": true
+        },
+        {
+          "lesson": 1,
+          "title": "光的宏观现象与观察指标",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-23T12:56:19.163Z",
+          "passed": true
+        },
+        {
+          "lesson": 1,
+          "title": "光的宏观现象与观察指标",
+          "activity": "complete",
+          "at": "2026-10-23T12:56:28.120Z",
+          "passed": true
+        },
+        {
+          "lesson": 2,
+          "title": "提出探究假设与实验方案",
+          "activity": "review",
+          "evidence": "session_response",
+          "at": "2026-10-23T12:56:33.680Z",
+          "passed": true
+        },
+        {
+          "lesson": 2,
+          "title": "提出探究假设与实验方案",
+          "activity": "theory",
+          "evidence": "session_response",
+          "at": "2026-10-23T12:56:39.133Z",
+          "passed": true
+        },
+        {
+          "lesson": 2,
+          "title": "提出探究假设与实验方案",
+          "activity": "check",
+          "evidence": "session_response",
+          "at": "2026-10-23T12:57:19.294Z",
+          "passed": true
+        },
+        {
+          "lesson": 2,
+          "title": "提出探究假设与实验方案",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-23T12:57:25.480Z",
+          "passed": true
+        },
+        {
+          "lesson": 2,
+          "title": "提出探究假设与实验方案",
+          "activity": "complete",
+          "at": "2026-10-23T12:57:33.247Z",
+          "passed": true
+        },
+        {
+          "lesson": 3,
+          "title": "光的直线传播与平面镜成像原理",
+          "activity": "review",
+          "evidence": "session_response",
+          "at": "2026-10-23T12:57:38.674Z",
+          "passed": true
+        },
+        {
+          "lesson": 3,
+          "title": "光的直线传播与平面镜成像原理",
+          "activity": "check",
+          "evidence": "mastery",
+          "at": "2026-10-23T13:09:29.981Z",
+          "passed": true
+        },
+        {
+          "lesson": 3,
+          "title": "光的直线传播与平面镜成像原理",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:09:35.937Z",
+          "passed": true
+        },
+        {
+          "lesson": 3,
+          "title": "光的直线传播与平面镜成像原理",
+          "activity": "complete",
+          "at": "2026-10-23T13:09:44.492Z",
+          "passed": true
+        },
+        {
+          "lesson": 4,
+          "title": "反射定律公式与光路可逆性",
+          "activity": "review",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:09:52.320Z",
+          "passed": true
+        },
+        {
+          "lesson": 4,
+          "title": "反射定律公式与光路可逆性",
+          "activity": "theory",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:11:46.166Z",
+          "passed": true
+        },
+        {
+          "lesson": 4,
+          "title": "反射定律公式与光路可逆性",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:12:23.360Z",
+          "passed": true
+        },
+        {
+          "lesson": 4,
+          "title": "反射定律公式与光路可逆性",
+          "activity": "complete",
+          "at": "2026-10-23T13:12:33.052Z",
+          "passed": true
+        },
+        {
+          "lesson": 5,
+          "title": "折射定律与介质折射率定义",
+          "activity": "review",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:12:41.102Z",
+          "passed": true
+        },
+        {
+          "lesson": 5,
+          "title": "折射定律与介质折射率定义",
+          "activity": "theory",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:12:49.929Z",
+          "passed": true
+        },
+        {
+          "lesson": 5,
+          "title": "折射定律与介质折射率定义",
+          "activity": "check",
+          "evidence": "mastery",
+          "at": "2026-10-23T13:13:48.979Z",
+          "passed": true
+        },
+        {
+          "lesson": 5,
+          "title": "折射定律与介质折射率定义",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:13:56.070Z",
+          "passed": true
+        },
+        {
+          "lesson": 5,
+          "title": "折射定律与介质折射率定义",
+          "activity": "complete",
+          "at": "2026-10-23T13:14:06.506Z",
+          "passed": true
+        },
+        {
+          "lesson": 6,
+          "title": "全反射发生条件与临界角推导",
+          "activity": "review",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:14:14.446Z",
+          "passed": true
+        },
+        {
+          "lesson": 6,
+          "title": "全反射发生条件与临界角推导",
+          "activity": "theory",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:16:42.758Z",
+          "passed": true
+        },
+        {
+          "lesson": 6,
+          "title": "全反射发生条件与临界角推导",
+          "activity": "check",
+          "evidence": "mastery",
+          "at": "2026-10-23T13:17:41.073Z",
+          "passed": true
+        },
+        {
+          "lesson": 6,
+          "title": "全反射发生条件与临界角推导",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:17:51.343Z",
+          "passed": true
+        },
+        {
+          "lesson": 6,
+          "title": "全反射发生条件与临界角推导",
+          "activity": "complete",
+          "at": "2026-10-23T13:18:00.183Z",
+          "passed": true
+        },
+        {
+          "lesson": 7,
+          "title": "凸透镜与凹透镜成像特殊光线作图",
+          "activity": "review",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:18:11.173Z",
+          "passed": true
+        },
+        {
+          "lesson": 7,
+          "title": "凸透镜与凹透镜成像特殊光线作图",
+          "activity": "theory",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:18:20.829Z",
+          "passed": true
+        },
+        {
+          "lesson": 7,
+          "title": "凸透镜与凹透镜成像特殊光线作图",
+          "activity": "check",
+          "evidence": "mastery",
+          "at": "2026-10-23T13:19:39.508Z",
+          "passed": true
+        },
+        {
+          "lesson": 7,
+          "title": "凸透镜与凹透镜成像特殊光线作图",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:19:46.322Z",
+          "passed": true
+        },
+        {
+          "lesson": 7,
+          "title": "凸透镜与凹透镜成像特殊光线作图",
+          "activity": "complete",
+          "at": "2026-10-23T13:19:55.362Z",
+          "passed": true
+        },
+        {
+          "lesson": 8,
+          "title": "理论综合闯关与门禁评测",
+          "activity": "review",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:20:04.373Z",
+          "passed": true
+        },
+        {
+          "lesson": 8,
+          "title": "理论综合闯关与门禁评测",
+          "activity": "theory",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:32:18.194Z",
+          "passed": true
+        },
+        {
+          "lesson": 8,
+          "title": "理论综合闯关与门禁评测",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:33:11.681Z",
+          "passed": true
+        },
+        {
+          "lesson": 8,
+          "title": "理论综合闯关与门禁评测",
+          "activity": "complete",
+          "at": "2026-10-23T13:33:20.961Z",
+          "passed": true
+        },
+        {
+          "lesson": 9,
+          "title": "光具座搭建、法线与光轴校准",
+          "activity": "review",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:33:27.605Z",
+          "passed": true
+        },
+        {
+          "lesson": 9,
+          "title": "光具座搭建、法线与光轴校准",
+          "activity": "theory",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:33:34.941Z",
+          "passed": true
+        },
+        {
+          "lesson": 9,
+          "title": "光具座搭建、法线与光轴校准",
+          "activity": "check",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:34:13.473Z",
+          "passed": true
+        },
+        {
+          "lesson": 9,
+          "title": "光具座搭建、法线与光轴校准",
+          "activity": "practice",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:34:22.528Z",
+          "passed": true
+        },
+        {
+          "lesson": 9,
+          "title": "光具座搭建、法线与光轴校准",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:34:33.212Z",
+          "passed": true
+        },
+        {
+          "lesson": 9,
+          "title": "光具座搭建、法线与光轴校准",
+          "activity": "complete",
+          "at": "2026-10-23T13:34:45.915Z",
+          "passed": true
+        },
+        {
+          "lesson": 10,
+          "title": "折射角与物像距数据采集",
+          "activity": "review",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:34:54.530Z",
+          "passed": true
+        },
+        {
+          "lesson": 10,
+          "title": "折射角与物像距数据采集",
+          "activity": "theory",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:35:02.950Z",
+          "passed": true
+        },
+        {
+          "lesson": 10,
+          "title": "折射角与物像距数据采集",
+          "activity": "check",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:35:53.206Z",
+          "passed": true
+        },
+        {
+          "lesson": 10,
+          "title": "折射角与物像距数据采集",
+          "activity": "practice",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:36:03.151Z",
+          "passed": true
+        },
+        {
+          "lesson": 10,
+          "title": "折射角与物像距数据采集",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:36:13.799Z",
+          "passed": true
+        },
+        {
+          "lesson": 10,
+          "title": "折射角与物像距数据采集",
+          "activity": "complete",
+          "at": "2026-10-23T13:36:24.464Z",
+          "passed": true
+        },
+        {
+          "lesson": 11,
+          "title": "单缝衍射现象与条纹特征探究",
+          "activity": "review",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:36:31.521Z",
+          "passed": true
+        },
+        {
+          "lesson": 11,
+          "title": "单缝衍射现象与条纹特征探究",
+          "activity": "theory",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:36:38.934Z",
+          "passed": true
+        },
+        {
+          "lesson": 11,
+          "title": "单缝衍射现象与条纹特征探究",
+          "activity": "check",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:37:18.248Z",
+          "passed": true
+        },
+        {
+          "lesson": 11,
+          "title": "单缝衍射现象与条纹特征探究",
+          "activity": "practice",
+          "evidence": "experiment_observation",
+          "at": "2026-10-23T13:37:25.965Z",
+          "passed": true
+        },
+        {
+          "lesson": 11,
+          "title": "单缝衍射现象与条纹特征探究",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:38:02.614Z",
+          "passed": true
+        },
+        {
+          "lesson": 11,
+          "title": "单缝衍射现象与条纹特征探究",
+          "activity": "complete",
+          "at": "2026-10-23T13:38:11.861Z",
+          "passed": true
+        },
+        {
+          "lesson": 12,
+          "title": "封闭细雾室介质散射探究",
+          "activity": "review",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:38:18.256Z",
+          "passed": true
+        },
+        {
+          "lesson": 12,
+          "title": "封闭细雾室介质散射探究",
+          "activity": "theory",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:38:26.697Z",
+          "passed": true
+        },
+        {
+          "lesson": 12,
+          "title": "封闭细雾室介质散射探究",
+          "activity": "check",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:39:12.291Z",
+          "passed": true
+        },
+        {
+          "lesson": 12,
+          "title": "封闭细雾室介质散射探究",
+          "activity": "practice",
+          "evidence": "experiment_observation",
+          "at": "2026-10-23T13:39:21.301Z",
+          "passed": true
+        },
+        {
+          "lesson": 12,
+          "title": "封闭细雾室介质散射探究",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:39:59.988Z",
+          "passed": true
+        },
+        {
+          "lesson": 12,
+          "title": "封闭细雾室介质散射探究",
+          "activity": "complete",
+          "at": "2026-10-23T13:40:10.278Z",
+          "passed": true
+        },
+        {
+          "lesson": 13,
+          "title": "数据线性化拟合与实验求参",
+          "activity": "review",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:40:18.138Z",
+          "passed": true
+        },
+        {
+          "lesson": 13,
+          "title": "数据线性化拟合与实验求参",
+          "activity": "theory",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:40:26.975Z",
+          "passed": true
+        },
+        {
+          "lesson": 13,
+          "title": "数据线性化拟合与实验求参",
+          "activity": "check",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:41:14.542Z",
+          "passed": true
+        },
+        {
+          "lesson": 13,
+          "title": "数据线性化拟合与实验求参",
+          "activity": "practice",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:41:24.898Z",
+          "passed": true
+        },
+        {
+          "lesson": 13,
+          "title": "数据线性化拟合与实验求参",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:41:36.533Z",
+          "passed": true
+        },
+        {
+          "lesson": 13,
+          "title": "数据线性化拟合与实验求参",
+          "activity": "complete",
+          "at": "2026-10-23T13:41:48.595Z",
+          "passed": true
+        },
+        {
+          "lesson": 14,
+          "title": "实验报告撰写与 CER 科学论证",
+          "activity": "review",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:41:58.059Z",
+          "passed": true
+        },
+        {
+          "lesson": 14,
+          "title": "实验报告撰写与 CER 科学论证",
+          "activity": "theory",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:42:07.757Z",
+          "passed": true
+        },
+        {
+          "lesson": 14,
+          "title": "实验报告撰写与 CER 科学论证",
+          "activity": "check",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:42:59.071Z",
+          "passed": true
+        },
+        {
+          "lesson": 14,
+          "title": "实验报告撰写与 CER 科学论证",
+          "activity": "practice",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:43:09.940Z",
+          "passed": true
+        },
+        {
+          "lesson": 14,
+          "title": "实验报告撰写与 CER 科学论证",
+          "activity": "reflect",
+          "evidence": "submitted_artifact",
+          "at": "2026-10-23T13:43:20.264Z",
+          "passed": true
+        },
+        {
+          "lesson": 14,
+          "title": "实验报告撰写与 CER 科学论证",
+          "activity": "complete",
+          "at": "2026-10-23T13:43:38.748Z",
+          "passed": true
+        },
+        {
+          "lesson": 15,
+          "title": "实验探究成果答辩与同行质疑",
+          "activity": "review",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:43:48.140Z",
+          "passed": true
+        },
+        {
+          "lesson": 15,
+          "title": "实验探究成果答辩与同行质疑",
+          "activity": "theory",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:43:58.389Z",
+          "passed": true
+        },
+        {
+          "lesson": 15,
+          "title": "实验探究成果答辩与同行质疑",
+          "activity": "check",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:44:48.387Z",
+          "passed": true
+        },
+        {
+          "lesson": 15,
+          "title": "实验探究成果答辩与同行质疑",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:44:59.586Z",
+          "passed": true
+        },
+        {
+          "lesson": 15,
+          "title": "实验探究成果答辩与同行质疑",
+          "activity": "complete",
+          "at": "2026-10-23T13:45:11.834Z",
+          "passed": true
+        },
+        {
+          "lesson": 16,
+          "title": "学习反思与学科素养成长归档",
+          "activity": "review",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:45:21.473Z",
+          "passed": true
+        },
+        {
+          "lesson": 16,
+          "title": "学习反思与学科素养成长归档",
+          "activity": "theory",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:45:32.067Z",
+          "passed": true
+        },
+        {
+          "lesson": 16,
+          "title": "学习反思与学科素养成长归档",
+          "activity": "check",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:46:16.967Z",
+          "passed": true
+        },
+        {
+          "lesson": 16,
+          "title": "学习反思与学科素养成长归档",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:46:27.582Z",
+          "passed": true
+        },
+        {
+          "lesson": 16,
+          "title": "学习反思与学科素养成长归档",
+          "activity": "complete",
+          "at": "2026-10-23T13:46:39.161Z",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "target": "wave8",
+      "projectId": "proj-ac198760-a9c5-431b-827a-d5f20aafc033",
+      "fromLesson": 1,
+      "throughLesson": 8,
+      "passedActivities": 45,
+      "realModelTurns": 15,
+      "modelErrorCodes": [],
+      "startedAt": "2026-10-23T13:10:23.839Z",
+      "finishedAt": "2026-10-23T13:26:27.628Z",
+      "negativeChecks": {},
+      "activities": [
+        {
+          "lesson": 1,
+          "title": "条纹从哪里来？",
+          "activity": "review",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:10:28.794Z",
+          "passed": true
+        },
+        {
+          "lesson": 1,
+          "title": "条纹从哪里来？",
+          "activity": "theory",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:10:31.593Z",
+          "passed": true
+        },
+        {
+          "lesson": 1,
+          "title": "条纹从哪里来？",
+          "activity": "check",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:11:22.560Z",
+          "passed": true
+        },
+        {
+          "lesson": 1,
+          "title": "条纹从哪里来？",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:11:28.301Z",
+          "passed": true
+        },
+        {
+          "lesson": 1,
+          "title": "条纹从哪里来？",
+          "activity": "complete",
+          "at": "2026-10-23T13:11:34.320Z",
+          "passed": true
+        },
+        {
+          "lesson": 2,
+          "title": "两列波相遇会怎样？",
+          "activity": "review",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:11:38.660Z",
+          "passed": true
+        },
+        {
+          "lesson": 2,
+          "title": "两列波相遇会怎样？",
+          "activity": "theory",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:11:44.522Z",
+          "passed": true
+        },
+        {
+          "lesson": 2,
+          "title": "两列波相遇会怎样？",
+          "activity": "check",
+          "evidence": "mastery",
+          "at": "2026-10-23T13:12:48.437Z",
+          "passed": true
+        },
+        {
+          "lesson": 2,
+          "title": "两列波相遇会怎样？",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:12:55.914Z",
+          "passed": true
+        },
+        {
+          "lesson": 2,
+          "title": "两列波相遇会怎样？",
+          "activity": "complete",
+          "at": "2026-10-23T13:13:02.617Z",
+          "passed": true
+        },
+        {
+          "lesson": 3,
+          "title": "双缝为什么出现明暗？",
+          "activity": "review",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:13:06.903Z",
+          "passed": true
+        },
+        {
+          "lesson": 3,
+          "title": "双缝为什么出现明暗？",
+          "activity": "theory",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:13:12.213Z",
+          "passed": true
+        },
+        {
+          "lesson": 3,
+          "title": "双缝为什么出现明暗？",
+          "activity": "check",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:13:59.745Z",
+          "passed": true
+        },
+        {
+          "lesson": 3,
+          "title": "双缝为什么出现明暗？",
+          "activity": "practice",
+          "evidence": "experiment_observation",
+          "at": "2026-10-23T13:14:09.149Z",
+          "passed": true
+        },
+        {
+          "lesson": 3,
+          "title": "双缝为什么出现明暗？",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:15:01.741Z",
+          "passed": true
+        },
+        {
+          "lesson": 3,
+          "title": "双缝为什么出现明暗？",
+          "activity": "complete",
+          "at": "2026-10-23T13:15:10.880Z",
+          "passed": true
+        },
+        {
+          "lesson": 4,
+          "title": "怎样改变干涉条纹间距？",
+          "activity": "review",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:15:17.036Z",
+          "passed": true
+        },
+        {
+          "lesson": 4,
+          "title": "怎样改变干涉条纹间距？",
+          "activity": "theory",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:15:23.877Z",
+          "passed": true
+        },
+        {
+          "lesson": 4,
+          "title": "怎样改变干涉条纹间距？",
+          "activity": "check",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:16:03.644Z",
+          "passed": true
+        },
+        {
+          "lesson": 4,
+          "title": "怎样改变干涉条纹间距？",
+          "activity": "practice",
+          "evidence": "experiment_observation",
+          "at": "2026-10-23T13:18:26.454Z",
+          "passed": true
+        },
+        {
+          "lesson": 4,
+          "title": "怎样改变干涉条纹间距？",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:18:42.983Z",
+          "passed": true
+        },
+        {
+          "lesson": 4,
+          "title": "怎样改变干涉条纹间距？",
+          "activity": "complete",
+          "at": "2026-10-23T13:18:52.942Z",
+          "passed": true
+        },
+        {
+          "lesson": 5,
+          "title": "一条缝为什么仍有条纹？",
+          "activity": "review",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:19:00.159Z",
+          "passed": true
+        },
+        {
+          "lesson": 5,
+          "title": "一条缝为什么仍有条纹？",
+          "activity": "theory",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:19:06.540Z",
+          "passed": true
+        },
+        {
+          "lesson": 5,
+          "title": "一条缝为什么仍有条纹？",
+          "activity": "check",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:20:00.594Z",
+          "passed": true
+        },
+        {
+          "lesson": 5,
+          "title": "一条缝为什么仍有条纹？",
+          "activity": "practice",
+          "evidence": "experiment_observation",
+          "at": "2026-10-23T13:20:13.581Z",
+          "passed": true
+        },
+        {
+          "lesson": 5,
+          "title": "一条缝为什么仍有条纹？",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:20:50.384Z",
+          "passed": true
+        },
+        {
+          "lesson": 5,
+          "title": "一条缝为什么仍有条纹？",
+          "activity": "complete",
+          "at": "2026-10-23T13:20:59.314Z",
+          "passed": true
+        },
+        {
+          "lesson": 6,
+          "title": "缝变窄，图样怎样变化？",
+          "activity": "review",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:21:05.284Z",
+          "passed": true
+        },
+        {
+          "lesson": 6,
+          "title": "缝变窄，图样怎样变化？",
+          "activity": "theory",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:21:12.953Z",
+          "passed": true
+        },
+        {
+          "lesson": 6,
+          "title": "缝变窄，图样怎样变化？",
+          "activity": "check",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:21:55.770Z",
+          "passed": true
+        },
+        {
+          "lesson": 6,
+          "title": "缝变窄，图样怎样变化？",
+          "activity": "practice",
+          "evidence": "experiment_observation",
+          "at": "2026-10-23T13:22:38.655Z",
+          "passed": true
+        },
+        {
+          "lesson": 6,
+          "title": "缝变窄，图样怎样变化？",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:22:55.267Z",
+          "passed": true
+        },
+        {
+          "lesson": 6,
+          "title": "缝变窄，图样怎样变化？",
+          "activity": "complete",
+          "at": "2026-10-23T13:23:04.543Z",
+          "passed": true
+        },
+        {
+          "lesson": 7,
+          "title": "干涉与衍射怎样联系？",
+          "activity": "review",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:23:10.580Z",
+          "passed": true
+        },
+        {
+          "lesson": 7,
+          "title": "干涉与衍射怎样联系？",
+          "activity": "theory",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:23:16.730Z",
+          "passed": true
+        },
+        {
+          "lesson": 7,
+          "title": "干涉与衍射怎样联系？",
+          "activity": "check",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:24:03.379Z",
+          "passed": true
+        },
+        {
+          "lesson": 7,
+          "title": "干涉与衍射怎样联系？",
+          "activity": "practice",
+          "evidence": "experiment_observation",
+          "at": "2026-10-23T13:24:11.403Z",
+          "passed": true
+        },
+        {
+          "lesson": 7,
+          "title": "干涉与衍射怎样联系？",
+          "activity": "reflect",
+          "evidence": "submitted_artifact",
+          "at": "2026-10-23T13:24:46.273Z",
+          "passed": true
+        },
+        {
+          "lesson": 7,
+          "title": "干涉与衍射怎样联系？",
+          "activity": "complete",
+          "at": "2026-10-23T13:25:02.722Z",
+          "passed": true
+        },
+        {
+          "lesson": 8,
+          "title": "别人能复核我的探究吗？",
+          "activity": "review",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:25:10.771Z",
+          "passed": true
+        },
+        {
+          "lesson": 8,
+          "title": "别人能复核我的探究吗？",
+          "activity": "theory",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:25:18.838Z",
+          "passed": true
+        },
+        {
+          "lesson": 8,
+          "title": "别人能复核我的探究吗？",
+          "activity": "check",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:26:04.269Z",
+          "passed": true
+        },
+        {
+          "lesson": 8,
+          "title": "别人能复核我的探究吗？",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:26:12.713Z",
+          "passed": true
+        },
+        {
+          "lesson": 8,
+          "title": "别人能复核我的探究吗？",
+          "activity": "complete",
+          "at": "2026-10-23T13:26:22.429Z",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "target": "zero8",
+      "projectId": "proj-ed5d20a8-e9a5-4aaf-b989-46ff476b140b",
+      "fromLesson": 1,
+      "throughLesson": 8,
+      "passedActivities": 45,
+      "realModelTurns": 31,
+      "modelErrorCodes": [],
+      "startedAt": "2026-10-23T12:55:16.132Z",
+      "finishedAt": "2026-10-23T13:44:21.848Z",
+      "negativeChecks": {},
+      "activities": [
+        {
+          "lesson": 1,
+          "title": "条纹从哪里来？",
+          "activity": "review",
+          "evidence": "teaching_delivery",
+          "at": "2026-10-23T12:55:24.533Z",
+          "passed": true
+        },
+        {
+          "lesson": 1,
+          "title": "条纹从哪里来？",
+          "activity": "theory",
+          "evidence": "teaching_delivery",
+          "at": "2026-10-23T12:56:25.760Z",
+          "passed": true
+        },
+        {
+          "lesson": 1,
+          "title": "条纹从哪里来？",
+          "activity": "check",
+          "evidence": "session_response",
+          "at": "2026-10-23T12:57:51.889Z",
+          "passed": true
+        },
+        {
+          "lesson": 1,
+          "title": "条纹从哪里来？",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-23T12:57:55.404Z",
+          "passed": true
+        },
+        {
+          "lesson": 1,
+          "title": "条纹从哪里来？",
+          "activity": "complete",
+          "at": "2026-10-23T12:57:59.519Z",
+          "passed": true
+        },
+        {
+          "lesson": 2,
+          "title": "两列波相遇会怎样？",
+          "activity": "review",
+          "evidence": "teaching_delivery",
+          "at": "2026-10-23T12:59:44.555Z",
+          "passed": true
+        },
+        {
+          "lesson": 2,
+          "title": "两列波相遇会怎样？",
+          "activity": "theory",
+          "evidence": "teaching_delivery",
+          "at": "2026-10-23T13:01:44.172Z",
+          "passed": true
+        },
+        {
+          "lesson": 2,
+          "title": "两列波相遇会怎样？",
+          "activity": "check",
+          "evidence": "mastery",
+          "at": "2026-10-23T13:03:35.706Z",
+          "passed": true
+        },
+        {
+          "lesson": 2,
+          "title": "两列波相遇会怎样？",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:03:40.556Z",
+          "passed": true
+        },
+        {
+          "lesson": 2,
+          "title": "两列波相遇会怎样？",
+          "activity": "complete",
+          "at": "2026-10-23T13:03:44.371Z",
+          "passed": true
+        },
+        {
+          "lesson": 3,
+          "title": "双缝为什么出现明暗？",
+          "activity": "review",
+          "evidence": "teaching_delivery",
+          "at": "2026-10-23T13:03:48.437Z",
+          "passed": true
+        },
+        {
+          "lesson": 3,
+          "title": "双缝为什么出现明暗？",
+          "activity": "theory",
+          "evidence": "teaching_delivery",
+          "at": "2026-10-23T13:04:39.159Z",
+          "passed": true
+        },
+        {
+          "lesson": 3,
+          "title": "双缝为什么出现明暗？",
+          "activity": "check",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:05:55.599Z",
+          "passed": true
+        },
+        {
+          "lesson": 3,
+          "title": "双缝为什么出现明暗？",
+          "activity": "practice",
+          "evidence": "experiment_observation",
+          "at": "2026-10-23T13:05:58.879Z",
+          "passed": true
+        },
+        {
+          "lesson": 3,
+          "title": "双缝为什么出现明暗？",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:06:35.318Z",
+          "passed": true
+        },
+        {
+          "lesson": 3,
+          "title": "双缝为什么出现明暗？",
+          "activity": "complete",
+          "at": "2026-10-23T13:06:40.613Z",
+          "passed": true
+        },
+        {
+          "lesson": 4,
+          "title": "怎样改变干涉条纹间距？",
+          "activity": "review",
+          "evidence": "teaching_delivery",
+          "at": "2026-10-23T13:06:45.106Z",
+          "passed": true
+        },
+        {
+          "lesson": 4,
+          "title": "怎样改变干涉条纹间距？",
+          "activity": "theory",
+          "evidence": "teaching_delivery",
+          "at": "2026-10-23T13:07:43.753Z",
+          "passed": true
+        },
+        {
+          "lesson": 4,
+          "title": "怎样改变干涉条纹间距？",
+          "activity": "check",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:09:06.073Z",
+          "passed": true
+        },
+        {
+          "lesson": 4,
+          "title": "怎样改变干涉条纹间距？",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:10:02.678Z",
+          "passed": true
+        },
+        {
+          "lesson": 4,
+          "title": "怎样改变干涉条纹间距？",
+          "activity": "practice",
+          "evidence": "experiment_observation",
+          "at": "2026-10-23T13:16:29.471Z",
+          "passed": true
+        },
+        {
+          "lesson": 4,
+          "title": "怎样改变干涉条纹间距？",
+          "activity": "complete",
+          "at": "2026-10-23T13:16:51.998Z",
+          "passed": true
+        },
+        {
+          "lesson": 5,
+          "title": "一条缝为什么仍有条纹？",
+          "activity": "review",
+          "evidence": "teaching_delivery",
+          "at": "2026-10-23T13:17:00.849Z",
+          "passed": true
+        },
+        {
+          "lesson": 5,
+          "title": "一条缝为什么仍有条纹？",
+          "activity": "theory",
+          "evidence": "teaching_delivery",
+          "at": "2026-10-23T13:18:06.618Z",
+          "passed": true
+        },
+        {
+          "lesson": 5,
+          "title": "一条缝为什么仍有条纹？",
+          "activity": "check",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:19:15.874Z",
+          "passed": true
+        },
+        {
+          "lesson": 5,
+          "title": "一条缝为什么仍有条纹？",
+          "activity": "practice",
+          "evidence": "experiment_observation",
+          "at": "2026-10-23T13:27:01.119Z",
+          "passed": true
+        },
+        {
+          "lesson": 5,
+          "title": "一条缝为什么仍有条纹？",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:27:45.419Z",
+          "passed": true
+        },
+        {
+          "lesson": 5,
+          "title": "一条缝为什么仍有条纹？",
+          "activity": "complete",
+          "at": "2026-10-23T13:27:52.970Z",
+          "passed": true
+        },
+        {
+          "lesson": 6,
+          "title": "缝变窄，图样怎样变化？",
+          "activity": "review",
+          "evidence": "teaching_delivery",
+          "at": "2026-10-23T13:27:58.037Z",
+          "passed": true
+        },
+        {
+          "lesson": 6,
+          "title": "缝变窄，图样怎样变化？",
+          "activity": "theory",
+          "evidence": "teaching_delivery",
+          "at": "2026-10-23T13:29:25.400Z",
+          "passed": true
+        },
+        {
+          "lesson": 6,
+          "title": "缝变窄，图样怎样变化？",
+          "activity": "check",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:30:29.573Z",
+          "passed": true
+        },
+        {
+          "lesson": 6,
+          "title": "缝变窄，图样怎样变化？",
+          "activity": "practice",
+          "evidence": "experiment_observation",
+          "at": "2026-10-23T13:32:52.414Z",
+          "passed": true
+        },
+        {
+          "lesson": 6,
+          "title": "缝变窄，图样怎样变化？",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:33:14.890Z",
+          "passed": true
+        },
+        {
+          "lesson": 6,
+          "title": "缝变窄，图样怎样变化？",
+          "activity": "complete",
+          "at": "2026-10-23T13:33:26.909Z",
+          "passed": true
+        },
+        {
+          "lesson": 7,
+          "title": "干涉与衍射怎样联系？",
+          "activity": "review",
+          "evidence": "teaching_delivery",
+          "at": "2026-10-23T13:33:50.406Z",
+          "passed": true
+        },
+        {
+          "lesson": 7,
+          "title": "干涉与衍射怎样联系？",
+          "activity": "theory",
+          "evidence": "teaching_delivery",
+          "at": "2026-10-23T13:35:35.365Z",
+          "passed": true
+        },
+        {
+          "lesson": 7,
+          "title": "干涉与衍射怎样联系？",
+          "activity": "check",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:37:27.961Z",
+          "passed": true
+        },
+        {
+          "lesson": 7,
+          "title": "干涉与衍射怎样联系？",
+          "activity": "practice",
+          "evidence": "experiment_observation",
+          "at": "2026-10-23T13:37:38.938Z",
+          "passed": true
+        },
+        {
+          "lesson": 7,
+          "title": "干涉与衍射怎样联系？",
+          "activity": "reflect",
+          "evidence": "submitted_artifact",
+          "at": "2026-10-23T13:38:35.958Z",
+          "passed": true
+        },
+        {
+          "lesson": 7,
+          "title": "干涉与衍射怎样联系？",
+          "activity": "complete",
+          "at": "2026-10-23T13:38:59.838Z",
+          "passed": true
+        },
+        {
+          "lesson": 8,
+          "title": "别人能复核我的探究吗？",
+          "activity": "review",
+          "evidence": "teaching_delivery",
+          "at": "2026-10-23T13:39:23.036Z",
+          "passed": true
+        },
+        {
+          "lesson": 8,
+          "title": "别人能复核我的探究吗？",
+          "activity": "theory",
+          "evidence": "teaching_delivery",
+          "at": "2026-10-23T13:42:06.010Z",
+          "passed": true
+        },
+        {
+          "lesson": 8,
+          "title": "别人能复核我的探究吗？",
+          "activity": "check",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:43:35.774Z",
+          "passed": true
+        },
+        {
+          "lesson": 8,
+          "title": "别人能复核我的探究吗？",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-23T13:43:46.136Z",
+          "passed": true
+        },
+        {
+          "lesson": 8,
+          "title": "别人能复核我的探究吗？",
+          "activity": "complete",
+          "at": "2026-10-23T13:44:00.946Z",
+          "passed": true
+        }
+      ]
+    }
+  ],
+  "boundaryChecks": {
+    "at": "2026-10-23T13:34:20.703Z",
+    "passed": [
+      {
+        "name": "anonymous-progress",
+        "status": 401,
+        "code": "UNAUTHENTICATED"
+      },
+      {
+        "name": "foreign-student-progress",
+        "status": 403,
+        "code": "LEARNING_SESSION_FORBIDDEN"
+      },
+      {
+        "name": "foreign-student-complete",
+        "status": 403,
+        "code": "LEARNING_SESSION_FORBIDDEN"
+      },
+      {
+        "name": "teacher-cannot-complete-as-student",
+        "status": 403,
+        "code": "FORBIDDEN"
+      },
+      {
+        "name": "future-session-completion",
+        "status": 409,
+        "code": "LEARNING_SESSION_OUT_OF_ORDER"
+      },
+      {
+        "name": "stale-plan-revision",
+        "status": 409,
+        "code": "LEARNING_SESSION_SCOPE_STALE"
+      }
+    ]
+  },
+  "verification": {
+    "runDirectory": "services/api/.tmp/pbl-capability/run-1792762464498-2383128",
+    "success": true,
+    "checks": [
+      {
+        "name": "build-contracts",
+        "exitCode": 0,
+        "passed": 0,
+        "failed": 0
+      },
+      {
+        "name": "contracts-esm-extensions",
+        "exitCode": 0,
+        "passed": 0,
+        "failed": 0
+      },
+      {
+        "name": "build-database",
+        "exitCode": 0,
+        "passed": 0,
+        "failed": 0
+      },
+      {
+        "name": "build-infra",
+        "exitCode": 0,
+        "passed": 0,
+        "failed": 0
+      },
+      {
+        "name": "build-agent-memory",
+        "exitCode": 0,
+        "passed": 0,
+        "failed": 0
+      },
+      {
+        "name": "build-ai-client",
+        "exitCode": 0,
+        "passed": 0,
+        "failed": 0
+      },
+      {
+        "name": "build-model-runtime",
+        "exitCode": 0,
+        "passed": 0,
+        "failed": 0
+      },
+      {
+        "name": "build-api",
+        "exitCode": 0,
+        "passed": 0,
+        "failed": 0
+      },
+      {
+        "name": "api-behavior-tests",
+        "exitCode": 0,
+        "passed": 328,
+        "failed": 0
+      },
+      {
+        "name": "ai-client-assertions",
+        "exitCode": 0,
+        "passed": 0,
+        "failed": 0
+      },
+      {
+        "name": "build-student-center-types",
+        "exitCode": 0,
+        "passed": 0,
+        "failed": 0
+      },
+      {
+        "name": "build-teacher-workspace-types",
+        "exitCode": 0,
+        "passed": 0,
+        "failed": 0
+      },
+      {
+        "name": "build-admin-console-types",
+        "exitCode": 0,
+        "passed": 0,
+        "failed": 0
+      },
+      {
+        "name": "student-pbl-data-tests",
+        "exitCode": 0,
+        "passed": 17,
+        "failed": 0
+      },
+      {
+        "name": "student-live-boundary-tests",
+        "exitCode": 0,
+        "passed": 7,
+        "failed": 0
+      },
+      {
+        "name": "build-workers",
+        "exitCode": 0,
+        "passed": 0,
+        "failed": 0
+      },
+      {
+        "name": "workers-esm-extensions",
+        "exitCode": 0,
+        "passed": 0,
+        "failed": 0
+      },
+      {
+        "name": "team-worker-tests",
+        "exitCode": 0,
+        "passed": 30,
+        "failed": 0
+      },
+      {
+        "name": "growth",
+        "exitCode": 0,
+        "passed": 9,
+        "failed": 0
+      },
+      {
+        "name": "audit",
+        "exitCode": 0,
+        "passed": 11,
+        "failed": 0
+      },
+      {
+        "name": "runtime",
+        "exitCode": 0,
+        "passed": 21,
+        "failed": 0
+      },
+      {
+        "name": "optics-ui",
+        "exitCode": 0,
+        "passed": 4,
+        "failed": 0
+      }
+    ],
+    "passed": 427,
+    "failed": 0
+  },
+  "visualComponent": {
+    "passed": true,
+    "kind": "isolated-component-with-action-test-double",
+    "results": [
+      {
+        "label": "preview",
+        "dpr": 1,
+        "values": [
+          {
+            "width": 929,
+            "cssWidth": 929.3333740234375,
+            "height": 100,
+            "cssHeight": 100,
+            "opaque": "1",
+            "pixel": 255
+          },
+          {
+            "width": 929,
+            "cssWidth": 929.3333740234375,
+            "height": 56,
+            "cssHeight": 56,
+            "opaque": "1",
+            "pixel": 20
+          }
+        ]
+      },
+      {
+        "label": "fullscreen",
+        "dpr": 1,
+        "values": [
+          {
+            "width": 1029,
+            "cssWidth": 1029.3333740234375,
+            "height": 100,
+            "cssHeight": 100,
+            "opaque": "1",
+            "pixel": 255
+          },
+          {
+            "width": 1029,
+            "cssWidth": 1029.3333740234375,
+            "height": 56,
+            "cssHeight": 56,
+            "opaque": "1",
+            "pixel": 20
+          }
+        ]
+      },
+      {
+        "label": "resize",
+        "dpr": 1,
+        "values": [
+          {
+            "width": 489,
+            "cssWidth": 489.3333435058594,
+            "height": 100,
+            "cssHeight": 100,
+            "opaque": "1",
+            "pixel": 255
+          },
+          {
+            "width": 489,
+            "cssWidth": 489.3333435058594,
+            "height": 56,
+            "cssHeight": 56,
+            "opaque": "1",
+            "pixel": 20
+          }
+        ]
+      },
+      {
+        "label": "scattering",
+        "dpr": 1,
+        "values": [
+          {
+            "width": 489,
+            "cssWidth": 489.3333435058594,
+            "height": 120,
+            "cssHeight": 120,
+            "opaque": "1",
+            "pixel": 255
+          }
+        ]
+      },
+      {
+        "label": "remounted-diffraction",
+        "dpr": 1,
+        "values": [
+          {
+            "width": 474,
+            "cssWidth": 474,
+            "height": 100,
+            "cssHeight": 100,
+            "opaque": "1",
+            "pixel": 255
+          },
+          {
+            "width": 474,
+            "cssWidth": 474,
+            "height": 56,
+            "cssHeight": 56,
+            "opaque": "1",
+            "pixel": 20
+          }
+        ]
+      },
+      {
+        "label": "preview",
+        "dpr": 2,
+        "values": [
+          {
+            "width": 1859,
+            "cssWidth": 929.3333740234375,
+            "height": 200,
+            "cssHeight": 100,
+            "opaque": "1",
+            "pixel": 255
+          },
+          {
+            "width": 1859,
+            "cssWidth": 929.3333740234375,
+            "height": 112,
+            "cssHeight": 56,
+            "opaque": "1",
+            "pixel": 20
+          }
+        ]
+      },
+      {
+        "label": "fullscreen",
+        "dpr": 2,
+        "values": [
+          {
+            "width": 2059,
+            "cssWidth": 1029.3333740234375,
+            "height": 200,
+            "cssHeight": 100,
+            "opaque": "1",
+            "pixel": 255
+          },
+          {
+            "width": 2059,
+            "cssWidth": 1029.3333740234375,
+            "height": 112,
+            "cssHeight": 56,
+            "opaque": "1",
+            "pixel": 20
+          }
+        ]
+      },
+      {
+        "label": "resize",
+        "dpr": 2,
+        "values": [
+          {
+            "width": 979,
+            "cssWidth": 489.3333435058594,
+            "height": 200,
+            "cssHeight": 100,
+            "opaque": "1",
+            "pixel": 255
+          },
+          {
+            "width": 979,
+            "cssWidth": 489.3333435058594,
+            "height": 112,
+            "cssHeight": 56,
+            "opaque": "1",
+            "pixel": 20
+          }
+        ]
+      },
+      {
+        "label": "scattering",
+        "dpr": 2,
+        "values": [
+          {
+            "width": 979,
+            "cssWidth": 489.3333435058594,
+            "height": 240,
+            "cssHeight": 120,
+            "opaque": "1",
+            "pixel": 255
+          }
+        ]
+      },
+      {
+        "label": "remounted-diffraction",
+        "dpr": 2,
+        "values": [
+          {
+            "width": 948,
+            "cssWidth": 474,
+            "height": 200,
+            "cssHeight": 100,
+            "opaque": "1",
+            "pixel": 255
+          },
+          {
+            "width": 948,
+            "cssWidth": 474,
+            "height": 112,
+            "cssHeight": 56,
+            "opaque": "1",
+            "pixel": 20
+          }
+        ]
+      }
+    ]
+  },
+  "postRestartBrowser": {
+    "passed": true,
+    "results": [
+      {
+        "target": "optics16",
+        "total": 16,
+        "completed": 16,
+        "stage": "completed",
+        "pageErrors": []
+      },
+      {
+        "target": "wave8",
+        "total": 8,
+        "completed": 8,
+        "stage": "completed",
+        "pageErrors": []
+      },
+      {
+        "target": "zero8",
+        "total": 8,
+        "completed": 8,
+        "stage": "completed",
+        "pageErrors": []
+      }
+    ]
+  },
+  "remoteServices": {
+    "passed": true,
+    "at": "2026-10-23T14:04:11Z",
+    "studentBuildId": "DfLWpyj0W0Js12dyZRtrc",
+    "services": [
+      {
+        "Id": "postgresql@18-main.service",
+        "ActiveState": "active",
+        "SubState": "running",
+        "ActiveEnterTimestamp": "Fri 2026-10-23 21:58:39 CST",
+        "MainPID": "2395815",
+        "NRestarts": "0",
+        "WorkingDirectory": "",
+        "previousPid": "1765",
+        "restarted": true
+      },
+      {
+        "Id": "redis-server.service",
+        "ActiveState": "active",
+        "SubState": "running",
+        "ActiveEnterTimestamp": "Fri 2026-10-23 21:58:36 CST",
+        "MainPID": "2395799",
+        "NRestarts": "0",
+        "WorkingDirectory": "",
+        "previousPid": "2109301",
+        "restarted": true
+      },
+      {
+        "Id": "nginx.service",
+        "ActiveState": "active",
+        "SubState": "running",
+        "ActiveEnterTimestamp": "Fri 2026-10-23 21:58:39 CST",
+        "MainPID": "2395919",
+        "NRestarts": "0",
+        "WorkingDirectory": "",
+        "previousPid": "2216862",
+        "restarted": true
+      },
+      {
+        "Id": "qitu-admin.service",
+        "ActiveState": "active",
+        "SubState": "running",
+        "ActiveEnterTimestamp": "Fri 2026-10-23 21:58:39 CST",
+        "MainPID": "2395849",
+        "NRestarts": "0",
+        "WorkingDirectory": "/root/qitu-zhixue",
+        "previousPid": "2320911",
+        "restarted": true
+      },
+      {
+        "Id": "qitu-api.service",
+        "ActiveState": "active",
+        "SubState": "running",
+        "ActiveEnterTimestamp": "Fri 2026-10-23 21:58:39 CST",
+        "MainPID": "2395850",
+        "NRestarts": "0",
+        "WorkingDirectory": "/root/qitu-zhixue",
+        "previousPid": "2323008",
+        "restarted": true
+      },
+      {
+        "Id": "qitu-auth.service",
+        "ActiveState": "active",
+        "SubState": "running",
+        "ActiveEnterTimestamp": "Fri 2026-10-23 21:58:39 CST",
+        "MainPID": "2395851",
+        "NRestarts": "0",
+        "WorkingDirectory": "/root/qitu-zhixue",
+        "previousPid": "2216847",
+        "restarted": true
+      },
+      {
+        "Id": "qitu-fix-admin.service",
+        "ActiveState": "active",
+        "SubState": "running",
+        "ActiveEnterTimestamp": "Fri 2026-10-23 22:02:57 CST",
+        "MainPID": "2399064",
+        "NRestarts": "0",
+        "WorkingDirectory": "/root/qitu-zhixue",
+        "previousPid": "1985415",
+        "restarted": true
+      },
+      {
+        "Id": "qitu-fix-auth.service",
+        "ActiveState": "active",
+        "SubState": "running",
+        "ActiveEnterTimestamp": "Fri 2026-10-23 22:02:57 CST",
+        "MainPID": "2399065",
+        "NRestarts": "0",
+        "WorkingDirectory": "/root/qitu-zhixue",
+        "previousPid": "1985454",
+        "restarted": true
+      },
+      {
+        "Id": "qitu-fix-parent.service",
+        "ActiveState": "active",
+        "SubState": "running",
+        "ActiveEnterTimestamp": "Fri 2026-10-23 22:02:57 CST",
+        "MainPID": "2399066",
+        "NRestarts": "0",
+        "WorkingDirectory": "/root/qitu-zhixue",
+        "previousPid": "1985409",
+        "restarted": true
+      },
+      {
+        "Id": "qitu-fix-student.service",
+        "ActiveState": "active",
+        "SubState": "running",
+        "ActiveEnterTimestamp": "Fri 2026-10-23 22:02:57 CST",
+        "MainPID": "2399067",
+        "NRestarts": "0",
+        "WorkingDirectory": "/root/qitu-zhixue",
+        "previousPid": "1985410",
+        "restarted": true
+      },
+      {
+        "Id": "qitu-fix-teacher.service",
+        "ActiveState": "active",
+        "SubState": "running",
+        "ActiveEnterTimestamp": "Fri 2026-10-23 22:02:57 CST",
+        "MainPID": "2399068",
+        "NRestarts": "0",
+        "WorkingDirectory": "/root/qitu-zhixue",
+        "previousPid": "1985455",
+        "restarted": true
+      },
+      {
+        "Id": "qitu-ima-mcp.service",
+        "ActiveState": "active",
+        "SubState": "running",
+        "ActiveEnterTimestamp": "Fri 2026-10-23 21:58:39 CST",
+        "MainPID": "2395846",
+        "NRestarts": "0",
+        "WorkingDirectory": "/opt/qitu-ima",
+        "previousPid": "2216848",
+        "restarted": true
+      },
+      {
+        "Id": "qitu-local-embedding.service",
+        "ActiveState": "active",
+        "SubState": "running",
+        "ActiveEnterTimestamp": "Fri 2026-10-23 21:58:39 CST",
+        "MainPID": "2395847",
+        "NRestarts": "0",
+        "WorkingDirectory": "/root/qitu-zhixue/services/knowledge",
+        "previousPid": "2216849",
+        "restarted": true
+      },
+      {
+        "Id": "qitu-parent.service",
+        "ActiveState": "active",
+        "SubState": "running",
+        "ActiveEnterTimestamp": "Fri 2026-10-23 21:58:39 CST",
+        "MainPID": "2395873",
+        "NRestarts": "0",
+        "WorkingDirectory": "/root/qitu-zhixue",
+        "previousPid": "2216850",
+        "restarted": true
+      },
+      {
+        "Id": "qitu-profile-growth.service",
+        "ActiveState": "active",
+        "SubState": "running",
+        "ActiveEnterTimestamp": "Fri 2026-10-23 21:58:39 CST",
+        "MainPID": "2395874",
+        "NRestarts": "0",
+        "WorkingDirectory": "/root/qitu-zhixue",
+        "previousPid": "2216997",
+        "restarted": true
+      },
+      {
+        "Id": "qitu-student.service",
+        "ActiveState": "active",
+        "SubState": "running",
+        "ActiveEnterTimestamp": "Fri 2026-10-23 21:58:39 CST",
+        "MainPID": "2395876",
+        "NRestarts": "0",
+        "WorkingDirectory": "/root/qitu-zhixue",
+        "previousPid": "2306246",
+        "restarted": true
+      },
+      {
+        "Id": "qitu-teacher.service",
+        "ActiveState": "active",
+        "SubState": "running",
+        "ActiveEnterTimestamp": "Fri 2026-10-23 21:58:39 CST",
+        "MainPID": "2395877",
+        "NRestarts": "0",
+        "WorkingDirectory": "/root/qitu-zhixue",
+        "previousPid": "2216852",
+        "restarted": true
+      },
+      {
+        "Id": "qitu-workers.service",
+        "ActiveState": "active",
+        "SubState": "running",
+        "ActiveEnterTimestamp": "Fri 2026-10-23 21:58:39 CST",
+        "MainPID": "2395879",
+        "NRestarts": "0",
+        "WorkingDirectory": "/root/qitu-zhixue",
+        "previousPid": "2323009",
+        "restarted": true
+      }
+    ],
+    "httpChecks": [
+      {
+        "port": 4100,
+        "path": "/api/v1/health/ready",
+        "status": 200,
+        "readiness": "ready"
+      },
+      {
+        "port": 3100,
+        "path": "/login",
+        "status": 200,
+        "scriptChunks": 9
+      },
+      {
+        "port": 3101,
+        "path": "/student/tutor",
+        "status": 200,
+        "scriptChunks": 12
+      },
+      {
+        "port": 3102,
+        "path": "/parent",
+        "status": 200,
+        "scriptChunks": 9
+      },
+      {
+        "port": 3103,
+        "path": "/teacher/dashboard",
+        "status": 200,
+        "scriptChunks": 9
+      },
+      {
+        "port": 3104,
+        "path": "/admin",
+        "status": 200,
+        "scriptChunks": 11
+      },
+      {
+        "port": 3215,
+        "path": "/login",
+        "status": 200,
+        "scriptChunks": 9
+      },
+      {
+        "port": 3211,
+        "path": "/student/tutor",
+        "status": 200,
+        "scriptChunks": 12
+      },
+      {
+        "port": 3212,
+        "path": "/parent",
+        "status": 200,
+        "scriptChunks": 9
+      },
+      {
+        "port": 3213,
+        "path": "/teacher/dashboard",
+        "status": 200,
+        "scriptChunks": 9
+      },
+      {
+        "port": 3214,
+        "path": "/admin",
+        "status": 200,
+        "scriptChunks": 11
+      },
+      {
+        "port": 3000,
+        "path": "/student/tutor",
+        "status": 200,
+        "scriptChunks": 12
+      },
+      {
+        "port": 3000,
+        "path": "/api/v1/health/ready",
+        "status": 200,
+        "readiness": "ready"
+      },
+      {
+        "port": 4115,
+        "path": "/health",
+        "anonymous": 401,
+        "authenticated": 200,
+        "status": 200
+      }
+    ]
+  },
+  "knowledgeRead": {
+    "passed": true,
+    "at": "2026-10-23T13:59:34.859Z",
+    "projectId": "proj-03695a37-60d7-4b0f-96a2-888f1cb8c9a0",
+    "listedIds": [
+      "ima_kb_Gw2JH9RH",
+      "ima_kb_SZTyv4SF"
+    ],
+    "frozenScope": [
+      "ima_kb_Gw2JH9RH",
+      "ima_kb_SZTyv4SF"
+    ],
+    "searchCount": 3,
+    "documentCount": 5,
+    "readEvidenceRef": true
+  },
+  "sourceSha256": {
+    "packages/ai-client/src/questions/registered-quiz.ts": "d08dff51fe4929511a44b19466f980303a0ef0e231faa68e18dbebdb2c48ff57",
+    "packages/ai-client/src/questions/index.ts": "df2b13a8584bc62035640ce57e64bf46a128bfaafd8c723f55229ba97930e777",
+    "packages/ai-client/src/questions/questions.test.ts": "b01f5513f55ee59f30aac307dfe7691f430092ed6b7d2a33b7eaa48596144243",
+    "services/api/src/modules/learning-plan/learning-plan.store.postgres.ts": "79dda2a0eb714969f5d704e221f13f5f59d72e2b5008fbffe993e089963af70e",
+    "services/api/src/modules/growth/growth-domain-evidence.worker.ts": "8f234ec5b5a00b6abc1a955eb11742e3ed749cbb6a7799e89478c85b6aba622a",
+    "services/api/src/modules/growth/growth-domain-evidence.test.ts": "46761c1720090d36d87cb64aa1ed89112bc73d4809bfdc6ed9f1929bf58e66ac",
+    "services/api/src/modules/ai-tutor/gateway-tutor.provider.ts": "5f32380f3f8d087d6403f0790349825d23e7eff156c9e9d627f98d6eed9c4bf4",
+    "services/api/src/modules/knowledge/courseware.service.ts": "4781892a42b8f8eb047461e710aec324fdf90431c8bf946aff01468b6fec8beb",
+    "services/api/src/modules/ai-tutor/tutor-courseware-activity.ts": "3fec4e583d5b196fa057672f6a50f0a7852574879e4982780ef2a381343f8be5",
+    "services/api/src/modules/ai-tutor/tutor-courseware-activity.test.ts": "cdc2e86b9298f573dacc14a82bc877192011faeb5e7010108e62db3ac11cddf3",
+    "apps/student-center/features/tutor/components/LessonCoursewareCard.tsx": "f6da7faa3338c07b61b0f68e65b3c3c5878025c5ec0e7c896381cc294bd9dddb",
+    "apps/student-center/features/tutor/components/CurrentLessonCard.tsx": "da5eeafd73b9ddc7277af89648274afc8c72007a06a7becec2a975a4f9fd5e26",
+    "services/api/src/modules/learning-plan/lesson-activity-progress.ts": "df4d32befc2c8aca4942dc93f0acf83c4144fee58e765c14349d7ad20896ed64",
+    "services/api/src/modules/learning-plan/lesson-activity-progress.test.ts": "a2ecc2e6290a2f649f04e9cb2c73df270bf9261d07da8183c4c3d2eec0928119",
+    "services/api/src/common/audit/audit-redaction.ts": "9dd442b62fe335878e2cf174f8be24364144d6370dfd4ce6d692939ffaf19d23",
+    "services/api/src/common/audit/audit-redaction.test.ts": "3245df859aa1774de92f853bbdeefc7b3abd7fbb64f0704b1bbf20f2f52e58be",
+    "services/api/src/modules/ai-tutor/tutor-lesson-activity.ts": "68a6d8ba51f25bc32efe6dcf1da1e1282e414ee2a881b7f4dd5d1b87846ed1f8",
+    "services/api/src/modules/ai-tutor/tutor-lesson-activity.feedback.test.ts": "0b9d0068ee8c60001a58e5f7f2bc9ea58fec71514af29863729fbdc75fd0960a",
+    "packages/model-runtime/src/runtime.ts": "1541c033dffd3a19dc347ccfb94a96747e0953c623a9553bc85a59d531165e05",
+    "packages/model-runtime/src/runtime.test.ts": "1a47443423783e67fb2ff895e9c878d1aa405c267167de08e7fdb535e6acebb7",
+    "apps/student-center/features/tutor/components/OpticsDiffractionScatteringCard.tsx": "2828ced53f50cd481a3585c2eef083d718f10027d3d4ca54dbaade5dab9e29f9",
+    "apps/student-center/features/tutor/components/OpticsDiffractionScatteringCard.test.tsx": "aaaa1d300757460836a1d95b90e321b16a9bee9f8710acde1a0c319d7b1a2bb2",
+    "apps/student-center/features/tutor/lib/opticsCanvas.ts": "7df43dc01c9c7946cf9774b7bdbdd71c16f8c2149f7eefeb5d6c5514c23f925f"
+  },
+  "preservedPreexistingFiles": [
+    "apps/admin-console/app/(console)/copilot/page.tsx",
+    "apps/admin-console/app/(console)/settings/assistants/page.tsx",
+    "apps/admin-console/app/(console)/settings/knowledge/page.tsx",
+    "apps/admin-console/app/(console)/settings/teams/page.tsx",
+    "apps/admin-console/app/(console)/settings/templates/page.tsx",
+    "apps/admin-console/lib/api/template-bindings.ts",
+    "apps/admin-console/lib/components/TeachingBindingGuide.tsx",
+    "apps/admin-console/lib/components/TemplateTeamBindingPanel.tsx",
+    "apps/admin-console/lib/components/teaching-binding/TeachingRoleInspector.tsx",
+    "apps/admin-console/lib/components/teaching-binding/model.test.ts",
+    "apps/admin-console/lib/components/teaching-binding/model.ts",
+    "apps/admin-console/lib/copilot/assistant-catalog.ts",
+    "apps/admin-console/lib/copilot/use-copilot-model.ts",
+    "apps/admin-console/next.config.ts",
+    "apps/student-center/features/tutor/TutorPage.tsx",
+    "apps/student-center/features/tutor/components/LessonAssessmentCard.tsx",
+    "apps/student-center/features/tutor/components/LessonLearningDock.tsx",
+    "apps/student-center/features/tutor/components/LessonWorkPanel.tsx",
+    "apps/student-center/features/tutor/data/lessonProgressApi.ts",
+    "apps/student-center/features/tutor/data/lessonWorkspaceApi.test.ts",
+    "database/migrations/meta/_journal.json",
+    "docs/admin/platform-governance.md",
+    "docs/plan/codex/tutor-course-team-redesign-20261022/05-interference-diffraction-curriculum.md",
+    "docs/plan/codex/tutor-course-team-redesign-20261022/06-implementation-and-acceptance.md",
+    "docs/plan/codex/tutor-course-team-redesign-20261022/README.md",
+    "docs/student/template-session-openings-plan.md",
+    "docs/student/tutor.md",
+    "packages/ai-client/src/qitu-sdk.test.ts",
+    "packages/ai-client/src/quiz-bank/index.ts",
+    "packages/contracts/src/index.ts",
+    "packages/contracts/src/learning-session-progress.ts",
+    "packages/contracts/src/pbl-learning.ts",
+    "packages/contracts/src/project-binding.ts",
+    "packages/contracts/src/tutor-lesson-program.ts",
+    "packages/contracts/src/tutor.ts",
+    "packages/database/src/lesson-collaboration-evidence.ts",
+    "services/api/src/modules/admin-copilot/copilot.service.ts",
+    "services/api/src/modules/admin-copilot/copilot.test.ts",
+    "services/api/src/modules/ai-tutor/lesson-collaboration-scope.test.ts",
+    "services/api/src/modules/ai-tutor/tutor-activity-context.ts",
+    "services/api/src/modules/ai-tutor/tutor-experiment.service.ts",
+    "services/api/src/modules/ai-tutor/tutor-knowledge-access.test.ts",
+    "services/api/src/modules/ai-tutor/tutor-knowledge-access.ts",
+    "services/api/src/modules/ai-tutor/tutor-lesson-collaboration.ts",
+    "services/api/src/modules/ai-tutor/tutor-lesson-program.ts",
+    "services/api/src/modules/ai-tutor/tutor-teaching-context.test.ts",
+    "services/api/src/modules/ai-tutor/tutor-teaching-context.ts",
+    "services/api/src/modules/ai-tutor/tutor.module.ts",
+    "services/api/src/modules/ai-tutor/tutor.service.ts",
+    "services/api/src/modules/knowledge/knowledge-retrieval.service.ts",
+    "services/api/src/modules/knowledge/knowledge.module.ts",
+    "services/api/src/modules/learning-plan/learning-plan.module.ts",
+    "services/api/src/modules/learning-plan/learning-plan.service.test.ts",
+    "services/api/src/modules/learning-plan/learning-plan.service.ts",
+    "services/api/src/modules/learning-plan/learning-session-progress.service.ts",
+    "services/api/src/modules/learning-plan/optics-fullflow.test-fixture.ts",
+    "services/api/src/modules/learning-plan/wave-course-fullflow.test.ts",
+    "services/api/src/modules/platform-registry/built-in-tools.ts",
+    "services/api/src/modules/platform-registry/platform-registry.service.ts",
+    "services/api/src/modules/platform-registry/team-version.service.ts",
+    "services/api/src/modules/platform-registry/team-version.test.ts",
+    "services/api/src/modules/templates/teaching-bundle.catalog.ts",
+    "services/api/src/modules/templates/teaching-bundle.compiler.test.ts",
+    "services/api/src/modules/templates/teaching-bundle.compiler.ts",
+    "services/api/src/modules/templates/teaching-bundle.draft.ts",
+    "services/api/src/modules/templates/teaching-bundle.types.ts",
+    "services/api/src/modules/templates/templates-binding.controller.ts",
+    "services/api/src/modules/templates/templates-binding.service.test.ts",
+    "services/api/src/modules/templates/templates-binding.service.ts",
+    "services/api/src/modules/works/works-learning-evidence.service.ts",
+    "services/api/src/modules/works/works.module.ts",
+    "services/api/src/scripts/optics-template-bootstrap.ts",
+    "tooling/verify-admin-copilot.mjs",
+    "tooling/verify-tutor-lessons.mjs",
+    "apps/admin-console/lib/components/knowledge-library/CoursewareLibrary.module.css",
+    "apps/admin-console/lib/components/knowledge-library/CoursewareLibrary.tsx",
+    "apps/admin-console/lib/components/teaching-binding/SessionBindingEditor.tsx",
+    "database/migrations/0049_courseware_assets.sql",
+    "doc/e2e-dual-template-testing-v1.1.md",
+    "docs/admin/release-session-bindings-20261023.md",
+    "docs/admin/session-bindings-release-20261023.json",
+    "docs/issues/20261023-template-session-bindings.md",
+    "docs/issues/20261023-zero-base-courseware.md",
+    "docs/plan/codex/template-session-bindings-20261023.md",
+    "docs/plan/codex/tutor-course-team-redesign-20261022/07-zero-base-teaching-and-courseware-assets.md",
+    "docs/plan/codex/tutor-course-team-redesign-20261022/08-courseware-implementation-20261023.md",
+    "packages/ai-client/src/quiz-bank/optics/wave-teaching-curriculum.ts",
+    "packages/contracts/src/courseware.ts",
+    "packages/contracts/src/courseware.validation.ts",
+    "services/api/src/common/tutor-runtime/board-content.ts",
+    "services/api/src/common/tutor-runtime/courseware-activity.schema.ts",
+    "services/api/src/modules/ai-tutor/tutor-courseware.controller.ts",
+    "services/api/src/modules/ai-tutor/tutor-courseware.service.ts",
+    "services/api/src/modules/ai-tutor/tutor-courseware.test.ts",
+    "services/api/src/modules/knowledge/courseware-storage.module.ts",
+    "services/api/src/modules/knowledge/courseware.controller.ts",
+    "services/api/src/modules/knowledge/courseware.store.postgres.ts",
+    "services/api/src/modules/knowledge/courseware.store.ts",
+    "services/api/src/modules/knowledge/courseware.test.ts",
+    "services/api/src/modules/templates/content/wave-teaching.ts",
+    "services/api/src/modules/templates/teaching-arrangement.input.ts",
+    "services/api/src/modules/templates/teaching-arrangement.test.ts",
+    "services/api/src/modules/templates/teaching-session-assignments.ts",
+    "services/api/src/modules/templates/teaching-session-bindings.test.ts",
+    "services/api/src/scripts/zero-base-courseware-bootstrap.ts",
+    "tooling/courseware-skill.json"
+  ]
+}

@@ -1,7 +1,7 @@
 ---
 name: qitu-style-clone
 description: Adapt an authorized visual teaching style to safe Qitu lesson blocks and accessibility constraints.
-version: 1.0.0
+version: 1.0.1
 runtime: admin
 status: published
 references: references/qitu-contract.md

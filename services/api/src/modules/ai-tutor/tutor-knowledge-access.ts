@@ -3,7 +3,7 @@ import type { LearningPlanStore } from '../learning-plan/learning-plan.store';
 import type { TemplateBindingService } from '../templates/templates-binding.service';
 import type { ImaSettingsService } from '../platform-registry/ima-settings.service';
 import { teachingValueDigest } from '../templates/teaching-bundle.canonical';
-import type { TutorTeachingContext } from './tutor-teaching-context';
+import { resolveTutorTeachingContext, type TutorTeachingContext } from './tutor-teaching-context';
 import type { ImaProjectScope, ImaReadEvidence } from './ima-project-scope';
 
 export function createTutorKnowledgeAccess(
@@ -33,7 +33,12 @@ export function createTutorKnowledgeAccess(
       refreshAllowedKnowledgeBaseIds: async () => {
         const project = await plans.findProject(projectId);
         if (!project || project.studentId !== studentId || project.templateVersionId !== teaching.bundle.templateVersionId) return [];
-        const current = await bindings.getFrozenTeachingBundle(projectId, project.templateVersionId!);
+        let current = await bindings.getFrozenTeachingBundle(projectId, project.templateVersionId!);
+        if (current.sessionAssignments) {
+          const fresh = await resolveTutorTeachingContext(plans, project, current);
+          if (fresh.session.id !== teaching.session.id || fresh.planId !== teaching.planId || fresh.planRevision !== teaching.planRevision) return [];
+          current = fresh.bundle;
+        }
         if (teachingValueDigest(current) !== digest) return [];
         return settings.currentKnowledgeBaseIds(assistantId, studentId);
       },

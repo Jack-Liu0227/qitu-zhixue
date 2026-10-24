@@ -128,6 +128,20 @@ export default function AdminAssistantsPage() {
     }
   }, [configuredModels]);
 
+  // 当带有 ?assistantId=... 或 ?id=... 参数时，自动打开对应助手的编辑抽屉
+  useEffect(() => {
+    if (typeof window !== 'undefined' && assistants.length > 0) {
+      const params = new URLSearchParams(window.location.search);
+      const targetId = params.get('assistantId') || params.get('id');
+      if (targetId) {
+        const found = assistants.find((a) => a.id === targetId);
+        if (found) {
+          setEditingAssistant(found);
+        }
+      }
+    }
+  }, [assistants]);
+
   const toggleAssistantEnabled = async (assistant: AssistantItem, e: React.MouseEvent) => {
     e.stopPropagation();
     const nextState = !assistant.enabled;

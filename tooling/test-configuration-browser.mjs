@@ -14,7 +14,7 @@ export default async function verifyConfigurationBrowser(page) {
   const spec = { ...fixture.template, phases: fixture.template.phases.map(phase => ({ ...phase, assignedAssistantId: null })) };
   let version = { id: versionId, templateId, version: 'v1', status: 'published', content: { pbl: spec },
     stages: [], rubric: [], publishedAt: now, createdAt: now, createdBy: 'fixture-admin' };
-  const team = { id: fixture.team.teamId, name: 'Synthetic teaching team', enabled: true, updatedAt: now };
+  const team = { id: fixture.team.teamId, name: 'Synthetic teaching team', enabled: true, updatedAt: now, members: fixture.team.members.map(m => ({ ...m, assistantName: m.assistantId })) };
   const versions = [{ id: 'legacy-team', teamId: team.id, version: 1, name: team.name, runtimeSnapshotStatus: 'legacy_unpinned', members: [] }];
   const rows = [{ binding: { id: 'legacy-binding', templateVersionId: versionId, teamVersionId: 'legacy-team', status: 'active',
     bundleDigest: null, bundleDraft: null, validation: { valid: true }, createdAt: now, updatedAt: now },
@@ -51,14 +51,6 @@ export default async function verifyConfigurationBrowser(page) {
     }
     if (path === '/api/v1/admin/project-templates') return reply([template]);
     if (path === '/api/v1/admin/ai-runtime/teams') return reply([team]);
-    if (path === `/api/v1/admin/teams/${encodeURIComponent(team.id)}/versions`) {
-      if (method === 'POST') {
-        assert.equal(body.expectedUpdatedAt, team.updatedAt);
-        versions.push({ ...fixture.team, runtimeSnapshotStatus: 'published' });
-        return reply(versions.at(-1));
-      }
-      return reply(versions);
-    }
     if (path === `/api/v1/admin/project-templates/${templateId}/versions`) {
       if (method === 'POST') {
         courseWrites++;
@@ -73,21 +65,23 @@ export default async function verifyConfigurationBrowser(page) {
     }
     if (path === base) {
       if (denyBindings) return route.fulfill({ status: 403, json: { detail: '绑定目录读取被拒绝' } });
-      if (method === 'POST') {
-        const row = { binding: { id: 'new-binding', templateVersionId: versionId, teamVersionId: body.teamVersionId,
-          status: 'draft', bundleDigest: null, bundleDraft: null, validation: { valid: false }, createdAt: new Date().toISOString(), updatedAt: now },
-          team: { id: team.id, name: team.name, runtimeSnapshotStatus: 'published' }, configurationReady: false };
-        rows.push(row); return reply({ binding: row.binding });
-      }
       return reply(rows);
+    }
+    if (path === `${base}/prepare-current` && method === 'POST') {
+      assert.equal(body.teamId, team.id);
+      assert.equal(body.scheduleProfileId, fixture.draft.scheduleProfileId);
+      assert.ok(body.sessions.length > 0);
+      assert.ok(body.teams.some(entry => entry.teamId === team.id && entry.expectedUpdatedAt === now));
+      assert.ok(request.headers()['idempotency-key']);
+      versions.splice(0, versions.length, { ...fixture.team, runtimeSnapshotStatus: 'published' });
+      const binding = { id: 'new-binding', templateVersionId: versionId, teamVersionId: fixture.team.id,
+        status: 'draft', bundleDigest: null, bundleDraft: fixture.draft, validation: { valid: false }, createdAt: new Date().toISOString(), updatedAt: now };
+      rows.push({ binding, team: { id: team.id, name: team.name, runtimeSnapshotStatus: 'published' }, configurationReady: false });
+      return reply({ binding });
     }
     if (path === `${base}/project-recovery`) return reply(recovery);
     const row = rows.find(entry => path.startsWith(`${base}/${entry.binding.id}/`));
-    if (row && path.endsWith('/prepare')) {
-      assert.equal(body.scheduleProfileId, fixture.draft.scheduleProfileId);
-      for (const phase of fixture.template.phases) assert.ok(versions.at(-1).members.some(member => member.slotId === body.phaseAssignments[phase.phase]));
-      row.binding.bundleDraft = fixture.draft; row.binding.updatedAt = new Date().toISOString(); return reply({ binding: row.binding });
-    }
+    if (row && path.endsWith('/team-snapshots')) return reply({ versions, issues: [] });
     if (row && path.endsWith('/validate')) { row.binding.status = 'validated'; return reply({ binding: row.binding }); }
     if (row && path.endsWith('/activate')) {
       rows.forEach(entry => { if (entry !== row) entry.binding.status = 'retired'; });
@@ -132,25 +126,19 @@ export default async function verifyConfigurationBrowser(page) {
     await page.getByRole('button', { name: '基础信息', exact: true }).click();
     assert.equal(await page.getByText('团队草稿关联', { exact: true }).count(), 0);
     assert.equal(await page.getByRole('combobox', { name: '绑定导师团队' }).count(), 1);
-    await page.getByRole('button', { name: '生成当前团队版本' }).click();
-    await page.getByText('团队版本已生成并回读确认。', { exact: true }).waitFor();
-    await page.getByRole('button', { name: '保存团队绑定', exact: true }).click();
-    await page.getByText('团队配置已保存并回读确认，刷新后保留。', { exact: true }).waitFor();
-    for (const phase of fixture.template.phases) {
-      const member = fixture.team.members.find(entry => entry.assistantId === phase.assignedAssistantId);
-      await page.getByRole('combobox', { name: `${phase.title}的导师`, exact: true }).selectOption(member.slotId);
-    }
-    await page.getByRole('button', { name: '生成教学配置', exact: true }).click();
-    await page.getByText('教学配置草稿已生成并保存', { exact: false }).waitFor();
+    assert.equal(await page.getByRole('button', { name: /生成.*团队版本/ }).count(), 0);
+    await page.getByRole('button', { name: '全部课时使用上方团队', exact: true }).click();
+    await page.getByRole('button', { name: '保存教学安排', exact: true }).click();
+    await page.getByText('教学安排已保存，请核对资料范围后启用。', { exact: true }).waitFor();
     await page.reload();
     const bundle = page.getByRole('textbox', { name: '教学配置草稿' });
-    await page.locator('summary').filter({ hasText: '教学角色与知识范围配置' }).click();
+    await page.locator('summary').filter({ hasText: '高级配置与历史项目恢复' }).click();
     await page.locator('summary').filter({ hasText: '高级：查看或编辑教学配置 JSON' }).click();
     await bundle.waitFor();
     assert.equal(JSON.parse(await bundle.inputValue()).teamVersionId, fixture.team.id);
     assert.equal(new URL(page.url()).searchParams.get('versionId'), versionId);
     await page.getByRole('button', { name: '校验并启用绑定', exact: true }).click();
-    await page.getByText('团队绑定已生效', { exact: false }).waitFor();
+    await page.getByText('教学安排已启用并回读确认。', { exact: false }).waitFor();
     await page.locator('summary').filter({ hasText: '历史项目会话恢复' }).click();
     await page.getByRole('textbox', { name: '项目绑定修复原因' }).fill('Reviewed configuration');
     await page.getByRole('button', { name: '确认恢复此项目', exact: true }).click();
@@ -160,7 +148,7 @@ export default async function verifyConfigurationBrowser(page) {
     assert.equal(courseWrites, 0);
     denyBindings = true; await page.reload();
     await page.getByRole('alert').filter({ hasText: '绑定目录读取被拒绝' }).waitFor();
-    assert.equal(await page.getByRole('button', { name: '保存团队绑定', exact: true }).isDisabled(), true);
+    assert.equal(await page.getByRole('button', { name: '保存教学安排', exact: true }).isDisabled(), true);
     denyBindings = false;
     checks.push('single binding entry, explicit phase members, draft reload, activation, recovery and directory failure');
 

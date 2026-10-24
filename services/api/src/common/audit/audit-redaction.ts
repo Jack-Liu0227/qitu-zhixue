@@ -58,6 +58,8 @@ export function redactSensitive<T>(value: T): T {
 }
 
 function redact(value: unknown, seen: WeakSet<object>, depth: number): unknown {
+  // PostgreSQL JSONB rejects lone UTF-16 surrogates returned by external tools/models.
+  if (typeof value === 'string') return value.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '\uFFFD');
   if (value === null || typeof value !== 'object') {
     return value;
   }

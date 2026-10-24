@@ -102,3 +102,6 @@ export * from './project-learning.js';
 export * from './learning-session-progress.js';
 export * from './learning-session-evidence.js';
 export * from './tutor-lesson-program.js';
+export * from './courseware.js';
+export * from './learning-activity.js';
+export * from './feedback-attachments.js';

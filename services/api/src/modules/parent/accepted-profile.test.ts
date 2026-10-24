@@ -25,8 +25,12 @@ test('parent projection exposes only reviewed aggregates and approved fixed word
 test('pending, rejected, superseded, unreviewed and cross-student projections are excluded', () => {
   for (const patch of [
     { status: 'proposed' }, { status: 'rejected' }, { status: 'superseded' }, { reviewedAt: null },
-    { reviewedBy: null }, { studentUserId: 'other' }, { agentId: 'other' }, { payload: { result: { rawText: 'secret' } } },
+    { reviewedBy: null }, { studentUserId: 'other' }, { payload: { result: { rawText: 'secret' } } },
   ]) assert.equal(parentAcceptedProfile('child-1', { ...candidate, ...patch }).freshness, 'unavailable');
+});
+
+test('reviewed history uses the actual canonical producer instead of a legacy alias', () => {
+  assert.equal(parentAcceptedProfile('child-1', { ...candidate, agentId: 'qitu-growth-analyst' }).freshness, 'fresh');
 });
 
 test('parent permission is checked on every read before accessing storage and denials are audited', async () => {

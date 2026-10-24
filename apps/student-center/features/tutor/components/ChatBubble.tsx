@@ -43,6 +43,8 @@ export function ChatBubble({
   onExperimentAction,
   onFeedback,
   projectId,
+  coursewareSnapshots = false,
+  projectContext,
   disabled = false,
   streaming = false,
 }: {
@@ -56,6 +58,8 @@ export function ChatBubble({
   onExperimentAction?: (experimentId: string, action: 'submit_prediction' | 'run' | 'record_observation', payload: unknown, idempotencyKey: string) => void | Promise<boolean | import('@qitu/contracts').TutorExperimentActionResponse>;
   onFeedback?: (turnId: string, kind: import('@qitu/contracts').TutorFeedbackKind, idempotencyKey: string) => Promise<void>;
   projectId?: string | null;
+  coursewareSnapshots?: boolean;
+  projectContext?: import('@qitu/contracts').TutorProjectContext;
   disabled?: boolean;
   streaming?: boolean;
 }) {
@@ -293,6 +297,8 @@ export function ChatBubble({
               onAnswerQuiz={onAnswerQuiz}
               onExperimentAction={onExperimentAction}
               projectId={projectId}
+              coursewareSnapshot={coursewareSnapshots}
+              projectContext={projectContext}
               disabled={disabled}
             />
           ) : (

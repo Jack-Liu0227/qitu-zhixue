@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { and, asc, eq, gt, inArray } from 'drizzle-orm';
 import {
-  agentTeamEvents, artifacts, auditLogs, growthDomainEventId, masteryEvents, outbox, projectEvidence,
+  agentTeamEvents, artifacts, auditLogs, growthDomainEventId, masteryRecords, outbox, projectEvidence,
   readGrowthDomainObservation, type Database,
 } from '@qitu/database';
 import type { GrowthDomainKind } from '@qitu/contracts';
@@ -111,7 +111,11 @@ export class GrowthDomainEvidenceWorker implements OnModuleInit, OnModuleDestroy
     if (kind === 'reflection') return db.select({ id: projectEvidence.id }).from(projectEvidence)
       .where(and(eq(projectEvidence.sourceKind, 'reflection'), cursor ? gt(projectEvidence.id, cursor) : undefined))
       .orderBy(asc(projectEvidence.id)).limit(limit);
-    return db.select({ id: masteryEvents.id }).from(masteryEvents)
-      .where(cursor ? gt(masteryEvents.id, cursor) : undefined).orderBy(asc(masteryEvents.id)).limit(limit);
+    const mastered = await db.select({ sourceEventId: masteryRecords.sourceEventId }).from(masteryRecords)
+      .where(and(eq(masteryRecords.status, 'mastered'), gt(masteryRecords.sourceEventId, cursor ?? '')))
+      .orderBy(asc(masteryRecords.sourceEventId)).limit(limit);
+    // Assessed attempts that are still learning or superseded are not failed growth facts.
+    // The owner revalidates each current source, including revocation, before publishing.
+    return mastered.flatMap(row => row.sourceEventId ? [{ id: row.sourceEventId }] : []);
   }
 }

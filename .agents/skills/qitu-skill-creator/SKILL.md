@@ -1,7 +1,7 @@
 ---
 name: qitu-skill-creator
 description: Author reviewed Qitu runtime skill drafts using canonical identities and existing Admin lifecycle operations.
-version: 1.0.0
+version: 1.0.1
 runtime: admin
 status: published
 references: references/qitu-contract.md

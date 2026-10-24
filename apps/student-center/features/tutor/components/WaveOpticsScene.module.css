@@ -1,0 +1,23 @@
+.scene { margin: 0 0 16px; padding: 20px; overflow: hidden; border: 1px solid #345371; border-radius: 16px; background: #0b192a; color: #e7f2fc; }
+.heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.heading span { font-size: 17px; font-weight: 650; }
+.heading small { display: block; margin-top: 6px; color: #afc7df; line-height: 1.6; }
+.heading button { flex-shrink: 0; padding: 8px 10px; border: 1px solid #557591; border-radius: 8px; color: #e7f2fc; background: #1c3249; font: inherit; font-size: 12px; cursor: pointer; }
+.heading button:focus-visible { outline: 3px solid #7dd3fc; outline-offset: 3px; }
+.apparatus { display: block; width: 100%; height: auto; margin: 24px 0 16px; }
+.apparatus text { fill: #d1e1ef; font-size: 17px; }
+.apparatus .annotation { font-size: 13px; fill: #9db7ce; }
+.beam { stroke: var(--wave-colour); stroke-width: 3; }
+.incoming { stroke: var(--wave-colour); opacity: .6; stroke-width: 2; animation: arrive 2.6s linear infinite; }
+.wave { fill: none; stroke: var(--wave-colour); stroke-width: 1.5; vector-effect: non-scaling-stroke; animation: expand 4.8s linear infinite; }
+.scene[data-motion='paused'] .wave, .scene[data-motion='paused'] .incoming { animation-play-state: paused; }
+.scene[data-reduced='true'] .wave, .scene[data-reduced='true'] .incoming { animation: none !important; opacity: .45; }
+.heading button:disabled { cursor: default; color: #afc7df; }
+.screenHeading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 10px; font-size: 13px; }
+.screenHeading span { color: #afc7df; font-size: 12px; }
+.fringes { display: block; width: 100%; height: 82px; border: 1px solid #47617a; border-radius: 6px; overflow: hidden; }
+.axis { display: flex; justify-content: space-between; gap: 8px; margin: 8px 0; font-size: 11px; color: #afc7df; font-variant-numeric: tabular-nums; }
+.note { margin: 14px 0 0; font-size: 12px; line-height: 1.6; color: #afc7df; }
+@keyframes expand { from { transform: scale(.3); opacity: .85; } to { transform: scale(14); opacity: 0; } }
+@keyframes arrive { from { transform: translateX(0); opacity: .2; } 25% { opacity: .65; } to { transform: translateX(135px); opacity: .2; } }
+@media (max-width: 600px) { .scene { padding: 14px; } .heading { flex-wrap: wrap; } .apparatus { margin-top: 16px; } .heading span { font-size: 15px; } }

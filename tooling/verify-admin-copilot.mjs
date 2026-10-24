@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join, relative } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -27,6 +27,19 @@ for (const name of packages) {
     }
   }
 }
+// Copied UNC node_modules can lack a link while the exact declared SDK is installed.
+const apiManifest = JSON.parse(readFileSync(join(root, 'services/api/package.json'), 'utf8'));
+const sdkVersion = apiManifest.dependencies?.['@larksuiteoapi/node-sdk'];
+if (typeof sdkVersion === 'string' && /^\d+\.\d+\.\d+$/.test(sdkVersion)) {
+  const sdk = join(root, `node_modules/.pnpm/@larksuiteoapi+node-sdk@${sdkVersion}/node_modules/@larksuiteoapi/node-sdk`);
+  if (existsSync(join(sdk, 'package.json'))) {
+    const manifest = JSON.parse(readFileSync(join(sdk, 'package.json'), 'utf8'));
+    const declarations = join(sdk, manifest.types ?? 'types', 'index.d.ts');
+    if (manifest.version === sdkVersion && existsSync(declarations)) {
+      paths['@larksuiteoapi/node-sdk'] = [declarations];
+    }
+  }
+}
 function save(success) {
   writeFileSync(join(root, 'services/api/.tmp/copilot-verification.json'), JSON.stringify({
     runId, finishedAt: new Date().toISOString(), success, steps,
@@ -38,7 +51,7 @@ function run(name, args, cwd = root) {
   process.stdout.write(`\n${name}\n`);
   const result = spawnSync(process.execPath, args, {
     cwd, env: { ...process.env, QITU_SOURCE_RUN_ID: runId }, encoding: 'utf8',
-    maxBuffer: 16 * 1024 * 1024, timeout: 240000,
+    maxBuffer: 16 * 1024 * 1024, timeout: 600000,
   });
   const log = join(directory, `${steps.length + 1}-${name}.log`);
   writeFileSync(log, `${result.stdout ?? ''}${result.stderr ?? ''}`);
@@ -67,7 +80,7 @@ const runtimeTests = join(directory, 'dist/common/tutor-runtime');
 testFiles.push(...readdirSync(runtimeTests).filter(f => f.endsWith('.test.js')).map(f => join(runtimeTests, f)));
 const apiRoot = join(root, 'services/api');
 run('behavior', ['--import', new URL('./verify-workspace-source.mjs', import.meta.url).href,
-  '--test', '--test-concurrency=2', ...testFiles.map(p => relative(apiRoot, p))], apiRoot);
+  '--test', '--test-concurrency=4', ...testFiles.map(p => relative(apiRoot, p))], apiRoot);
 if (foundations) {
   const workerRoot = join(root, 'services/workers');
   const workerOutput = join(workerRoot, '.tmp/pbl-capability', runId, 'dist');

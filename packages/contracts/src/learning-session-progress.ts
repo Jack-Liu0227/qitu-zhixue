@@ -5,7 +5,7 @@ export interface LessonActivityProgress {
   kind: LessonActivity;
   guidance: string;
   minutes: number;
-  evidence: 'session_response' | 'experiment_observation' | 'submitted_artifact' | 'mastery';
+  evidence: 'session_response' | 'experiment_observation' | 'submitted_artifact' | 'mastery' | 'teaching_delivery';
   status: 'completed' | 'current' | 'locked';
   evidenceRefs: string[];
 }

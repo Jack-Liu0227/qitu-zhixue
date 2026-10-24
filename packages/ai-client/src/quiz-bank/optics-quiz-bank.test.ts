@@ -10,6 +10,7 @@ import {
 } from './optics/index.js';
 import { MISCONCEPTION_REMEDIATIONS, knownMisconceptionTag } from './optics/misconceptions.js';
 import { QUIZ_BANK, toQuizBlockProjection } from './index.js';
+import { THUNDER_QUIZ_BANK } from './thunder-fighter.js';
 import { runOpticsCurriculumAssertions } from './optics/curriculum.test.js';
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -102,8 +103,8 @@ export function runOpticsQuizBankAssertions(): void {
 
   /* ============================ 题库不变量 ============================ */
 
-  // 全库 11 条（存量 3 + 新增 8），题号唯一。
-  equal(QUIZ_BANK.length, 11, '题库应为 11 条');
+  // 光学题保持 11 条；其他领域共享全局题号与答案投影约束。
+  equal(QUIZ_BANK.filter(entry => entry.conceptId.startsWith('optics.')).length, 11, '光学题库应为 11 条');
   const ids = new Set(QUIZ_BANK.map((entry) => entry.questionId));
   equal(ids.size, QUIZ_BANK.length, '题号必须唯一');
 
@@ -128,7 +129,7 @@ export function runOpticsQuizBankAssertions(): void {
     assert(entry.explanation.length > 0, `${entry.questionId} 解析非空`);
     assert(entry.rationaleHint.length > 0, `${entry.questionId} 引导非空`);
     assert(
-      opticsConceptExists(entry.conceptId),
+      THUNDER_QUIZ_BANK.some(question => question.conceptId === entry.conceptId) || opticsConceptExists(entry.conceptId),
       `${entry.questionId} 的 conceptId ${entry.conceptId} 必须在内容层存在`,
     );
     for (const key of entry.expectedKeys) {

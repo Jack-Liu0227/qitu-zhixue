@@ -13,6 +13,8 @@ import { ProjectLifecycleController } from './project-lifecycle.controller';
 import { ProjectLifecycleService } from './project-lifecycle.service';
 import { ProjectsService } from './projects.service';
 import { LearningPlanModule } from '../learning-plan/learning-plan.module';
+import { LearningPlanController } from '../learning-plan/learning-plan.controller';
+import { LearningSessionProgressController } from '../learning-plan/learning-session-progress.controller';
 import { WorksModule } from '../works/works.module';
 import { ProjectLearningLifecycleService } from './project-learning-lifecycle.service';
 import { ProjectLearningLifecycleController } from './project-learning-lifecycle.controller';
@@ -43,7 +45,7 @@ import { ProjectTeachingPlanRecoveryService } from './project-teaching-plan-reco
  */
 @Module({
   imports: [AuthModule, LearningPlanStorageModule, MasteryModule, TeamRuntimeModule, TemplatesModule, LearningPlanModule, WorksModule, VisualAssetsModule],
-  controllers: [ExplorationsController, ProjectHistoryController, ProjectLifecycleController, ProjectLearningLifecycleController, StudentHistoryCleanupController],
+  controllers: [LearningPlanController, LearningSessionProgressController, ExplorationsController, ProjectHistoryController, ProjectLifecycleController, ProjectLearningLifecycleController, StudentHistoryCleanupController],
   providers: [
     ProjectsService,
     ProjectLifecycleService,
@@ -66,6 +68,6 @@ import { ProjectTeachingPlanRecoveryService } from './project-teaching-plan-reco
       },
     },
   ],
-  exports: [ProjectsService, ProjectLifecycleService, ProjectHistoryService],
+  exports: [ProjectsService, ProjectLifecycleService, ProjectLearningLifecycleService, ProjectHistoryService],
 })
 export class ProjectsModule {}

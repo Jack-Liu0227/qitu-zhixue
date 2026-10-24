@@ -15,13 +15,14 @@ import type { TeachingBundleDraft } from '@qitu/contracts';
 import { pickFields, requireAnyRole } from '../../common/access/request-auth';
 import { AuthService } from '../identity-auth/auth.service';
 import { TemplateBindingService } from './templates-binding.service';
+import { parseSessionAssignments } from './teaching-session-assignments';
 
 /**
  * 模板版本 ↔ 团队版本绑定治理接口（F2，Admin / 授权教职工）。
  *
  * ```http
  * GET  /api/v1/admin/project-templates/:id/versions/:versionId/bindings/preview
- * POST /api/v1/admin/project-templates/:id/versions/:versionId/bindings
+ * POST /api/v1/admin/project-templates/:id/versions/:versionId/bindings/prepare-current
  * POST /api/v1/admin/project-templates/:id/versions/:versionId/bindings/:bindingId/validate
  * POST /api/v1/admin/project-templates/:id/versions/:versionId/bindings/:bindingId/activate
  * POST /api/v1/admin/project-templates/:id/versions/:versionId/bindings/:bindingId/retire
@@ -41,6 +42,13 @@ export class TemplateBindingController {
     private readonly auth: AuthService,
   ) {}
 
+  @Post(':id/versions/:versionId/bindings/prepare-current')
+  @HttpCode(200)
+  async prepareCurrent(@Headers('cookie') cookie: string | undefined, @Headers('idempotency-key') key: string | undefined,
+    @Param('id') id: string, @Param('versionId') versionId: string, @Body() body: unknown): Promise<AdminBindingMutationResponse> {
+    return { data: await this.bindings.prepareCurrentTeams(this.requireGovernanceActor(cookie), id, versionId, body, requireIdempotencyKey(key)) };
+  }
+
   @Get(':id/versions/:versionId/bindings')
   async list(@Headers('cookie') cookie: string | undefined, @Param('id') id: string, @Param('versionId') versionId: string) {
     return { data: await this.bindings.listGovernedBindings(this.requireGovernanceActor(cookie), id, versionId) };
@@ -56,32 +64,10 @@ export class TemplateBindingController {
     return { data: await this.bindings.previewBindings(actor, id, versionId) };
   }
 
-  @Post(':id/versions/:versionId/bindings')
-  async create(
-    @Headers('cookie') cookieHeader: string | undefined,
-    @Headers('idempotency-key') idempotencyKey: string | undefined,
-    @Param('id') id: string,
-    @Param('versionId') versionId: string,
-    @Body() body: unknown,
-  ): Promise<AdminBindingMutationResponse> {
-    const actor = this.requireGovernanceActor(cookieHeader);
-    const request = pickFields<{ teamVersionId?: string }>(body, ['teamVersionId']);
-    if (typeof request.teamVersionId !== 'string' || request.teamVersionId.trim().length === 0) {
-      throw new BadRequestException({
-        code: 'BINDING_INVALID',
-        message: 'teamVersionId 必填',
-      });
-    }
-    const key = requireIdempotencyKey(idempotencyKey);
-    return {
-      data: await this.bindings.createBinding(
-        actor,
-        id,
-        versionId,
-        { teamVersionId: request.teamVersionId.trim() },
-        key,
-      ),
-    };
+  @Get(':id/versions/:versionId/bindings/:bindingId/team-snapshots')
+  async teamSnapshots(@Headers('cookie') cookie: string | undefined, @Param('id') id: string,
+    @Param('versionId') versionId: string, @Param('bindingId') bindingId: string) {
+    return { data: await this.bindings.getTeachingTeamSnapshots(this.requireGovernanceActor(cookie), id, versionId, bindingId) };
   }
 
   @Get(':id/versions/:versionId/bindings/:bindingId/teaching-bundle')
@@ -116,7 +102,7 @@ export class TemplateBindingController {
   async prepare(@Headers('cookie') cookie: string | undefined, @Headers('idempotency-key') key: string | undefined,
     @Param('id') id: string, @Param('versionId') versionId: string, @Param('bindingId') bindingId: string,
     @Body() body: unknown): Promise<AdminBindingMutationResponse> {
-    const input = pickFields<{ scheduleProfileId?: string; phaseAssignments?: Record<string, string> }>(body, ['scheduleProfileId', 'phaseAssignments']);
+    const input = pickFields<{ scheduleProfileId?: string; phaseAssignments?: Record<string, string>; sessionAssignments?: unknown }>(body, ['scheduleProfileId', 'phaseAssignments', 'sessionAssignments']);
     if (input.scheduleProfileId !== undefined && (typeof input.scheduleProfileId !== 'string' || !input.scheduleProfileId.trim())) {
       throw new BadRequestException('课时排期标识无效');
     }
@@ -126,7 +112,8 @@ export class TemplateBindingController {
       throw new BadRequestException('阶段成员配置无效');
     }
     return { data: await this.bindings.prepareTeachingBundle(this.requireGovernanceActor(cookie), id, versionId, bindingId,
-      input.scheduleProfileId, requireIdempotencyKey(key), input.phaseAssignments) };
+      input.scheduleProfileId, requireIdempotencyKey(key), input.phaseAssignments,
+      input.sessionAssignments === undefined ? undefined : parseSessionAssignments(input.sessionAssignments)) };
   }
 
   @Post(':id/versions/:versionId/bindings/:bindingId/validate')
@@ -218,7 +205,7 @@ export function parseTeachingBundleDraft(body: unknown): TeachingBundleDraft {
     throw new BadRequestException({ code: 'BUNDLE_DRAFT_INVALID', message: 'modelByPurpose 必须为对象' });
   }
   // Do not accept instructions, URLs, credentials or resolved tool payloads.
-  const allowed = new Set([...requiredStrings, ...arrays, 'modelByPurpose', 'sessionRoutes']);
+  const allowed = new Set([...requiredStrings, ...arrays, 'modelByPurpose', 'sessionRoutes', 'sessionAssignments']);
   if (Object.keys(value).some((key) => !allowed.has(key))) {
     throw new BadRequestException({ code: 'BUNDLE_DRAFT_INVALID', message: '草稿包含非 canonical 引用字段' });
   }
@@ -291,6 +278,7 @@ export function parseTeachingBundleDraft(body: unknown): TeachingBundleDraft {
     knowledgeBaseIds,
     modelByPurpose,
     ...(sessionRoutes ? { sessionRoutes } : {}),
+    ...(value.sessionAssignments === undefined ? {} : { sessionAssignments: parseSessionAssignments(value.sessionAssignments) }),
     approvalPolicyVersion: draftId(value.approvalPolicyVersion, 'approvalPolicyVersion'),
   };
 }

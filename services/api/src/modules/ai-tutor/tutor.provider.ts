@@ -20,6 +20,7 @@ export interface TutorTurnInput {
   refreshDisclosure?: () => Promise<TutorDisclosure>;
   imaKnowledgeScope?: import('./ima-tool-scope').ImaKnowledgeScope;
   knowledgeTools?: import('@qitu/model-runtime').ModelRuntimeTool[];
+  learnerReadTools?: import('@qitu/model-runtime').ModelRuntimeTool[];
   knowledgeState?: string;
   /** Server-only fresh authorization closure; never serialized or supplied by browsers. */
   authorizeKnowledgeTool?: (toolId: string) => Promise<boolean>;

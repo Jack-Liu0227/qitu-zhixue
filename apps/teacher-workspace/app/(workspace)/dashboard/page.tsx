@@ -1,6 +1,8 @@
 'use client';
+import { ResizablePanels } from '@qitu/ui';
 
 import { Avatar, NavigationArtwork, VisualAsset } from '@qitu/ui';
+import type { TeacherFeedbackListPageData } from '@qitu/contracts';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -82,9 +84,11 @@ function LoadingState() {
 function DashboardContent({
   roster,
   interventions,
+  feedback,
 }: {
   roster: TeacherRosterPageData;
   interventions: TeacherInterventionListPageData;
+  feedback: TeacherFeedbackListPageData;
 }) {
   const stageGroup = (stage: string | null) => {
     if (stage === 'exploration' || stage === 'intent_confirmed') return 'Inspiration';
@@ -94,7 +98,15 @@ function DashboardContent({
     return null;
   };
   const recentStudents = roster.students.slice(0, 4);
-  const recentIssues = interventions.items.slice(0, 3);
+  const pendingCount = interventions.totals.open + feedback.totals.processing;
+  const attentionCount = roster.students.filter(student => student.stuck || student.attentionCount > 0).length;
+  const recentIssues = [
+    ...interventions.items.filter(item => item.status !== 'resolved').map(item => ({ ...item,
+      status: item.status === 'open' ? '待介入' : '处理中' })),
+    ...feedback.items.filter(item => item.status === 'processing' || item.status === 'reopened').map(item => ({
+      id: item.ticketId, studentDisplayName: item.studentDisplayName, status: '家长待回复', reason: item.problem, createdAt: item.createdAt,
+    })),
+  ].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 3);
   const stageColors: Record<string, string> = {
     Inspiration: '#2563eb',
     Research: '#4f46e5',
@@ -104,7 +116,7 @@ function DashboardContent({
   const stageLabels: Record<string, string> = {
     Inspiration: '灵感探索',
     Research: '深度研究',
-    Making: '制作测试',
+    Making: '实践制作',
     Showcase: '成果展示',
   };
 
@@ -122,8 +134,8 @@ function DashboardContent({
             <div>
               <h2>你好，{roster.teacher.displayName}！</h2>
               <p>
-                {interventions.signalsAvailable === false ? '关注提醒统计暂未接入' : `目前有 ${interventions.totals.open} 个待处理问题`}
-                {roster.totals.stuckCount > 0 ? `，其中 ${roster.totals.stuckCount} 个需要重点关注` : ''}。
+                {interventions.signalsAvailable === false ? '关注提醒统计暂时不可用' : `目前有 ${pendingCount} 个待处理问题`}
+                {attentionCount > 0 ? `，涉及 ${attentionCount} 名学生` : ''}。
               </p>
             </div>
           </div>
@@ -159,14 +171,14 @@ function DashboardContent({
         />
         <MetricCard
           label="待处理问题"
-          value={interventions.signalsAvailable === false ? '—' : String(interventions.totals.open)}
+          value={interventions.signalsAvailable === false ? '—' : String(pendingCount)}
           delta={null}
           icon={<AlertIcon size={22} />}
           tone="#d97706"
         />
         <MetricCard
           label="需要关注"
-          value={roster.signalsAvailable === false ? '—' : String(roster.totals.stuckCount)}
+          value={roster.signalsAvailable === false ? '—' : String(attentionCount)}
           delta={null}
           icon={<CheckCircleIcon size={22} />}
           tone="#059669"
@@ -174,7 +186,7 @@ function DashboardContent({
       </section>
 
       {/* 中部：图表 + 待办 */}
-      <section className="qtx-grid qtx-grid-12">
+      <ResizablePanels storageKey="teacher-dashboard-0" initialSizes={[64, 36]} minWidths={[360, 280]} className="qtx-dashboard-split">
         <div className="qtx-col-8 qtx-card qtx-panel">
           <div className="qtx-panel-header">
             <div className="qtx-panel-title">
@@ -300,12 +312,12 @@ function DashboardContent({
             </div>
           )}
         </div>
-      </section>
+      </ResizablePanels>
 
       <section className="qtx-card qtx-panel" aria-label="关注学生"><div className="qtx-panel-header"><h2 className="qtx-panel-title">关注学生</h2><Link href="/students" className="qtx-link">查看学生</Link></div><AttentionStudents students={roster.students.filter((student) => student.stuck || student.attentionCount > 0)} available={roster.signalsAvailable !== false} /></section>
 
       {/* 底部：最近活跃学生 + 快捷操作 */}
-      <section className="qtx-grid qtx-grid-12">
+      <ResizablePanels storageKey="teacher-dashboard-1" initialSizes={[64, 36]} minWidths={[360, 280]} className="qtx-dashboard-split">
         <div className="qtx-col-7 qtx-card qtx-panel">
           <div className="qtx-panel-header">
             <div className="qtx-panel-title">
@@ -327,7 +339,7 @@ function DashboardContent({
                     <th>学生</th>
                     <th>当前项目</th>
                     <th>活跃天数</th>
-                    <th>本周任务</th>
+                    <th>本周完成课时</th>
                     <th>状态</th>
                   </tr>
                 </thead>
@@ -353,13 +365,13 @@ function DashboardContent({
                       <td>{s.signalsAvailable === false ? '暂未接入' : `${s.weeklyTasks} 个`}</td>
                       <td>
                         <span
-                          className={`qtx-badge ${s.signalsAvailable === false ? 'qtx-badge-slate' : s.stuck ? 'qtx-badge-amber' : 'qtx-badge-emerald'}`}
+                          className={`qtx-badge ${s.signalsAvailable === false ? 'qtx-badge-slate' : s.stuck || s.attentionCount > 0 ? 'qtx-badge-amber' : 'qtx-badge-emerald'}`}
                         >
                           <span
                             className="qtx-status-dot"
-                            style={{ background: s.signalsAvailable === false ? '#64748b' : s.stuck ? '#d97706' : '#059669' }}
+                            style={{ background: s.signalsAvailable === false ? '#64748b' : s.stuck || s.attentionCount > 0 ? '#d97706' : '#059669' }}
                           />
-                          {s.signalsAvailable === false ? '待观察' : s.stuck ? '需要关注' : '正常'}
+                          {s.signalsAvailable === false ? '待观察' : s.stuck || s.attentionCount > 0 ? '需要关注' : '正常'}
                         </span>
                       </td>
                     </tr>
@@ -430,7 +442,7 @@ function DashboardContent({
               : '所有学生均已绑定监护人。'}
           </div>
         </div>
-      </section>
+      </ResizablePanels>
     </div>
   );
 }
@@ -438,15 +450,17 @@ function DashboardContent({
 export default function DashboardPage() {
   const [roster, setRoster] = useState<TeacherRosterPageData | null>(null);
   const [interventions, setInterventions] = useState<TeacherInterventionListPageData | null>(null);
+  const [feedback, setFeedback] = useState<TeacherFeedbackListPageData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([teacherApi.roster(), teacherApi.interventions()])
-      .then(([rosterResponse, interventionsResponse]) => {
+    Promise.all([teacherApi.roster(), teacherApi.interventions(), teacherApi.feedback()])
+      .then(([rosterResponse, interventionsResponse, feedbackResponse]) => {
         if (cancelled) return;
         setRoster(rosterResponse.data);
         setInterventions(interventionsResponse.data);
+        setFeedback(feedbackResponse.data);
       })
       .catch((err) => {
         if (cancelled) return;
@@ -460,6 +474,6 @@ export default function DashboardPage() {
   }, []);
 
   if (error) return <ErrorState type={error} />;
-  if (!roster || !interventions) return <LoadingState />;
-  return <DashboardContent roster={roster} interventions={interventions} />;
+  if (!roster || !interventions || !feedback) return <LoadingState />;
+  return <DashboardContent roster={roster} interventions={interventions} feedback={feedback} />;
 }

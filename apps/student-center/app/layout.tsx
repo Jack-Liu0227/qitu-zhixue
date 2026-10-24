@@ -16,6 +16,7 @@ import '../styles/compact-layout.css';
 import '@qitu/ui/brand.css';
 import '../styles/ui-remediation.css';
 import '../styles/tutor-welcome.css';
+import '../styles/learning-polish.css';
 import { StudentShellHost } from './student-shell';
 
 export const metadata: Metadata = {

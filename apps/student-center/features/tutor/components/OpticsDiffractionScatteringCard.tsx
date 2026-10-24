@@ -4,12 +4,14 @@ import { VisualAsset } from '@qitu/ui';
 
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { diffractionPreview, scatteringPreview } from '../lib/opticsPreviewModel';
+import { prepareOpticsCanvas } from '../lib/opticsCanvas';
 import { createIdempotencyKey } from '../idempotency';
 import type { TutorExperimentActionResponse } from '@qitu/contracts';
 
 export interface OpticsDiffractionScatteringCardProps {
   savedObservation?: TutorExperimentActionResponse['observationReceipt'];
   disabled?: boolean;
+  readOnly?: boolean;
   initialMode?: 'diffraction' | 'scattering';
   initialParameters?: Record<string, number>;
   allowedModels?: readonly ('diffraction' | 'scattering')[];
@@ -82,6 +84,7 @@ interface Particle {
 
 export function OpticsDiffractionScatteringCard({
   disabled = false,
+  readOnly = false,
   initialMode = 'diffraction',
   initialParameters,
   allowedModels = ['diffraction', 'scattering'],
@@ -102,6 +105,7 @@ export function OpticsDiffractionScatteringCard({
   const [actionPending, setActionPending] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [runAccepted, setRunAccepted] = useState(false);
+  const [hasSavedRun, setHasSavedRun] = useState(!!savedObservation);
   const runActionIdRef = useRef<string | null>(null);
   const [observationAccepted, setObservationAccepted] = useState(false);
   const [observation, setObservation] = useState('');
@@ -156,10 +160,12 @@ export function OpticsDiffractionScatteringCard({
   // 交互式探测标尺位置 (mm) 与探测值
   const [probeXMm, setProbeXMm] = useState<number | null>(null);
 
-  const isPredictionLocked = (predictionGate?.required ?? false) && !isSubmittedLocal;
+  const previewOnly = readOnly || disabled || !onAction;
+  const replay = readOnly && (hasSavedRun || !!savedObservation);
+  const isPredictionLocked = !previewOnly && (predictionGate?.required ?? false) && !isSubmittedLocal;
 
   const handleSubmitPrediction = async () => {
-    if (!selectedPrediction) return;
+    if (!selectedPrediction || previewOnly || actionPending) return;
     setActionPending(true);
     setActionError(null);
     try {
@@ -181,13 +187,13 @@ export function OpticsDiffractionScatteringCard({
     : { particleRadius, wavelength: scatteringWavelength };
 
   const handleRunSimulation = async () => {
-    if (isPredictionLocked || disabled || actionPending) return;
+    if (isPredictionLocked || previewOnly || actionPending) return;
     setActionPending(true);
     setActionError(null);
     setObservationAccepted(false);
     try {
       const accepted = await dispatchAction('run', { mode, parameters: currentParameters() });
-      if (accepted) setRunAccepted(true);
+      if (accepted) { setRunAccepted(true); setHasSavedRun(true); }
       else setActionError('服务器未确认仿真操作，尚未记录');
     } catch (error) {
       setActionError(error instanceof Error ? error.message : '仿真操作失败，请重试');
@@ -197,7 +203,7 @@ export function OpticsDiffractionScatteringCard({
   };
 
   const handleRecordObservation = async () => {
-    if (!runAccepted || disabled || actionPending) return;
+    if (!runAccepted || previewOnly || actionPending) return;
     setActionPending(true);
     setActionError(null);
     try {
@@ -290,16 +296,19 @@ export function OpticsDiffractionScatteringCard({
   const benchCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const animFrameRef = useRef<number | null>(null);
   const animPhaseRef = useRef<number>(0);
+  const fringeDrawKeyRef = useRef<{ canvas: HTMLCanvasElement; key: string } | null>(null);
 
   // 绘制光屏上的连续干涉条纹 (光强分布物理着色)
   const drawFringeCanvas = useCallback(() => {
     const canvas = fringeCanvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const width = canvas.width;
-    const height = canvas.height;
+    const surface = prepareOpticsCanvas(canvas);
+    if (!surface) return;
+    const { context: ctx, width, height, pixelWidth, pixelHeight } = surface;
+    const drawKey = [pixelWidth, pixelHeight, beamColor.css, spanMm, screenDistance,
+      slitWidthM, lambdaM, centralBandWidthMm, probeXMm].join(':');
+    if (fringeDrawKeyRef.current?.canvas === canvas && fringeDrawKeyRef.current.key === drawKey) return;
+    fringeDrawKeyRef.current = { canvas, key: drawKey };
     ctx.clearRect(0, 0, width, height);
 
     // 背景底色：暗室无光状态
@@ -310,11 +319,11 @@ export function OpticsDiffractionScatteringCard({
     const { r, g, b } = beamColor;
 
     // 针对每个水平像素列逐列计算衍射振幅与光强
-    const imgData = ctx.createImageData(width, height);
+    const imgData = ctx.createImageData(pixelWidth, pixelHeight);
     const data = imgData.data;
 
-    for (let px = 0; px < width; px++) {
-      const xMm = ((px - halfWidth) / halfWidth) * spanMm;
+    for (let px = 0; px < pixelWidth; px++) {
+      const xMm = ((px - pixelWidth / 2) / (pixelWidth / 2)) * spanMm;
       const xM = xMm * 1e-3;
       const theta = Math.atan(xM / screenDistance);
       const beta = (Math.PI * slitWidthM * Math.sin(theta)) / lambdaM;
@@ -330,8 +339,8 @@ export function OpticsDiffractionScatteringCard({
       const colB = Math.min(255, Math.round(b * visibleBrightness));
       const alpha = Math.min(255, Math.round(255 * (0.05 + 0.95 * visibleBrightness)));
 
-      for (let py = 0; py < height; py++) {
-        const idx = (py * width + px) * 4;
+      for (let py = 0; py < pixelHeight; py++) {
+        const idx = (py * pixelWidth + px) * 4;
         data[idx] = colR;
         data[idx + 1] = colG;
         data[idx + 2] = colB;
@@ -385,11 +394,9 @@ export function OpticsDiffractionScatteringCard({
   const drawBenchCanvas = useCallback(() => {
     const canvas = benchCanvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const width = canvas.width;
-    const height = canvas.height;
+    const surface = prepareOpticsCanvas(canvas);
+    if (!surface) return;
+    const { context: ctx, width, height } = surface;
     ctx.clearRect(0, 0, width, height);
 
     // 深色光学实验暗台背景
@@ -488,8 +495,8 @@ export function OpticsDiffractionScatteringCard({
     const list: Particle[] = [];
     for (let i = 0; i < 70; i++) {
       list.push({
-        x: Math.random() * 480,
-        y: Math.random() * 120,
+        x: Math.random(),
+        y: Math.random(),
         vx: (Math.random() - 0.5) * 0.4,
         vy: (Math.random() - 0.5) * 0.35,
         size: 1.5 + Math.random() * 2.0,
@@ -502,11 +509,9 @@ export function OpticsDiffractionScatteringCard({
   const drawScatterCanvas = useCallback(() => {
     const canvas = scatterCanvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const width = canvas.width;
-    const height = canvas.height;
+    const surface = prepareOpticsCanvas(canvas);
+    if (!surface) return;
+    const { context: ctx, width, height } = surface;
     ctx.clearRect(0, 0, width, height);
 
     // 密闭细雾暗室
@@ -537,21 +542,18 @@ export function OpticsDiffractionScatteringCard({
     const particles = particlesRef.current;
     for (const p of particles) {
       if (isAnimating) {
-        p.x += p.vx;
-        p.y += p.vy;
-        if (p.x < 0) p.x = width;
-        if (p.x > width) p.x = 0;
-        if (p.y < 0) p.y = height;
-        if (p.y > height) p.y = 0;
+        p.x = (p.x + p.vx / width + 1) % 1;
+        p.y = (p.y + p.vy / height + 1) % 1;
       }
-
-      const distToBeam = Math.abs(p.y - centerY);
+      const x = p.x * width;
+      const y = p.y * height;
+      const distToBeam = Math.abs(y - centerY);
       const inBeam = distToBeam < beamThickness;
 
       if (inBeam) {
         // 微粒受到激光照射发生散射，发出带散射光晕的单色散射光
         const scatterGlowRadius = isRayleigh ? p.size * (1 + lambdaFactor * 0.6) : p.size * 2.5;
-        const radial = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, Math.min(18, scatterGlowRadius * 2.5));
+        const radial = ctx.createRadialGradient(x, y, 0, x, y, Math.min(18, scatterGlowRadius * 2.5));
         radial.addColorStop(0, scatterColor.css);
         radial.addColorStop(0.4, scatterColor.css);
         radial.addColorStop(1, 'rgba(0,0,0,0)');
@@ -559,19 +561,19 @@ export function OpticsDiffractionScatteringCard({
         ctx.fillStyle = radial;
         ctx.globalAlpha = isRayleigh ? Math.min(0.95, 0.4 + lambdaFactor * 0.15) : 0.65;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, Math.min(18, scatterGlowRadius * 2.5), 0, Math.PI * 2);
+        ctx.arc(x, y, Math.min(18, scatterGlowRadius * 2.5), 0, Math.PI * 2);
         ctx.fill();
         ctx.globalAlpha = 1.0;
 
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size * 0.6, 0, Math.PI * 2);
+        ctx.arc(x, y, p.size * 0.6, 0, Math.PI * 2);
         ctx.fill();
       } else {
         // 光束外的游离微观细雾暗粒子
         ctx.fillStyle = 'rgba(148, 163, 184, 0.25)';
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size * 0.5, 0, Math.PI * 2);
+        ctx.arc(x, y, p.size * 0.5, 0, Math.PI * 2);
         ctx.fill();
       }
     }
@@ -676,7 +678,7 @@ export function OpticsDiffractionScatteringCard({
               光的散射与衍射模型预览
             </h4>
             <span style={{ fontSize: '12px', color: '#64748b' }}>
-              {disabled ? '仅为计算示意，不是真实测量；当前仅可预览' : '受限模型仿真；模拟观察保存须取得服务端回执，不代表真实测量'}
+              {replay ? '复习演示；可反复调节参数，不会新增或覆盖已保存的学习记录' : previewOnly ? '模型示意预览；正式探究开放后，可提交预测并记录模拟观察' : '受限模型仿真；模拟观察保存须取得服务端回执，不代表真实测量'}
             </span>
           </div>
         </div>
@@ -702,7 +704,7 @@ export function OpticsDiffractionScatteringCard({
           </button>
           <button
             type="button"
-            disabled={disabled || actionPending || !allowedModels.includes('diffraction')}
+            disabled={disabled || actionPending || replay && initialMode !== 'diffraction' || !allowedModels.includes('diffraction')}
             onClick={() => { setMode('diffraction'); setIsSubmittedLocal(false); setSelectedPrediction(''); }}
             style={{
               padding: '6px 14px',
@@ -720,7 +722,7 @@ export function OpticsDiffractionScatteringCard({
           </button>
           <button
             type="button"
-            disabled={disabled || actionPending || !allowedModels.includes('scattering')}
+            disabled={disabled || actionPending || replay && initialMode !== 'scattering' || !allowedModels.includes('scattering')}
             onClick={() => { setMode('scattering'); setIsSubmittedLocal(false); setSelectedPrediction(''); }}
             style={{
               padding: '6px 14px',
@@ -757,7 +759,11 @@ export function OpticsDiffractionScatteringCard({
       </div>
 
       {/* POE 前置预测锁卡片 */}
-      {predictionGate?.required && (
+      {replay ? <p role="note">已完成的实验可以重复演示；如需提交新的观察，请进入当前课时的实验活动。</p> : previewOnly && predictionGate?.required ? (
+        <p role="note" style={{ color: '#475569', fontSize: '13px' }}>
+          正式探究采用“先预测、再观察、再解释”。当前可以查看示意，无需解锁；预测和观察将在正式探究中提交。
+        </p>
+      ) : predictionGate?.required && (
         <div
           style={{
             padding: '14px 16px',
@@ -769,10 +775,10 @@ export function OpticsDiffractionScatteringCard({
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
             <span style={{ fontSize: '13.5px', fontWeight: 700, color: isSubmittedLocal ? '#166534' : '#92400e' }}>
-              {isSubmittedLocal ? '✓ POE 前置预测已锁定' : '🔒 POE 前置预测锁：请先提出物理假设'}
+              {isSubmittedLocal ? '预测已记录，接下来观察并解释' : '先猜一猜：你认为会发生什么？'}
             </span>
             <span style={{ fontSize: '11.5px', color: '#64748b' }}>
-              {isSubmittedLocal ? '观察与预测比对中' : '运行仿真前必须提交'}
+              {isSubmittedLocal ? '观察与预测比对中' : '猜想不必正确，提交后即可运行'}
             </span>
           </div>
 
@@ -829,7 +835,8 @@ export function OpticsDiffractionScatteringCard({
       )}
 
       {/* 参数控制区与仿真操作区（受预测锁控制） */}
-      <div style={{ opacity: isPredictionLocked ? 0.45 : 1, pointerEvents: isPredictionLocked ? 'none' : 'auto' }}>
+      <fieldset disabled={disabled || previewOnly && !replay || isPredictionLocked || actionPending}
+        style={{ margin: 0, padding: 0, border: 0, minWidth: 0 }}>
         {mode === 'diffraction' ? (
           <div>
             {/* 经典预设场景选择条 */}
@@ -1151,7 +1158,17 @@ export function OpticsDiffractionScatteringCard({
         )}
 
         {/* 仿真运行操作按钮 */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px', marginBottom: '8px' }}>
+        {replay ? <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '12px' }}>
+          <button type="button" className="qitu-button qitu-button-primary" onClick={() => { animPhaseRef.current = 0; setIsAnimating(true); }}>
+            重新演示
+          </button>
+          <button type="button" className="qitu-button qitu-button-ghost" onClick={() => {
+            setMode(initialMode); setWavelength(parameter('wavelength', 632.8, 400, 750));
+            setSlitWidth(parameter('slitWidth', 50, 10, 200)); setScreenDistance(parameter('screenDistance', 1, 0.5, 2));
+            setParticleRadius(parameter('particleRadius', 5, 5, 300)); setScatteringWavelength(parameter('wavelength', 450, 400, 750));
+            setProbeXMm(null); animPhaseRef.current = 0; setIsAnimating(true);
+          }}>重置演示</button>
+        </div> : !previewOnly && <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px', marginBottom: '8px' }}>
           <button
             type="button"
             disabled={isPredictionLocked || disabled || actionPending}
@@ -1169,33 +1186,35 @@ export function OpticsDiffractionScatteringCard({
               transition: 'all 0.15s ease',
             }}
           >
-            {isPredictionLocked ? '\u8bf7\u5148\u63d0\u4ea4\u9884\u6d4b\u4ee5\u89e3\u9501\u8fd0\u884c' : actionPending ? '\u670d\u52a1\u5668\u5904\u7406\u4e2d...' : runAccepted ? '\u4eff\u771f\u5df2\u8fd0\u884c' : '\u8fd0\u884c\u4eff\u771f'}
+            {isPredictionLocked ? '请先提交预测以解锁运行' : actionPending ? '服务器处理中...' : runAccepted ? '再次运行仿真' : '运行仿真'}
           </button>
-        </div>
-      </div>
+        </div>}
+      </fieldset>
+      {!previewOnly && <>
       <label style={{ display: 'block', fontSize: '13px', marginBottom: '8px' }}>
         我的观察（模拟）
         <textarea aria-label="我的观察（模拟）" maxLength={500} value={observation}
-          disabled={disabled || actionPending || !runAccepted}
+          disabled={previewOnly || actionPending || !runAccepted}
           onChange={(event) => { setObservation(event.target.value); setObservationAccepted(false); }}
           placeholder="描述你从仿真图形中观察到的变化。"
           style={{ display: 'block', width: '100%', minHeight: '60px', marginTop: '6px' }} />
       </label>
       <button
         type="button"
-        disabled={!runAccepted || !observation.trim() || disabled || actionPending || observationAccepted}
+        disabled={!runAccepted || !observation.trim() || previewOnly || actionPending || observationAccepted}
         onClick={() => void handleRecordObservation()}
         style={{ margin: '0 0 8px auto', display: 'block', padding: '8px 16px', borderRadius: '8px', border: 'none', color: '#fff', background: observationAccepted ? '#86efac' : '#0ea5e9' }}
       >
         {observationAccepted ? '已保存模拟观察' : '\u8bb0\u5f55\u89c2\u5bdf'}
       </button>
+      </>}
       {savedObservation ? <p role="status">此前的模拟观察已保存，可在项目证据中查看。</p> : null}
 
       {actionError ? <p role="alert" style={{ color: '#b91c1c', fontSize: '12px' }}>{actionError}</p> : null}
       {serverSimulationSummary ? <p role="status" style={{ color: '#0369a1', fontSize: '12px' }}>{serverSimulationSummary}</p> : null}
 
       <p role="note" style={{ margin: '8px 0 0', fontSize: '11.5px', color: '#64748b' }}>
-        {disabled ? '当前为低风险模型预览，不保存观测，不是真实测量。' : '拖动参数仅作模型预览；提交观察并收到回执后才保存为模拟证据，不代表真实测量或掌握。'}真实实验须由教师审核安全方案。
+        {previewOnly ? '当前为低风险模型预览，不保存观测，不是真实测量。' : '拖动参数仅作模型预览；提交观察并收到回执后才保存为模拟证据，不代表真实测量或掌握。'}真实实验须由教师审核安全方案。
       </p>
     </div>
   );

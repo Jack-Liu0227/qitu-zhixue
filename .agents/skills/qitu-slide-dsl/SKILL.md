@@ -1,7 +1,7 @@
 ---
 name: qitu-slide-dsl
 description: Map lesson design to Qitu's existing closed TutorReplyBlock and activity candidate contracts.
-version: 1.0.0
+version: 1.0.1
 runtime: admin
 status: published
 references: references/qitu-contract.md

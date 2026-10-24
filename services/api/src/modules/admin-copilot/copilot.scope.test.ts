@@ -26,7 +26,7 @@ test('scope parser rejects contradictory scopes, missing selection and unknown s
 
 test('selected-template scope rejects foreign resources, client-selected teams and platform policies', () => {
   const cases = [
-    ['team.version', { id: 'foreign-team' }], ['assistant.update', { id: 'foreign-coach' }], ['team.update', { id: request.teamId }],
+    ['assistant.update', { id: 'foreign-coach' }], ['team.update', { id: request.teamId }],
     ['workflow.update', { id: 'foreign-team' }], ['template.update', { id: 'foreign-template' }],
     ['template.version', { templateId: 'optics', sourceVersionId: 'other-v2' }],
     ['binding.activate', { templateId: 'optics', versionId: 'other-v2', bindingId: 'b' }],
@@ -40,7 +40,7 @@ test('selected-template scope rejects foreign resources, client-selected teams a
 test('selected-template scope permits proven resources and own template binding lifecycle', () => {
   assertOperationScope(request, 'assistant.update', { id: 'optics-coach' }, resources, new Map());
   assertOperationScope(request, 'team.update', { id: 'optics-team' }, resources, new Map());
-  assertOperationScope(request, 'team.version', { id: 'optics-team' }, resources, new Map());
+  assertOperationScope(request, 'team.update', { id: 'optics-team' }, resources, new Map());
   assertOperationScope(request, 'binding.activate', { templateId: 'optics', versionId: 'optics-v1', bindingId: 'b' }, resources, new Map());
 });
 

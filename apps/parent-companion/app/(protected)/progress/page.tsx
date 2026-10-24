@@ -1,4 +1,6 @@
 'use client';
+import { ResizablePanels } from '@qitu/ui';
+import { createIdempotencyKey } from '@qitu/api-client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Badge, Button, ProgressBar, SectionCard, TagChips } from '@qitu/ui';
@@ -136,7 +138,7 @@ function EncouragementCard({ childId }: { childId: string }) {
     if (message.length === 0 || message.length > 200 || state === 'sending') return;
     setState('sending');
     if (pending.current?.childId !== childId || pending.current.message !== message) {
-      pending.current = { childId, message, key: crypto.randomUUID() };
+      pending.current = { childId, message, key: createIdempotencyKey() };
     }
     try {
       await parentApi.post(
@@ -216,12 +218,12 @@ export default function ProgressPage() {
   const [search, setSearch] = useState('');
   const latestLoad = useRef(0);
 
-  const load = useCallback((id: string) => {
+  const load = useCallback((id: string, artifactRef?: string) => {
     const requestId = ++latestLoad.current;
     setData(null);
     setState('loading');
     void parentApi
-      .progress(id)
+      .progress(id, artifactRef)
       .then((r) => {
         if (requestId !== latestLoad.current) return;
         setData(r.data);
@@ -244,9 +246,11 @@ export default function ProgressPage() {
       .children()
       .then((r) => {
         setChildren(r.data);
-        const id = r.data[0]?.childId ?? '';
+        const query = new URLSearchParams(window.location.search);
+        const requested = query.get('childId');
+        const id = r.data.find(child => child.childId === requested)?.childId ?? r.data[0]?.childId ?? '';
         setChildId(id);
-        if (id) load(id);
+        if (id) load(id, query.get('artifactRef') ?? undefined);
         else setState('empty');
       })
       .catch(() => setState('error'));
@@ -312,7 +316,7 @@ export default function ProgressPage() {
           <ParentGrowthPage key={childId} childId={childId || null} />
         ) : tab === 'project' ? (
           focus ? (
-            <div className="progress-layout">
+            <ResizablePanels storageKey="parent-progress" initialSizes={[65, 35]} minWidths={[340, 280]} className="progress-layout" labels={['作品进度', '成长与鼓励']}>
               <div className="works-main">
                 <FocusWorkCard work={focus} onViewProcess={() => setTab('works')} />
                 <VersionTimelinePanel versions={data?.focusVersions ?? []} />
@@ -321,7 +325,7 @@ export default function ProgressPage() {
                 <GrowthPanel growth={data?.focusGrowth ?? null} />
                 <EncouragementCard childId={childId} />
               </aside>
-            </div>
+            </ResizablePanels>
           ) : (
             <p className="empty-inline">孩子确认学习意图并开始制作后，项目进度会显示在这里。</p>
           )
@@ -361,7 +365,7 @@ export default function ProgressPage() {
             </div>
 
             {visibleFocus ? (
-              <div className="progress-layout">
+              <ResizablePanels storageKey="parent-progress" initialSizes={[65, 35]} minWidths={[340, 280]} className="progress-layout" labels={['作品进度', '成长与鼓励']}>
                 <div className="works-main">
                   <FocusWorkCard work={visibleFocus} onViewProcess={() => setTab('project')} />
                   <VersionTimelinePanel versions={data?.focusVersions ?? []} />
@@ -370,7 +374,7 @@ export default function ProgressPage() {
                   <GrowthPanel growth={data?.focusGrowth ?? null} />
                   <EncouragementCard childId={childId} />
                 </aside>
-              </div>
+              </ResizablePanels>
             ) : null}
 
             <div className="work-list">
@@ -390,6 +394,7 @@ export default function ProgressPage() {
                       />
                       <TagChips tags={work.tags} />
                       <small className="work-updated">最近更新：{formatShortDate(work.updatedAt)}</small>
+                      <Button variant="secondary" onClick={() => load(childId, work.artifactRef)}>查看成长过程</Button>
                     </div>
                   </article>
                 ))

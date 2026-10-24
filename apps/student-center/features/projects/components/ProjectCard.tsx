@@ -1,4 +1,5 @@
 import { EntityCover, TagChips } from '@qitu/ui';
+import { normalizeProjectTitle } from '@qitu/contracts';
 import { StudentLink } from '../../../components/student-link';
 import { projectDetailHref } from '../lib/links';
 import type { ProjectListItem } from '../types';
@@ -25,7 +26,7 @@ export function ProjectCard({ project, readOnly = false }: ProjectCardProps) {
       </div>
       <div className="qitu-project-card-body">
         {project.isCurrent ? <span className="qitu-badge qitu-badge-primary">当前项目</span> : null}
-        <h3 className="qitu-project-card-title" title={project.title}>{project.title}</h3>
+        <h3 className="qitu-project-card-title" title={normalizeProjectTitle(project.title)}>{normalizeProjectTitle(project.title)}</h3>
         <p className="qitu-project-card-subtitle">{project.subtitle}</p>
         <TagChips tags={project.tags} />
         {project.createdAt && Number.isFinite(Date.parse(project.createdAt)) ? <small className="qitu-project-created">创建于 {new Date(project.createdAt).toLocaleDateString('zh-CN')}</small> : null}

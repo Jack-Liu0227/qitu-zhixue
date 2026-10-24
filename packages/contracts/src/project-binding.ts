@@ -1,7 +1,7 @@
 /**
  * 模板版本 ↔ 团队版本绑定契约（api-spec F2 / F3）。
  *
- * 绑定是**服务端拥有的不可变引用**：模板版本指向某个 `admin_team_versions`
+ * 绑定是**服务端拥有的不可变引用**：模板版本指向某个 教学绑定内的冻结团队配置
  * 快照，而不是可变的 `admin_teams` 行。项目创建时把当时生效的绑定冻结成
  * `ProjectBindingSnapshot`；此后退役 / 重新激活绑定都不会改写既有项目。
  *
@@ -24,8 +24,30 @@
 export type PblBindingStatus = 'draft' | 'validated' | 'active' | 'retired';
 export type TeachingPurpose = 'outline' | 'session' | 'dialogue';
 
+/** Explicit Admin selection; a team target uses that published team's leader. */
+export type TeachingSessionAssignment = {
+  sessionIndex: number;
+  teamVersionId: string;
+} & ({ kind: 'assistant'; memberId: string } | { kind: 'team' });
+
+/** Template editors select live managed teams; the server freezes their configuration. */
+export type TeachingSessionSelection = {
+  sessionIndex: number;
+  teamId: string;
+} & ({ kind: 'assistant'; assistantId: string } | { kind: 'team' });
+
+export interface PrepareTeachingArrangementInput {
+  teamId: string;
+  scheduleProfileId: string;
+  sessions: readonly TeachingSessionSelection[];
+  teams: readonly { teamId: string; expectedUpdatedAt: string }[];
+  sourceBinding?: { id: string; updatedAt: string };
+}
+
 /** Canonical references an Admin may edit before the server resolves artifacts. */
 export interface TeachingBundleDraft {
+  /** Opt-in per-lesson routing. Historical bindings keep their original routing semantics. */
+  sessionAssignments?: readonly TeachingSessionAssignment[];
   /** Explicit route required when the frozen template has no assigned assistant for a phase. */
   sessionRoutes?: readonly { sessionIndex: number; roleSlotId: string }[];
   templateVersionId: string;
@@ -47,8 +69,8 @@ export interface TeachingBundleDraft {
 export const PBL_BINDING_STATUS_TRANSITIONS: Readonly<
   Record<PblBindingStatus, readonly PblBindingStatus[]>
 > = {
-  draft: ['validated'],
-  validated: ['active'],
+  draft: ['validated', 'retired'],
+  validated: ['active', 'retired'],
   active: ['retired'],
   retired: [],
 };
@@ -76,7 +98,7 @@ export interface PblTemplateTeamBinding {
   id: string;
   /** `project_template_versions.id`。 */
   templateVersionId: string;
-  /** `admin_team_versions.id`（不可变团队快照）。 */
+  /** 绑定内冻结配置的 v1 标识（不再引用独立版本资源）。 */
   teamVersionId: string;
   status: PblBindingStatus;
   bindingHash: string;

@@ -2,6 +2,7 @@ import type { AdminInterventionStatus } from './admin.js';
 import type { DataSource } from './platform.js';
 import type { ProjectStage } from './project.js';
 import type { ParentFeedbackStatus, ParentFeedbackTicket } from './parent.js';
+import type { LearningActivitySummary } from './learning-activity.js';
 
 /**
  * 班主任工作台契约。
@@ -60,6 +61,7 @@ export interface TeacherStudentRow {
   activeDays: number;
   /** 本周完成任务数（过程性计数）。 */
   weeklyTasks: number;
+  activity?: LearningActivitySummary;
   /** Activity/intervention owner is unavailable; zero placeholders are not measured counts. */
   signalsAvailable?: boolean;
 }

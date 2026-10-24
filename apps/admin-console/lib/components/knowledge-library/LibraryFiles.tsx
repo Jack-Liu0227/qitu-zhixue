@@ -1,4 +1,5 @@
 'use client';
+import { ResizablePanels } from '@qitu/ui';
 
 // Master-detail browsing follows DeepTutor KbFilesTab (6cf793bd, MIT).
 import { useEffect, useRef, useState } from 'react';
@@ -144,9 +145,7 @@ export function LibraryFiles({
           当前离线，请恢复网络后重新读取文件。
         </p>
       )}
-      <div
-        className={`${styles.fileWorkspace} ${styles.embeddedFiles} ${collapsed ? styles.collapsed : ''}`}
-      >
+      <ResizablePanels storageKey="admin-knowledge-preview" initialSizes={[30, 70]} minWidths={[200, 320]} fixedWidths={[collapsed ? 66 : null, null]} className={`${styles.fileWorkspace} ${styles.embeddedFiles} ${collapsed ? styles.collapsed : ''}`} labels={['文件列表', '文件预览']}>
         <aside className={styles.fileSidebar} aria-label="知识库文件列表" aria-busy={loading}>
           <div className={styles.sidebarHead}>
             {!collapsed && (
@@ -412,7 +411,7 @@ export function LibraryFiles({
             </div>
           )}
         </div>
-      </div>
+      </ResizablePanels>
     </>
   );
 }

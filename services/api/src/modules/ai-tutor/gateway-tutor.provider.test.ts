@@ -124,6 +124,37 @@ test('scaffold 每轮最多升一级，explain 才能主动触达第 5 档', () 
   assert.equal(selectHintLevel('scaffold', 5, 4), 5);
 });
 
+test('managed search owns retrieval routing while separately authorized directory/read tools remain available', async () => {
+  const nativeNames = ['ima_list_knowledge_bases', 'ima_search_knowledge', 'ima_list_documents', 'ima_read_document'];
+  const tool = (name: string) => ({ name, description: name, inputSchema: { type: 'object' }, execute: async () => ({ text: '{}' }) });
+  const ima = new ImaMcpClient();
+  ima.toolsFor = async () => nativeNames.map(tool);
+  for (const managed of [false, true]) {
+    const gateway = new StubGateway((_usage, request) => {
+      assert.deepEqual(request.tools?.map(item => item.name), managed
+        ? ['knowledge_search', 'knowledge_read', ...nativeNames.filter(name => name !== 'ima_search_knowledge')]
+        : nativeNames);
+      return result('请先观察本课的示意图。');
+    });
+    await collect(new GatewayTutorProvider(gateway, [], ima), { ...await imaInput(),
+      ...(managed ? { knowledgeTools: ['knowledge_search', 'knowledge_read'].map(tool) } : {}),
+    });
+  }
+});
+
+test('help on a pending question keeps read tools but never advertises a forbidden new activity', async () => {
+  const gateway = new StubGateway((_usage, request) => {
+    assert.deepEqual(request.tools?.map(tool => tool.name), ['knowledge_read']);
+    return result('先看题目中哪些量保持不变，再尝试解释你的判断。');
+  });
+  await collect(new GatewayTutorProvider(gateway), { ...BASE_INPUT,
+    disclosure: { kind: 'pending_assessment', questionId: 'pending', prompt: 'Compare two conditions', options: [], protectedTexts: [] },
+    knowledgeTools: [{ name: 'knowledge_read', description: 'Read governed material', inputSchema: { type: 'object' }, execute: async () => ({ text: 'Reference' }) }],
+    lessonActivities: { tools: [{ name: 'tutor_propose_lesson_activity', description: 'Create an activity', inputSchema: { type: 'object' },
+      execute: async () => { throw new Error('Must not replace a pending question'); } }], blocks: () => [], suppressNarration: () => false },
+  });
+});
+
 test('MCP failure is redacted and the model is explicitly told that knowledge could not be verified', async () => {
   const ima = new ImaMcpClient();
   ima.toolsFor = async () => { throw new Error('private-token-in-upstream-error'); };

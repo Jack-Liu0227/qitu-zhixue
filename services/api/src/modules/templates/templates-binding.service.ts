@@ -7,6 +7,11 @@ import {
   Optional,
 } from '@nestjs/common';
 import { TeachingBundleCatalog } from './teaching-bundle.catalog';
+import { TeachingTeamCaptureService, teamVersionView } from '../platform-registry/teaching-team-capture.service';
+import { readPublishedAssistant } from '../platform-registry/team-version.snapshot';
+import { parseTeachingArrangement } from './teaching-arrangement.input';
+import { parseProjectTemplateSpec, type TeachingSessionAssignment } from '@qitu/contracts';
+import { requireSessionBindingAdmin } from './teaching-session-assignments';
 import { teachingValueDigest } from './teaching-bundle.canonical';
 import type {
   AdminBindingPreview,
@@ -61,13 +66,13 @@ export interface CurriculumTemplateResolution {
   content: Record<string, unknown>;
 }
 
-const TEAM_VERSION_MISSING_MESSAGE = '团队版本不存在';
+const TEAM_VERSION_MISSING_MESSAGE = '教学安排中的团队配置不存在';
 
 /**
  * 模板版本 ↔ 团队版本绑定服务（F2 / F3）。
  *
  * 硬约束：
- * 1. **绑定是不可变引用**：绑定指向 `admin_team_versions` 快照，绝不指向可变
+ * 1. **绑定是不可变引用**：绑定指向 教学绑定内的冻结团队配置 快照，绝不指向可变
  *    `admin_teams` 行；项目创建时把生效绑定冻结成快照。
  * 2. **状态机**：`draft → validated → active → retired`（terminal），服务端唯一
  *    写入方；非法迁移 409 `BINDING_TRANSITION_INVALID`。
@@ -89,19 +94,80 @@ export class TemplateBindingService {
     private readonly idempotency: IdempotencyStore,
     private readonly audit: AuditWriter,
     @Optional() private readonly bundleCatalog?: TeachingBundleCatalog,
+    @Optional() private readonly teamCapture?: TeachingTeamCaptureService,
   ) {}
 
   /* ============================ 生命周期写 ============================ */
+
+  async prepareCurrentTeams(actor: CurrentUser, templateId: string, versionId: string, body: unknown, key: string): Promise<BindingMutationResult> {
+    requireSessionBindingAdmin(actor, body);
+    const input = parseTeachingArrangement(body);
+    const { version } = await this.requireConfigurationVersion(actor, templateId, versionId);
+    const profile = parseProjectTemplateSpec(version.content.pbl).curriculum?.profiles.find(item => item.id === input.scheduleProfileId);
+    if (!profile || profile.sessions.length !== input.sessions.length || input.sessions.some(item => !profile.sessions.some(session => session.sessionIndex === item.sessionIndex))) {
+      throw new BadRequestException({ code: 'SESSION_ROUTE_INCOMPLETE', message: '请为课程中的全部课时选择团队或助手。' });
+    }
+    const catalog = this.bundleCatalog, teams = this.teamCapture;
+    if (!catalog || !teams) throw new BadRequestException({ code: 'BUNDLE_CATALOG_UNAVAILABLE', message: '教学配置目录不可用。' });
+    const scope = `template.binding.arrangement:${actor.id}:${versionId}`;
+    const requestHash = hashIdempotentInput(scope, { templateId, versionId }, input);
+    const result = await this.executeIdempotent(scope, key, requestHash, async () => {
+      const source = input.sourceBinding ? await this.requireBindingForVersion(input.sourceBinding.id, versionId) : null;
+      if (source && source.updatedAt.toISOString() !== input.sourceBinding!.updatedAt) {
+        throw new ConflictException({ code: 'BINDING_SOURCE_CHANGED', message: '原教学安排已修改，请重新加载后保存。' });
+      }
+      const snapshots = new Map<string, Awaited<ReturnType<TeachingTeamCaptureService['capture']>>>();
+      for (const team of [...input.teams].sort((a, b) => a.teamId.localeCompare(b.teamId))) {
+        // Reuse the established owner: only Admin commands create immutable snapshots.
+        const stepKey = teachingValueDigest({ scope, key, teamId: team.teamId });
+        snapshots.set(team.teamId, await teams.capture(actor, team.teamId, { expectedUpdatedAt: team.expectedUpdatedAt }, stepKey));
+      }
+      const assignments: TeachingSessionAssignment[] = input.sessions.map(selection => {
+        const snapshot = snapshots.get(selection.teamId)!;
+        if (selection.kind === 'team') return { sessionIndex: selection.sessionIndex, teamVersionId: snapshot.id, kind: 'team' };
+        const matching = snapshot.members.filter(raw => raw && typeof raw === 'object' && 'assistantId' in raw && raw.assistantId === selection.assistantId) as { slotId: string }[];
+        if (matching.length !== 1 || !matching[0]?.slotId) throw new BadRequestException({ code: 'TEAM_ASSISTANT_UNAVAILABLE', message: '所选助手不属于该团队，请重新读取团队配置。' });
+        return { sessionIndex: selection.sessionIndex, teamVersionId: snapshot.id, kind: 'assistant', memberId: matching[0].slotId };
+      });
+      const primary = snapshots.get(input.teamId);
+      if (!primary) throw new BadRequestException({ code: 'TEAM_VERSION_UNAVAILABLE', message: '团队配置保存后无法回读。' });
+      const draft = catalog.prepareDraft(version, primary, input.scheduleProfileId, undefined, assignments);
+      if (source?.bundleDraft) {
+        draft.knowledgeBaseIds = source.bundleDraft.knowledgeBaseIds;
+        draft.mcpServerIds = source.bundleDraft.mcpServerIds;
+        draft.toolIds = [...draft.toolIds, ...source.bundleDraft.toolIds.filter(tool =>
+          draft.roleMap.some(role => role.roleSlotId === tool.roleSlotId && source.bundleDraft!.roleMap.some(old => old.roleSlotId === role.roleSlotId && old.memberId === role.memberId))
+          && !draft.toolIds.some(existing => existing.roleSlotId === tool.roleSlotId && existing.toolId === tool.toolId))];
+        const retainedTools = new Set(source.bundleDraft.toolIds.map(tool => tool.toolId));
+        for (const role of draft.roleMap) {
+          const member = primary.members.find(raw => raw && typeof raw === 'object' && 'slotId' in raw && raw.slotId === role.memberId) as { assistantId: string; runtimeSnapshot: unknown } | undefined;
+          if (!member) continue;
+          const permissions = readPublishedAssistant(member.runtimeSnapshot, member.assistantId).mcpPermissions;
+          for (const permission of permissions.filter(entry => draft.mcpServerIds.includes(entry.serverId))) {
+            for (const toolId of permission.toolIds.filter(id => retainedTools.has(id))) {
+              if (!draft.toolIds.some(tool => tool.roleSlotId === role.roleSlotId && tool.toolId === toolId)) draft.toolIds = [...draft.toolIds, { roleSlotId: role.roleSlotId, toolId }];
+            }
+          }
+        }
+      }
+      const childKey = (step: string) => teachingValueDigest({ scope, key, step });
+      const created = await this.createBinding(actor, templateId, versionId, { teamVersionId: primary.id, teamSnapshots: Object.fromEntries([...snapshots.values()].map(team => [team.id, team])) }, childKey('create'));
+      await this.saveTeachingBundleDraft(actor, templateId, versionId, created.binding.id, draft, childKey('save'));
+      return { status: 200, body: { bindingId: created.binding.id } };
+    });
+    const current = await this.getTeachingBundle(actor, templateId, versionId, result.body.bindingId);
+    return { binding: { ...current.binding, bundleDraft: current.draft }, replayed: result.replayed };
+  }
 
   async createBinding(
     actor: CurrentUser,
     templateId: string,
     versionId: string,
-    input: { teamVersionId: string },
+    input: { teamVersionId: string; teamSnapshots?: Record<string, import('./templates-binding.types').TeamVersionRecord> },
     idempotencyKey: string,
   ): Promise<BindingMutationResult> {
     await this.requireConfigurationVersion(actor, templateId, versionId);
-    const teamVersion = await this.bindings.findTeamVersion(input.teamVersionId);
+    const teamVersion = input.teamSnapshots?.[input.teamVersionId] ?? await this.bindings.findTeamVersion(input.teamVersionId);
     if (teamVersion === null) {
       throw new BadRequestException({
         code: 'BINDING_INVALID',
@@ -124,6 +190,7 @@ export class TemplateBindingService {
         id: newBindingId(),
         templateVersionId: versionId,
         teamVersionId: input.teamVersionId,
+        teamSnapshots: input.teamSnapshots,
         bindingHash,
         bundleDigest: null,
         createdBy: actor.id,
@@ -155,7 +222,7 @@ export class TemplateBindingService {
     const { version } = await this.requireConfigurationVersion(actor, templateId, versionId, false);
     const records = await this.bindings.listBindings(versionId);
     return Promise.all(records.map(async (record) => {
-      const team = await this.bindings.findTeamVersion(record.teamVersionId);
+      const team = await this.bindings.findTeamVersion(record.teamVersionId, record.id);
       const configurationReady = record.status === 'active' && record.validation.valid && team?.enabled === true
         && (!requiresTeachingBundle(version.content) || Boolean(team.pblSpec.teamVersionPublication
           && record.bundleDigest && record.bundlePayload && teachingValueDigest(record.bundlePayload) === record.bundleDigest));
@@ -172,6 +239,26 @@ export class TemplateBindingService {
     }));
   }
 
+  async getTeachingTeamSnapshots(actor: CurrentUser, templateId: string, versionId: string, bindingId: string) {
+    requireSessionBindingAdmin(actor, {});
+    await this.requireConfigurationVersion(actor, templateId, versionId, false);
+    const binding = await this.requireBindingForVersion(bindingId, versionId);
+    const ids = [...new Set([binding.teamVersionId, ...(binding.bundleDraft?.sessionAssignments ?? []).map(item => item.teamVersionId)])];
+    const versions: ReturnType<typeof teamVersionView>[] = [];
+    const issues: { teamVersionId: string; code: string }[] = [];
+    for (const id of ids) {
+      const team = await this.bindings.findTeamVersion(id, binding.id);
+      if (!team) { issues.push({ teamVersionId: id, code: 'TEAM_VERSION_UNAVAILABLE' }); continue; }
+      try { versions.push(teamVersionView(team)); }
+      catch (error) {
+        if (!(error instanceof ConflictException) && !(error instanceof BadRequestException)) throw error;
+        issues.push({ teamVersionId: id, code: 'TEAM_SNAPSHOT_INVALID' });
+        this.logger.warn(`Invalid binding snapshot binding=${bindingId} teamVersion=${id}`);
+      }
+    }
+    return { versions, issues };
+  }
+
   async getTeachingBundle(
     actor: CurrentUser,
     templateId: string,
@@ -184,20 +271,29 @@ export class TemplateBindingService {
   }
 
   async prepareTeachingBundle(actor: CurrentUser, templateId: string, versionId: string, bindingId: string,
-    scheduleProfileId: string | undefined, key: string, phaseAssignments?: Readonly<Record<string, string>>): Promise<BindingMutationResult> {
+    scheduleProfileId: string | undefined, key: string, phaseAssignments?: Readonly<Record<string, string>>,
+    sessionAssignments?: readonly import('@qitu/contracts').TeachingSessionAssignment[]): Promise<BindingMutationResult> {
+    requireSessionBindingAdmin(actor, sessionAssignments);
     await this.requireConfigurationVersion(actor, templateId, versionId);
     const binding = await this.requireBindingForVersion(bindingId, versionId);
     if (binding.status !== 'draft') throw new ConflictException({ code: 'BINDING_DRAFT_REQUIRED', message: '请先保存新的团队绑定草稿。' });
-    if (binding.bundleDraft) {
+    if (binding.bundleDraft && !sessionAssignments) {
       if (scheduleProfileId && binding.bundleDraft.scheduleProfileId !== scheduleProfileId) {
         throw new ConflictException({ code: 'BUNDLE_PROFILE_CHANGED', message: '已有教学配置使用其他课时排期，请在高级配置中审核修改。' });
       }
       return { binding: toBindingView(binding), replayed: true };
     }
     const version = await this.templates.findVersion(versionId);
-    const team = await this.bindings.findTeamVersion(binding.teamVersionId);
+    const team = await this.bindings.findTeamVersion(binding.teamVersionId, binding.id);
     if (!this.bundleCatalog || !version || !team) throw new BadRequestException({ code: 'BUNDLE_CATALOG_UNAVAILABLE', message: '教学配置目录不可用。' });
-    const draft = this.bundleCatalog.prepareDraft(version, team, scheduleProfileId, phaseAssignments);
+    const draft = this.bundleCatalog.prepareDraft(version, team, scheduleProfileId, phaseAssignments, sessionAssignments);
+    if (sessionAssignments && binding.bundleDraft) {
+      draft.knowledgeBaseIds = binding.bundleDraft.knowledgeBaseIds;
+      draft.mcpServerIds = binding.bundleDraft.mcpServerIds;
+      draft.toolIds = [...draft.toolIds, ...binding.bundleDraft.toolIds.filter(tool =>
+        draft.roleMap.some(role => role.roleSlotId === tool.roleSlotId)
+        && !draft.toolIds.some(existing => existing.roleSlotId === tool.roleSlotId && existing.toolId === tool.toolId))];
+    }
     return this.saveTeachingBundleDraft(actor, templateId, versionId, bindingId, draft, key);
   }
 
@@ -210,6 +306,7 @@ export class TemplateBindingService {
     draft: import('@qitu/contracts').TeachingBundleDraft,
     idempotencyKey: string,
   ): Promise<BindingMutationResult> {
+    requireSessionBindingAdmin(actor, draft.sessionAssignments);
     await this.requireConfigurationVersion(actor, templateId, versionId);
     const binding = await this.requireBindingForVersion(bindingId, versionId);
     if (binding.status !== 'draft') {
@@ -224,7 +321,7 @@ export class TemplateBindingService {
         message: 'Teaching Bundle 草稿必须引用当前模板版本和绑定团队版本',
       });
     }
-    const teamVersion = await this.bindings.findTeamVersion(binding.teamVersionId);
+    const teamVersion = await this.bindings.findTeamVersion(binding.teamVersionId, binding.id);
     if (teamVersion === null) {
       throw new BadRequestException({ code: 'BINDING_INVALID', message: TEAM_VERSION_MISSING_MESSAGE });
     }
@@ -238,11 +335,13 @@ export class TemplateBindingService {
     const requestHash = hashIdempotentInput(scope, { templateId, versionId, bindingId }, draft);
     const result = await this.executeIdempotent(scope, idempotencyKey, requestHash, async () => {
       const updated = await this.bindings.updateTeachingBundle(bindingId, {
-        draft, payload: null, digest: null, bindingHash: draftBindingHash, now: new Date(),
+        draft, payload: null, digest: null, bindingHash: draftBindingHash, expectedUpdatedAt: binding.updatedAt, now: new Date(),
       });
       await this.audit.write({ actorId: actor.id, actorRole: actor.role, action: 'template.binding.bundle.save',
         targetType: 'project_template_version', targetId: versionId, idempotencyKey: `${scope}:${idempotencyKey}`,
-        detail: { bindingId, teamVersionId: updated.teamVersionId, status: updated.status } });
+        detail: { bindingId, teamVersionId: updated.teamVersionId, status: updated.status,
+          ...(draft.sessionAssignments ? { sessionCount: draft.sessionAssignments.length,
+            sessionTeamVersionIds: [...new Set(draft.sessionAssignments.map(entry => entry.teamVersionId))].sort() } : {}) } });
       return { status: 200, body: { binding: toBindingView(updated), replayed: false } };
     });
     return result.replayed ? { ...result.body, replayed: true } : result.body;
@@ -260,7 +359,7 @@ export class TemplateBindingService {
       || teachingValueDigest(compiled.payload) !== compiled.digest) {
       throw new ConflictException({ code: 'BUNDLE_SCOPE_OR_DIGEST_INVALID', message: '教学配置版本或摘要不匹配' });
     }
-    const teamVersion = await this.bindings.findTeamVersion(current.teamVersionId);
+    const teamVersion = await this.bindings.findTeamVersion(current.teamVersionId, current.id);
     if (teamVersion === null) throw new BadRequestException({ code: 'BINDING_INVALID', message: TEAM_VERSION_MISSING_MESSAGE });
     const bindingHash = computeBindingHash(
       versionId,
@@ -299,13 +398,14 @@ export class TemplateBindingService {
 
     const result = await this.executeIdempotent(scope, idempotencyKey, requestHash, async () => {
       let current = await this.requireBindingForVersion(bindingId, versionId);
+      requireSessionBindingAdmin(actor, current.bundleDraft?.sessionAssignments);
       // 已是 validated：视为幂等成功（不同 key 重复校验也返回当前状态）。
       const versionForBundle = await this.templates.findVersion(versionId);
       const bundleRequired = requiresTeachingBundle(versionForBundle?.content);
       if (bundleRequired && current.status === 'draft' && current.bundleDraft && this.bundleCatalog && versionForBundle) {
-        const team = await this.bindings.findTeamVersion(current.teamVersionId);
+        const team = await this.bindings.findTeamVersion(current.teamVersionId, current.id);
         if (!team) throw new BadRequestException({ code: 'BINDING_INVALID', message: TEAM_VERSION_MISSING_MESSAGE });
-        const compiled = await this.bundleCatalog.compile(versionForBundle, team, current.bundleDraft);
+        const compiled = await this.bundleCatalog.compile(versionForBundle, team, current.bundleDraft, current.teamSnapshots);
         current = await this.bindings.updateTeachingBundle(bindingId, {
           draft: current.bundleDraft, payload: compiled.payload, digest: compiled.digest,
           bindingHash: computeBindingHash(versionId, team.id, computePblSpecHash(team), compiled.digest),
@@ -337,7 +437,7 @@ export class TemplateBindingService {
         });
       }
 
-      const teamVersion = await this.bindings.findTeamVersion(current.teamVersionId);
+      const teamVersion = await this.bindings.findTeamVersion(current.teamVersionId, current.id);
       if (teamVersion === null) {
         throw new BadRequestException({
           code: 'BINDING_INVALID',
@@ -412,15 +512,16 @@ export class TemplateBindingService {
       if (current.status === 'active') {
         return { status: 200, body: { binding: toBindingView(current), replayed: true } };
       }
+      requireSessionBindingAdmin(actor, current.bundleDraft?.sessionAssignments);
       assertBindingStatusTransition(current.status, 'active', PBL_BINDING_STATUS_TRANSITIONS);
 
       const version = await this.templates.findVersion(versionId);
       if (requiresTeachingBundle(version?.content)) {
-        const team = await this.bindings.findTeamVersion(current.teamVersionId);
+        const team = await this.bindings.findTeamVersion(current.teamVersionId, current.id);
         if (!version || !team || !current.bundleDraft || !current.bundlePayload || !this.bundleCatalog) {
           throw new BadRequestException({ code: 'BUNDLE_COMPILATION_UNAVAILABLE', message: '教学配置尚未完成编译' });
         }
-        const compiled = await this.bundleCatalog.compile(version, team, current.bundleDraft);
+        const compiled = await this.bundleCatalog.compile(version, team, current.bundleDraft, current.teamSnapshots);
         if (compiled.digest !== current.bundleDigest || teachingValueDigest(current.bundlePayload) !== current.bundleDigest) {
           throw new ConflictException({ code: 'BUNDLE_CATALOG_CHANGED', message: '教学目录已变化，请创建新绑定并重新校验' });
         }
@@ -678,7 +779,7 @@ export class TemplateBindingService {
       throw new NotFoundException('该课程模板当前不可用于探索');
     }
     const binding = await this.bindings.findActiveBinding(templateVersionId);
-    const team = binding ? await this.bindings.findTeamVersion(binding.teamVersionId) : null;
+    const team = binding ? await this.bindings.findTeamVersion(binding.teamVersionId, binding.id) : null;
     const payload = binding?.bundlePayload ?? null;
     const ready = binding?.validation.valid && team?.enabled && team.pblSpec.teamVersionPublication
       && (!requiresTeachingBundle(version.content) || (payload && binding.bundleDigest
@@ -754,7 +855,7 @@ export class TemplateBindingService {
     const snapshot = await this.resolveSnapshotForProject(projectId, templateVersionId, actor);
     if (snapshot === null) return null;
 
-    const teamVersion = await this.bindings.findTeamVersion(snapshot.teamVersionId);
+    const teamVersion = await this.bindings.findTeamVersion(snapshot.teamVersionId, snapshot.bindingId);
     const members = (teamVersion?.members ?? []) as Array<{ assistantId?: string; id?: string; role?: string; phase?: string }>;
 
     const findMember = (phaseName: string, pattern: RegExp, fallback: string): string => {

@@ -647,6 +647,6 @@ test('management capability union keeps governed publication, revocation, bindin
   assert.equal(validateManagementSkill(skill).id, 'qitu-project-configurator');
   const ids = ADMIN_COPILOT_OPERATIONS.map(operation => operation.kind);
   assert.equal(new Set(ids).size, ids.length);
-  for (const kind of ['team.version', 'binding.activate', 'growth.projection.configure', 'skill.revoke'] as const) assert.ok(ids.includes(kind));
+  for (const kind of ['binding.prepare', 'binding.activate', 'growth.projection.configure', 'skill.revoke'] as const) assert.ok(ids.includes(kind));
   assert.deepEqual(ADMIN_COPILOT_OPERATIONS.find(operation => operation.kind === 'skill.revoke')?.scopes, ['global']);
 });

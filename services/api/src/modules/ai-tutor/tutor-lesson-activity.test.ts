@@ -101,7 +101,11 @@ test('concurrent duplicate candidates reuse one accepted owner instance; another
   assert.equal(channel.blocks().length, 1);
   assert.equal(channel.suppressNarration(), true);
   assert.doesNotMatch(JSON.stringify(answers), /PRIVATE_KEY/);
-  await assert.rejects(channel.tools[0]!.execute(board));
+  const retained = await channel.tools[0]!.execute(board);
+  assert.equal(retained.outcome, 'unchanged');
+  assert.match(retained.text, /No replacement was saved/);
+  assert.equal(channel.blocks().length, 1);
+  assert.equal(h.questionWrites(), 1);
 });
 
 const turn: TutorTurnInput = { projectId: 'synthetic-project', sessionId: 'synthetic-chat', projectTitle: 'Investigation',

@@ -1,6 +1,5 @@
 import { and, eq, isNull, or } from 'drizzle-orm';
 import {
-  adminTeamVersions,
   learningPlans,
   pblTemplateTeamBindings,
   projectBindingSnapshots,
@@ -23,7 +22,6 @@ import type {
 
 const PG_UNIQUE_VIOLATION = '23505';
 
-type TeamVersionRow = typeof adminTeamVersions.$inferSelect;
 type BindingRow = typeof pblTemplateTeamBindings.$inferSelect;
 type SnapshotRow = typeof projectBindingSnapshots.$inferSelect;
 
@@ -40,13 +38,10 @@ export class PostgresTemplateBindingStore extends TemplateBindingStore {
     super();
   }
 
-  async findTeamVersion(id: string): Promise<TeamVersionRecord | null> {
-    const [row] = await this.db
-      .select()
-      .from(adminTeamVersions)
-      .where(eq(adminTeamVersions.id, id))
-      .limit(1);
-    return row === undefined ? null : mapTeamVersion(row);
+  async findTeamVersion(id: string, bindingId?: string): Promise<TeamVersionRecord | null> {
+    if (!bindingId) return null;
+    const binding = await this.findBinding(bindingId);
+    return binding?.teamSnapshots?.[id] ?? null;
   }
 
   async createBinding(input: CreateBindingRecordInput): Promise<BindingRecord> {
@@ -57,6 +52,7 @@ export class PostgresTemplateBindingStore extends TemplateBindingStore {
           id: input.id,
           templateVersionId: input.templateVersionId,
           teamVersionId: input.teamVersionId,
+          teamSnapshots: Object.fromEntries(Object.entries(input.teamSnapshots ?? {}).map(([id, team]) => [id, { ...team, createdAt: team.createdAt.toISOString() }])),
           status: 'draft',
           bindingHash: input.bindingHash,
           bundleDigest: input.bundleDigest,
@@ -282,24 +278,6 @@ export class PostgresTemplateBindingStore extends TemplateBindingStore {
 
 /* ============================ 行映射 ============================ */
 
-function mapTeamVersion(row: TeamVersionRow): TeamVersionRecord {
-  return {
-    id: row.id,
-    teamId: row.teamId,
-    version: row.version,
-    name: row.name,
-    description: row.description,
-    workspaceMode: row.workspaceMode,
-    sessionMode: row.sessionMode,
-    leaderAssistantId: row.leaderAssistantId,
-    members: row.members ?? [],
-    pblSpec: row.pblSpec ?? {},
-    enabled: row.enabled,
-    createdBy: row.createdBy,
-    createdAt: row.createdAt,
-  };
-}
-
 function mapBinding(row: BindingRow): BindingRecord {
   const validation = row.validation ?? { valid: false, errors: [], warnings: [], checkedAt: null };
   return {
@@ -309,6 +287,7 @@ function mapBinding(row: BindingRow): BindingRecord {
     status: row.status as BindingRecord['status'],
     bindingHash: row.bindingHash,
     bundleDigest: row.bundleDigest ?? null,
+    teamSnapshots: Object.fromEntries(Object.entries(row.teamSnapshots ?? {}).map(([id, team]) => [id, { ...team, createdAt: new Date(team.createdAt) }])),
     bundleDraft: row.bundleDraft as BindingRecord['bundleDraft'],
     bundlePayload: row.bundlePayload as BindingRecord['bundlePayload'],
     validation: {

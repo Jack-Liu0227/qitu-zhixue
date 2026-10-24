@@ -1,15 +1,17 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { parseWaveOpticsParameters, parametersWithoutMode, WaveOpticsDomainError } from '@qitu/ai-client';
+import { parseWaveOpticsParameters, parametersWithoutMode, projectWaveOptics, WaveOpticsDomainError } from '@qitu/ai-client';
 import type { TutorExperimentAction, TutorExperimentActionResponse, TutorReplyBlock, WaveExperimentRun, WaveOpticsParameters } from '@qitu/contracts';
 import { createIdempotencyKey } from '../idempotency';
+import { WaveOpticsScene } from './WaveOpticsScene';
 import styles from './WaveOpticsExperimentCard.module.css';
 
 type Experiment = Extract<TutorReplyBlock, { kind: 'optics_experiment' }>;
 interface Props {
   block: Experiment;
   disabled?: boolean;
+  readOnly?: boolean;
   onAction: (action: TutorExperimentAction, payload: unknown, key: string) => void | Promise<boolean | TutorExperimentActionResponse>;
 }
 function readParameters(mode: unknown, raw: unknown) {
@@ -28,11 +30,14 @@ export function WaveOpticsExperimentCard(props: Props) {
   return <WaveOpticsLab {...props} initial={parsed.value} />;
 }
 
-function WaveOpticsLab({ block, disabled = false, onAction, initial }: Props & { initial: WaveOpticsParameters }) {
+type DisplayRun = Pick<WaveExperimentRun, 'parameters' | 'projection'>;
+
+function WaveOpticsLab({ block, disabled = false, readOnly = false, onAction, initial }: Props & { initial: WaveOpticsParameters }) {
   const [parameters, setParameters] = useState(initial);
   const [prediction, setPrediction] = useState('');
   const [predicted, setPredicted] = useState(block.savedExperiment?.predictionSubmitted ?? block.predictionGate?.submitted ?? false);
   const [runs, setRuns] = useState<readonly WaveExperimentRun[]>(block.savedExperiment?.runs ?? []);
+  const [replays, setReplays] = useState<readonly DisplayRun[]>([]);
   const [observation, setObservation] = useState('');
   const [receipt, setReceipt] = useState(block.savedObservation);
   const [pending, setPending] = useState<TutorExperimentAction | null>(null);
@@ -42,9 +47,14 @@ function WaveOpticsLab({ block, disabled = false, onAction, initial }: Props & {
   const card = useRef<HTMLElement>(null);
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
   const parsed = useMemo(() => readParameters(parameters.mode, parametersWithoutMode(parameters)), [parameters]);
-  const latest = runs.at(-1);
-  const currentRun = latest && JSON.stringify(latest.parameters) === JSON.stringify(parameters) ? latest : undefined;
-  const busy = disabled || pending !== null;
+  const evidenceReadOnly = readOnly || !block.allowedActions.length;
+  // Replay is available only after an owner-accepted run. It never submits evidence.
+  const replay = evidenceReadOnly && runs.length > 0;
+  const displayedRuns = replay ? replays.length ? replays : runs : runs;
+  const latest = displayedRuns.at(-1);
+  const savedRun = runs.at(-1);
+  const currentRun = savedRun && JSON.stringify(savedRun.parameters) === JSON.stringify(parameters) ? savedRun : undefined;
+  const busy = disabled || pending !== null || evidenceReadOnly && !replay;
   const isDouble = parameters.mode === 'interference';
   const update = (name: 'wavelength' | 'slitWidth' | 'slitSeparation' | 'screenDistance', value: number) => {
     if (busy || name === 'slitSeparation' && parameters.mode !== 'interference') return;
@@ -52,7 +62,7 @@ function WaveOpticsLab({ block, disabled = false, onAction, initial }: Props & {
     setError('');
   };
   const send = async (action: TutorExperimentAction) => {
-    if (busy || parsed.kind !== 'ready' || !block.allowedActions.includes(action)) return;
+    if (busy || evidenceReadOnly || parsed.kind !== 'ready' || !block.allowedActions.includes(action)) return;
     const payload = { mode: parameters.mode, ...(action === 'submit_prediction' ? { hypothesis: prediction.trim() }
       : { parameters: parametersWithoutMode(parameters), ...(action === 'record_observation'
         ? { observation: observation.trim(), runActionId: currentRun?.actionId } : {}) }) };
@@ -77,8 +87,16 @@ function WaveOpticsLab({ block, disabled = false, onAction, initial }: Props & {
           || saved.planRevision !== block.scope?.planRevision) throw new Error('观察回执与当前实验不一致，请重试。');
         setReceipt(saved); setObservation('');
       }
+      // A retry keeps its key; a new accepted run is a new action, even at the same parameters.
+      keys.current.delete(identity);
     } catch (cause) { if (alive.current) setError(cause instanceof Error ? cause.message : '操作未完成，请重试。'); }
     finally { if (alive.current) setPending(null); }
+  };
+  const runReplay = () => {
+    if (busy || !replay || parsed.kind !== 'ready') return;
+    const value = parsed.value;
+    setReplays(previous => [...previous, { parameters: value, projection: projectWaveOptics(value) }].slice(-3));
+    setError('');
   };
   const fields = [
     { name: 'wavelength' as const, label: '波长 λ', min: 400, max: 750, step: 10, unit: 'nm', value: parameters.wavelength },
@@ -94,47 +112,54 @@ function WaveOpticsLab({ block, disabled = false, onAction, initial }: Props & {
       }}>全屏探究</button></header>
     <p className={styles.intro}>{isDouble ? '分清缝宽 a 与中心间距 d。一次改变一个变量，比较条纹与整体包络。'
       : '先标出中央亮带和两侧条纹，再用一组受控比较检验你的预测。'}</p>
-    {!predicted ? <div className={styles.prediction}><label>先写下你的预测
+    {replay ? <p className={styles.confirmed}>复习演示：可以反复调节参数、重新演示，不会新增或覆盖已保存的学习记录。</p>
+      : evidenceReadOnly ? <p className={styles.note}>这张卡片当前仅供查看。请在当前课时的实验活动中完成预测和运行。</p>
+      : !predicted ? <div className={styles.prediction}><label>先写下你的预测
       <textarea value={prediction} onChange={event => setPrediction(event.target.value)} maxLength={200} rows={2} disabled={busy}
         placeholder="我准备改变……，保持……不变；我预测……" /></label>
       <button type="button" className="qitu-button qitu-button-primary" disabled={busy || !prediction.trim()} onClick={() => { void send('submit_prediction'); }}>
         {pending === 'submit_prediction' ? '正在保存…' : '保存预测'}</button></div>
       : <p className={styles.confirmed}>预测已保存。调节一个参数，运行后再记录观察。</p>}
-    <fieldset className={styles.controls} disabled={busy || !predicted}><legend>比较条件</legend>
+    <fieldset className={styles.controls} disabled={busy || !replay && !predicted}><legend>比较条件</legend>
       {fields.map(field => <label key={field.name}>{field.label}<strong>{field.value} {field.unit}</strong>
         <input type="range" aria-label={field.label} min={field.min} max={field.max} step={field.step} value={field.value}
           onChange={event => update(field.name, Number(event.target.value))} /></label>)}
     </fieldset>
     {parsed.kind === 'error' ? <p className={styles.error} role="status">当前参数超出本模型适用范围。请减小孔径范围或增大屏距。{parsed.message}</p> : null}
     <div className={styles.runBar}><button type="button" className="qitu-button qitu-button-primary"
-      disabled={busy || !predicted || parsed.kind !== 'ready'} onClick={() => { void send('run'); }}>{pending === 'run' ? '正在计算…' : '运行并比较'}</button>
-      <span>{currentRun ? '当前参数已有计算结果' : latest ? '参数已改变，请重新运行。下方保留之前的结果作比较。' : '运行后查看图样与读数'}</span></div>
-    {runs.length ? <WaveProfiles runs={runs} /> : <div className={styles.empty}>图样将在你保存预测并运行后出现。</div>}
+      disabled={busy || !replay && !predicted || parsed.kind !== 'ready'} onClick={() => { if (replay) runReplay(); else void send('run'); }}>
+      {replay ? '重新演示' : pending === 'run' ? '正在计算…' : runs.length ? '再次运行并比较' : '运行并比较'}</button>
+      {replay ? <button type="button" className="qitu-button qitu-button-ghost" disabled={busy}
+        onClick={() => { setParameters(initial); setReplays([]); setError(''); }}>重置演示</button> : null}
+      <span role="status">{replay ? replays.length ? '复习演示结果（不保存）' : '已保存的实验结果；可调节参数后重新演示。'
+        : currentRun ? '当前参数已有计算结果，可以再次运行。' : latest ? '参数已改变，请重新运行。下方保留之前的结果作比较。' : '运行后查看图样与读数'}</span></div>
+    {latest ? <WaveOpticsScene run={latest} /> : null}
+    {displayedRuns.length ? <WaveProfiles runs={displayedRuns} /> : <div className={styles.empty}>图样将在你保存预测并运行后出现。</div>}
     {latest ? <div className={styles.readouts}><span>衍射包络中央宽度 <strong>{latest.projection.centralBandWidthMm.toFixed(2)} mm</strong></span>
       {latest.projection.fringeSpacingMm !== null ? <span>近轴干涉条纹间距 <strong>{latest.projection.fringeSpacingMm.toFixed(2)} mm</strong></span> : null}</div> : null}
     <p className={styles.note}>远场、单色模型计算；每次以中央峰归一化，不能据此比较绝对亮度。图样与记录属于模拟观察。</p>
-    <label className={styles.observation}>我的观察与解释<textarea value={observation} onChange={event => setObservation(event.target.value)} rows={3}
+    {!evidenceReadOnly ? <><label className={styles.observation}>我的观察与解释<textarea value={observation} onChange={event => setObservation(event.target.value)} rows={3}
       maxLength={500} disabled={busy || !currentRun} placeholder="记录改变前后的参数和图样特征。预测是否得到支持？" /></label>
     <button type="button" className="qitu-button qitu-button-ghost" disabled={busy || !currentRun || !observation.trim()}
-      onClick={() => { void send('record_observation'); }}>{pending === 'record_observation' ? '正在保存观察…' : '保存这次观察'}</button>
+      onClick={() => { void send('record_observation'); }}>{pending === 'record_observation' ? '正在保存观察…' : '保存这次观察'}</button></> : null}
     {receipt ? <p className={styles.confirmed} role="status">观察已保存，可用于本课证据。完成状态以本课评价为准。</p> : null}
     {error ? <p className={styles.error} role="alert">{error}</p> : null}
   </section>;
 }
 
-function WaveProfiles({ runs }: { runs: readonly WaveExperimentRun[] }) {
+function WaveProfiles({ runs }: { runs: readonly DisplayRun[] }) {
   const extent = Math.max(1, ...runs.flatMap(run => run.projection.samples.map(point => Math.abs(point.positionMm))));
   const colours = ['#0e7490', '#b45309', '#1d4ed8'];
   return <figure className={styles.figure}><svg viewBox="0 0 680 210" role="img" aria-label="归一化光强与屏上位置比较图">
     <line x1="20" y1="170" x2="660" y2="170" stroke="currentColor" opacity=".3" />
     <line x1="340" y1="20" x2="340" y2="174" stroke="currentColor" opacity=".2" />
     <text x="20" y="14" fontSize="11" fill="currentColor">归一化光强</text>
-    {runs.map((run, index) => <polyline key={run.actionId} fill="none" stroke={colours[index % colours.length]} strokeWidth="1.5"
+    {runs.map((run, index) => <polyline key={index} fill="none" stroke={colours[index % colours.length]} strokeWidth="1.5"
       points={run.projection.samples.map(point => `${20 + (point.positionMm + extent) / (2 * extent) * 640},${170 - point.normalizedIntensity * 140}`).join(' ')} />)}
     <text x="20" y="195" fontSize="11" fill="currentColor">−{extent.toFixed(1)} mm</text>
     <text x="336" y="195" fontSize="11" fill="currentColor">0</text>
     <text x="590" y="195" fontSize="11" fill="currentColor">{extent.toFixed(1)} mm</text>
-  </svg><figcaption>{runs.map((run, index) => <span key={run.actionId} style={{ color: colours[index % colours.length] }}>
+  </svg><figcaption>{runs.map((run, index) => <span key={index} style={{ color: colours[index % colours.length] }}>
     {index + 1} · λ {run.parameters.wavelength} nm · a {run.parameters.slitWidth} μm
     {run.parameters.mode === 'interference' ? ` · d ${run.parameters.slitSeparation} μm` : ''} · L {run.parameters.screenDistance} m
   </span>)}</figcaption></figure>;

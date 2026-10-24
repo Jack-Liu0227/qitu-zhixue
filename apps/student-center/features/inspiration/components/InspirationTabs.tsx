@@ -5,6 +5,7 @@ import { useCallback, useRef, useState, type KeyboardEvent } from 'react';
 import type { InspirationDataSource } from '../data';
 import { FreeExplorePanel } from './FreeExplorePanel';
 import { RecommendedTemplates } from './RecommendedTemplates';
+import { ProjectListScreen } from '../../projects/components/ProjectListScreen';
 
 export type InspirationTab = 'recommended' | 'explore';
 
@@ -123,6 +124,7 @@ export function InspirationTabs({ initialTab = 'recommended', dataSource }: Insp
         hidden={activeTab !== 'explore'}
       >
         <FreeExplorePanel />
+        {activeTab === 'explore' && <ProjectListScreen mode="explorations" />}
       </div>
     </div>
   );

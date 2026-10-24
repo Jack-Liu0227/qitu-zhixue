@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { OPTICS_GUIDED_TEMPLATE_SPEC } from '@qitu/ai-client/quiz-bank';
+import { OPTICS_GUIDED_TEMPLATE_SPEC, WAVE_OPTICS_TEMPLATE_SPEC } from '@qitu/ai-client/quiz-bank';
 import type { LearningEvidenceProof } from '@qitu/contracts';
 import { projectLessonActivities } from './lesson-activity-progress';
 
@@ -25,4 +25,17 @@ test('pending or foreign activity receipts do not advance; locked lessons never 
   assert.equal(projectLessonActivities({ lesson, sessionId: 'session', proofs: [foreign], masteryAccepted: false })[0]?.status, 'current');
   assert.equal(projectLessonActivities({ lesson, sessionId: 'session', proofs: [], masteryAccepted: false, locked: true })
     .every(activity => activity.status === 'locked'), true);
+});
+
+test('comparison practice remains current until distinct reviewed observations meet the frozen lesson requirement', () => {
+  const comparison = WAVE_OPTICS_TEMPLATE_SPEC.curriculum!.profiles[0]!.sessions[3]!;
+  const observation: LearningEvidenceProof = { ...proof('practice'), kind: 'experiment_observation',
+    sourceKind: 'experiment_observation', ref: 'experiment_observation:first' };
+  const input = { lesson: comparison, sessionId: 'session', masteryAccepted: false,
+    proofs: [...['review', 'theory', 'check', 'reflect'].map(activity => proof(activity)), observation] };
+  const current = (proofs: LearningEvidenceProof[]) => projectLessonActivities({ ...input, proofs }).find(activity => activity.status === 'current')?.kind;
+  assert.equal(current(input.proofs), 'practice');
+  assert.equal(current([...input.proofs, observation]), 'practice');
+  assert.equal(current([...input.proofs, { ...observation, ref: 'experiment_observation:second', quality: { ...observation.quality!, status: 'pending' } }]), 'practice');
+  assert.equal(current([...input.proofs, { ...observation, ref: 'experiment_observation:second' }]), undefined);
 });

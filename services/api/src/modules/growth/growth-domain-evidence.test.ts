@@ -7,7 +7,7 @@ import {
   type GrowthDomainKind, type GrowthProjectionType,
 } from '@qitu/contracts';
 import {
-  adminAssistants, adminTeamVersions, agentConfigs, agentProjectionCandidates, agentRoutes,
+  adminAssistants, agentConfigs, agentProjectionCandidates, agentRoutes,
   agentTeamEvents, agentTeamRuns, agentTeamTasks, artifacts, artifactVersions, auditLogs, growthRecords,
   learningObjectives, learningPlans, learningSessions, masteryEvents, masteryRecords, mentorAssignments,
   mentorReviews, outbox, pblTemplateTeamBindings, projectBindingSnapshots, projectEvidence, projects,
@@ -34,8 +34,8 @@ function fixture() {
     .seed(agentTeamRuns, []).seed(agentRoutes, []).seed(agentTeamTasks, []).seed(agentProjectionCandidates, [])
     .seed(projects, [{ id: 'project', studentUserId: 'student', templateVersionId: 'template', title: 'Optics', status: 'completed' }])
     .seed(projectBindingSnapshots, [{ projectId: 'project', templateVersionId: 'template', bindingId: 'binding', teamVersionId: 'team', bindingHash: 'frozen-hash', bundleDigest: null, backfilled: false }])
-    .seed(pblTemplateTeamBindings, [{ id: 'binding', templateVersionId: 'template', teamVersionId: 'team', bindingHash: 'frozen-hash', bundleDigest: null }])
-    .seed(adminTeamVersions, [{ id: 'team', leaderAssistantId: 'leader', enabled: true }])
+    .seed(pblTemplateTeamBindings, [{ id: 'binding', templateVersionId: 'template', teamVersionId: 'team', bindingHash: 'frozen-hash', bundleDigest: null, teamSnapshots: { team: { id: 'team', leaderAssistantId: 'leader', enabled: true } } }])
+
     .seed(agentConfigs, [{ id: 'leader', enabled: true }, { id: 'profile', enabled: true }, { id: 'growth', enabled: true }])
     .seed(adminAssistants, [{ id: 'profile', enabled: true }, { id: 'growth', enabled: true }])
     .seed(learningPlans, [{ id: 'plan', studentUserId: 'student', projectId: 'project', templateVersionId: 'template', version: 1 }])
@@ -240,8 +240,19 @@ test('finite factual policy preserves all prior provenance or defers at the cont
 test('bounded source cursors advance past invalid first rows and do not steal mastery graph delivery', async () => {
   const { f, worker } = fixture();
   f.rows(masteryEvents).unshift({ ...f.rows(masteryEvents)[0], id: 'a-invalid', eventType: 'revoked' });
+  f.rows(masteryRecords).unshift({ ...f.rows(masteryRecords)[0], id: 'invalid-current', objectiveId: 'invalid-objective', sourceEventId: 'a-invalid' });
   f.rows(outbox).push({ id: 'graph-event', topic: 'mastery.assessed', payload: { eventId: 'mastery' }, status: 'pending', createdAt: time });
   assert.equal((await worker.tick(1)).deferred, 1);
   assert.equal((await worker.tick(1)).emitted, 1);
   assert.equal(f.rows(outbox).find((row) => row.id === 'graph-event')!.status, 'pending');
+});
+
+test('growth polling skips incomplete and superseded assessment attempts without repeated deferrals', async () => {
+  const { f, worker } = fixture();
+  f.rows(masteryEvents).push({ ...f.rows(masteryEvents)[0], id: 'old-attempt', qualitativeMastered: false });
+  f.rows(masteryEvents).push({ ...f.rows(masteryEvents)[0], id: 'learning-attempt', qualitativeMastered: false });
+  f.rows(masteryRecords).push({ ...f.rows(masteryRecords)[0], id: 'learning-current', sourceEventId: 'learning-attempt', status: 'learning' });
+  assert.deepEqual(await worker.tick(), { checked: 4, emitted: 4, deferred: 0 });
+  assert.deepEqual(await worker.tick(), { checked: 4, emitted: 0, deferred: 0 });
+  assert.equal(f.rows(growthRecords).filter(row => row.type === 'objective_mastered').length, 1);
 });

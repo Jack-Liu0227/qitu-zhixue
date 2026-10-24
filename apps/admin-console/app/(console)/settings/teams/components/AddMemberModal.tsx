@@ -52,7 +52,7 @@ export function AddMemberModal({
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content" role="dialog" aria-modal="true" aria-label="添加团队成员" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>添加团队成员</h3>
           <button

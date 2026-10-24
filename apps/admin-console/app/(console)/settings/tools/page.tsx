@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { fetchAdminAssistantConfigs } from '../../../../lib/api/assistants';
+import { fetchAdminTeamConfigs } from '../../../../lib/api/teams';
+import Link from 'next/link';
 import { persistAssistantBinding, hasMcpBinding } from '../../../../lib/api/assistantBindings';
 import { fetchRuntimeSnapshot } from '../../../../lib/api/runtime';
 import { KnowledgeConfiguration } from '../../../../lib/components/KnowledgeConfiguration';
@@ -9,6 +11,7 @@ import { ToolBindingMigrationPanel } from '../../../../lib/components/ToolBindin
 import { LEGACY_TOOL_BINDING_RESOLUTIONS, type ToolBindingMigrationResult } from '@qitu/contracts';
 import type {
   AdminAssistantConfig,
+  AdminTeamConfig,
   AdminRuntimeBuiltinTool,
   AdminRuntimeMcpServer,
   AdminRuntimeSnapshot,
@@ -48,6 +51,10 @@ export default function ToolsSettingsPage() {
 
   // ---- 助手（授权矩阵的行；绑定关系通过服务端持久化） ----
   const [assistants, setAssistants] = useState<AdminAssistantConfig[]>([]);
+  const [teams, setTeams] = useState<AdminTeamConfig[]>([]);
+  const [teamId, setTeamId] = useState('');
+  const [matrixBusy, setMatrixBusy] = useState(false);
+  const operation = useRef(false);
   const [assistantsPending, setAssistantsPending] = useState(true);
   const [assistantsError, setAssistantsError] = useState('');
 
@@ -86,9 +93,10 @@ export default function ToolsSettingsPage() {
     const request = ++assistantRequest.current;
     setAssistantsPending(true);
     try {
-      const list = await fetchAdminAssistantConfigs();
+      const [list, teamList] = await Promise.all([fetchAdminAssistantConfigs(), fetchAdminTeamConfigs()]);
       if (request !== assistantRequest.current) return;
       setAssistants(list ?? []);
+      setTeams(teamList);
       setAssistantsError('');
     } catch (error) {
       if (request !== assistantRequest.current) return;
@@ -117,9 +125,20 @@ export default function ToolsSettingsPage() {
     () => snapshot?.mcpServers.filter((server) => server.id !== IMA_ID) ?? [],
     [snapshot],
   );
-  const builtinTools = useMemo(() => snapshot?.builtInTools ?? [], [snapshot]);
+  const builtinTools = useMemo(() => snapshot?.builtInTools.filter(tool => tool.invocation !== 'domain_service') ?? [], [snapshot]);
+  const visibleAssistants = useMemo(() => {
+    if (!teamId) return assistants;
+    const members = new Set(teams.find(team => team.id === teamId)?.members.map(member => member.assistantId) ?? []);
+    return assistants.filter(assistant => members.has(assistant.id));
+  }, [assistants, teams, teamId]);
+  const matrixDisabled = matrixBusy || registryPending || assistantsPending || !!registryError || !!assistantsError;
+  const runOperation = async (run: () => Promise<unknown>) => {
+    if (operation.current || matrixDisabled) return;
+    operation.current = true; setMatrixBusy(true);
+    try { await run(); } finally { operation.current = false; setMatrixBusy(false); }
+  };
   const unresolvedTools = useMemo(() => [...new Set(assistants.flatMap(assistant => assistant.toolIds))]
-    .filter(id => !builtinTools.some(tool => tool.id === id)), [assistants, builtinTools]);
+    .filter(id => !snapshot?.builtInTools.some(tool => tool.id === id)), [assistants, snapshot]);
 
   const onToolBindingsMigrated = useCallback(async (result: ToolBindingMigrationResult) => {
     const registryIdentity = ++registryRequest.current;
@@ -186,6 +205,7 @@ export default function ToolsSettingsPage() {
   // ---- 单元格切换 ----
   const toggleMcpForAssistant = useCallback(async (server: AdminRuntimeMcpServer, assistant: AdminAssistantConfig) => {
     const bound = isMcpBound(assistant, server);
+    if (!bound && (!server.enabled || server.status !== 'connected')) { notify('此服务尚未连接，请先完成服务配置和连接检查。'); return; }
     const next = bound
       ? assistant.mcpServerIds.filter((value) => value !== server.id && value !== server.label)
       : [...assistant.mcpServerIds, server.id];
@@ -205,7 +225,7 @@ export default function ToolsSettingsPage() {
   // ---- 纵向（整列）批量操作 ----
   const setMcpColumnForAll = useCallback(async (server: AdminRuntimeMcpServer, enabled: boolean) => {
     if (assistants.length === 0) return;
-    for (const assistant of assistants) {
+    for (const assistant of visibleAssistants) {
       const bound = hasMcpBinding(assistant, { id: server.id, name: server.label });
       if (bound === enabled) continue;
       const next = enabled
@@ -214,11 +234,11 @@ export default function ToolsSettingsPage() {
       const ok = await applyAssistantPatch(assistant.id, 'mcpServerIds', next);
       if (!ok) return;
     }
-    notify(enabled ? `纵向全选成功：已为所有助手开启 MCP【${server.label}】` : `纵向取消成功：已清空所有助手对 MCP【${server.label}】的授权`);
-  }, [assistants, applyAssistantPatch, notify]);
+    notify(enabled ? `纵向全选成功：已为当前范围的助手开启 MCP【${server.label}】` : `纵向取消成功：已清空当前范围的助手对 MCP【${server.label}】的授权`);
+  }, [visibleAssistants, applyAssistantPatch, notify]);
 
   const setBuiltinColumnForAll = useCallback(async (tool: AdminRuntimeBuiltinTool, enabled: boolean) => {
-    for (const assistant of assistants) {
+    for (const assistant of visibleAssistants) {
       const bound = assistant.toolIds.includes(tool.id);
       if (bound === enabled) continue;
       const next = enabled
@@ -227,13 +247,13 @@ export default function ToolsSettingsPage() {
       const ok = await applyAssistantPatch(assistant.id, 'toolIds', next);
       if (!ok) return;
     }
-    notify(enabled ? `纵向全选成功：已为所有助手开启【${tool.label}】` : `纵向取消成功：已清空所有助手对【${tool.label}】的授权`);
-  }, [assistants, applyAssistantPatch, notify]);
+    notify(enabled ? `纵向全选成功：已为当前范围的助手开启【${tool.label}】` : `纵向取消成功：已清空当前范围的助手对【${tool.label}】的授权`);
+  }, [visibleAssistants, applyAssistantPatch, notify]);
 
   // ---- 横向（整行）批量操作 ----
   const setAssistantRow = useCallback(async (assistant: AdminAssistantConfig, enabled: boolean) => {
     const nextMcp = enabled
-      ? Array.from(new Set([...assistant.mcpServerIds, ...mcpServers.map((s) => s.id)]))
+      ? Array.from(new Set([...assistant.mcpServerIds, ...mcpServers.filter(s => s.enabled && s.status === 'connected').map((s) => s.id)]))
       : assistant.mcpServerIds.filter((value) => !mcpServers.some((s) => s.id === value || s.label === value));
     const okMcp = await applyAssistantPatch(assistant.id, 'mcpServerIds', nextMcp);
     if (!okMcp) return false;
@@ -247,10 +267,10 @@ export default function ToolsSettingsPage() {
   }, [mcpServers, builtinTools, applyAssistantPatch, notify]);
 
   const setEntireMatrix = useCallback(async (enabled: boolean) => {
-    for (const assistant of assistants) {
+    for (const assistant of visibleAssistants) {
       if (!await setAssistantRow(assistant, enabled)) return;
     }
-  }, [assistants, setAssistantRow]);
+  }, [visibleAssistants, setAssistantRow]);
 
   const checkboxStyle = (checked: boolean, color: string, disabled = false) => ({
     display: 'inline-flex',
@@ -361,6 +381,16 @@ export default function ToolsSettingsPage() {
         </div>
       </div>
 
+      <div className="admin-tools-card" style={{ marginBottom: 16, padding: 16, background: '#fff', borderRadius: 12 }}>
+        <label>团队范围 <select style={{ display: 'block', width: '100%', maxWidth: 560, marginTop: 8 }} aria-label="团队范围" value={teamId} disabled={matrixDisabled} onChange={event => setTeamId(event.target.value)}>
+          <option value="">全部助手</option>{teams.map(team => <option key={team.id} value={team.id}>{team.name}</option>)}
+        </select></label>
+        <p>选择团队后，批量操作仅修改该团队成员的助手授权。共享助手的其他团队也会使用同一份当前配置。</p>
+        <p>助手授权保存后，请到 <Link href="/settings/templates">项目模板库</Link> 重新保存、校验并启用教学安排。已有项目继续使用确认时的教学配置；撤销权限立即生效。</p>
+        <p>知识库还需在 <Link href="/settings/knowledge">知识库授权</Link> 中选择助手可用的资料，并在教学安排中确认项目知识范围。未连接的 MCP 服务暂不能新增授权。</p>
+        <p>下方展示可供助手调用的工具。上下文组装、阶段门禁和成长索引由系统执行。</p>
+        {matrixBusy && <p role="status">正在保存并回读授权，请稍候。</p>}
+      </div>
       {!registryPending && !registryError && !assistantsPending && !assistantsError && unresolvedTools.length > 0 && (
         <ToolBindingMigrationPanel onMigrated={onToolBindingsMigrated} />
       )}
@@ -401,7 +431,7 @@ export default function ToolsSettingsPage() {
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
                 <span className="admin-matrix-scroll-hint">↔ 可横向滚动查看全部授权列</span>
                 <span className="admin-tools-summary-badge" style={{ fontSize: '12px', color: '#165dff', background: '#eff6ff', padding: '4px 10px', borderRadius: '6px', fontWeight: 600 }}>
-                  {assistants.length} 位助手 · {mcpServers.length} 个 MCP 服务 · {builtinTools.length} 个内置工具
+                  {visibleAssistants.length} 位助手 · {mcpServers.length} 个 MCP 服务 · {builtinTools.length} 个内置工具
                 </span>
               </div>
             </div>
@@ -424,17 +454,19 @@ export default function ToolsSettingsPage() {
                         <div style={{ display: 'flex', gap: '5px', marginTop: '6px' }}>
                           <button
                             type="button"
-                            onClick={() => void setEntireMatrix(true)}
+                            disabled={matrixDisabled}
+                            onClick={() => void runOperation(() => setEntireMatrix(true))}
                             style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', border: '1px solid #165dff', background: '#165dff', color: '#ffffff', cursor: 'pointer', fontWeight: 600 }}
-                            title="全局全选：为所有助手开启当前可见工具"
+                            title="全局全选：为当前范围的助手开启当前可见工具"
                           >
                             全部全选
                           </button>
                           <button
                             type="button"
-                            onClick={() => void setEntireMatrix(false)}
+                            disabled={matrixDisabled}
+                            onClick={() => void runOperation(() => setEntireMatrix(false))}
                             style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#64748b', cursor: 'pointer' }}
-                            title="全部取消：清空所有助手的全部工具"
+                            title="全部取消：清空当前范围的助手的全部工具"
                           >
                             全部取消
                           </button>
@@ -453,17 +485,19 @@ export default function ToolsSettingsPage() {
                           <div style={{ display: 'flex', gap: '4px', justifyContent: 'center', marginTop: '6px' }}>
                             <button
                               type="button"
-                              onClick={() => void setMcpColumnForAll(server, true)}
+                              disabled={matrixDisabled || !server.enabled || server.status !== 'connected'}
+                            onClick={() => void runOperation(() => setMcpColumnForAll(server, true))}
                               style={{ fontSize: '10.5px', padding: '2px 6px', borderRadius: '4px', border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1d4ed8', cursor: 'pointer', fontWeight: 600 }}
-                              title={`纵向全选：为所有助手开启【${server.label}】`}
+                              title={`纵向全选：为当前范围的助手开启【${server.label}】`}
                             >
                               纵向全选
                             </button>
                             <button
                               type="button"
-                              onClick={() => void setMcpColumnForAll(server, false)}
+                              disabled={matrixDisabled}
+                            onClick={() => void runOperation(() => setMcpColumnForAll(server, false))}
                               style={{ fontSize: '10.5px', padding: '2px 6px', borderRadius: '4px', border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}
-                              title={`纵向取消：取消所有助手对【${server.label}】的授权`}
+                              title={`纵向取消：取消当前范围的助手对【${server.label}】的授权`}
                             >
                               纵向取消
                             </button>
@@ -479,17 +513,19 @@ export default function ToolsSettingsPage() {
                           <div style={{ display: 'flex', gap: '4px', justifyContent: 'center', marginTop: '6px' }}>
                             <button
                               type="button"
-                              onClick={() => void setBuiltinColumnForAll(tool, true)}
+                              disabled={matrixDisabled}
+                            onClick={() => void runOperation(() => setBuiltinColumnForAll(tool, true))}
                               style={{ fontSize: '10.5px', padding: '2px 6px', borderRadius: '4px', border: '1px solid #ddd6fe', background: '#f5f3ff', color: '#6d28d9', cursor: 'pointer', fontWeight: 600 }}
-                              title={`纵向全选：为所有助手开启【${tool.label}】`}
+                              title={`纵向全选：为当前范围的助手开启【${tool.label}】`}
                             >
                               纵向全选
                             </button>
                             <button
                               type="button"
-                              onClick={() => void setBuiltinColumnForAll(tool, false)}
+                              disabled={matrixDisabled}
+                            onClick={() => void runOperation(() => setBuiltinColumnForAll(tool, false))}
                               style={{ fontSize: '10.5px', padding: '2px 6px', borderRadius: '4px', border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}
-                              title={`纵向取消：取消所有助手对【${tool.label}】的授权`}
+                              title={`纵向取消：取消当前范围的助手对【${tool.label}】的授权`}
                             >
                               纵向取消
                             </button>
@@ -502,7 +538,7 @@ export default function ToolsSettingsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {assistants.map((assistant, index) => (
+                    {visibleAssistants.map((assistant, index) => (
                       <tr key={assistant.id} style={{ borderBottom: '1px solid #f1f5f9', background: index % 2 === 0 ? '#ffffff' : '#fafafa' }}>
                         <td style={{ padding: '12px 16px' }}>
                           <div style={{ fontWeight: 600, color: '#0f172a' }}>{assistant.name}</div>
@@ -515,13 +551,15 @@ export default function ToolsSettingsPage() {
                           const isChecked = isMcpBound(assistant, server);
                           return (
                             <td key={server.id} style={{ padding: '12px 14px', textAlign: 'center' }}>
-                              <div
+                              <button
+                                type="button"
                                 role="checkbox"
                                 aria-checked={isChecked}
                                 aria-label={`${assistant.name} 是否授权 ${server.label}`}
                                 tabIndex={0}
-                                onClick={() => void toggleMcpForAssistant(server, assistant)}
-                                onKeyDown={(event) => { if (event.key === ' ' || event.key === 'Enter') { event.preventDefault(); void toggleMcpForAssistant(server, assistant); } }}
+                                disabled={matrixDisabled || !isChecked && (!server.enabled || server.status !== 'connected')}
+                            onClick={() => void runOperation(() => toggleMcpForAssistant(server, assistant))}
+                                onKeyDown={(event) => { if (event.key === ' ' || event.key === 'Enter') { event.preventDefault(); void runOperation(() => toggleMcpForAssistant(server, assistant)); } }}
                                 style={checkboxStyle(isChecked, '#165dff')}
                                 title={
                                   isChecked
@@ -530,7 +568,7 @@ export default function ToolsSettingsPage() {
                                 }
                               >
                                 {isChecked ? '✓' : ''}
-                              </div>
+                              </button>
                             </td>
                           );
                         })}
@@ -539,13 +577,15 @@ export default function ToolsSettingsPage() {
                           const isChecked = isBuiltinBound(assistant, tool);
                           return (
                             <td key={tool.id} style={{ padding: '12px 14px', textAlign: 'center' }}>
-                              <div
+                              <button
+                                type="button"
                                 role="checkbox"
                                 aria-checked={isChecked}
                                 aria-label={`${assistant.name} 是否授权内置工具 ${tool.label}`}
                                 tabIndex={0}
-                                onClick={() => void toggleBuiltinForAssistant(tool, assistant)}
-                                onKeyDown={(event) => { if (event.key === ' ' || event.key === 'Enter') { event.preventDefault(); void toggleBuiltinForAssistant(tool, assistant); } }}
+                                disabled={matrixDisabled}
+                            onClick={() => void runOperation(() => toggleBuiltinForAssistant(tool, assistant))}
+                                onKeyDown={(event) => { if (event.key === ' ' || event.key === 'Enter') { event.preventDefault(); void runOperation(() => toggleBuiltinForAssistant(tool, assistant)); } }}
                                 style={checkboxStyle(isChecked, '#7c3aed')}
                                 title={
                                   isChecked
@@ -554,7 +594,7 @@ export default function ToolsSettingsPage() {
                                 }
                               >
                                 {isChecked ? '✓' : ''}
-                              </div>
+                              </button>
                             </td>
                           );
                         })}
@@ -563,7 +603,8 @@ export default function ToolsSettingsPage() {
                           <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
                             <button
                               type="button"
-                              onClick={() => void setAssistantRow(assistant, true)}
+                              disabled={matrixDisabled}
+                            onClick={() => void runOperation(() => setAssistantRow(assistant, true))}
                               style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '4px', border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1d4ed8', cursor: 'pointer', fontWeight: 600 }}
                               title={`横向全选：为【${assistant.name}】开启当前可见工具`}
                             >
@@ -571,7 +612,8 @@ export default function ToolsSettingsPage() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => void setAssistantRow(assistant, false)}
+                              disabled={matrixDisabled}
+                            onClick={() => void runOperation(() => setAssistantRow(assistant, false))}
                               style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '4px', border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}
                               title={`横向取消：清空【${assistant.name}】的当前可见工具授权`}
                             >
@@ -621,7 +663,7 @@ export default function ToolsSettingsPage() {
                         <span className="admin-builtin-gate-badge" style={{ padding: '1px 6px', borderRadius: '4px', background: '#fff7ed', color: '#c2410c', fontWeight: 600 }}>需 TheoryMastered 门禁</span>
                       ) : null}
                       <span className="admin-builtin-reg-badge" style={{ padding: '1px 6px', borderRadius: '4px', background: '#f1f5f9', color: '#475569' }}>
-                        {tool.agentIds.length} 个角色注册
+                        {assistants.filter(assistant => assistant.toolIds.includes(tool.id)).length} 个助手已授权
                       </span>
                     </div>
                   </div>

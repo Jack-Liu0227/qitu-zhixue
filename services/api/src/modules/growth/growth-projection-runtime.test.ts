@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { adminAssistants, adminTeams, adminTeamVersions, agentConfigs, agentRoutes, projectBindingSnapshots, type Database } from '@qitu/database';
+import { adminAssistants, adminTeams, pblTemplateTeamBindings, agentConfigs, agentRoutes, projectBindingSnapshots, type Database } from '@qitu/database';
 import { provisionGrowthProjectionRuntime } from './growth-projection-runtime';
 
 function fixture() {
@@ -21,8 +21,8 @@ function fixture() {
   const tables = new Map<unknown, Array<Record<string, unknown>>>([
     [adminAssistants, assistants], [agentConfigs, agents], [agentRoutes, routes],
     [adminTeams, [{ id: 'live', enabled: true, leaderAssistantId: 'live-leader' }, { id: 'disabled', enabled: true, leaderAssistantId: 'disabled-leader' }]],
-    [adminTeamVersions, [{ id: 'frozen', enabled: true, leaderAssistantId: 'frozen-leader' }, { id: 'unused', enabled: true, leaderAssistantId: 'unrelated' }]],
-    [projectBindingSnapshots, [{ projectId: 'project', teamVersionId: 'frozen' }]],
+    [pblTemplateTeamBindings, [{ id: 'binding', teamSnapshots: { frozen: { id: 'frozen', enabled: true, leaderAssistantId: 'frozen-leader' }, unused: { id: 'unused', enabled: true, leaderAssistantId: 'unrelated' } } }]],
+    [projectBindingSnapshots, [{ projectId: 'project', bindingId: 'binding', teamVersionId: 'frozen' }]],
   ]);
   const db = {
     select: () => ({ from: async (table: unknown) => tables.get(table) ?? [] }),

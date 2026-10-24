@@ -15,11 +15,12 @@ async function request<T>(url: string, body: unknown, signal: AbortSignal, key?:
 }
 
 /** Uses owner-issued questions; formative chat questions continue through their existing adapter. */
-export function LessonAssessmentCard({ projectId, lesson, disabled, onChanged }: {
+export function LessonAssessmentCard({ projectId, lesson, disabled, onChanged, onExplain }: {
   projectId: string;
   lesson: NonNullable<TutorProjectContext['lesson']>;
   disabled: boolean;
   onChanged: () => Promise<void>;
+  onExplain?: (message: string) => void;
 }) {
   const [view, setView] = useState<TutorLessonAssessmentView | null>(null);
   const [result, setResult] = useState<TutorLessonAssessmentResult | null>(null);
@@ -29,6 +30,14 @@ export function LessonAssessmentCard({ projectId, lesson, disabled, onChanged }:
   const active = useRef(true);
   const controllers = useRef(new Set<AbortController>());
   const answerKey = useRef<{ signature: string; key: string } | null>(null);
+  const autoStarted = useRef<string | null>(null);
+  useEffect(() => {
+    const identity = `${lesson.planId}:${lesson.planRevision}:${lesson.learningSessionId}:${lesson.currentActivity?.activityId}`;
+    if (lesson.teachingMode !== 'zero-base.v1' || !lesson.assessmentAvailable || disabled || busy || view || result
+      || autoStarted.current === identity) return;
+    autoStarted.current = identity;
+    void start();
+  }, [lesson.teachingMode, lesson.assessmentAvailable, lesson.planId, lesson.planRevision, lesson.learningSessionId, lesson.currentActivity?.activityId, disabled]);
   useEffect(() => {
     active.current = true;
     return () => { active.current = false; for (const controller of controllers.current) controller.abort(); };
@@ -78,7 +87,7 @@ export function LessonAssessmentCard({ projectId, lesson, disabled, onChanged }:
     {question && !result ? <form onSubmit={event => { event.preventDefault(); void submit(); }}>
       <MarkdownMathView content={question.prompt} />
       {question.options.length ? <fieldset disabled={disabled || busy}>
-        <legend>选择后说明你的判断，或直接提交所选答案</legend>
+        <legend>选择你认为合适的答案</legend>
         {question.options.map(option => <label key={option.id} style={{ display: 'block', margin: '8px 0' }}>
           <input type="radio" name={`lesson-${question.questionId}`} value={option.id} checked={answer === option.id} onChange={() => setAnswer(option.id)} /> {option.label} {option.body}
         </label>)}
@@ -86,12 +95,22 @@ export function LessonAssessmentCard({ projectId, lesson, disabled, onChanged }:
         <textarea rows={4} maxLength={8000} value={answer} disabled={disabled || busy} onChange={event => setAnswer(event.target.value)} />
       </label>}
       <button type="submit" className="qitu-button qitu-button-primary" disabled={disabled || busy || !answer.trim()}>{busy ? '正在评阅…' : '提交并查看解析'}</button>
+      {onExplain ? <button type="button" className="qitu-button qitu-button-ghost" disabled={disabled || busy}
+        onClick={() => onExplain('我还没提交当前这道题，请只给我一个思考提示，不要透露答案或更换题目。')}>给我一点提示</button> : null}
     </form> : null}
-    {result ? <div role="status">
-      <strong>{result.answer.isCorrect ? '这次解释符合要求' : '这里还可以继续改进'}</strong>
+    {result ? <div role="status" style={{ marginTop: '12px', padding: '12px', borderRadius: '8px', background: result.answer.theoryMastered ? '#e8ffea' : '#f7f8fa', border: `1px solid ${result.answer.theoryMastered ? '#bbf7d0' : '#e5e6eb'}` }}>
+      <strong style={{ color: result.answer.isCorrect ? '#00b42a' : '#f53f3f', fontSize: '14px' }}>
+        {result.answer.isCorrect ? '🎉 这次解释符合要求！' : '💡 这里还可以继续改进'}
+      </strong>
       <MarkdownMathView content={result.answer.explanation} />
-      {result.answer.remediation ? <p>{result.answer.remediation}</p> : null}
-      <p>{result.answer.theoryMastered ? '本课涉及的理论目标已有有效掌握证据。' : '继续结合反馈检查当前目标。'}</p>
+      {result.answer.remediation ? <p style={{ color: '#86909c', fontSize: '13px' }}>{result.answer.remediation}</p> : null}
+      {result.answer.theoryMastered ? (
+        <div style={{ marginTop: '8px', padding: '8px 10px', background: '#dcfce7', borderRadius: '6px', color: '#15803d', fontWeight: 600, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span>本课理论目标已达标。请继续完成本课学习记录与评价；进入实践课后，才能操作该课的实验。</span>
+        </div>
+      ) : (
+        <p style={{ fontSize: '12px', color: '#4e5969' }}>继续结合反馈检查当前目标。</p>
+      )}
     </div> : null}
   </section>;
 }

@@ -4,7 +4,7 @@ Use the existing qitu-project-configurator operations, published reference reade
 
 Keep Theme, Session, real team-role mapping, content/policy versions and IMA scope in the existing versioned teaching contract. Use actual ProjectTemplateSpec content/hash; preserve canonical skill IDs, provider/model pairs and published assistant snapshots. No parallel stage/projectV2/curriculum/mastery database or native OpenMAIC tools.
 
-Work through template drafts/new versions, assistant.create/update, team.version, binding.draft/validate/activate and growth.settings existing owners as applicable. Exact operation names and inputs must come from the current operation catalog. Missing object identities, published skills, tools, grants or model availability fail closed. Do not silently guess or substitute them.
+Work through template drafts/new versions, assistant.create/update, binding.prepare/draft/validate/activate and growth.settings existing owners as applicable. Exact operation names and inputs must come from the current operation catalog. Missing object identities, published skills, tools, grants or model availability fail closed. Do not silently guess or substitute them.
 
 Plan a coherent opening -> learner attempt/action -> evidence -> feedback/check/retry -> artifact/reflection flow. Each session task references existing objectives and rubric/evidence requirements. The server chooses subsequent actions; checkpoint/slide/session completion never marks mastery or passes a report. Learner intent/plan confirmation remains required before official project creation.
 

@@ -1,7 +1,7 @@
 ---
 name: qitu-stage-dsl
 description: Locate the Qitu owner contract for template, session, interaction, evidence and artifact edits.
-version: 1.0.0
+version: 1.0.1
 runtime: admin
 status: published
 references: references/qitu-contract.md

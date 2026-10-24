@@ -1,4 +1,5 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { CoursewareStore } from '../knowledge/courseware.store';
 import { createHash, randomUUID } from 'node:crypto';
 import type { CompleteLearningSessionResponse, CurrentUser, LearningSessionProgressView, PblTemplateSession } from '@qitu/contracts';
 import { hasLearningSessionCompletion } from '@qitu/contracts';
@@ -25,6 +26,7 @@ export class LearningSessionProgressService {
     private readonly mastery: MasteryDomainService,
     private readonly works: WorksLearningEvidenceService,
     private readonly audit: AuditWriter,
+    @Optional() private readonly courseware?: CoursewareStore,
   ) {}
 
   async readProgress(actor: CurrentUser, planId: string, store: LearningPlanStore = this.store): Promise<LearningSessionProgressView> {
@@ -113,10 +115,10 @@ export class LearningSessionProgressService {
       planRevision: plan.version, learningSessionId: selected.session.id, objectiveIds: selected.objectiveIds }, refs);
     const responseProofs = selected.frozen.checkpoint?.requiredGate === 'review_completed_and_archived'
       ? proof.reflections : [...proof.reflections, ...proof.submissions.filter((entry) => entry.kind === 'session_response')];
-    const reportSessionIds = new Set(context.sessions.filter((entry) => entry.frozen.checkpoint?.requiredGate === 'experiment_report_validated')
+    const artifactSessionIds = new Set(context.sessions.filter((entry) => ['experiment_report_validated', 'code_playable_run_verified', 'practice_artifact_approved'].includes(entry.frozen.checkpoint?.requiredGate ?? ''))
       .map((entry) => entry.session.id));
     const approvedReports = selected.frozen.checkpoint?.requiredGate === 'review_completed_and_archived'
-      ? proof.approvedArtifacts.filter((entry) => reportSessionIds.has(entry.scope.learningSessionId)) : proof.approvedArtifacts;
+      ? proof.approvedArtifacts.filter((entry) => artifactSessionIds.has(entry.scope.learningSessionId)) : proof.approvedArtifacts;
     const evidence = {
       session_response: responseProofs,
       experiment_observation: proof.observations,
@@ -140,8 +142,8 @@ export class LearningSessionProgressService {
       if (distinct.length < requirement.minimumCount) blockers.push(`EVIDENCE_REQUIRED:${requirement.kind}`);
       for (const ref of distinct.slice(0, requirement.minimumCount)) acceptedRefs.add(ref);
     }
-    // A report's approval must refer to the same immutable artifact version submitted this lesson.
-    if (selected.frozen.checkpoint?.requiredGate === 'experiment_report_validated'
+    // Every artifact checkpoint needs approval of the exact version submitted in this lesson.
+    if (['experiment_report_validated', 'code_playable_run_verified', 'practice_artifact_approved'].includes(selected.frozen.checkpoint?.requiredGate ?? '')
       && !proof.submissions.some((submission) => submission.kind === 'submitted_artifact' && proof.approvedArtifacts.some((approved) =>
         !!submission.artifactId && !!submission.artifactVersionId && approved.artifactId === submission.artifactId && approved.artifactVersionId === submission.artifactVersionId))) blockers.push('SUBMITTED_REPORT_APPROVAL_REQUIRED');
     const activities = selected.frozen.activityRequirements ? await this.activities(actor, context, selected, store) : undefined;
@@ -158,6 +160,8 @@ export class LearningSessionProgressService {
     const ids = selected.frozen.completionSpec?.requiredMasteryObjectiveIds.map(id => `${plan.id}:${id}`) ?? [];
     const awaiting = await store.findAwaitingQuestion(plan.studentUserId, plan.id);
     return projectLessonActivities({ lesson: selected.frozen, sessionId: selected.session.id,
+      teachingDeliveries: selected.frozen.teachingSpec && this.courseware
+        ? await this.courseware.instances(context.projectId, plan.id, plan.version, selected.session.id) : [],
       proofs: [...view.submissions, ...view.observations, ...view.reflections], sessionCompleted: completed, locked,
       masteryAccepted: !awaiting && ids.length > 0 && await this.mastery.checkRequiredObjectives(actor, plan.studentUserId, plan.id, ids, store) });
   }

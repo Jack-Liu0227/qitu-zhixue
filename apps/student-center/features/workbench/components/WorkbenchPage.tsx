@@ -1,4 +1,5 @@
 'use client';
+import { ResizablePanels } from '@qitu/ui';
 
 import { useCallback, useEffect, useState } from 'react';
 import type { PedagogicMove, ProjectStage } from '@qitu/contracts';
@@ -279,7 +280,7 @@ export function WorkbenchPage({
       <WorkbenchBreadcrumb projectTitle={initialProject.title} />
       <WorkbenchHeader project={initialProject} />
 
-      <div className="qitu-workbench-grid">
+      <ResizablePanels storageKey="student-workbench" initialSizes={[72, 28]} minWidths={[400, 260]} className="qitu-workbench-grid" labels={['制作工作区', '导师建议']}>
         <div className="qitu-workbench-main">
           <div className="qitu-workbench-toolbar">
             <WorkbenchTabs activeKind={controller.activeKind} onChange={controller.setActiveKind} disabled={readOnly} />
@@ -318,7 +319,7 @@ export function WorkbenchPage({
           onAsk={onAskTutor}
           onSend={onSendTutor}
         />
-      </div>
+      </ResizablePanels>
 
       {tutorNotice ? <p className="qitu-workbench-action-note">{tutorNotice}</p> : null}
 

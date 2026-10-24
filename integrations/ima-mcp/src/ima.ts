@@ -15,25 +15,36 @@ export class ImaClient implements ImaApi {
     if (!/^openapi\/(wiki\/v1\/(get_knowledge_base|get_knowledge_list|search_knowledge|search_knowledge_base|get_media_info)|note\/v1\/get_doc_content)$/.test(path)) {
       throw new ServiceError('UNSUPPORTED_OPERATION', '只支持知识库读取接口。');
     }
+    const started = Date.now();
     let response: Response;
-    try {
-      response = await this.fetcher(`https://ima.qq.com/${path}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json; charset=utf-8',
-          'ima-openapi-clientid': this.config.clientId,
-          'ima-openapi-apikey': this.config.apiKey,
-        },
-        body: JSON.stringify(body),
-        redirect: 'error',
-        signal: AbortSignal.timeout(this.config.timeoutMs),
-      });
-    } catch {
-      throw new ServiceError('IMA_UNAVAILABLE', 'ima 请求失败或超时，请稍后重试。');
-    }
-    if (!response.ok) {
-      await response.body?.cancel();
-      throw new ServiceError('IMA_HTTP_ERROR', `ima 返回 HTTP ${response.status}。`);
+    for (let attempt = 0; ; attempt++) {
+      try {
+        response = await this.fetcher(`https://ima.qq.com/${path}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            'ima-openapi-clientid': this.config.clientId,
+            'ima-openapi-apikey': this.config.apiKey,
+          },
+          body: JSON.stringify(body),
+          redirect: 'error',
+          signal: AbortSignal.timeout(Math.max(1, this.config.timeoutMs - (Date.now() - started))),
+        });
+      } catch {
+        throw new ServiceError('IMA_UNAVAILABLE', 'ima 请求失败或超时，请稍后重试。');
+      }
+      if (!response.ok) {
+        await response.body?.cancel();
+        // Only operation/status are diagnostic; never log query, KB IDs, credentials or response bodies.
+        console.warn(JSON.stringify({ event: 'ima.http.failed', operation: path.split('/').at(-1), status: response.status, attempt }));
+        const retryable = [429, 502, 503, 504].includes(response.status);
+        if (attempt === 0 && retryable && Date.now() - started + 300 < this.config.timeoutMs) {
+          await new Promise(resolve => setTimeout(resolve, 250));
+          continue;
+        }
+        throw new ServiceError([401, 403].includes(response.status) ? 'IMA_ACCESS_DENIED' : 'IMA_HTTP_ERROR', `ima 返回 HTTP ${response.status}。`);
+      }
+      break;
     }
     let payload: JsonObject;
     try {

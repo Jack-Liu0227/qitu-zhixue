@@ -94,6 +94,29 @@ test('all sixteen sessions are reachable in order; shared objectives do not skip
   assert.equal((await h.store.listMasteryForPlan(actor.id, 'plan')).length, 0);
 });
 
+test('code artifact checkpoints require the submitted version and remain usable during final archive', async () => {
+  const source = OPTICS_16_COMPLETION_TEMPLATE_SPEC;
+  const spec: ProjectTemplateSpec = { ...source, governancePolicyId: undefined,
+    phases: source.phases.map(phase => phase.phase === 'guided_practice'
+      ? { ...phase, gateCondition: 'code_playable_run_verified', evidenceProfile: 'runnable_code', deliverableType: 'runnable_python_game' } : phase),
+    curriculum: { profiles: source.curriculum!.profiles.map(profile => ({ ...profile,
+      sessions: profile.sessions.map(session => session.checkpoint?.requiredGate === 'experiment_report_validated'
+        ? { ...session, checkpoint: { requiredGate: 'code_playable_run_verified' } } : session),
+    })) },
+  };
+  const h = await harness(spec); await reach(h, 14);
+  h.add(14, 'submitted_artifact');
+  const approval = h.add(14, 'approved_artifact'); approval.artifactVersionId = 'different-version';
+  await rejected(h.complete(14), 'LEARNING_SESSION_REQUIREMENTS_UNMET');
+  approval.artifactVersionId = 'version:14'; await h.complete(14);
+  h.add(15, 'session_response'); await h.complete(15);
+  h.add(16, 'session_response', 'reflection');
+  h.proofs.get(h.id(16))!.approvedArtifacts.push(approval);
+  const result = await h.complete(16);
+  assert.equal(result.progress.completedCount, 16);
+  assert.equal(result.progress.currentSessionId, null);
+});
+
 test('missing evidence, unmastered theory, pending answers and wrong lesson are rejected', async () => {
   const h = await harness();
   await rejected(h.complete(1), 'LEARNING_SESSION_REQUIREMENTS_UNMET');

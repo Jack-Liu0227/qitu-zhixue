@@ -3,6 +3,7 @@ import type { CreateExplorationRequest, ExplorationView, TemplateStage } from '@
 import { subjectLabel } from '@qitu/contracts';
 import type { InspirationDataSource } from './inspiration-data-source';
 import type { InspirationDifficulty, InspirationTemplate } from '../types';
+import { INSPIRATION_TEMPLATES } from './fixtures';
 
 /**
  * 服务端 `domain` 枚举值的展示翻译（与教师端 CATEGORY_LABELS 同一模式）。
@@ -63,7 +64,11 @@ export class InspirationApiDataSource implements InspirationDataSource {
         continue;
       }
       // 端点应答成功即为权威结果：空列表就是空列表（页面渲染空态），不再回退。
-      return await this.toTemplates(list, endpoint);
+      const remote = await this.toTemplates(list, endpoint);
+      const existingIds = new Set(remote.map(t => t.id));
+      const existingTitles = new Set(remote.map(t => t.title));
+      const additions = INSPIRATION_TEMPLATES.filter(t => !existingIds.has(t.id) && !existingTitles.has(t.title));
+      return [...remote, ...additions];
     }
 
     // 所有端点都失败：按数据源错误约定抛出，由页面呈现 offline / permission / error 状态。

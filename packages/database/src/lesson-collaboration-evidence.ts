@@ -10,6 +10,13 @@ function object(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) fail();
   return value as Record<string, unknown>;
 }
+function canonicalBundle(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalBundle).join(',')}]`;
+  if (value !== null && typeof value === 'object') return `{${Object.keys(value).sort()
+    .map(key => `${JSON.stringify(key)}:${canonicalBundle((value as Record<string, unknown>)[key])}`).join(',')}}`;
+  const serialized = JSON.stringify(value);
+  return serialized === undefined ? fail() : serialized;
+}
 export interface CollaborationRole {
   assistantId: string; instructions: { roleDefinition: string; agentDefinition: string };
   modelByPurpose: { dialogue?: { modelProviderId: string; modelId: string } };
@@ -28,7 +35,7 @@ export async function readLessonCollaborationEvidence(db: Database, scope: Lesso
   const [binding] = await db.select().from(pblTemplateTeamBindings).where(eq(pblTemplateTeamBindings.id, snapshot.bindingId)).limit(1);
   if (!binding || binding.bindingHash !== snapshot.bindingHash || binding.bundleDigest !== snapshot.bundleDigest
     || binding.teamVersionId !== scope.teamVersionId || binding.templateVersionId !== scope.templateVersionId) fail();
-  const bundle = object(binding.bundlePayload);
+  let bundle = object(binding.bundlePayload);
   const template = bundle.template as ProjectTemplateSpec;
   const profile = template.curriculum?.profiles.find(entry => entry.id === bundle.scheduleProfileId);
   const [plan] = await db.select().from(learningPlans).where(eq(learningPlans.id, scope.planId)).limit(1);
@@ -38,6 +45,15 @@ export async function readLessonCollaborationEvidence(db: Database, scope: Lesso
   const completions = await db.select().from(learningSessionProgress).where(and(eq(learningSessionProgress.planId, plan.id), eq(learningSessionProgress.planRevision, plan.version)));
   const current = sessions.find(entry => !completions.some(done => done.learningSessionId === entry.id));
   const lesson = profile.sessions.find(entry => entry.sessionIndex === current?.lessonIndex);
+  if (bundle.sessionAssignments !== undefined) {
+    if (createHash('sha256').update(canonicalBundle(bundle)).digest('hex') !== snapshot.bundleDigest) fail();
+    if (!Array.isArray(bundle.sessionAssignments) || !Array.isArray(bundle.sessionTeamBundles)) fail();
+    const assignments = bundle.sessionAssignments.map(object).filter(entry => entry.sessionIndex === current?.lessonIndex);
+    const options = [bundle, ...bundle.sessionTeamBundles.map(object)].filter(entry => object(entry.teamVersion).teamVersionId === assignments[0]?.teamVersionId);
+    if (assignments.length !== 1 || options.length !== 1 || options[0]!.templateVersionId !== bundle.templateVersionId
+      || options[0]!.templateDigest !== bundle.templateDigest || options[0]!.scheduleProfileId !== bundle.scheduleProfileId) fail();
+    bundle = options[0]!;
+  }
   const collaboration = lesson?.collaborators?.find(entry => entry.assistantId === recipient && entry.purpose === scope.purpose
     && scope.activityId === `${current?.id}:activity:${entry.activity}`);
   const roles = bundle.roles as CollaborationRole[];

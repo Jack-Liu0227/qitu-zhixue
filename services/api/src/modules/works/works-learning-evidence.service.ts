@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Optional } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import type { CurrentUser, TutorExperimentActionResponse, LessonQualityDecision } from '@qitu/contracts';
 import { WorksLessonQuality } from './works-lesson-quality';
@@ -7,6 +7,7 @@ import { IdempotencyStore } from '../../common/idempotency/idempotency.service';
 import { hashIdempotentInput } from '../../common/idempotency/idempotency.hash';
 import { throwHttpForIdempotencyError } from '../../common/idempotency/idempotency.errors';
 import { LearningPlanStore } from '../learning-plan/learning-plan.store';
+import { CoursewareStore } from '../knowledge/courseware.store';
 import { MasteryDomainService } from '../mastery/mastery-domain.service';
 import { TemplateBindingService } from '../templates/templates-binding.service';
 import { ProjectEvidenceMaterializer } from './project-evidence.service';
@@ -52,6 +53,7 @@ export class WorksLearningEvidenceService {
     private readonly facts: ProjectEvidenceStore,
     private readonly idempotency: IdempotencyStore,
     private readonly audit: AuditWriter,
+    @Optional() private readonly courseware?: CoursewareStore,
   ) {
     this.quality = new WorksLessonQuality({ plans, bindings, directory, artifacts, facts, evidence, idempotency, audit,
       readProofs: (actor, scope, refs) => this.readLessonProofs(actor, scope, refs) });
@@ -200,6 +202,8 @@ export class WorksLearningEvidenceService {
           const ids = context.lesson.completionSpec?.requiredMasteryObjectiveIds.map(id => `${planId}:${id}`) ?? [];
           const pending = await this.plans.findAwaitingQuestion(actor.id, planId);
           const activities = projectLessonActivities({ lesson: context.lesson, sessionId: learningSessionId,
+            teachingDeliveries: context.lesson.teachingSpec && this.courseware
+              ? await this.courseware.instances(context.project.id, planId, body.planRevision, learningSessionId) : [],
             proofs: [...view.submissions, ...view.observations, ...view.reflections],
             masteryAccepted: !pending && ids.length > 0 && await this.mastery.checkRequiredObjectives(actor, actor.id, planId, ids, this.plans) });
           if (activities.find(activity => activity.status === 'current')?.activityId !== body.activityId) {

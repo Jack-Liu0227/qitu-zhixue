@@ -40,6 +40,8 @@ export function formatShortDate(iso: string): string {
 
 /** 消息状态：接口给英文枚举，界面给人话。 */
 const MESSAGE_STATUS_LABELS: Record<ParentMessageStatus, string> = {
+  read: '已读',
+  muted: '稍后关注',
   unread: '未读',
   pending_confirm: '待您确认',
   processing: '处理中',

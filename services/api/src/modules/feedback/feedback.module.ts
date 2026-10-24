@@ -4,15 +4,17 @@ import { DATA_MODE_TOKEN, DATABASE_TOKEN, type DataMode } from '../../database';
 import { AuditWriter } from '../../common/audit/audit.service';
 import { OutboxWriter } from '../../common/outbox/outbox.service';
 import { DirectoryModule } from '../directory/directory.module';
+import { AuthModule } from '../identity-auth/auth.module';
 import { PlatformDataModule } from '../platform-data/platform-data.module';
 import {
   FeedbackAttachmentRegistry,
   InMemoryFeedbackAttachmentRegistry,
-  RejectingFeedbackAttachmentRegistry,
 } from './feedback.attachments';
 import { FeedbackStore, InMemoryFeedbackStore } from './feedback.store';
 import { PostgresFeedbackStore } from './feedback.store.postgres';
 import { FeedbackService } from './feedback.service';
+import { FeedbackAttachmentService } from './feedback-attachment.service';
+import { FeedbackAttachmentController } from './feedback-attachment.controller';
 
 /**
  * 统一反馈工单模块。
@@ -27,13 +29,14 @@ import { FeedbackService } from './feedback.service';
  * - 无数据库且非 `live` → `InMemoryFeedbackStore`（仅测试与演示）；
  * - `live` 却没有连接 → 直接抛错，**绝不**退化成内存假装持久化。
  *
- * 附件归属在 live 下失败关闭（`RejectingFeedbackAttachmentRegistry`）：对象存储
- * 与归属表尚未接入，无法证明附件归属时宁可拒绝，也不退回进程内登记表。
+ * 附件使用持久化的私有字节与归属登记；缺数据库时上传返回服务不可用。
  */
 @Module({
-  imports: [DirectoryModule, PlatformDataModule],
+  imports: [DirectoryModule, PlatformDataModule, AuthModule],
+  controllers: [FeedbackAttachmentController],
   providers: [
     FeedbackService,
+    FeedbackAttachmentService,
     {
       provide: FeedbackStore,
       inject: [DATABASE_TOKEN, DATA_MODE_TOKEN, AuditWriter, OutboxWriter],
@@ -53,11 +56,11 @@ import { FeedbackService } from './feedback.service';
     },
     {
       provide: FeedbackAttachmentRegistry,
-      inject: [DATA_MODE_TOKEN],
-      useFactory: (mode: DataMode): FeedbackAttachmentRegistry =>
-        mode === 'live'
-          ? new RejectingFeedbackAttachmentRegistry()
-          : new InMemoryFeedbackAttachmentRegistry(),
+      inject: [DATABASE_TOKEN, DATA_MODE_TOKEN, FeedbackAttachmentService],
+      useFactory: (db: Database | null, mode: DataMode, attachments: FeedbackAttachmentService): FeedbackAttachmentRegistry => {
+        if (db || mode === 'live') return attachments;
+        return new InMemoryFeedbackAttachmentRegistry();
+      },
     },
   ],
   exports: [FeedbackService, FeedbackStore, FeedbackAttachmentRegistry],

@@ -4,9 +4,10 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { LEGACY_TOOL_BINDING_RESOLUTIONS, RUNTIME_TOOL_CATALOG } from '@qitu/contracts';
 import { BUILTIN_ASSISTANTS } from '@qitu/ai-client';
+import { builtinToolRegistry } from './built-in-tools';
 import { buildToolBindingMigrationPlan } from './tool-binding-migration.plan';
 
-const known = RUNTIME_TOOL_CATALOG.map(tool => tool.id);
+const known = [...new Set([...RUNTIME_TOOL_CATALOG.map(tool => tool.id), ...builtinToolRegistry.list().map(tool => tool.id)])];
 const row = { id: 'fixture', name: 'Fixture', updatedAt: new Date('2026-10-01T00:00:00Z'), toolIds: ['mastery_query', 'learning_plan_advance', 'unrecognized-custom-tool'] };
 
 test('migration removes only explicitly retired declarations, preserves order and never adds permissions', () => {

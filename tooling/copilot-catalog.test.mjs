@@ -27,7 +27,8 @@ test('a disabled assistant never appears even when a team still references it', 
   const catalog = buildCopilotCatalog([
     assistant('coach', { name: 'Renamed coach', avatar: 'coach.svg' }), assistant('disabled', { enabled: false }),
   ], [team('optics', ['coach', 'coach', 'disabled', 'deleted'])]);
-  assert.deepEqual(catalog.assistants, [{
+  assert.equal(catalog.assistants.some(item => item.id === 'qitu-assistant'), true);
+  assert.deepEqual(catalog.assistants.filter(item => item.id !== 'qitu-assistant'), [{
     id: 'coach', name: 'Renamed coach', role: 'Coach', icon: 'coach.svg', systemPrompt: 'Server instructions',
   }]);
   assert.deepEqual(catalog.teams, [{ id: 'optics', name: 'optics', memberCount: 1, leaderAssistantId: 'coach' }]);

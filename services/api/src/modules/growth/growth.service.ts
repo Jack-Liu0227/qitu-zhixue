@@ -33,6 +33,7 @@ import { DATA_MODE_TOKEN } from '../../database';
 import { DATABASE_TOKEN } from '../../database';
 import { observationStateFor } from './growth.evidence';
 import { buildGrowthCompetencyOverview } from './growth-competency.read-model';
+import { LearningInsightsService } from '../learning-insights/learning-insights.service';
 import {
   buildGrowthStoredRecord,
   type GrowthRecordInput,
@@ -165,6 +166,7 @@ export class GrowthService {
     @Optional() private readonly mastery?: MasteryDomainService,
     @Optional() @Inject(DATABASE_TOKEN) private readonly db: Database | null = null,
     @Optional() private readonly learningStore?: LearningPlanStore,
+    @Optional() private readonly insights?: LearningInsightsService,
   ) {
     // 演示 / 测试 fixture 只在**非持久化**存储上灌入；live 永远不会写演示数据。
     if (!this.store.persistent) {
@@ -206,7 +208,8 @@ export class GrowthService {
     const recentGrowth = this.getTimeline(studentId, {
       type: 'all', projectId: null, from: null, to: null, cursor: null, limit: 6,
     }).items;
-    const competencyOverview = buildGrowthCompetencyOverview(recentGrowth);
+    const competencyOverview = buildGrowthCompetencyOverview(recentGrowth,
+      this.insights && this.db ? await this.insights.competencyObservations(studentId) : {});
     const empty = (trajectory: StudentProfileProjection['trajectory'] = null): StudentProfileProjection => ({
       studentId, version: 0, updatedAt: null, priorKnowledge: null,
       targetLevel: null, timeBudgetMinutesPerWeek: null, preferences: [],

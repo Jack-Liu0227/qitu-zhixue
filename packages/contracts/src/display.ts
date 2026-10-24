@@ -27,3 +27,71 @@ export function schoolDate(now: Date = new Date()): string {
   const value = (type: string) => parts.find((part) => part.type === type)!.value;
   return `${value('year')}-${value('month')}-${value('day')}`;
 }
+
+const CANONICAL_PROJECT_TITLES: Record<string, string> = {
+  'optics-physical-inquiry': '光为什么会出现明暗条纹？干涉与衍射探究 · 从基础开始',
+  'optics-physical-inquiry:v1': '光为什么会出现明暗条纹？干涉与衍射探究 · 从基础开始',
+  'wave-interference-diffraction-8s-zero-base': '光为什么会出现明暗条纹？干涉与衍射探究 · 从基础开始',
+  'wave-optics': '光为什么会出现明暗条纹？干涉与衍射探究 · 从基础开始',
+  'thunder-fighter': '雷霆战机',
+  'thunder-fighter-game': '雷霆战机',
+  'python-mini-project': 'Python 趣味小项目',
+  'story-game': '互动故事游戏创作',
+  'kinetic-energy-inquiry': '动手学动能定理：物理虚拟仿真与规律探究',
+  'kinetic-energy': '动手学动能定理：物理虚拟仿真与规律探究',
+  'eco-bottle-carbon-cycle': '校园微生态瓶的建立与碳氧平衡微观测',
+  'smart-green-architecture': '低碳未来社区：被动式绿色采光与节能建筑设计',
+  'youth-screen-health-survey': '青少年屏幕使用时间与作息健康统计探究',
+  'mortise-tenon-digital-craft': '中华古建筑榫卯结构数字化三维复原',
+};
+
+const CANONICAL_ARTIFACT_TITLES: Record<string, string> = {
+  'Optics Physical Inquiry Formal Portfolio': '光学物理探究成果集：干涉与衍射探究',
+  'Double-slit Interference and Single-slit Diffraction Research Report': '双缝干涉与单缝衍射实验研究报告',
+  'Isolated interference and diffraction portfolio': '干涉与衍射独立探究成果集',
+};
+
+/**
+ * 统一家长端、教师端、Admin端与学生端项目名称呈现，保证全部使用规范中文。
+ */
+export function normalizeProjectTitle(title: string | null | undefined): string {
+  if (!title || !title.trim()) return '未命名项目';
+  const trimmed = title.trim();
+  if (CANONICAL_PROJECT_TITLES[trimmed]) return CANONICAL_PROJECT_TITLES[trimmed];
+
+  const lower = trimmed.toLowerCase();
+  if (lower.includes('optics') || lower.includes('double-slit') || lower.includes('diffraction') || lower.includes('interference')) {
+    return '光为什么会出现明暗条纹？干涉与衍射探究 · 从基础开始';
+  }
+  if (lower.includes('thunder') || lower.includes('fighter')) {
+    return '雷霆战机';
+  }
+  if (lower.includes('python')) {
+    return 'Python 趣味小项目';
+  }
+  if (lower.includes('kinetic')) {
+    return '动手学动能定理：物理虚拟仿真与规律探究';
+  }
+  return trimmed;
+}
+
+/**
+ * 规范化学生作品展厅与审核列表中的作品成果名称，消除历史英文测试记录。
+ */
+export function normalizeArtifactTitle(title: string | null | undefined): string {
+  if (!title || !title.trim()) return '未命名作品成果';
+  const trimmed = title.trim();
+  if (CANONICAL_ARTIFACT_TITLES[trimmed]) return CANONICAL_ARTIFACT_TITLES[trimmed];
+
+  const lower = trimmed.toLowerCase();
+  if (lower.includes('portfolio') || lower.includes('optics')) {
+    return '光学物理探究成果集：干涉与衍射探究';
+  }
+  if (lower.includes('research report') || lower.includes('double-slit')) {
+    return '双缝干涉与单缝衍射实验研究报告';
+  }
+  if (lower.includes('game.py') || lower.includes('playable game')) {
+    return '雷霆战机可玩小游戏交付成果';
+  }
+  return trimmed;
+}

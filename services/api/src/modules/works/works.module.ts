@@ -59,6 +59,7 @@ import { LearningPlanStorageModule } from '../learning-plan/learning-plan-storag
 import { LearningPlanStore } from '../learning-plan/learning-plan.store';
 import { TemplatesModule } from '../templates/templates.module';
 import { MasteryModule } from '../mastery/mastery.module';
+import { CoursewareStorageModule } from '../knowledge/courseware-storage.module';
 
 /**
  * 作品 / 证据模块（Works）。
@@ -74,7 +75,7 @@ import { MasteryModule } from '../mastery/mastery.module';
 @Module({
   // T17：TeamRuntimeModule 提供服务端内部的门禁证据写入（review_completed_and_archived）。
   // 它不反向依赖 WorksModule，因此无循环导入。
-  imports: [AuthModule, DirectoryModule, TeamRuntimeModule, LearningPlanStorageModule, TemplatesModule, MasteryModule],
+  imports: [AuthModule, DirectoryModule, TeamRuntimeModule, LearningPlanStorageModule, TemplatesModule, MasteryModule, CoursewareStorageModule],
   controllers: [ArtifactsController, FilesController, ProjectEvidenceController, WorksLearningController, WorksLessonQualityController, ArtifactFormatController],
   providers: [
     WorksService,

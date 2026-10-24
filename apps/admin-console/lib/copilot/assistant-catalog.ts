@@ -25,6 +25,14 @@ export interface CopilotCatalog {
   teams: CopilotTeamOption[];
 }
 
+const DEFAULT_QITU_ASSISTANT_OPTION: CopilotAssistantOption = {
+  id: 'qitu-assistant',
+  name: '启途智学管家',
+  role: '平台管理助手 (Copilot)',
+  icon: '🏛️',
+  systemPrompt: '你是启途智学平台的专属 AI 管家，负责协助管理员配置项目模板、管理教研团队、监控模型调用及解答平台治理相关问题。',
+};
+
 /**
  * Build two independent display registries. A team is not an assistant group:
  * teams select a collaboration scope, while assistants select one enabled
@@ -33,10 +41,21 @@ export interface CopilotCatalog {
 export function buildCopilotCatalog(assistants: readonly Assistant[], teams: readonly Team[]): CopilotCatalog {
   const enabled = [...assistants].filter((assistant) => assistant.enabled)
     .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
-  const options = enabled.map((assistant) => ({
+  const options: CopilotAssistantOption[] = enabled.map((assistant) => ({
     id: assistant.id, name: assistant.name, role: assistant.role,
     icon: assistant.avatar, systemPrompt: assistant.instructions,
   }));
+  if (!options.some((assistant) => assistant.id === 'qitu-assistant')) {
+    const raw = assistants.find((assistant) => assistant.id === 'qitu-assistant');
+    if (raw) {
+      options.unshift({
+        id: raw.id, name: raw.name, role: raw.role,
+        icon: raw.avatar, systemPrompt: raw.instructions,
+      });
+    } else {
+      options.unshift(DEFAULT_QITU_ASSISTANT_OPTION);
+    }
+  }
   const enabledTeams = teams.filter((team) => team.enabled)
     .sort((a, b) => a.name.localeCompare(b.name))
     .map((team) => ({

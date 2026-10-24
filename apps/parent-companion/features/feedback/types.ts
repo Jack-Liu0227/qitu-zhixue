@@ -1,4 +1,5 @@
 import type { ParentFeedbackSource } from '@qitu/contracts';
+import type { FeedbackAttachmentInfo } from '@qitu/contracts';
 
 /**
  * 家长反馈模块的纯类型。
@@ -29,6 +30,7 @@ export interface FeedbackTypeOption {
  *    内容不长期驻留、关闭标签页即失效。
  */
 export interface FeedbackDraft {
+  attachments?: FeedbackAttachmentInfo[];
   type: FeedbackType;
   content: string;
   /** 反馈针对的孩子；一般使用问题允许为空串。 */

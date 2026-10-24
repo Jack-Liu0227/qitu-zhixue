@@ -1,6 +1,8 @@
 'use client';
 
-import { RobotMascot } from '@qitu/ui';
+import { RobotMascot, ResizablePanels } from '@qitu/ui';
+import { createIdempotencyKey } from '@qitu/api-client';
+import { TeacherFeedbackPanel, useTeacherFeedback } from '../../../components/teacher-feedback-panel';
 
 import { useState, useEffect, useRef } from 'react';
 import {
@@ -248,7 +250,7 @@ function InterventionWorkbench({
   const pendingKey = useRef<{ signature: string; key: string } | null>(null);
   const keyFor = (action: 'acknowledge' | 'resolve') => {
     const signature = JSON.stringify([intervention.id, action, guidanceText || null]);
-    if (pendingKey.current?.signature !== signature) pendingKey.current = { signature, key: crypto.randomUUID() };
+    if (pendingKey.current?.signature !== signature) pendingKey.current = { signature, key: createIdempotencyKey() };
     return pendingKey.current.key;
   };
   const [sendError, setSendError] = useState<string | null>(null);
@@ -577,6 +579,7 @@ function InterventionWorkbench({
 }
 
 export default function IssuesPage() {
+  const feedback = useTeacherFeedback();
   const [data, setData] = useState<TeacherInterventionListPageData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -624,9 +627,6 @@ export default function IssuesPage() {
 
   // 当前选中项若被筛掉，回退到筛选结果的第一条，避免工作台显示一条列表里看不到的记录。
   const selected = filteredItems.find((i) => i.id === selectedId) ?? filteredItems[0] ?? null;
-  const parentFeedbackCount = data.items.filter(
-    (i) => classifyIssue(i.reason) === 'parent_feedback',
-  ).length;
   const filterActive = statusFilter !== 'all' || categoryFilter !== 'all';
 
   return (
@@ -682,15 +682,17 @@ export default function IssuesPage() {
         />
         <MetricCard
           label="家长反馈"
-          value={String(parentFeedbackCount)}
+          value={feedback.state.status === 'ready' ? String(feedback.state.data.items.length) : '—'}
           delta={null}
           icon={<TrendingUpIcon size={22} />}
           tone="#7c3aed"
         />
       </section>
 
+      <TeacherFeedbackPanel {...feedback} />
+
       {/* 主体：告警列表 + 干预工作台 */}
-      <section className="qtx-grid qtx-grid-12" style={{ alignItems: 'flex-start' }}>
+      <ResizablePanels storageKey="teacher-issues" initialSizes={[34, 66]} minWidths={[280, 360]} labels={['介入请求', '处理详情']} className="qtx-issues-workspace">
         <div className="qtx-col-4 qtx-card qtx-panel">
           <div className="qtx-panel-header">
             <div className="qtx-panel-title">
@@ -865,7 +867,7 @@ export default function IssuesPage() {
             </p>
           </div>
         )}
-      </section>
+      </ResizablePanels>
     </div>
   );
 }

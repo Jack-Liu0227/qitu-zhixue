@@ -1,4 +1,5 @@
 'use client';
+import { ResizablePanels } from '@qitu/ui';
 
 import { AssistantGlyph, RobotMascot } from '@qitu/ui';
 
@@ -526,6 +527,8 @@ export default function CopilotPage() {
       overflow: 'hidden',
       background: 'radial-gradient(900px 520px at 8% -10%, rgb(30 79 217 / 10%), transparent 62%), radial-gradient(760px 500px at 108% 110%, rgb(111 250 208 / 12%), transparent 58%), linear-gradient(135deg, #f8faff 0%, #faf8ff 48%, #effcf8 100%)'
     }}>
+      <ResizablePanels storageKey="admin-copilot" className="copilot-columns" initialSizes={[24, 76]} minWidths={[220, 400]}
+        fixedWidths={[isSidebarCollapsed ? 60 : null, null]} labels={['管理会话', '管家对话']}>
       {/* 1. 左侧会话列表与管理（支持折叠） */}
       {isSidebarCollapsed ? (
         <aside
@@ -796,7 +799,7 @@ export default function CopilotPage() {
       )}
 
       {/* 2. 中间 Agent 交互流 */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', minWidth: 0 }}>
+      <div className="copilot-main" style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', minWidth: 0 }}>
         {/* 顶部控制命令台 */}
         <div className="copilot-toolbar" style={{ background: 'rgba(255, 255, 255, 0.98)', borderBottom: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', padding: '10px 24px', gap: '8px', flexShrink: 0 }}>
           {/* 状态与当前会话概览行 */}
@@ -896,12 +899,14 @@ export default function CopilotPage() {
                 className="copilot-control-select"
                 value={activeTestAssistant?.id ?? ''}
                 aria-label="交互助手"
-                disabled={!catalogReady || isGenerating}
+                disabled={assistantCatalog.kind !== 'ready' || assistantOptions.length === 0 || isGenerating}
                 onChange={(e) => setSelectedAssistantId(e.target.value)}
                 style={{ border: 'none', background: 'transparent', fontSize: '12px', color: '#1e3a8a', fontWeight: 600, outline: 'none', cursor: 'pointer', maxWidth: '180px' }}
                 title="选择在当前控制台中测试的助手角色"
               >
-                {!catalogReady && <option value="">{assistantCatalog.kind === 'loading' ? '正在读取助手与团队…' : '暂无可选择的助手'}</option>}
+                {assistantCatalog.kind === 'loading' && <option value="">正在读取助手与团队…</option>}
+                {assistantCatalog.kind === 'ready' && assistantOptions.length === 0 && <option value="">暂无可选择的助手</option>}
+                {assistantCatalog.kind === 'ready' && assistantOptions.length > 0 && !activeTestAssistant && <option value="">请选择助手</option>}
                 {assistantOptions.map((assistant) => (
                   <option key={assistant.id} value={assistant.id}>
                     {assistant.name}{assistant.role ? ` (${assistant.role})` : ''}
@@ -1677,6 +1682,7 @@ export default function CopilotPage() {
           </div>
         </div>
       </div>
+      </ResizablePanels>
     </div>
   );
 }

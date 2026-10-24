@@ -391,6 +391,7 @@ export interface TutorProjectContext {
     opening?: PblTemplateSession['opening'];
     learningGoal?: string;
     assessmentAvailable?: boolean;
+    teachingMode?: 'zero-base.v1';
     evidenceRefs?: readonly string[];
     completedCount?: number;
     currentActivity?: import('./learning-session-progress.js').LessonActivityProgress | null;

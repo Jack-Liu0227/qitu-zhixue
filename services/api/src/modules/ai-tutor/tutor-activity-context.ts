@@ -7,6 +7,8 @@ import type { createTutorKnowledgeAccess } from './tutor-knowledge-access';
 import { freezeTutorRuntime, scopeTutorRuntimeToLesson } from './tutor-frozen-runtime';
 import { createLessonActivityChannel, type LessonActivityChannel } from './tutor-lesson-activity';
 import type { ImaReadEvidence } from './ima-project-scope';
+import type { CoursewareService } from '../knowledge/courseware.service';
+import { createCoursewareActivityPort, frozenTeachingSpec } from './tutor-courseware-activity';
 
 type Access = ReturnType<typeof createTutorKnowledgeAccess>;
 function unavailable(): never {
@@ -33,6 +35,7 @@ export async function prepareTutorLessonActivities(input: {
   resolve(): Promise<TutorTeachingContext | null>;
   hasQuestion(questionId: string): boolean;
   assessmentPending?: boolean;
+  courseware?: CoursewareService;
 }): Promise<LessonActivityChannel | undefined> {
   const { teaching, runtime } = input;
   if (!teaching?.objective || !runtime || !input.projectId || !input.registry) return undefined;
@@ -44,6 +47,15 @@ export async function prepareTutorLessonActivities(input: {
   const pendingQuestion = assessmentObjective ? await input.questions?.readPendingQuestionCandidate(actor, scope) : undefined;
   return createLessonActivityChannel({
     teaching, runtime, scope, idempotencyKey: input.idempotencyKey, pendingQuestion, assessmentPending: input.assessmentPending,
+    ...(input.courseware && frozenTeachingSpec(teaching) ? { courseware: createCoursewareActivityPort({
+      service: input.courseware, teaching, scope, studentId: input.studentId,
+      verify: refs => verifyLessonEvidence(input.knowledgeAccess, refs),
+      allowedLibraries: async () => {
+        if (!await input.knowledgeAccess.authorize?.('ima_read_document')) unavailable();
+        const fresh = await input.knowledgeAccess.scope?.refreshAllowedKnowledgeBaseIds() ?? [];
+        return fresh.filter(id => input.knowledgeAccess.scope!.knowledgeBaseIds.includes(id));
+      },
+    }) } : {}),
     restorePending: !!pendingQuestion && !input.hasQuestion(pendingQuestion.questionId),
     refresh: async () => {
       const fresh = await input.resolve();

@@ -3,6 +3,7 @@ import type { NextConfig } from 'next';
 const apiOrigin = process.env.QITU_API_ORIGIN ?? 'http://127.0.0.1:4100';
 
 const nextConfig: NextConfig = {
+  experimental: { cpus: 1 },
   basePath: '/teacher',
   // 本地开发用 127.0.0.1 访问时，避免 Next 15 的跨源 dev 资源告警。
   allowedDevOrigins: ['127.0.0.1'],

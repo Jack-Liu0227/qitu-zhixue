@@ -22,7 +22,7 @@ export function parentAcceptedProfile(childId: string, candidate: ParentProfileC
     childId, version: 0, updatedAt: null, freshness: 'unavailable', milestonesRecorded: 0, conversationPrompt: null,
   };
   if (!candidate || candidate.studentUserId !== childId || candidate.status !== 'accepted'
-    || candidate.projectionType !== 'growth_trajectory' || candidate.agentId !== 'growth-analyst'
+    || candidate.projectionType !== 'growth_trajectory'
     || !candidate.reviewedAt || !candidate.reviewedBy) return empty;
   const result = validateGrowthProjectionResult('growth_trajectory', candidate.payload.result);
   if (!result.ok || !result.value || !('milestones' in result.value)) return empty;
@@ -58,7 +58,6 @@ export class ParentAcceptedProfileService {
       eq(agentProjectionCandidates.studentUserId, childId),
       eq(agentProjectionCandidates.status, 'accepted'),
       eq(agentProjectionCandidates.projectionType, 'growth_trajectory'),
-      eq(agentProjectionCandidates.agentId, 'growth-analyst'),
       isNotNull(agentProjectionCandidates.reviewedAt),
       isNotNull(agentProjectionCandidates.reviewedBy),
     )).orderBy(desc(agentProjectionCandidates.reviewedAt)).limit(1);

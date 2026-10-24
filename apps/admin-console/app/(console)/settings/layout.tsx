@@ -1,6 +1,6 @@
 'use client';
 
-import { NavigationArtwork } from '@qitu/ui';
+import { NavigationArtwork, ResizablePanels } from '@qitu/ui';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -134,6 +134,8 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
       <button type="button" className="settings-mobile-nav-toggle qitu-button" aria-expanded={navigationOpen} aria-controls="settings-navigation" onClick={() => { setSiderCollapsed(false); setNavigationOpen(!navigationOpen); }}>
         {navigationOpen ? '收起设置目录' : `设置目录 · ${navigation.flatMap((group) => group.items).find((item) => isItemActive(item.href))?.label ?? '设置'}`}
       </button>
+      <ResizablePanels storageKey="admin-settings-navigation" className="settings-columns" initialSizes={[20, 80]} minWidths={[180, 340]}
+        fixedWidths={[siderCollapsed ? 58 : null, null]} stackBelow={620} labels={['设置目录', '设置内容']}>
       <aside id="settings-navigation" className={`settings-sider ${siderCollapsed ? 'is-collapsed' : ''}`} aria-label="设置导航">
         <div className="settings-sider-head">
           {!siderCollapsed && <span className="settings-sider-title">系统偏好设置</span>}
@@ -172,6 +174,7 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
         </div>
       </aside>
       <main className="settings-main">{children}</main>
+      </ResizablePanels>
     </div>
   );
 }

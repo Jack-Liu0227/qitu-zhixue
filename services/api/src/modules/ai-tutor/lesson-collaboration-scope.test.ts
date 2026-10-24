@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { readLessonCollaborationEvidence, projects, projectBindingSnapshots, pblTemplateTeamBindings,
   learningPlans, learningSessions, learningSessionProgress, projectEvidence, artifacts, artifactVersions, type Database } from '@qitu/database';
 import type { LessonCollaborationScope } from '@qitu/contracts';
+import { teachingValueDigest } from '../templates/teaching-bundle.canonical';
 
 function fixture() {
   const scope: LessonCollaborationScope = { projectId: 'p', studentId: 's', templateVersionId: 'v', teamVersionId: 't',
@@ -46,5 +47,23 @@ test('worker collaboration reads only actual versioned project evidence and froz
 
 test('modified artifact text is not silently substituted for the cited version', async () => {
   const h = fixture(); h.rows.set(artifactVersions, [{ artifactId: 'artifact', note: 'qitu:inline-text:v1:{"text":"changed"}' }]);
+  await assert.rejects(readLessonCollaborationEvidence(h.db, h.scope, 'reviewer'));
+});
+
+test('worker resolves the current lesson team under the original project binding and rejects altered team content', async () => {
+  const h = fixture();
+  const binding = h.rows.get(pblTemplateTeamBindings)![0]!;
+  const root = binding.bundlePayload as Record<string, unknown>;
+  const other = structuredClone(root);
+  Object.assign(other, { templateVersionId: 'v', templateDigest: 'frozen-template', teamVersion: { teamVersionId: 't2', leaderAssistantId: 'lesson-leader' } });
+  Object.assign(root, { templateVersionId: 'v', templateDigest: 'frozen-template', teamVersion: { teamVersionId: 't', leaderAssistantId: 'default-leader' }, roles: [],
+    sessionAssignments: [{ sessionIndex: 1, teamVersionId: 't2', kind: 'team' }], sessionTeamBundles: [other] });
+  binding.bundleDigest = teachingValueDigest(root);
+  h.rows.get(projectBindingSnapshots)![0]!.bundleDigest = binding.bundleDigest;
+  const result = await readLessonCollaborationEvidence(h.db, h.scope, 'reviewer');
+  assert.equal(result.leaderAssistantId, 'lesson-leader');
+  assert.equal(result.role.assistantId, 'reviewer');
+  assert.equal(h.scope.teamVersionId, 't');
+  other.teamVersion = { teamVersionId: 't2', leaderAssistantId: 'unfrozen-leader' };
   await assert.rejects(readLessonCollaborationEvidence(h.db, h.scope, 'reviewer'));
 });

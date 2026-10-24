@@ -1,4 +1,5 @@
 import type { TutorReplyBlock } from '@qitu/contracts';
+import { experimentReadOnlyReason } from '../lib/experimentAvailability';
 import { EvidenceChip } from './EvidenceChip';
 import { HintLevelIndicator } from './HintLevelIndicator';
 import { NumberedQuestionList } from './NumberedQuestionList';
@@ -49,6 +50,8 @@ export function TutorReplyBlockView({
   onAnswerQuiz,
   onExperimentAction,
   projectId,
+  coursewareSnapshot = false,
+  projectContext,
   disabled = false,
 }: {
   block: TutorReplyBlock;
@@ -59,6 +62,8 @@ export function TutorReplyBlockView({
   onAnswerQuiz?: (quizId: string, selectedKeys: string[], idempotencyKey: string) => Promise<import('@qitu/contracts').AnswerInteractiveQuizResponse>;
   onExperimentAction?: (experimentId: string, action: 'submit_prediction' | 'run' | 'record_observation', payload: unknown, idempotencyKey: string) => void | Promise<boolean | import('@qitu/contracts').TutorExperimentActionResponse>;
   projectId?: string | null;
+  coursewareSnapshot?: boolean;
+  projectContext?: import('@qitu/contracts').TutorProjectContext;
   disabled?: boolean;
 }) {
   switch (block.kind) {
@@ -140,10 +145,12 @@ export function TutorReplyBlockView({
           disabled={disabled}
         />
       );
-    case 'board':
-      return <><BoardBlock title={block.title} steps={block.steps} />{block.provenance ? <div className="qitu-learning-attribution">
+    case 'board': {
+      const board = <><BoardBlock title={block.title} steps={block.steps} />{block.provenance ? <div className="qitu-learning-attribution">
         <span>{block.provenance.origin === 'adapted' ? '根据已核验资料改编' : '导师按本课目标生成'} · 翻页用于查看图示</span>
         {block.provenance.sources.length ? <LearningSources sources={block.provenance.sources} /> : null}</div> : null}</>;
+      return coursewareSnapshot ? <details><summary>查看板书快照 · {block.title}</summary>{board}</details> : board;
+    }
     case 'milestone':
       return <MilestoneBlock phaseId={block.phaseId} title={block.title} deliverables={block.deliverables} gate={block.gate} projectId={projectId} />;
     case 'interactive_experiment':
@@ -171,19 +178,25 @@ export function TutorReplyBlockView({
           lesson={block.lesson}
         />
       );
-    case 'optics_experiment':
-      if (block.specVersion === '2.0.0') return <WaveOpticsExperimentCard key={block.experimentId} block={block} disabled={disabled || block.allowedActions.length === 0}
-        onAction={(action, payload, key) => onExperimentAction?.(block.experimentId, action, payload, key)} />;
+    case 'optics_experiment': {
+      const readOnlyReason = experimentReadOnlyReason(block, projectContext);
+      if (block.specVersion === '2.0.0') return <>
+        {readOnlyReason ? <p role="note">{readOnlyReason}</p> : null}
+        <WaveOpticsExperimentCard key={block.experimentId} block={block} disabled={disabled} readOnly={!!readOnlyReason}
+          onAction={(action, payload, key) => onExperimentAction?.(block.experimentId, action, payload, key)} />
+      </>;
       if (block.initialMode === 'interference' || block.allowedModels?.some(mode => mode === 'interference')) return <SafeReplyFallback />;
-      if (block.allowedActions.length === 0) return <section className="qitu-tutor-hint" role="note">
+      if (block.allowedActions.length === 0 && !block.savedObservation) return <section className="qitu-tutor-hint" role="note">
         <strong>这条历史预览不需要提交预测</strong>
         <p>这里尚未进入可操作的实验任务。可以继续和导师交流，确认项目后按当前课时生成课件。</p>
         <button type="button" className="qitu-button qitu-button-ghost" disabled={disabled}
           onClick={() => onSelectOption?.('继续了解现象', '请围绕当前探究问题继续介绍现象，一次问我一个观察问题。')}>继续了解现象</button>
       </section>;
-      return (
+      return <>
+        {readOnlyReason ? <p role="note">{readOnlyReason}</p> : null}
         <OpticsDiffractionScatteringCard
-          disabled={disabled || block.allowedActions.length === 0}
+          disabled={disabled}
+          readOnly={!!readOnlyReason}
           savedObservation={block.savedObservation}
           key={block.experimentId}
           initialMode={block.initialMode}
@@ -192,7 +205,8 @@ export function TutorReplyBlockView({
           predictionGate={block.predictionGate}
           onAction={(action, payload, idempotencyKey) => onExperimentAction?.(block.experimentId, action, payload, idempotencyKey)}
         />
-      );
+      </>;
+    }
     case 'attachment':
       return <AttachmentView attachment={block} />;
     case 'idea_cards':

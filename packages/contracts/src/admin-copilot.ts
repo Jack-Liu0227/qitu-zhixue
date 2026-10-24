@@ -1,5 +1,5 @@
 /** One executable catalog supplies API discovery, plan validation and the model operation guide. */
-export const ADMIN_COPILOT_CONTRACT_VERSION = '1.3.0';
+export const ADMIN_COPILOT_CONTRACT_VERSION = '1.4.0';
 export const ADMIN_COPILOT_SCOPES = ['global', 'selected_template'] as const;
 export type AdminCopilotScope = typeof ADMIN_COPILOT_SCOPES[number];
 export const ADMIN_COPILOT_OPERATIONS = [
@@ -216,15 +216,15 @@ export const ADMIN_COPILOT_OPERATIONS = [
     "inputGuide": "same fields with providerId/modelId identifying the existing model. To assign a model to an assistant use assistant.update with BOTH modelProviderId and modelId."
   },
   {
-    "kind": "binding.create",
-    "label": "创建教学绑定",
+    "kind": "binding.prepare",
+    "label": "保存逐课教学安排",
     "scopes": [
       "global",
       "selected_template"
     ],
     "targetResource": "binding",
     "createsResource": true,
-    "inputGuide": "{templateId,versionId,teamVersionId}. Uses an existing immutable team version and the template binding owner. Creates a draft; linkedTeamId is not an active binding."
+    "inputGuide": "{templateId,versionId,arrangement:{teamId,scheduleProfileId,sessions:[{sessionIndex,teamId,kind:team|assistant,assistantId?}],teams:[{teamId,expectedUpdatedAt}],sourceBinding?:{id,updatedAt}}}. Select real current teams and assistants for every lesson. The binding owner captures configuration automatically. Creates a draft; validate and activate separately."
   },
   {
     "kind": "binding.draft",
@@ -279,17 +279,6 @@ export const ADMIN_COPILOT_OPERATIONS = [
     "targetResource": "platform",
     "createsResource": false,
     "inputGuide": "{expectedRevision,settings:{profileAssistantId:string|null,growthAssistantId:string|null}}. Use the exact current growthProjectionSettings revision and enabled assistant IDs present in the owner catalog. Null disables that purpose. Delegates to the growth settings owner; configuring an assistant does not generate or accept growth facts."
-  },
-  {
-    "kind": "team.version",
-    "label": "发布团队版本",
-    "scopes": [
-      "global",
-      "selected_template"
-    ],
-    "targetResource": "team",
-    "createsResource": true,
-    "inputGuide": "{id:<real team ID>,expectedUpdatedAt:<current team revision>}. Publishes an immutable server-generated team/role/assistant/model/skill/tool snapshot. No client runtimeSnapshot is accepted. Receipt id is the teamVersionId for binding.create. Skills must be published teaching canonical IDs; disabled/incomplete sources fail. Publication does not activate any template binding. Use the published model pair and skill pins in the teaching bundle draft."
   },
   {
     "kind": "assistant.test",

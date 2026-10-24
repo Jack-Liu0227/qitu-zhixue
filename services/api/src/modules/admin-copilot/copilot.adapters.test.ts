@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { adminTeamVersions, modelModels } from '@qitu/database';
+import { pblTemplateTeamBindings, modelModels } from '@qitu/database';
 import { ModelRegistryService } from '../model-registry/model-registry.service';
 import { CopilotOperations } from './copilot.operations';
 import { CopilotLifecycle } from './copilot.lifecycle';
@@ -21,7 +21,7 @@ test('knowledge connection/import/rebuild adapters use existing owners and read 
     assert.equal(key, 'link-key'); calls.push('link'); return { id: 'base', ...input as object };
   } };
   const operations = new CopilotOperations({} as never, {} as never, center as never, {} as never, {} as never, {} as never,
-    undefined, undefined, undefined, undefined, connection as never);
+    undefined, undefined, undefined, connection as never);
   const link = { name: 'Existing index', engineInstanceId: 'fixture-engine', mode: 'link_existing', connection: { remoteKnowledgeBaseId: 'remote' } };
   assert.equal((await operations.execute(admin, 'knowledge.create', link, 'link-key') as { mode: string }).mode, 'link_existing');
   const imported = await operations.execute(admin, 'knowledge.import', { id: 'base', title: 'Supplied source', content: 'User supplied source text' }, 'import-key');
@@ -42,7 +42,7 @@ test('real team delegation derives the current server phase and reports queued s
     }, getRunGraph: async () => ({ run: { status: 'running' }, tasks: [{ id: 'task', status: taskState, input: { private: 'never projected' } }], messages: [{ content: 'private conversation' }] }) };
   const operations = new CopilotOperations({} as never, {} as never, {} as never, {} as never, {} as never, {} as never,
     { getFrozenTeachingBundle: async () => ({ teamVersion: { leaderAssistantId: 'leader', members: [{ assistantId: 'leader' }, { assistantId: 'coach' }] } }) } as never,
-    undefined, undefined, undefined, undefined, runtime as never);
+    undefined, undefined, undefined, runtime as never);
   const result = await operations.execute(admin, 'team.run', { runId: 'existing-run', senderAgentId: 'leader', recipientAgentId: 'coach', taskType: 'authorized-task' }, 'team-key');
   const queued = await operations.readback(admin, 'team.run', result);
   assert.equal((queued as { status: string }).status, 'queued');
@@ -81,7 +81,7 @@ test('actual model owner blocks deletion when only a frozen team version still r
   await service.upsertProvider('fixture-model-owner', { name: 'Fixture', baseUrl: 'https://fixture.invalid' }, admin.id);
   await service.createManualModel('fixture-model-owner', { modelId: 'manual', displayName: 'Fixture model', input: ['text'], output: ['text'] }, admin.id, 'create-fixture-model');
   const tx = { select: () => ({ from: (table: unknown) => ({ where: () => {
-    const result = table === modelModels ? [{ source: 'manual', modelId: 'manual' }] : table === adminTeamVersions ? [{ id: 'frozen-team-v1' }] : [];
+    const result = table === modelModels ? [{ source: 'manual', modelId: 'manual' }] : table === pblTemplateTeamBindings ? [{ id: 'frozen-team-v1' }] : [];
     return Object.assign(Promise.resolve(result), { limit: async () => result });
   } }) }), delete: () => { deletes++; throw new Error('Deletion must be blocked'); } };
   Object.defineProperty(service, 'db', { value: { transaction: async (handler: (value: unknown) => Promise<unknown>) => handler(tx) } });

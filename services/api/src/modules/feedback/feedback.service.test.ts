@@ -14,6 +14,8 @@ import type { PlatformDataService } from '../platform-data/platform-data.service
 import { InMemoryFeedbackAttachmentRegistry } from './feedback.attachments';
 import { InMemoryFeedbackStore } from './feedback.store';
 import { FeedbackService } from './feedback.service';
+import { growthRecords, projects } from '@qitu/database';
+import { ProjectionDatabaseFixture } from '../growth/growth-projection.test-fixture';
 
 /* ------------------------------------------------------------------ *
  * 测试替身
@@ -133,19 +135,12 @@ interface Harness {
  * 测试要自己控制初始状态，所以显式关掉种子。
  */
 function makeHarness(): Harness {
-  const messages: Record<string, { id: string; childId: string; projectTitle: string | null }> = {
-    'message-1': { id: 'message-1', childId: 'student-demo', projectTitle: '校园植物观察手册' },
-  };
-  const projects: Record<string, { projectId: string; title: string; studentId: string }> = {
-    'project-demo-001': {
-      projectId: 'project-demo-001',
-      title: '校园植物观察手册',
-      studentId: 'student-demo',
-    },
-  };
+  const database = new ProjectionDatabaseFixture()
+    .seed(projects, [{ id: 'project-demo-001', title: '校园植物观察手册', studentUserId: 'student-demo' }])
+    .seed(growthRecords, [{ id: 'message-1', studentUserId: 'student-demo', projectId: 'project-demo-001' }]);
   const platformData = {
-    getMessage: (id: string) => messages[id] ?? null,
-    getProject: (id: string) => projects[id] ?? null,
+    getMessage: () => { throw new Error('Live feedback must read its authoritative source'); },
+    getProject: () => { throw new Error('Live feedback must read its authoritative source'); },
   } as unknown as PlatformDataService;
 
   const idempotency = new FakeIdempotencyStore();
@@ -163,6 +158,7 @@ function makeHarness(): Harness {
     store,
     idempotency as unknown as IdempotencyStore,
     'live',
+    database.db,
   );
   return { service, idempotency, audit, outbox, attachments };
 }
@@ -226,7 +222,7 @@ describe('FeedbackService 授权', () => {
   it('message 来源从消息推导孩子，且拒绝与声明不一致的 childId', async () => {
     const ok = await harness.service.submitParentFeedback(
       'parent-demo',
-      submitBody({ source: 'message', childId: null, messageId: 'message-1' }),
+      submitBody({ source: 'message', childId: null, messageId: 'growth:message-1' }),
       'k-3',
     );
     assert.equal(ok.childId, 'student-demo');
@@ -235,7 +231,7 @@ describe('FeedbackService 授权', () => {
     await expectCode(
       harness.service.submitParentFeedback(
         'parent-demo',
-        submitBody({ source: 'message', childId: 'student-demo-2', messageId: 'message-1' }),
+        submitBody({ source: 'message', childId: 'student-demo-2', messageId: 'growth:message-1' }),
         'k-4',
       ),
       'FEEDBACK_INVALID',

@@ -1,4 +1,7 @@
 'use client';
+import { ResizablePanels } from '@qitu/ui';
+
+import { projectStageLabel } from '@qitu/contracts';
 
 import { Avatar, RobotMascot } from '@qitu/ui';
 
@@ -154,12 +157,6 @@ function StudentDetailPanel({ studentId }: { studentId: string }) {
   }
 
   const student = detail.student;
-  const stageLabels: Record<string, string> = {
-    Inspiration: '灵感探索',
-    Research: '深度研究',
-    Making: '制作与测试',
-    Showcase: '成果展示',
-  };
 
   return (
     <div className="qtx-col-5 qtx-card qtx-student-detail" role="region" aria-label="学生详情" tabIndex={0}>
@@ -218,7 +215,7 @@ function StudentDetailPanel({ studentId }: { studentId: string }) {
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span className="qtx-muted">项目阶段</span>
             <strong>
-              {student.currentStage ? stageLabels[student.currentStage] ?? student.currentStage : '—'}
+              {student.currentStage ? projectStageLabel(student.currentStage) : '—'}
             </strong>
           </div>
         </div>
@@ -240,7 +237,7 @@ function StudentDetailPanel({ studentId }: { studentId: string }) {
             <strong>{student.signalsAvailable === false ? '暂未接入' : `${detail.sessionsThisWeek} 次`}</strong>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span className="qtx-muted">本周时长</span>
+            <span className="qtx-muted">本周时长（估算）</span>
             <strong>{student.signalsAvailable === false ? '暂未接入' : `${detail.minutesThisWeek} 分钟`}</strong>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -248,7 +245,7 @@ function StudentDetailPanel({ studentId }: { studentId: string }) {
             <strong>{student.signalsAvailable === false ? '暂未接入' : `${student.activeDays} 天`}</strong>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span className="qtx-muted">本周任务</span>
+            <span className="qtx-muted">本周完成课时</span>
             <strong>{student.signalsAvailable === false ? '暂未接入' : `${student.weeklyTasks} 个`}</strong>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -334,7 +331,7 @@ function StudentDetailPanel({ studentId }: { studentId: string }) {
                     {p.title}
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-                    <span className="qtx-muted">{stageLabels[p.stage] ?? p.stage}</span>
+                    <span className="qtx-muted">{projectStageLabel(p.stage)}</span>
                     <span style={{ color: '#2563eb' }}>{p.progressPercent}%</span>
                   </div>
                 </div>
@@ -571,7 +568,7 @@ export default function StudentsPage() {
       </section>
 
       {/* 主体：列表 + 详情 */}
-      <section className="qtx-grid qtx-grid-12" style={{ alignItems: 'flex-start' }}>
+      <ResizablePanels storageKey="teacher-students" initialSizes={[58, 42]} minWidths={[360, 320]} className="qtx-students-split" labels={['学生列表', '学生详情']}>
         <div className="qtx-col-7 qtx-card qtx-panel">
           <div className="qtx-panel-header">
             <div className="qtx-panel-title">
@@ -631,7 +628,7 @@ export default function StudentsPage() {
                     <tr>
                       <th>学生</th>
                       <th>当前项目</th>
-                      <th>本周任务</th>
+                      <th>本周完成课时</th>
                       <th>状态</th>
                       <th />
                     </tr>
@@ -695,7 +692,7 @@ export default function StudentsPage() {
         </div>
 
         {selectedId && <StudentDetailPanel studentId={selectedId} />}
-      </section>
+      </ResizablePanels>
     </div>
   );
 }

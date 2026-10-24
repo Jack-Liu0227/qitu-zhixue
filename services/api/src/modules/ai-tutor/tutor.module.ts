@@ -31,6 +31,8 @@ import { TutorLessonAssessmentService } from './tutor-lesson-assessment.service'
 import { TutorLessonAssessmentController } from './tutor-lesson-assessment.controller';
 import { TutorLessonCollaborationController } from './tutor-lesson-collaboration.controller';
 import { TutorLessonCollaborationService } from './tutor-lesson-collaboration.service';
+import { TutorCoursewareController } from './tutor-courseware.controller';
+import { TutorCoursewareService } from './tutor-courseware.service';
 
 /**
  * AI 搭档模块。
@@ -49,7 +51,7 @@ import { TutorLessonCollaborationService } from './tutor-lesson-collaboration.se
  */
 @Module({
   imports: [AuthModule, ModelRegistryModule, PlatformDataModule, ProjectsModule, RemindersModule, QituSDKModule, PlatformRegistryModule, TeamRuntimeModule, LearningPlanModule, KnowledgeModule, TemplatesModule, MasteryModule, PlanAdjustmentModule, TeacherModule, WorksModule],
-  controllers: [TutorController, TutorLessonAssessmentController, TutorLessonCollaborationController],
+  controllers: [TutorController, TutorLessonAssessmentController, TutorLessonCollaborationController, TutorCoursewareController],
   providers: [
     { provide: ImaMcpClient, useFactory: () => new ImaMcpClient() },
     TutorService,
@@ -59,6 +61,7 @@ import { TutorLessonCollaborationService } from './tutor-lesson-collaboration.se
     TutorTeamHistoryService,
     TutorLessonAssessmentService,
     TutorLessonCollaborationService,
+    TutorCoursewareService,
     {
       provide: TutorQuizStore,
       inject: [DATABASE_TOKEN, DATA_MODE_TOKEN],

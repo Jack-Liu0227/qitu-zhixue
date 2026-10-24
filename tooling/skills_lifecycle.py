@@ -23,7 +23,7 @@ def audit() -> dict:
                          for p in sorted((ROOT / folder).rglob('SKILL.md'))],
         'owners': {
             'template': 'templates/teaching-bundle.compiler',
-            'team': 'platform-registry/team-version.service',
+            'team': 'platform-registry/teaching-team-capture.service',
             'assistant': 'platform-registry/platform-registry.service',
             'lesson': 'ai-tutor/tutor-lesson-activity',
             'answer': 'ai-tutor/tutor-quiz.store',

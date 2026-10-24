@@ -39,6 +39,19 @@ test('six canonical axes have descriptions and evidence guidance, with unknown v
   assert.deepEqual(parseGrowthCompetencyOverview(overview), overview);
 });
 
+test('explicit owner observation mapping updates footprints without assigning any score or ability', () => {
+  const overview = buildGrowthCompetencyOverview([], {
+    collaborative_expression: ['learning_interaction:turn-1', 'learning_interaction:turn-1', 'raw_conversation:private'],
+    scientific_inquiry: ['experiment_observation:obs-1'],
+  });
+  assert.equal(overview.dimensions[4].status, 'observed');
+  assert.deepEqual(overview.dimensions[4].evidenceRefs, ['learning_interaction:turn-1']);
+  assert.equal(overview.dimensions[1].status, 'observed');
+  assert.ok(overview.dimensions.every(axis => axis.value === null && axis.assessment === null));
+  assert.equal(overview.dimensions[0].status, 'pending_observation');
+  assert.deepEqual(parseGrowthCompetencyOverview(overview), overview);
+});
+
 test('growth counts, source kinds and boolean review facts cannot assign axes or produce scores', () => {
   const record = { ...reference(), quality: { status: 'accepted', feedback: [{ criterionId: 'criterion', meets: true }] },
     sourceKind: 'reflection', projectsCompleted: 100, score: 100 };

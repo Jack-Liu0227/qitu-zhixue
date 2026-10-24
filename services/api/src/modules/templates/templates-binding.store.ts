@@ -17,7 +17,7 @@ import type {
  * 状态机判定留在纯函数 / 服务层，存储层只做读与原子写。
  */
 export abstract class TemplateBindingStore {
-  abstract findTeamVersion(id: string): Promise<TeamVersionRecord | null>;
+  abstract findTeamVersion(id: string, bindingId?: string): Promise<TeamVersionRecord | null>;
   abstract createBinding(input: CreateBindingRecordInput): Promise<BindingRecord>;
   abstract findBinding(id: string, tx?: AuditTransaction): Promise<BindingRecord | null>;
   abstract findActiveBinding(
@@ -77,6 +77,7 @@ function cloneTeamVersion(record: TeamVersionRecord): TeamVersionRecord {
 function cloneBinding(record: BindingRecord): BindingRecord {
   return {
     ...record,
+    teamSnapshots: structuredClone(record.teamSnapshots ?? {}),
     bundleDraft: record.bundleDraft === null ? null : structuredClone(record.bundleDraft),
     bundlePayload: record.bundlePayload === null ? null : structuredClone(record.bundlePayload),
     validation: {
@@ -103,8 +104,8 @@ export class InMemoryTemplateBindingStore extends TemplateBindingStore {
   private readonly snapshots = new Map<string, SnapshotRecord>();
   private readonly affected = new Map<string, AffectedProjectRecord[]>();
 
-  async findTeamVersion(id: string): Promise<TeamVersionRecord | null> {
-    const record = this.teamVersions.get(id);
+  async findTeamVersion(id: string, bindingId?: string): Promise<TeamVersionRecord | null> {
+    const record = bindingId ? this.bindings.get(bindingId)?.teamSnapshots?.[id] : this.teamVersions.get(id);
     return record === undefined ? null : cloneTeamVersion(record);
   }
 
@@ -113,6 +114,7 @@ export class InMemoryTemplateBindingStore extends TemplateBindingStore {
       id: input.id,
       templateVersionId: input.templateVersionId,
       teamVersionId: input.teamVersionId,
+      teamSnapshots: structuredClone(input.teamSnapshots ?? Object.fromEntries(this.teamVersions)),
       status: 'draft',
       bindingHash: input.bindingHash,
       bundleDigest: input.bundleDigest ?? null,
@@ -275,6 +277,12 @@ export class InMemoryTemplateBindingStore extends TemplateBindingStore {
 
   seedTeamVersion(record: TeamVersionRecord): void {
     this.teamVersions.set(record.id, cloneTeamVersion(record));
+  }
+
+  seedBindingTeams(bindingId: string, records: TeamVersionRecord[]): void {
+    const binding = this.bindings.get(bindingId);
+    if (!binding) throw new Error('Missing fixture binding');
+    binding.teamSnapshots = Object.fromEntries(records.map(record => [record.id, cloneTeamVersion(record)]));
   }
 
   seedAffectedProjects(templateVersionId: string, projects: AffectedProjectRecord[]): void {

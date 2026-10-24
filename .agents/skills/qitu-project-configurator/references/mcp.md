@@ -16,6 +16,6 @@ ima-knowledge 保留原有四只读工具和项目冻结范围交集；禁止通
 
 ## 删除
 
-mcp.delete {id} 仅 global，先等待管理员二次确认。仅移除无凭据、未启用且未被助手、Agent 或历史团队版本引用的本地登记，不停止远端服务。ima-knowledge 禁止删除。工具配置变动后必须重新探测。
+mcp.delete {id} 仅 global，先等待管理员二次确认。仅移除无凭据、未启用且未被助手、Agent 或教学绑定冻结配置引用的本地登记，不停止远端服务。ima-knowledge 禁止删除。工具配置变动后必须重新探测。
 
 协议依据：[Streamable HTTP](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports)、[工具调用与不可信 annotations](https://modelcontextprotocol.io/specification/2025-06-18/server/tools)。

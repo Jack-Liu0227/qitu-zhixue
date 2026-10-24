@@ -5,6 +5,7 @@ import type { NextConfig } from 'next';
 const apiOrigin = process.env.QITU_API_ORIGIN ?? 'http://127.0.0.1:4100';
 
 const nextConfig: NextConfig = {
+  experimental: { cpus: 1 },
   basePath: '/parent',
   transpilePackages: [
     '@qitu/api-client',

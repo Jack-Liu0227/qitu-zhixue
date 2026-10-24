@@ -49,6 +49,25 @@ test('API 错误和异常响应不会当成成功，错误消息去除凭证', a
   await assert.rejects(() => new ImaClient(config(), async () => { throw new Error('secret network details'); }).call('openapi/wiki/v1/get_media_info', {}), /请求失败或超时/);
 });
 
+test('transient read failures retry once within the original deadline; access failures never retry', async () => {
+  let calls = 0;
+  const client = new ImaClient(config(), async () => ++calls === 1
+    ? new Response('', { status: 503 }) : Response.json({ code: 0, data: { info_list: [] } }));
+  assert.deepEqual(await client.call('openapi/wiki/v1/search_knowledge', { query: 'fixture' }), { info_list: [] });
+  assert.equal(calls, 2);
+  for (const status of [400, 401, 403, 404, 429, 503]) {
+    calls = 0;
+    await assert.rejects(new ImaClient(config(), async () => { calls++; return new Response('', { status }); })
+      .call('openapi/wiki/v1/search_knowledge', {}), (error: unknown) => error instanceof ServiceError
+        && error.code === ([401, 403].includes(status) ? 'IMA_ACCESS_DENIED' : 'IMA_HTTP_ERROR'));
+    assert.equal(calls, [429, 503].includes(status) ? 2 : 1);
+  }
+  calls = 0;
+  await assert.rejects(new ImaClient({ ...config(), timeoutMs: 100 }, async () => { calls++; return new Response('', { status: 503 }); })
+    .call('openapi/wiki/v1/search_knowledge', {}));
+  assert.equal(calls, 1, 'retry never extends the configured operation deadline');
+});
+
 test('响应大小上限在 content-length 和流读取时都生效', async () => {
   await assert.rejects(() => readLimited(new Response('abc', { headers: { 'content-length': '1000' } }), 5), /大小上限/);
   await assert.rejects(() => readLimited(new Response('123456'), 5), /大小上限/);

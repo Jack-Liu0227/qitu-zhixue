@@ -1,6 +1,6 @@
 'use client';
 
-import { VisualAsset } from '@qitu/ui';
+import { VisualAsset, ResizablePanels } from '@qitu/ui';
 
 import { AssistantGlyph, ErrorState, OfflineBanner, PermissionDenied, SkeletonBlock } from '@qitu/ui';
 
@@ -14,6 +14,7 @@ import { CurrentTask } from './components/CurrentTask';
 import { TutorSessionHistory } from './components/TutorSessionHistory';
 import { TeamAgentHud } from './components/TeamAgentHud';
 import { CurrentLessonCard } from './components/CurrentLessonCard';
+import { LessonLearningDock, LessonTeachingWorkspace } from './components/LessonLearningDock';
 import { useComposer } from './hooks/useComposer';
 import { useTutorViewport } from './hooks/useTutorViewport';
 import { useTutorSession } from './hooks/useTutorSession';
@@ -197,7 +198,9 @@ export function TutorPage({ projectId }: { projectId?: string }) {
         </button>
       </div>
     </header>
-    <div className="qitu-tutor-workspace-layout">
+    <ResizablePanels storageKey="student-tutor" className="qitu-tutor-workspace-layout"
+      initialSizes={leftOpen ? [20, 52, 28] : [1, 64, 36]} minWidths={[220, 400, 320]}
+      fixedWidths={[leftOpen ? null : 56, null, null]} labels={['会话记录', 'AI搭档对话', '项目进度']}>
       <TutorSessionHistory
         isOpen={leftOpen}
         onToggle={toggleHistory}
@@ -248,7 +251,12 @@ export function TutorPage({ projectId }: { projectId?: string }) {
           onExperimentAction={(experimentId, action, payload, idempotencyKey) => session.submitExperimentAction(experimentId, { action, payload, idempotencyKey })}
           onFeedback={(turnId, kind, idempotencyKey) => session.submitFeedback({ turnId, kind, idempotencyKey })}
           projectId={projectSummary?.id ?? projectId ?? null}
-          learningActivity={null}
+          coursewareSnapshots={session.project?.lesson?.teachingMode === 'zero-base.v1'}
+          projectContext={session.project ?? undefined}
+          learningActivity={projectSummary && session.project?.lesson ? <LessonTeachingWorkspace
+            projectId={projectSummary.id} lesson={session.project.lesson} refreshKey={session.project}
+            disabled={!ready || busy || confirming || session.offline} onChanged={session.refreshProjectContext}
+            onExplain={message => { void composer.submit(message, session.submitText); }} /> : null}
           isConfirmingProject={confirming}
           composer={
             <Composer
@@ -282,19 +290,28 @@ export function TutorPage({ projectId }: { projectId?: string }) {
               onRetry={retryTeamGraph}
               loadHistory={source.getTeamHistory && projectId ? loadTeamHistory : undefined}
             />
-          ) : session.projectStatus === 'loading' ? (
+          ) : session.projectStatus === 'loading' && (!projectSummary || (projectId && projectSummary.id !== projectId)) ? (
             <div className="qitu-tutor-state-panel" aria-busy="true"><SkeletonBlock lines={4} height={18} /></div>
           ) : session.projectStatus === 'error' ? (
             <ErrorState title="项目进度加载失败" description={session.projectError?.message} errorCode={session.projectError?.code} onRetry={session.retryProject} />
-          ) : session.offline ? (
-            <OfflineBanner readOnly onRetry={session.reconnect} />
           ) : projectSummary && session.project ? (
             <>
+              {session.offline ? <OfflineBanner readOnly onRetry={session.reconnect} /> : null}
               <ProjectCard project={projectSummary} />
               <CurrentLessonCard projectId={projectSummary.id} lesson={session.project.lesson ?? null}
                 refreshKey={session.project} onProgressChanged={session.refreshProjectContext}
                 disabled={!ready || busy || confirming || session.offline} />
-              <CurrentTask task={session.project.currentTask} />
+              {session.project.lesson ? (
+                <LessonLearningDock
+                  projectId={projectSummary.id}
+                  lesson={session.project.lesson}
+                  refreshKey={session.project}
+                  disabled={!ready || busy || confirming || session.offline}
+                  onChanged={session.refreshProjectContext}
+                  onExplain={message => { void composer.submit(message, session.submitText); }}
+                />
+              ) : null}
+              <CurrentTask task={projectSummary.stage === 'completed' || projectSummary.stage === 'published' ? null : session.project.currentTask} />
             </>
           ) : (
             <ExplorationProgressPanel context={session.project} disabled={!ready || busy || confirming || session.offline}
@@ -302,7 +319,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
           )}
         </aside>
       ) : null}
-    </div>
+    </ResizablePanels>
   </div>;
 }
 

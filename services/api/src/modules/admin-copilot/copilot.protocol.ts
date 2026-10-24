@@ -52,9 +52,12 @@ export function parsePlan(raw: string): AdminCopilotPlan {
   catch { invalid('模型未返回有效的配置计划，请重试'); }
   const plan = object(parsed);
   exact(plan, ['reply', 'actions']);
-  if (!Array.isArray(plan.actions) || plan.actions.length > 24) invalid('单次操作最多 24 步');
+  // A reply-only object is an answer, never permission to infer or execute writes.
+  const rawActions = Object.hasOwn(plan, 'actions') ? plan.actions : [];
+  if (!Array.isArray(rawActions)) invalid('配置计划的 actions 必须为数组');
+  if (rawActions.length > 24) invalid('单次操作最多 24 步');
   const ids = new Set<string>();
-  const actions = plan.actions.map(rawAction => {
+  const actions = rawActions.map(rawAction => {
     const row = object(rawAction);
     exact(row, ['id', 'kind', 'label', 'input']);
     const id = text(row.id, 'action.id', 48);

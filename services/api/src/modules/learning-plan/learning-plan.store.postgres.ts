@@ -928,10 +928,22 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
       .from(learningSessions)
       .where(eq(learningSessions.planId, plan.id))
       .orderBy(asc(learningSessions.index));
+    const templateVersion = plan.templateVersionId ?? CURRICULUM_TEMPLATE_VERSION;
+    const mappings = await executor.select().from(masteryObjectiveMappings).where(and(
+      eq(masteryObjectiveMappings.planId, plan.id),
+      eq(masteryObjectiveMappings.templateVersion, templateVersion),
+      eq(masteryObjectiveMappings.contentVersion, templateVersion),
+      eq(masteryObjectiveMappings.source, 'explicit'),
+    ));
+    const concepts = new Map(mappings.map(mapping => [mapping.objectiveId, mapping.knowledgePointId]));
     return {
       plan: mapPlan(plan),
       modules: modules.map(mapModule),
-      objectives: objectives.map(mapObjective),
+      objectives: objectives.map(row => {
+        const objective = mapObjective(row);
+        const conceptId = concepts.get(row.id);
+        return conceptId && conceptId !== `local:${row.id}` ? { ...objective, conceptId } : objective;
+      }),
       sessions: sessions.map(mapSession),
     };
   }

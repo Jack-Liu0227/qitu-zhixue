@@ -1,4 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react';
+export { FeedbackAttachmentLinks, FeedbackAttachmentPicker } from './feedback-attachments';
+export { ResizablePanels } from './resizable-panels';
+export { SidebarResizeHandle } from './sidebar-resize';
 
 export function AppShell({
   title,

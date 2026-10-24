@@ -202,7 +202,7 @@ test('scope resolution prefers the actual bound team and never trusts draft meta
   const o = new CopilotOperations({ listTeams: async () => [{ id: 'draft-team', leaderAssistantId: 'draft-leader', members: [] }] } as unknown as PlatformRegistryService,
     { listGovernedVersions: async () => [{ id: 'v1', status: 'published', content: { linkedTeamId: 'draft-team' } }] } as unknown as TemplateGovernanceService,
     {} as KnowledgeCenterService, {} as ModelRegistryService,
-    { readTeamVersion: async () => ({ teamId: 'bound-team', leaderAssistantId: 'bound-leader', members: [{ assistantId: 'bound-coach' }] }) } as unknown as CopilotResources,
+    { readBindingTeam: async () => ({ teamId: 'bound-team', leaderAssistantId: 'bound-leader', members: [{ assistantId: 'bound-coach' }] }) } as unknown as CopilotResources,
     {} as ImaSettingsService,
     { resolveActiveBinding: async () => ({ teamVersionId: 'tv1' }) } as unknown as import('../templates/templates-binding.service').TemplateBindingService);
   assert.deepEqual(await o.scopeResources(actor, 'template', 'v1'), {
@@ -226,9 +226,9 @@ test('binding receipt reads current owner state and preserves the IDs needed for
   const calls: unknown[][] = [];
   const o = new CopilotOperations({} as PlatformRegistryService, {} as TemplateGovernanceService,
     {} as KnowledgeCenterService, {} as ModelRegistryService, {} as CopilotResources, {} as ImaSettingsService,
-    { createBinding: async (...args: unknown[]) => { calls.push(args); return { binding: { id: 'b1', status: 'draft' } }; },
+    { prepareCurrentTeams: async (...args: unknown[]) => { calls.push(args); return { binding: { id: 'b1', status: 'draft' } }; },
       getTeachingBundle: async () => ({ binding: { id: 'b1', status: 'validated', validation: { valid: true } } }) } as unknown as import('../templates/templates-binding.service').TemplateBindingService);
-  const mutation = await o.execute(actor, 'binding.create', { templateId: 't1', versionId: 'v1', teamVersionId: 'tv1' }, 'stable');
+  const mutation = await o.execute(actor, 'binding.prepare', { templateId: 't1', versionId: 'v1', arrangement: { teamId: 'team' } }, 'stable');
   assert.equal(calls[0]?.[4], 'stable');
-  assert.deepEqual(await o.readback(actor, 'binding.create', mutation), { id: 'b1', status: 'validated', validation: { valid: true }, templateId: 't1', versionId: 'v1' });
+  assert.deepEqual(await o.readback(actor, 'binding.prepare', mutation), { id: 'b1', status: 'validated', validation: { valid: true }, templateId: 't1', versionId: 'v1' });
 });

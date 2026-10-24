@@ -28,6 +28,7 @@ import { throwHttpForIdempotencyError } from '../../common/idempotency/idempoten
 import { AuditWriter, type AuditTransaction } from '../../common/audit/audit.service';
 import { MasteryDomainService } from '../mastery/mastery-domain.service';
 import { LearningPlanService } from '../learning-plan/learning-plan.service';
+import { ProjectLearningLifecycleService } from '../projects/project-learning-lifecycle.service';
 import { dynamicQuestionEnvelope } from '../learning-plan/question-candidate';
 import {
   LearningPlanStore,
@@ -68,6 +69,7 @@ export class TutorQuizService {
     @Optional() private readonly mastery?: MasteryDomainService,
     @Optional() private readonly tutor?: TutorService,
     @Optional() private readonly stuckSignals?: StuckSignalService,
+    @Optional() private readonly lifecycle?: ProjectLearningLifecycleService,
   ) {}
 
   private async answerGenerated(
@@ -409,6 +411,11 @@ export class TutorQuizService {
         };
       });
       const resp = result.body;
+      if (this.lifecycle && resp.conceptDeltas.some(delta => delta.mastered)) {
+        const plan = (await this.store.listPlansByStudent(actor.id)).find(item => item.projectId === projectId);
+        if (plan) await this.lifecycle.syncAfterAnswer(actor, plan.id,
+          hashIdempotentInput('tutor.quiz.learning.sync', { sessionId: session.sessionId, quizId }, { idempotencyKey }));
+      }
       return result.replayed ? { ...resp, replayed: true } : resp;
     } catch (error) {
       throwHttpForIdempotencyError(error);

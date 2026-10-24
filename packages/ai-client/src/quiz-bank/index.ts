@@ -1,4 +1,5 @@
 import type { GradeValue, LearningErrorType, TutorReplyBlock } from '@qitu/contracts';
+import { THUNDER_QUIZ_BANK } from './thunder-fighter.js';
 
 export * from './optics/index.js';
 
@@ -44,6 +45,7 @@ export type QuizBlockProjection = Extract<TutorReplyBlock, { kind: 'quiz' }>;
 
 /** 光学概念题库：反射 / 折射 / 全反射 / 透镜（F5 光学 PBL 绑定域）。 */
 export const QUIZ_BANK: readonly QuizBankEntry[] = [
+  ...THUNDER_QUIZ_BANK,
   {
     questionId: 'optics.reflection.q1',
     conceptId: 'optics.reflection',
@@ -334,3 +336,4 @@ export function gradeQuizKeys(
 export { OPTICS_16_COMPLETION_PROFILE_ID, OPTICS_16_COMPLETION_TEMPLATE_SPEC } from './optics/curriculum.js';
 export { OPTICS_GUIDED_PROFILE_ID, OPTICS_GUIDED_TEMPLATE_SPEC, OPTICS_GUIDED_ROLE_REQUIREMENTS } from './optics/guided-curriculum.js';
 export { WAVE_OPTICS_PROFILE_ID, WAVE_OPTICS_TEMPLATE_SPEC, WAVE_OPTICS_READINESS_IDS, WAVE_OPTICS_ROLE_REQUIREMENTS } from './optics/wave-curriculum.js';
+export { WAVE_TEACHING_PROFILE_ID, WAVE_TEACHING_TEMPLATE_SPEC, WAVE_TEACHING_ROLE_REQUIREMENTS } from './optics/wave-teaching-curriculum.js';

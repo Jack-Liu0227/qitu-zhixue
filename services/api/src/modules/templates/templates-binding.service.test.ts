@@ -240,6 +240,23 @@ describe('TemplateBindingService（F2 绑定生命周期 + F3 冻结/回填）',
     }
   });
 
+  it('discarding draft or validated arrangements preserves the active binding and remains idempotent', async () => {
+    const active = await h.service.createBinding(ADMIN, published.templateId, published.versionId, { teamVersionId: 'tv-1' }, 'keep-active');
+    await h.service.validateBinding(ADMIN, published.templateId, published.versionId, active.binding.id, 'keep-validate');
+    await h.service.activateBinding(ADMIN, published.templateId, published.versionId, active.binding.id, 'keep-activate');
+    const before = await h.bindings.findActiveBinding(published.versionId);
+    for (const status of ['draft', 'validated']) {
+      const item = await h.service.createBinding(ADMIN, published.templateId, published.versionId, { teamVersionId: 'tv-1' }, `discard-${status}`);
+      if (status === 'validated') await h.service.validateBinding(ADMIN, published.templateId, published.versionId, item.binding.id, 'discard-validate');
+      const key = `retire-${status}`;
+      const retired = await h.service.retireBinding(ADMIN, published.templateId, published.versionId, item.binding.id, { reason: 'Discard unused teaching arrangement' }, key);
+      const replay = await h.service.retireBinding(ADMIN, published.templateId, published.versionId, item.binding.id, { reason: 'Discard unused teaching arrangement' }, key);
+      assert.equal(retired.binding.status, 'retired'); assert.equal(retired.binding.activatedAt, null);
+      assert.equal(replay.replayed, true);
+      assert.deepEqual(await h.bindings.findActiveBinding(published.versionId), before);
+    }
+  });
+
   it('同键重放不重复执行；同键异载荷 409', async () => {
     const first = await h.service.createBinding(
       ADMIN,

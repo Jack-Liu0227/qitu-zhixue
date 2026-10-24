@@ -42,7 +42,7 @@
 ## 当前架构补充
 
 - 项目式学习继续采用模块化单体：`projects`、`learning-plan`、`mastery`、`ai-tutor`、`team-runtime`、`works/feedback` 共同维护项目、计划、掌握度、团队候选和作品证据；不要另建第二套 PBL 状态机或 mastery 数据库。
-- 模板版本、团队版本和绑定是历史项目的语义边界。正式项目确认时冻结 `templateVersionId`、`bindingId`、`teamVersionId` 和 hash；运行时不得按团队名称、标题或客户端传入的 `teamId` 猜测绑定。
+- 模板版本、教学绑定及绑定内的冻结团队配置是历史项目的语义边界。独立历史团队版本资源已移除；正式项目确认时冻结 `templateVersionId`、`bindingId`、内部配置标识和 hash（历史 v1 的 `teamVersionId` 字段仅用于摘要兼容）；运行时不得按团队名称、标题或客户端传入的 `teamId` 猜测绑定。
 - Tutor 输出使用闭合集合 `TutorReplyBlock` 和 SSE。模型只能产生候选教学动作/文案；项目阶段、`TheoryMastered`、作品通过、成长记录、审计和计划 revision 必须由对应服务端 owner 写入。
 - 动态交互采用“回答/操作产生证据，策略选择下一教学动作”的双循环。允许追问、提示、例子、检查题、同目标补救和教师介入；禁止客户端或 Agent 直接 `advance_stage`、`mark_mastered`、`approve_artifact` 或放行实践。
 
@@ -77,7 +77,7 @@
 
 - Theme、Session、团队角色和 IMA 范围属于同一版本化教学合同。curriculum.ts 已跟踪/导出不代表已成为唯一真源；须显式迁入/投影 ProjectTemplateSpec，接线 validator、bootstrap、API 与测试，禁止平行 curriculum schema。
 - 生成器须消费实际冻结模板内容/hash，不只给全局常量结果贴 templateVersionId。16 课时用新模板版本/bootstrap identity；多排期冻结审核 profile，禁止原地改变 optics-physical-inquiry:v1。
-- confirmIntent 与 confirmPlan 均在同一事务冻结模板/binding/团队版本/hash；缺绑定 fail closed，不接受 warning-only omitted。通用项目也有受治理路径；历史无快照项目不在读时静默按当前 active 授予新语义。
+- confirmIntent 与 confirmPlan 均在同一事务冻结模板/binding/绑定内团队配置/hash；缺绑定 fail closed，不接受 warning-only omitted。通用项目也有受治理路径；历史无快照项目不在读时静默按当前 active 授予新语义。
 - roleMap/IMA grant/内容与策略版本进入 binding hash 和项目快照，角色须是真实成员。运行路由取实际 frozen session/task，禁止标题/团队名/ID 前缀/成员正则/全局 1–16/fallback 助手猜授权；非法或非整数索引拒绝。
 - 课时检查点不是完成事实：第 8 节不自动 TheoryMastered，第 14/16 节不自动批准报告/归档。探索可用已有 draft/exploration，显式确认前不能创建正式项目。
 - IMA 权限为冻结项目 grant、当前 Admin 全局授权、当前助手/工具和对象权限的交集。缺 scope 默认拒绝；撤权立即生效，新增库不扩大旧项目。四只读工具均约束，包含列库过滤、搜索/列文档参数和读文档 provenance。

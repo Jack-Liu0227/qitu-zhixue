@@ -1,4 +1,5 @@
 'use client';
+import { ResizablePanels } from '@qitu/ui';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AdminRuntimeSnapshot } from '@qitu/contracts';
 import {
@@ -408,7 +409,7 @@ export function KnowledgeConfiguration({
           )}
         </section>
       ) : (
-        <div className={styles.workspace} aria-busy={pending}>
+        <ResizablePanels storageKey="admin-knowledge-configuration" className={styles.workspace} initialSizes={[30, 70]} minWidths={[240, 340]} labels={['配置清单', '配置内容']}>
           <aside className={styles.card} aria-label="配置目标与清单">
             <div className={styles.cardHeading}>
               <strong>配置目标与清单</strong>
@@ -578,7 +579,7 @@ export function KnowledgeConfiguration({
               </div>
             )}
           </section>
-        </div>
+        </ResizablePanels>
       )}
       {nextAction && (
         <div className={styles.backdrop}>

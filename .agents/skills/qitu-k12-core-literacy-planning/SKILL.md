@@ -1,7 +1,7 @@
 ---
 name: qitu-k12-core-literacy-planning
 description: Design age-appropriate Qitu project tasks and performance evidence from verified curriculum materials.
-version: 1.0.0
+version: 1.0.1
 runtime: admin
 status: published
 references: references/qitu-contract.md

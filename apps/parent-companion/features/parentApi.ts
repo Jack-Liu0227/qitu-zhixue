@@ -1,4 +1,4 @@
-import { ApiError, createApiClient } from '@qitu/api-client';
+import { ApiError, createApiClient, createIdempotencyKey } from '@qitu/api-client';
 import type {
   ChildRef,
   ParentHomePageData,
@@ -7,6 +7,7 @@ import type {
   SendEncouragementResponse,
   ParentMessageAckResponse,
   SubmitParentFeedbackResponse,
+  ParentFeedbackDetailResponse,
 } from '@qitu/contracts';
 import type { ParentGrowthPageData } from './growth/types';
 
@@ -28,14 +29,15 @@ async function get<T>(path: string): Promise<T> {
   }
 }
 export const parentApi = {
+  feedbackDetail: (id: string) => get<{ data: ParentFeedbackDetailResponse }>(`/api/v1/parent/feedback/${encodeURIComponent(id)}`),
   children: () => get<{ data: ChildRef[] }>('/api/v1/parent/children'),
   home: (id: string) =>
     get<{ data: ParentPageData<ParentHomePageData> }>(
       `/api/v1/parent/children/${encodeURIComponent(id)}/dashboard`,
     ),
-  progress: (id: string) =>
+  progress: (id: string, artifactRef?: string) =>
     get<{ data: ParentPageData<ParentProgressPageData> }>(
-      `/api/v1/parent/children/${encodeURIComponent(id)}/progress`,
+      `/api/v1/parent/children/${encodeURIComponent(id)}/progress${artifactRef ? `?artifactRef=${encodeURIComponent(artifactRef)}` : ''}`,
     ),
   messages: (id: string) =>
     get<{ data: ParentPageData<ParentMessagesPageData> }>(
@@ -50,17 +52,22 @@ export const parentApi = {
     body: unknown,
     options?: { idempotencyKey?: string },
   ): Promise<T> {
-    const response = await fetch(path, {
+    let response: Response;
+    try { response = await fetch(path, {
       method: 'POST',
       credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
         // 复用调用方传入的幂等键：网络失败重试时不得生成新的键，否则会重复建单。
-        'Idempotency-Key': options?.idempotencyKey ?? crypto.randomUUID(),
+        'Idempotency-Key': options?.idempotencyKey ?? createIdempotencyKey(),
       },
       body: JSON.stringify(body),
-    });
+    }); } catch (error) {
+      if (error instanceof TypeError) throw new ParentOfflineError();
+      throw error;
+    }
     if (!response.ok) {
+      if (response.status === 401 || response.status === 403) throw new ParentPermissionError();
       const errorBody = (await response.json().catch(() => null)) as {
         error?: { code?: string; message?: string };
       } | null;

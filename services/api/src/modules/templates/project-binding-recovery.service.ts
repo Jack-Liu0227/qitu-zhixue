@@ -13,7 +13,7 @@ import { TemplateViewerDirectory } from './template-evidence.store';
 import { assertCanGovernTemplate } from './templates.policy';
 import { TeachingBundleCatalog } from './teaching-bundle.catalog';
 import { teachingValueDigest } from './teaching-bundle.canonical';
-import { teamVersionView } from '../platform-registry/team-version.service';
+import { teamVersionView } from '../platform-registry/teaching-team-capture.service';
 
 @Injectable()
 export class ProjectBindingRecoveryService {
@@ -64,7 +64,7 @@ export class ProjectBindingRecoveryService {
             if (!target || target.id !== bindingId || !target.validation.valid) {
               throw new ConflictException({ code: 'PROJECT_BINDING_CHANGED', message: '生效绑定已变化，请重新读取并确认。' });
             }
-            const team = await this.store.findTeamVersion(target.teamVersionId);
+            const team = await this.store.findTeamVersion(target.teamVersionId, target.id);
             if (!target.bundleDraft || !target.bundlePayload || !target.bundleDigest || !team
               || teamVersionView(team).runtimeSnapshotStatus !== 'published') {
               throw new ConflictException({ code: 'PROJECT_TEACHING_BUNDLE_UNAVAILABLE', message: '请先发布团队、生成教学配置并校验启用绑定。' });

@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react';
 import type { ProjectHistoryPage, ProjectDisplayChange } from '@qitu/contracts';
 import { projectsDataSource } from '../data';
-import { SkeletonBlock } from '@qitu/ui';
+import { SkeletonBlock, ResizablePanels } from '@qitu/ui';
 import { StudentLink } from '../../../components/student-link';
 import { CreateProjectEntry } from './CreateProjectEntry';
 import { NextStepCard } from './NextStepCard';
@@ -17,19 +17,22 @@ import { createIdempotencyKey } from '../lib/idempotency';
 import type { ProjectTab, ProjectListItem } from '../types';
 
 export interface ProjectListScreenProps {
+  mode?: 'projects' | 'explorations';
   initialTab?: ProjectTab;
   initialQuery?: string;
   /** 五态演示入口；Wave 4 从路由 query 注入。 */
   scenario?: ScreenScenario;
 }
 
-/** `/student/projects` 列表屏：进行中 / 草稿 / 已完成 + 搜索 + 下一步。 */
+/** 正式项目与灵感空间的探索记录共用历史读取、分页和对象操作。 */
 export function ProjectListScreen({
+  mode = 'projects',
   initialTab = 'active',
   initialQuery = '',
   scenario,
 }: ProjectListScreenProps) {
-  const [tab, setTab] = useState<ProjectTab>(initialTab);
+  const explorations = mode === 'explorations';
+  const [tab, setTab] = useState<ProjectTab>(explorations ? 'draft' : initialTab === 'done' ? 'done' : 'active');
   const [query, setQuery] = useState(initialQuery);
   const [includeCollected, setIncludeCollected] = useState(false);
   const [cursors, setCursors] = useState<Array<string | undefined>>([undefined]);
@@ -52,7 +55,7 @@ export function ProjectListScreen({
   const removeEntries = async (items: Array<Pick<ProjectListItem, 'kind' | 'id' | 'title'>>) => {
     if (!items.length || !projectsDataSource.deleteHistory || inFlight.current) return;
     const includesProject = items.some(item => !item.kind || item.kind === 'project');
-    if (!window.confirm(`永久删除所选 ${items.length} 条记录？${includesProject ? '正式项目的计划、对话、作品和相关学习记录将一起删除。' : '草稿及相关对话将一起删除。'}此操作无法恢复。\n${items.slice(0, 3).map(item => item.title).join('\n')}`)) return;
+    if (!window.confirm(`永久删除所选 ${items.length} 条记录？${includesProject ? '正式项目的计划、对话、作品和相关学习记录将一起删除。' : '探索记录及相关对话将一起删除。'}此操作无法恢复。\n${items.slice(0, 3).map(item => item.title).join('\n')}`)) return;
     inFlight.current = true; setSaving(true); setNotice('');
     let deleted = 0;
     let failure = '';
@@ -89,17 +92,19 @@ export function ProjectListScreen({
   return (
     <div className="qitu-projects-list-screen">
       <div className="qitu-screen-toolbar">
-        <h1>我的项目</h1>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        {explorations ? <h2>探索记录</h2> : <h1>我的项目</h1>}
+        {!explorations && <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <StudentLink className="qitu-button" href="/student/growth">查看成长轨迹</StudentLink>
           <CreateProjectEntry />
-        </div>
+        </div>}
       </div>
-      <ProjectTabs active={tab} onChange={value => { setTab(value); setSelected([]); setCursors([undefined]); }} />
-      <ProjectSearch value={query} onChange={value => { setQuery(value); setSelected([]); setCursors([undefined]); }} />
-      <label><input type="checkbox" checked={includeCollected} onChange={event => { setIncludeCollected(event.target.checked); setCursors([undefined]); }} />包含已收纳</label>
-      <p className="qitu-project-history-hint">{tab === 'draft' ? '草稿是尚未确认的探索或计划。明确确认后，才会创建正式项目。' : '这里保留你已确认的项目。同主题的不同探索会分别保存；收纳可保留记录，永久删除会清除项目及相关学习记录。'}</p>
-      {page ? <p>进行中 {page.counts.active} · 草稿 {page.counts.draft} · 已完成 {page.counts.done}{page.selectionSource === 'creation_fallback' ? '，尚未选择继续学习项目，暂按创建时间推荐。' : ''}</p> : null}
+      <div className="qitu-project-filters">
+        {!explorations && <ProjectTabs active={tab} onChange={value => { setTab(value); setSelected([]); setCursors([undefined]); }} />}
+        <ProjectSearch value={query} placeholder={explorations ? '搜索探索记录' : '搜索我的项目'} onChange={value => { setQuery(value); setSelected([]); setCursors([undefined]); }} />
+        {!explorations && <label className="qitu-project-collected"><input type="checkbox" checked={includeCollected} onChange={event => { setIncludeCollected(event.target.checked); setCursors([undefined]); }} />包含已收纳</label>}
+      </div>
+      <p className="qitu-project-history-hint">{explorations ? '继续之前的兴趣讨论，或查看待确认的学习计划。明确确认后，项目会出现在“我的项目”中。' : '这里保留你已确认的项目。收纳可保留记录，永久删除会清除项目及相关学习记录。'}</p>
+      {page ? <p>{explorations ? `探索记录 ${page.counts.draft}` : `进行中 ${page.counts.active} · 已完成 ${page.counts.done}`}</p> : null}
       {notice ? <p role="status">{notice}</p> : null}
       <ScreenState
         state={list.state}
@@ -110,13 +115,13 @@ export function ProjectListScreen({
         emptyDescription="去灵感空间找一找，想做的事会变成正式项目。"
         emptyAction={<CreateProjectEntry />}
         render={(result, offline) => (
-          <div className="qitu-projects-layout" style={{ display: 'grid', gap: 16 }}>
+          <ResizablePanels storageKey="student-project-list" initialSizes={[74, 26]} minWidths={[420, 260]} className="qitu-projects-layout">
             <div className="qitu-projects-main">
             {projectsDataSource.deleteHistory && result.items.length ? <div className="qitu-project-actions" style={{ marginBottom: 12 }}>
               <button className="qitu-button qitu-button-ghost" disabled={offline || saving} onClick={() => setSelected(result.items.map(entryKey))}>全选本页</button>
-              <button className="qitu-button qitu-button-ghost" disabled={offline || saving || !selected.length} onClick={() => setSelected([])}>取消选择</button>
-              <button className="qitu-button qitu-button-ghost" disabled={offline || saving || !selected.length}
-                onClick={() => void removeEntries(result.items.filter(item => selected.includes(entryKey(item))))}>永久删除所选（{selected.length}）</button>
+              {selected.length > 0 && <><button className="qitu-button qitu-button-ghost" disabled={offline || saving} onClick={() => setSelected([])}>取消选择</button>
+              <button className="qitu-button qitu-button-ghost qitu-project-delete" disabled={offline || saving}
+                onClick={() => void removeEntries(result.items.filter(item => selected.includes(entryKey(item))))}>删除所选（{selected.length}）</button></>}
             </div> : null}
             <ProjectList projects={result.items} readOnly={offline} renderActions={item => <div className="qitu-project-actions">
               {projectsDataSource.deleteHistory ? <label><input type="checkbox" aria-label={`选择清理：${item.title}`} checked={selected.includes(entryKey(item))} disabled={offline || saving}
@@ -134,10 +139,10 @@ export function ProjectListScreen({
               <button className="qitu-button qitu-button-ghost" disabled={offline || saving || !result.nextCursor} onClick={() => { setSelected([]); setCursors(values => [...values,result.nextCursor ?? undefined]); }}>下一页</button>
             </nav>
             </div>
-            {(nextStep.state.status === 'ready' || nextStep.state.status === 'offline') && nextStep.state.data ? (
+            {!explorations && (nextStep.state.status === 'ready' || nextStep.state.status === 'offline') && nextStep.state.data ? (
               <aside><NextStepCard nextStep={nextStep.state.data} disabled={offline} /></aside>
             ) : null}
-          </div>
+          </ResizablePanels>
         )}
       />
     </div>

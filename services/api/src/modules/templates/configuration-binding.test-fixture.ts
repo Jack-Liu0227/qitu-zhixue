@@ -5,7 +5,7 @@ import type { IdempotencyStore } from '../../common/idempotency/idempotency.serv
 import { teachingValueDigest } from './teaching-bundle.canonical';
 import { opticsTeachingFixture } from './teaching-bundle.test-fixture';
 import { TEAM_PUBLICATION_SCHEMA } from '../platform-registry/team-version.snapshot';
-import { teamVersionContentDigest } from '../platform-registry/team-version.service';
+import { teamVersionContentDigest } from '../platform-registry/teaching-team-capture.service';
 import { InMemoryTemplateStore } from './templates.store';
 import { InMemoryTemplateBindingStore } from './templates-binding.store';
 import { InMemoryTemplateViewerDirectory } from './template-evidence.store';

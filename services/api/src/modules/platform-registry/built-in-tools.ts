@@ -1,3 +1,4 @@
+import { COURSEWARE_ACTIVITY_SCHEMA } from '../../common/tutor-runtime/courseware-activity.schema';
 import { RUNTIME_TOOL_CATALOG, type RuntimeToolCatalogEntry } from '@qitu/contracts';
 import { LESSON_ACTIVITY_SCHEMA } from '../../common/tutor-runtime/lesson-activity.schema';
 import { WAVE_ACTIVITY_SCHEMA } from '../../common/tutor-runtime/wave-activity.schema';
@@ -14,6 +15,13 @@ import type {
  * Presence does not grant access; actual assistant bindings are projected by PlatformRegistryService. */
 const BUILTIN_TOOL_CATALOG: readonly RuntimeToolCatalogEntry[] = [
   ...RUNTIME_TOOL_CATALOG,
+  {
+    id: 'tutor.propose_courseware_activity', version: 'tutor.propose_courseware_activity.v1',
+    label: '零基础教学与可复用课件', invocation: 'model_tool',
+    description: 'Retrieve reviewed courseware, revalidate sources and persist bounded lesson demonstrations. Never writes mastery.',
+    inputSchema: COURSEWARE_ACTIVITY_SCHEMA, inputSchemaDigest: teachingValueDigest(COURSEWARE_ACTIVITY_SCHEMA),
+    capabilities: ['teach'], execution: 'server_owned', riskLevel: 'medium', requiresTheoryMastered: false,
+  },
   {
     id: 'tutor.propose_wave_activity', version: 'tutor.propose_wave_activity.v1',
     label: '干涉与衍射教学候选', invocation: 'model_tool',

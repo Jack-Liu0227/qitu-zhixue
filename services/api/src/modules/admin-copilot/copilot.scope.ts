@@ -29,10 +29,6 @@ export function assertOperationScope(request: AdminCopilotRequest, kind: AdminCo
     if (version && request.templateVersionId && version !== request.templateVersionId && !owns('template_version', version)) denied();
     return;
   }
-  if (kind === 'team.version') {
-    if (!owns('team', input.id, resources.teamIds)) denied();
-    return;
-  }
   if (operation.createsResource) return;
   if (operation.targetResource === 'team' && owns('team', input.id, resources.teamIds)) return;
   if (operation.targetResource === 'assistant' && input.id !== 'qitu-assistant' && owns('assistant', input.id, resources.assistantIds)) return;
@@ -51,7 +47,7 @@ export function rememberCreatedResource(created: CreatedResources, kind: AdminCo
   if (!operation?.createsResource || !result || typeof result !== 'object') return;
   const id = (result as Record<string, unknown>).id;
   if (typeof id !== 'string') return;
-  const resource = kind === 'template.version' ? 'template_version' : kind === 'team.version' ? 'team_version' : operation.targetResource;
+  const resource = kind === 'template.version' ? 'template_version' : operation.targetResource;
   if (!created.has(resource)) created.set(resource, new Set());
   created.get(resource)!.add(id);
 }

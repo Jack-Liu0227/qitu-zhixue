@@ -34,7 +34,7 @@ export function assertLessonProgress(value: unknown, planId: string, projectId: 
         || item.activities.some(activity => !record(activity) || typeof activity.activityId !== 'string'
           || !activity.activityId.startsWith(`${item.sessionId}:activity:`)
           || !['review', 'theory', 'check', 'practice', 'reflect'].includes(String(activity.kind))
-          || !['session_response', 'experiment_observation', 'submitted_artifact', 'mastery'].includes(String(activity.evidence))
+          || !['session_response', 'experiment_observation', 'submitted_artifact', 'mastery', 'teaching_delivery'].includes(String(activity.evidence))
           || !['completed', 'current', 'locked'].includes(String(activity.status))
           || typeof activity.guidance !== 'string' || !Number.isFinite(activity.minutes)
           || !Array.isArray(activity.evidenceRefs) || activity.evidenceRefs.some(ref => typeof ref !== 'string'))))

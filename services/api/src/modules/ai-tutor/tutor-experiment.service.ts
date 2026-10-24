@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
 import { auditLogs, type Database } from '@qitu/database';
-import type { GetTutorSessionResponse, TutorExperimentActionRequest, TutorExperimentActionResponse, TutorReplyBlock, SavedWaveExperiment } from '@qitu/contracts';
+import type { GetTutorSessionResponse, ProjectStage, TutorExperimentActionRequest, TutorExperimentActionResponse, TutorReplyBlock, SavedWaveExperiment } from '@qitu/contracts';
 import { hasLearningSessionCompletion } from '@qitu/contracts';
 import { DATABASE_TOKEN } from '../../database';
 import { AuditWriter } from '../../common/audit';
@@ -18,6 +18,7 @@ import { freezeTutorRuntime } from './tutor-frozen-runtime';
 import { isWaveActivityAuthorized, WAVE_ACTIVITY_TOOL } from './tutor-lesson-activity';
 import { parseWaveOpticsParameters, projectWaveOptics, WaveOpticsDomainError } from '@qitu/ai-client';
 import { LearningSessionProgressService } from '../learning-plan/learning-session-progress.service';
+import { ProjectLearningLifecycleService } from '../projects/project-learning-lifecycle.service';
 
 type ExperimentBlock = Extract<TutorReplyBlock, { kind: 'optics_experiment' }>;
 type ActionRecord = { id: string; detail: Record<string, unknown> };
@@ -36,12 +37,13 @@ export class TutorExperimentService {
     @Optional() private readonly mastery?: MasteryDomainService,
     @Optional() private readonly registry?: PlatformRegistryService,
     @Optional() private readonly lessonProgress?: LearningSessionProgressService,
+    @Optional() private readonly lifecycle?: ProjectLearningLifecycleService,
   ) {}
 
   async propose(actorId: string, scope: LessonActivityScope, candidate: OpticsCandidate, key: string): Promise<ExperimentBlock> {
     const project = await this.plans.findProject(scope.projectId);
     if (!project || project.studentId !== actorId || !project.templateVersionId) this.reject('PROJECT_REQUIRED', '需要有效的项目授权');
-    if (!['practice_ready', 'practice_building'].includes(project.status)) this.reject('GATE_REQUIRED', '理论门禁通过后才能生成实践活动');
+    this.assertOpenOrRecoverableStage(project.status);
     const plan = await this.plans.findBundle(scope.planId);
     const session = plan?.sessions.find((entry) => entry.id === scope.learningSessionId);
     if (!plan || plan.plan.projectId !== project.id || plan.plan.studentUserId !== actorId || plan.plan.version !== scope.planRevision || !session) this.reject('REVISION_CHANGED', '当前课时已变化');
@@ -59,6 +61,7 @@ export class TutorExperimentService {
     const frozenScope = await this.scope(project.id, actorId, session.lessonIndex, scope.objectiveId);
     if (!frozenScope || frozenScope.planRevision !== scope.planRevision || frozenScope.learningSessionId !== scope.learningSessionId) this.reject('REVISION_CHANGED', '课时状态已变化');
     if (specVersion === '2.0.0' && (!scope.activityId || frozenScope.activityId !== scope.activityId)) this.reject('ACTIVITY_CHANGED', '当前实践活动已变化');
+    await this.recoverPracticeStage(actorId, project.id, project.status, scope.planId, key);
     const block: ExperimentBlock = {
       kind: 'optics_experiment', experimentId: `optics-${hashRequest({ scope, key }).slice(0, 32)}`,
       title: candidate.title, summary: candidate.summary, initialMode: candidate.mode,
@@ -109,9 +112,7 @@ export class TutorExperimentService {
     }
     const project = record.projectId ? await this.plans.findProject(record.projectId) : null;
     if (!project || project.studentId !== actorId) this.reject('PROJECT_REQUIRED', '实验需要本人已确认的项目');
-    if (project.status !== 'practice_ready' && project.status !== 'practice_building') {
-      this.reject('GATE_REQUIRED', 'TheoryMastered 门禁通过后才能进入实验操作');
-    }
+    this.assertOpenOrRecoverableStage(project.status);
     if (!['1.0.0', '2.0.0'].includes(block.specVersion) || !Number.isSafeInteger(block.sessionIndex)
       || block.sessionIndex < 1 || !['optics.wave.diffraction', 'optics.wave.scattering', ...(block.specVersion === '2.0.0' ? ['optics.wave.interference'] : [])].includes(block.objectiveId)) {
       this.reject('PROTOCOL_REQUIRED', '实验协议需要更新，请重新打开课件');
@@ -123,6 +124,7 @@ export class TutorExperimentService {
       this.reject('REVISION_CHANGED', '学习计划已变化，请重新打开课件');
     }
     const learningObjectiveId = currentScope.objectiveId;
+    await this.recoverPracticeStage(actorId, project.id, project.status, currentScope.planId, input.idempotencyKey);
     await this.assertDynamicAccess(actorId, record.projectId, block);
     const validated = validateTutorExperimentAction(block.initialMode, input.action, input.payload, block.specVersion);
     if (block.allowedModels && !block.allowedModels.some(mode => mode === validated.auditPayload.mode)) {
@@ -197,13 +199,13 @@ export class TutorExperimentService {
     if (!block.allowedModels) return;
     if (!this.registry || !this.mastery || !block.scope || !projectId) this.reject('AUTHORIZATION_REQUIRED', '动态实验授权暂不可用');
     const project = await this.plans.findProject(projectId);
-    if (!project || project.studentId !== actorId || !project.templateVersionId
-      || !['practice_ready', 'practice_building'].includes(project.status)) this.reject('GATE_REQUIRED', '当前项目未获得实践授权');
+    if (!project || project.studentId !== actorId || !project.templateVersionId) this.reject('PROJECT_REQUIRED', '当前项目授权不可用');
+    this.assertPracticeStage(project.status);
     const plan = await this.plans.findBundle(block.scope.planId);
     const session = plan?.sessions.find((entry) => entry.id === block.scope!.learningSessionId);
     if (!plan || plan.plan.projectId !== projectId || plan.plan.studentUserId !== actorId
       || plan.plan.version !== block.scope.planRevision || !session) this.reject('REVISION_CHANGED', '课时状态已变化');
-    const bundle = await this.bindings.getFrozenTeachingBundle(projectId, project.templateVersionId);
+    const bundle = teachingBundleForSession(await this.bindings.getFrozenTeachingBundle(projectId, project.templateVersionId), session.lessonIndex);
     const lesson = bundle.template.curriculum?.profiles.find((entry) => entry.id === bundle.scheduleProfileId)
       ?.sessions.find((entry) => entry.sessionIndex === session.lessonIndex);
     const mode = block.allowedModels[0];
@@ -250,6 +252,21 @@ export class TutorExperimentService {
 
   async restore(record: TutorSessionRecord, response: GetTutorSessionResponse): Promise<GetTutorSessionResponse> {
     if (!record.projectId || !response.turns.some((turn) => turn.blocks.some((block) => block.kind === 'optics_experiment'))) return response;
+    const project = await this.plans.findProject(record.projectId);
+    const actionable = new Set<string>();
+    for (const block of response.turns.flatMap(turn => turn.blocks)) {
+      if (block.kind !== 'optics_experiment' || !block.allowedActions.length || !block.scope
+        || !project || project.studentId !== record.ownerId || !['practice_ready', 'practice_building'].includes(project.status)) continue;
+      try {
+        const current = await this.scope(project.id, record.ownerId, block.sessionIndex, block.scope.objectiveId);
+        if (!current || hashRequest(current) !== hashRequest({ ...block.scope, objectiveId: block.scope.objectiveId ?? current.objectiveId })) continue;
+        await this.assertDynamicAccess(record.ownerId, project.id, block);
+        actionable.add(block.experimentId);
+      } catch (error) {
+        // A stale activity is still readable. Unexpected storage failures remain errors.
+        if (!(error instanceof ConflictException)) throw error;
+      }
+    }
     const receipts = await this.evidence.experimentReceipts(record.projectId, record.ownerId, record.sessionId);
     const states = new Map<string, SavedWaveExperiment>();
     for (const block of response.turns.flatMap(turn => turn.blocks)) {
@@ -275,11 +292,37 @@ export class TutorExperimentService {
       const saved = receipts.filter((receipt) => receipt.experimentId === block.experimentId)
         .sort((a, b) => b.savedAt.localeCompare(a.savedAt))[0];
       const savedExperiment = states.get(block.experimentId);
-      return { ...block, ...(saved ? { savedObservation: saved } : {}), ...(savedExperiment ? { savedExperiment } : {}) };
+      return { ...block, allowedActions: actionable.has(block.experimentId) ? block.allowedActions : [],
+        ...(saved ? { savedObservation: saved } : {}), ...(savedExperiment ? { savedExperiment } : {}) };
     }) })) };
+  }
+
+  private assertOpenOrRecoverableStage(stage: ProjectStage): void {
+    if (this.lifecycle && ['intent_confirmed', 'theory_learning', 'theory_check'].includes(stage)) return;
+    this.assertPracticeStage(stage);
+  }
+
+  private async recoverPracticeStage(actorId: string, projectId: string, stage: ProjectStage, planId: string, key: string): Promise<void> {
+    if (!['practice_ready', 'practice_building'].includes(stage) && this.lifecycle) {
+      await this.lifecycle.syncAfterAnswer({ id: actorId, role: 'student', email: '', displayName: '' }, planId,
+        hashRequest({ source: 'experiment.learning.sync', projectId, key }));
+      const project = await this.plans.findProject(projectId);
+      if (!project || project.studentId !== actorId) this.reject('PROJECT_REQUIRED', '需要有效的项目授权');
+      stage = project.status;
+    }
+    this.assertPracticeStage(stage);
+  }
+
+  private assertPracticeStage(stage: ProjectStage): void {
+    if (['practice_ready', 'practice_building'].includes(stage)) return;
+    if (['artifact_review', 'reflection', 'published', 'completed'].includes(stage)) {
+      this.reject('PRACTICE_CLOSED', '项目已进入作品审核或完成阶段，此实验仅供回看，不能继续提交操作。');
+    }
+    this.reject('GATE_REQUIRED', '项目理论目标尚未全部达标，请先完成理论课的目标检查。');
   }
 
   private reject(suffix: string, message: string): never {
     throw new ConflictException({ code: `TUTOR_EXPERIMENT_${suffix}`, message });
   }
 }
+import { teachingBundleForSession } from '../templates/teaching-session-assignments';

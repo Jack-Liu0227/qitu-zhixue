@@ -1,4 +1,5 @@
 'use client';
+import { ResizablePanels } from '@qitu/ui';
 
 import { VisualAsset } from '@qitu/ui';
 
@@ -451,7 +452,7 @@ export default function ProfileGrowthSettingsPage() {
       </section>
 
       {/* 模块三与四：双栏卡片（未成年人隐私策略 + AI 引擎配置） */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '20px' }}>
+      <ResizablePanels storageKey="admin-profile-growth-policy" initialSizes={[48, 52]} minWidths={[300, 340]} className="admin-profile-growth-grid" labels={['隐私策略', '分析模型']}>
         {/* 未成年人隐私与隔离 */}
         <section className="admin-profile-growth-section" style={{ background: '#ffffff', border: '1px solid #e4ecf7', borderRadius: '14px', padding: '20px 24px', boxShadow: '0 4px 16px rgba(16, 42, 92, 0.03)' }}>
           <h3 style={{ margin: '0 0 4px', fontSize: '15px', color: '#102a5c', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -638,7 +639,7 @@ export default function ProfileGrowthSettingsPage() {
             </div>
           </div>
         </section>
-      </div>
+      </ResizablePanels>
     </div>
   );
 }

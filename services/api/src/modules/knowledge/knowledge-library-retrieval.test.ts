@@ -150,6 +150,20 @@ test('title-only matches never become evidence', async () => {
   assert.equal((await f.service.search('student', 'a', 'q', 5, scope)).state, 'NO_KNOWLEDGE_EVIDENCE');
 });
 
+test('an empty search is a successful empty outcome; live revocation remains a failure', async () => {
+  const f = fixture();
+  f.engine.execute = async () => ({ ok: true, manifest: { items: [] } });
+  const tool = f.service.tools('student', 'a', scope).find(tool => tool.name === 'knowledge_search');
+  assert.ok(tool);
+  const empty = await tool.execute({ query: 'no matching concept' });
+  assert.equal(empty.isError, undefined);
+  assert.equal(empty.outcome, 'empty');
+  f.revoke();
+  const denied = await tool.execute({ query: 'no matching concept' });
+  assert.equal(denied.isError, true);
+  assert.match(denied.text, /^KNOWLEDGE_RETRIEVAL_DISABLED/);
+});
+
 test('remote citations bind student, project, source assistant and frozen teaching digest', async () => {
   const f = fixture();
   const first = { ...scope, key: JSON.stringify(['student', 'project-a', 'a', 'frozen-digest']), knowledgeBaseIds: ['source'] };
@@ -177,4 +191,20 @@ test('remote citations bind student, project, source assistant and frozen teachi
     ...first, authorizeTool: async () => ++checks === 1,
   }), { status: 404 });
   assert.equal(checks, 2, 'Read must discard a citation revoked after its initial authorization');
+});
+
+test('provider failure is never reported as an empty search and cannot issue a citation', async () => {
+  for (const errorCode of ['IMA_CREDENTIALS_REJECTED', 'IMA_TIMEOUT', 'unknown-upstream-secret']) {
+    const f = fixture();
+    f.engine.execute = async () => ({ ok: false, status: 'unavailable', errorCode });
+    const result = await f.service.search('student', 'a', 'q', 5, scope);
+    assert.equal(result.state, 'KNOWLEDGE_RETRIEVAL_FAILED');
+    assert.deepEqual(result.evidence, []);
+    const tool = f.service.tools('student', 'a', scope).find(item => item.name === 'knowledge_search')!;
+    const response = await tool.execute({ query: 'q' });
+    assert.equal(response.isError, true);
+    assert.equal(response.outcome, undefined);
+    assert.match(response.text, errorCode === 'IMA_CREDENTIALS_REJECTED' ? /^KNOWLEDGE_UPSTREAM_DENIED/ : /^KNOWLEDGE_UPSTREAM_UNAVAILABLE/);
+    assert.doesNotMatch(response.text, /unknown-upstream-secret/);
+  }
 });

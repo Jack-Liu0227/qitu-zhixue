@@ -1,7 +1,7 @@
 ---
 name: qitu-teacher-style-clone
 description: Draft teacher-selected explanation and questioning preferences from authorized examples.
-version: 1.0.0
+version: 1.0.1
 runtime: admin
 status: published
 references: references/qitu-contract.md

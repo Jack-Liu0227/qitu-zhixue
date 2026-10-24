@@ -1,7 +1,7 @@
 ---
 name: qitu-build-personal-skill
 description: Propose reusable teaching preferences from authorized teacher-owned examples and feedback.
-version: 1.0.0
+version: 1.0.1
 runtime: admin
 status: published
 references: references/qitu-contract.md

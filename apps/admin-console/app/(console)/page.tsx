@@ -1,4 +1,5 @@
 'use client';
+import { ResizablePanels } from '@qitu/ui';
 
 import { RobotMascot } from '@qitu/ui';
 
@@ -93,7 +94,7 @@ export default function AdminOverviewPage() {
           </div>
           <span className="admin-governance-status"><i />聚合视图</span>
         </div>
-        <div className="admin-governance-grid">
+        <ResizablePanels storageKey="admin-governance-overview" initialSizes={[55, 45]} minWidths={[320, 300]} className="admin-governance-grid" labels={['治理入口', '运行状态']}>
           <Card variant="soft" className="admin-governance-info">
             <div className="admin-governance-watermark"><AdminMetricIcon name="coverage" /></div>
             <div className="admin-governance-info-title"><span className="admin-governance-icon"><AdminMetricIcon name="activity" /></span><div><strong>数据治理及权限说明</strong><small>合规与隐私隔离机制</small></div></div>
@@ -105,7 +106,7 @@ export default function AdminOverviewPage() {
             <Link href="/relationships" className="admin-governance-link"><span className="admin-governance-link-icon violet"><AdminMetricIcon name="guardian" /></span><span className="admin-governance-link-copy"><strong>家庭与关系绑定</strong><small>管理家校互通与监护关系</small></span><b>→</b></Link>
             <Link href="/settings" className="admin-governance-link"><span className="admin-governance-link-icon teal"><AdminMetricIcon name="coverage" /></span><span className="admin-governance-link-copy"><strong>模型与 AI 设置</strong><small>调控模型能力与安全防护</small></span><b>→</b></Link>
           </div>
-        </div>
+        </ResizablePanels>
       </section>
 
       <p className="admin-overview-generated">

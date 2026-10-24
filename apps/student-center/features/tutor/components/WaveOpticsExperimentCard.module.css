@@ -1,4 +1,4 @@
-.card { margin: 16px 0; padding: 22px; border: 1px solid var(--qitu-border, #dce5f5); border-radius: 16px; background: var(--qitu-surface, #fff); color: var(--qitu-text, #172b4d); max-width: 900px; }
+.card { box-sizing: border-box; width: 100%; min-width: 0; margin: 16px 0; padding: 22px; border: 1px solid var(--qitu-border, #dce5f5); border-radius: 16px; background: var(--qitu-surface, #fff); color: var(--qitu-text, #172b4d); max-width: 900px; }
 .card:fullscreen { padding: 32px max(24px, calc((100vw - 1000px) / 2)); max-width: none; overflow: auto; }
 .header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .header h3 { margin: 6px 0; font-size: 19px; }

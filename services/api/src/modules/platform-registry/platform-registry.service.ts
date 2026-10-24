@@ -27,7 +27,7 @@ import type {
   WorkspaceMode,
 } from '@qitu/contracts';
 import { asc, desc, eq, inArray, sql } from 'drizzle-orm';
-import { adminAssistants, adminTeamMembers, adminTeams, adminTeamVersions, agentConfigs, agentMcpBindings, agentSkillBindings, agentToolBindings, agentMemoryRecords, auditLogs, knowledgeDocuments, projectTemplates, projectTemplateVersions, runtimeMcpServers, tutorPartners, type Database, withTransaction } from '@qitu/database';
+import { adminAssistants, adminTeamMembers, adminTeams, pblTemplateTeamBindings, agentConfigs, agentMcpBindings, agentSkillBindings, agentToolBindings, agentMemoryRecords, auditLogs, knowledgeDocuments, projectTemplates, projectTemplateVersions, runtimeMcpServers, tutorPartners, type Database, withTransaction } from '@qitu/database';
 import { DATA_MODE_TOKEN, DATABASE_TOKEN, type DataMode } from '../../database';
 import { isTeachingRuntimeSkill, loadRuntimeSkillCatalog, loadTutorRuntimeSource } from '../../common/tutor-runtime/runtime-source';
 import { pblPhaseForProjectStage } from '../../common/pbl-phase';
@@ -322,12 +322,56 @@ export class PlatformRegistryService {
   async getAssistantRuntime(assistantId: string): Promise<EffectiveAgentRuntime> {
     if (!this.db) throw new ServiceUnavailableException('Assistant configuration storage is unavailable');
     const assistants = await this.db.select().from(adminAssistants);
-    const assistant = assistants.find((row) => row.id === assistantId);
+    let assistant = assistants.find((row) => row.id === assistantId);
+    if (!assistant) {
+      const builtin = BUILTIN_ASSISTANTS.find((b) => b.id === assistantId);
+      if (builtin) {
+        const now = new Date();
+        const toInsert = {
+          id: builtin.id,
+          source: 'builtin',
+          name: builtin.name,
+          avatar: builtin.avatar ?? null,
+          description: builtin.description,
+          role: builtin.role,
+          enabled: builtin.enabled,
+          sortOrder: builtin.sortOrder,
+          modelProviderId: builtin.modelProviderId ?? null,
+          modelId: builtin.modelId ?? null,
+          temperature: builtin.temperature ?? null,
+          instructions: builtin.instructions,
+          enabledSkills: [...builtin.enabledSkills],
+          toolIds: [...builtin.toolIds],
+          mcpServerIds: [...builtin.mcpServerIds],
+          defaults: mergeAssistantDefaults(builtin.defaults) as unknown as Record<string, unknown>,
+          agentStatus: builtin.agentStatus,
+          agentStatusMessage: builtin.agentStatusMessage ?? null,
+          teamSelectable: builtin.teamSelectable,
+          createdAt: builtin.createdAt ? new Date(builtin.createdAt) : now,
+          updatedAt: builtin.updatedAt ? new Date(builtin.updatedAt) : now,
+        };
+        try {
+          const insertBuilder = this.db.insert(adminAssistants).values(toInsert as any);
+          if (typeof (insertBuilder as any)?.onConflictDoNothing === 'function') {
+            await (insertBuilder as any).onConflictDoNothing();
+          } else {
+            await insertBuilder;
+          }
+          const fresh = await this.db.select().from(adminAssistants);
+          assistant = fresh.find((row) => row.id === assistantId) ?? (toInsert as any);
+        } catch {
+          assistant = toInsert as any;
+        }
+      }
+    }
     if (!assistant) throw new NotFoundException({ code: 'ASSISTANT_NOT_FOUND', message: 'Teaching assistant is unavailable' });
 
-    const runtime = loadTutorRuntimeSource();
-    const selectedSkills = runtime.skills.filter((skill) => assistant.enabledSkills.includes(skill.id) && skill.status === 'ready' && skill.publicationStatus === 'published');
-    if (assistant.enabledSkills.some((id) => !selectedSkills.some((skill) => skill.id === id))) {
+    const isCopilot = assistantId === 'qitu-assistant' || assistant.role?.includes('Copilot');
+    const runtime = isCopilot ? loadRuntimeSkillCatalog() : loadTutorRuntimeSource();
+    const selectedSkills = runtime.skills.filter((skill) =>
+      assistant.enabledSkills.includes(skill.id) && skill.status === 'ready' && (isCopilot || skill.publicationStatus === 'published')
+    );
+    if (!isCopilot && assistant.enabledSkills.some((id) => !selectedSkills.some((skill) => skill.id === id))) {
       throw new ConflictException({ code: 'ASSISTANT_SKILL_UNAVAILABLE', message: 'A bound teaching skill is unavailable' });
     }
     // Only exact identity and the explicit historical leader alias may restrict
@@ -336,8 +380,8 @@ export class PlatformRegistryService {
     const configs = (await this.db.select().from(agentConfigs)).filter((config) => runtimeIds.has(config.id));
     const mcpBindings = configs.length === 0 ? [] : await this.db.select().from(agentMcpBindings);
     const exactConfig = configs.find((config) => config.id === assistantId);
-    const enabled = assistant.enabled && configs.every((config) => config.enabled);
-    const modelUsage = exactConfig?.modelUsage ?? 'tutor.chat';
+    const enabled = (isCopilot ? true : assistant.enabled) && configs.every((config) => config.enabled);
+    const modelUsage = exactConfig?.modelUsage ?? (isCopilot ? 'admin.copilot' : 'tutor.chat');
     const selection = resolveAgentModelSelection({
       modelProviderId: assistant.modelProviderId, modelId: assistant.modelId, modelUsage,
     }, (usage) => this.models.resolvePurpose(usage).available ? this.models.resolve(usage) : null);
@@ -360,7 +404,7 @@ export class PlatformRegistryService {
         modelUsage, modelBinding: assistant.modelProviderId === null && assistant.modelId === null ? 'usage' : 'agent',
         modelProviderId: selection.providerId, modelId: selection.modelId,
         modelLabel: selectedModel?.modelLabel ?? null, modelAvailable: selectedModel?.available ?? false,
-        promptVersion: `admin-assistant:${assistant.id}:${assistant.updatedAt.toISOString()}`,
+        promptVersion: `admin-assistant:${assistant.id}:${assistant.updatedAt instanceof Date ? assistant.updatedAt.toISOString() : (assistant.updatedAt ? new Date(assistant.updatedAt).toISOString() : new Date().toISOString())}`,
         capabilities: ['teach'].filter((capability) => configs.every((config) => config.capabilities.includes(capability))),
         skillIds: [...assistant.enabledSkills], toolIds: [...assistant.toolIds],
         mcpServerIds: [...assistant.mcpServerIds],
@@ -1167,8 +1211,8 @@ export class PlatformRegistryService {
       if (expectedUpdatedAt && existing.updatedAt.toISOString() !== expectedUpdatedAt) throw new ConflictException({ code: 'ADMIN_AI_CONFIG_CONFLICT', message: '助手已变化，请回读后重新删除' });
       const members = await tx.select({ id: adminTeamMembers.slotId }).from(adminTeamMembers).where(eq(adminTeamMembers.assistantId, assistantId)).limit(1);
       const teams = await tx.select({ id: adminTeams.id }).from(adminTeams).where(sql`${adminTeams.leaderAssistantId}=${assistantId} OR ${adminTeams.pblSpec}::jsonb->'phases' @> ${JSON.stringify([{ assignedAssistantId: assistantId }])}::jsonb`).limit(1);
-      const versions = await tx.select({ id: adminTeamVersions.id }).from(adminTeamVersions).where(sql`${adminTeamVersions.leaderAssistantId}=${assistantId} OR ${adminTeamVersions.members} @> ${JSON.stringify([{ assistantId }])}::jsonb`).limit(1);
-      if (members.length || teams.length || versions.length) throw new ConflictException({ code: 'ASSISTANT_IN_USE', message: '助手仍被团队或历史版本引用，请先解除当前关联；历史来源可停用，不能删除' });
+      const versions = await tx.select({ id: pblTemplateTeamBindings.id }).from(pblTemplateTeamBindings).where(sql`EXISTS (SELECT 1 FROM jsonb_each(${pblTemplateTeamBindings.teamSnapshots}) AS frozen WHERE frozen.value->>'leaderAssistantId'=${assistantId} OR frozen.value->'members' @> ${JSON.stringify([{ assistantId }])}::jsonb)`).limit(1);
+      if (members.length || teams.length || versions.length) throw new ConflictException({ code: 'ASSISTANT_IN_USE', message: '助手仍被团队或教学绑定引用，请先解除当前关联；历史来源可停用，不能删除' });
       const purposes = await tx.execute<{ used: boolean }>(sql`SELECT (
         EXISTS(SELECT 1 FROM platform_configuration_revisions p WHERE p.revision=(SELECT max(revision) FROM platform_configuration_revisions)
           AND (p.config->'growthProjection'->>'profileAssistantId'=${assistantId} OR p.config->'growthProjection'->>'growthAssistantId'=${assistantId}
@@ -1197,9 +1241,9 @@ export class PlatformRegistryService {
       const [existing] = await tx.select().from(adminTeams).where(eq(adminTeams.id, teamId)).for('update');
       if (!existing) throw new NotFoundException('团队不存在');
       if (expectedUpdatedAt && existing.updatedAt.toISOString() !== expectedUpdatedAt) throw new ConflictException({ code: 'ADMIN_AI_CONFIG_CONFLICT', message: '团队已变化，请回读后重新删除' });
-      const versions = await tx.select({ id: adminTeamVersions.id }).from(adminTeamVersions).where(eq(adminTeamVersions.teamId, teamId)).limit(1);
+      const versions = await tx.select({ id: pblTemplateTeamBindings.id }).from(pblTemplateTeamBindings).where(sql`EXISTS (SELECT 1 FROM jsonb_each(${pblTemplateTeamBindings.teamSnapshots}) AS frozen WHERE frozen.value->>'teamId'=${teamId})`).limit(1);
       const templates = await tx.select({ id: projectTemplateVersions.id }).from(projectTemplateVersions).where(sql`${projectTemplateVersions.content}->>'linkedTeamId'=${teamId}`).limit(1);
-      if (versions.length || templates.length) throw new ConflictException({ code: 'TEAM_IN_USE', message: '团队已有不可变版本或模板引用，请停用团队并保留历史来源' });
+      if (versions.length || templates.length) throw new ConflictException({ code: 'TEAM_IN_USE', message: '团队已有教学绑定或模板引用，请停用团队并保留历史来源' });
       await tx.delete(adminTeamMembers).where(eq(adminTeamMembers.teamId, teamId));
       await tx.delete(adminTeams).where(eq(adminTeams.id, teamId));
       await this.audit.write({ actorId: actor.id, actorRole: actor.role, action: 'admin.team.delete',

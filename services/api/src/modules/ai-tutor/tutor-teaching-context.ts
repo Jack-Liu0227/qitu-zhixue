@@ -3,8 +3,10 @@ import { isObjectiveMastered } from '@qitu/ai-client';
 import type { TutorProjectContext } from '@qitu/contracts';
 import type { LearningPlanStore, LearningProjectRecord, ObjectiveRecord, SessionRecord } from '../learning-plan/learning-plan.store';
 import type { CompiledTeachingRole, TeachingBundlePayload } from '../templates/teaching-bundle.types';
+import { teachingBundleForSession } from '../templates/teaching-session-assignments';
 
 export interface TutorTeachingContext {
+  bindingTeamVersionId?: string;
   bundle: TeachingBundlePayload;
   role: CompiledTeachingRole;
   session: SessionRecord;
@@ -73,6 +75,8 @@ export async function resolveTutorTeachingContext(
     objective ??= selected.objectives[0];
   }
   const selectedIndex = selected.session.lessonIndex;
+  const bindingTeamVersionId = teaching.teamVersion.teamVersionId;
+  teaching = teachingBundleForSession(teaching, selectedIndex);
   const routes = teaching.sessionRoutes.filter((route) => route.sessionIndex === selectedIndex);
   const role = routes.length === 1 ? teaching.roles.find((entry) => entry.roleSlotId === routes[0]!.roleSlotId) : undefined;
   if (!role || !role.modelByPurpose.dialogue || !teaching.teamVersion.members.some((member) =>
@@ -89,7 +93,7 @@ export async function resolveTutorTeachingContext(
     roleSlotId: role.roleSlotId, assistantId: role.assistantId, objectiveId: objective?.id ?? null,
   };
   return {
-    bundle: teaching, role, session: selected.session, planId: plan.id, planRevision: plan.version,
+    bundle: teaching, bindingTeamVersionId, role, session: selected.session, planId: plan.id, planRevision: plan.version,
     objective: objective ?? null, lesson,
     currentTask: {
       id: objective?.id ?? selected.session.id, title: objective?.name ?? selected.frozen.title,

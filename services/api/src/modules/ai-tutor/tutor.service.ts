@@ -3,6 +3,8 @@ import { startTutorTeamRun } from './tutor-team-run';
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, Logger, NotFoundException, Optional, ServiceUnavailableException } from '@nestjs/common';
 import { LearningPlanService } from '../learning-plan/learning-plan.service';
 import { prepareTutorLessonActivities } from './tutor-activity-context';
+import { CoursewareService } from '../knowledge/courseware.service';
+import { frozenTeachingSpec } from './tutor-courseware-activity';
 import { projectTutorLessonProgram } from './tutor-lesson-program';
 import { restoreQuestionResults } from './tutor-question-results';
 import { TutorExperimentService } from './tutor-experiment.service';
@@ -41,7 +43,7 @@ import type {
 } from '@qitu/contracts';
 import { DATA_MODE_TOKEN, DATABASE_TOKEN, type DataMode } from '../../database';
 import { and, eq } from 'drizzle-orm';
-import { adminTeamVersions, auditLogs, pblGateEvidence, agentTeamRuns } from '@qitu/database';
+import { pblTemplateTeamBindings, auditLogs, pblGateEvidence, agentTeamRuns } from '@qitu/database';
 import { BUILTIN_ASSISTANTS, isObjectiveMastered } from '@qitu/ai-client';
 import { findQuizBankEntryByConcept, toQuizBlockProjection } from '@qitu/ai-client/quiz-bank';
 import { hashRequest, IdempotencyStore } from '../../common/idempotency';
@@ -90,6 +92,7 @@ import {
 } from './tutor.recommendation';
 import type { TemplateView } from '../templates/templates.types';
 import { InMemoryTutorSessionStore, TutorSessionStore } from './tutor-session.store';
+import { tutorReadTools } from './tutor-read-tools';
 import {
   type AppendTurnsInput,
   type TutorSessionSnapshot,
@@ -323,6 +326,7 @@ export class TutorService {
     @Optional() private readonly learningPlans?: LearningPlanService,
     @Optional() private readonly lessonProgress?: LearningSessionProgressService,
     @Optional() private readonly projectHistory?: ProjectHistoryService,
+    @Optional() private readonly courseware?: CoursewareService,
   ) {
     const runtime = loadTutorRuntimeSource();
     this.provider = createTutorProvider(dataMode, gateway, buildTutorRuntimeBlocks(runtime, []), ima);
@@ -437,7 +441,7 @@ export class TutorService {
     return resolveExplorationHandoff({ ownerId, exploration, bindings: this.templateBindings, registry: this.platformRegistry,
       fallback: { teamId: null, teamName: null, assistantId: intake?.id ?? 'qitu-intake-assistant',
         assistantName: intake?.name ?? '启途智学助手', assistantAvatar: intake?.avatar ?? null },
-      loadTeam: async id => this.loadFrozenTeamVersion(id, await this.platformRegistry!.listAssistants()),
+      loadTeam: async (id, bindingId) => this.loadFrozenTeamVersion(bindingId, id, await this.platformRegistry!.listAssistants()),
     });
   }
   /**
@@ -491,7 +495,8 @@ export class TutorService {
       }
       if (projectId !== null && snapshot !== null) {
         const assistants = await this.platformRegistry.listAssistants();
-        const frozenTeam = await this.loadFrozenTeamVersion(snapshot.teamVersionId, assistants);
+        const teaching = snapshot.bundleDigest ? await this.resolveTeaching(projectId, ownerId) : null;
+        const frozenTeam = await this.loadFrozenTeamVersion(snapshot.bindingId, teaching?.bundle.teamVersion.teamVersionId ?? snapshot.teamVersionId, assistants);
         if (frozenTeam !== null) {
           const leaderId = frozenTeam.leaderAssistantId;
           const leader = assistants.find((candidate) => candidate.id === leaderId)
@@ -543,17 +548,16 @@ export class TutorService {
 
   /** 按冻结的 teamVersionId 读不可变团队版本行，形变为 tutor 只读的 AdminTeamConfig。 */
   private async loadFrozenTeamVersion(
+    bindingId: string,
     teamVersionId: string,
     assistants: Awaited<ReturnType<PlatformRegistryService['listAssistants']>>,
   ): Promise<AdminTeamConfig | null> {
     if (this.database === null) return null;
-    const [row] = await this.database
-      .select()
-      .from(adminTeamVersions)
-      .where(eq(adminTeamVersions.id, teamVersionId))
-      .limit(1);
+    const [binding] = await this.database.select().from(pblTemplateTeamBindings)
+      .where(eq(pblTemplateTeamBindings.id, bindingId)).limit(1);
+    const row = binding?.teamSnapshots?.[teamVersionId];
     if (row === undefined) return null;
-    const createdAt = row.createdAt.toISOString();
+    const createdAt = new Date(row.createdAt).toISOString();
     return {
       id: row.teamId,
       name: row.name,
@@ -764,6 +768,22 @@ export class TutorService {
     return this.resolveTeaching(projectId, studentId);
   }
 
+  async readCoursewareContext(projectId: string, studentId: string) {
+    const teaching = await this.resolveTeaching(projectId, studentId);
+    if (!teaching || !this.platformRegistry) return null;
+    const registry = this.platformRegistry;
+    const access = await resolveTutorKnowledgeAccess({ teaching, projectId, studentId, assistantId: teaching.role.assistantId,
+      templateVersionId: teaching.bundle.templateVersionId, plans: this.learningStore, bindings: this.templateBindings, ima: this.imaSettings,
+      authorizeManagedTool: async id => {
+        const runtime = freezeTutorRuntime(await registry.getAssistantRuntime(teaching.role.assistantId), teaching.role,
+          registry.isModelAvailable(teaching.role.modelByPurpose.dialogue!));
+        return runtime.agent.enabled && runtime.tools.some(tool => tool.id === id);
+      } });
+    const runtime = scopeTutorRuntimeToLesson(freezeTutorRuntime(await registry.getAssistantRuntime(teaching.role.assistantId),
+      teaching.role, registry.isModelAvailable(teaching.role.modelByPurpose.dialogue!)), teaching);
+    return { teaching, access, runtime };
+  }
+
   private async resolveTeaching(projectId: string, studentId: string): Promise<TutorTeachingContext | null> {
     if (!this.learningStore || !this.templateBindings) return null;
     const project = await this.learningStore.findProject(projectId);
@@ -786,6 +806,7 @@ export class TutorService {
         ?.activities?.flatMap(activity => activity.evidenceRefs) ?? [];
       const lessonSpec = context.bundle.template.curriculum?.profiles.find(entry => entry.id === context.bundle.scheduleProfileId)
         ?.sessions.find(entry => entry.sessionIndex === context.session.lessonIndex);
+      if (lessonSpec?.teachingSpec) context.lesson.teachingMode = lessonSpec.teachingSpec.version;
       context.lesson.collaborationAvailable = lessonSpec?.collaborators?.some(entry => entry.activity === context.lesson.currentActivity?.kind
         && (entry.trigger === 'on_request' || (context.lesson.evidenceRefs?.length ?? 0) > 0)) ?? false;
       const activity = context.lesson.currentActivity;
@@ -1703,7 +1724,9 @@ export class TutorService {
       knowledgeState = '仅引用实际检索或读取的资料；资料不足或未授权时明确说明，不得编造引用。';
       try {
         const result = await this.managedKnowledge.search(request.actorId, conversationAssistantId,
-          request.content ?? request.optionLabel ?? currentTaskTitle, 5, knowledgeAccess.managed);
+          teaching && frozenTeachingSpec(teaching)
+            ? teaching.lesson.title.slice(0, 200)
+            : request.content ?? request.optionLabel ?? currentTaskTitle, 5, knowledgeAccess.managed);
         contextPacket.knowledgeEvidence = result.evidence.map(e => ({document: {
           id: e.citationId, version: e.indexVersionId, title: e.title, summary: e.text, content: e.text,
           source: `${e.knowledgeBase} · ${e.citationId}`, scope: 'system' as const, active: true, tags: [],
@@ -1745,7 +1768,7 @@ export class TutorService {
     const lessonActivities = await prepareTutorLessonActivities({ teaching, runtime: effectiveRuntime, projectId: record.projectId,
       assessmentPending: disclosure.kind === 'pending_assessment',
       studentId: request.actorId, tutorSessionId: record.sessionId, idempotencyKey: request.idempotencyKey, knowledgeAccess,
-      registry: this.platformRegistry, questions: this.learningPlans, experiments: this.experiments,
+      registry: this.platformRegistry, questions: this.learningPlans, experiments: this.experiments, courseware: this.courseware,
       hasQuestion: (id) => record.turns.some((turn) => turn.blocks.some((block) => block.kind === 'quiz' && block.questionId === id)),
       resolve: () => record.projectId ? this.resolveTeaching(record.projectId, request.actorId) : Promise.resolve(null) });
     const useUnifiedSDK = this.sdkFactory !== undefined
@@ -1757,7 +1780,7 @@ export class TutorService {
         const generated: TutorStreamEvent[] = [];
         for await (const event of this.provider.generateTurn({
           ...providerInput,
-          knowledgeTools, knowledgeState, knowledgeScope: knowledgeAccess.scope, lessonActivities, disclosure, refreshDisclosure,
+          knowledgeTools, learnerReadTools, knowledgeState, knowledgeScope: knowledgeAccess.scope, lessonActivities, disclosure, refreshDisclosure,
           authorizeKnowledgeTool, imaKnowledgeScope: knowledgeAccess.ima,
           modelUsage: purpose.usageId,
           modelProviderId: effectiveRuntime?.agent.modelProviderId ?? undefined,
@@ -1779,12 +1802,17 @@ export class TutorService {
         ), teaching) } : {}),
       },
     ) : undefined;
+    const learnerReadTools = unifiedSDK ? await tutorReadTools(unifiedSDK, async toolId => {
+      await this.auditWriter?.write({ actorId: request.actorId, actorRole: 'student', action: 'tutor.tool.read',
+        targetType: 'tutor_session', targetId: record.sessionId,
+        detail: { toolId, assistantId: conversationAssistantId, projectId: record.projectId } });
+    }) : [];
     if (unifiedSDK) {
       contextPacket.masterySnapshot = await unifiedSDK.mastery.snapshot({ validAt: new Date().toISOString(), knownAt: null });
     }
 
     const input: TutorTurnInput = {
-      knowledgeTools, knowledgeState, knowledgeScope: knowledgeAccess.scope, lessonActivities, disclosure, refreshDisclosure,
+      knowledgeTools, learnerReadTools, knowledgeState, knowledgeScope: knowledgeAccess.scope, lessonActivities, disclosure, refreshDisclosure,
       authorizeKnowledgeTool, imaKnowledgeScope: knowledgeAccess.ima,
       modelUsage: effectiveRuntime === null ? contextPacket.partner.modelUsage : 'agent.model',
       modelProviderId: effectiveRuntime?.agent.modelProviderId ?? undefined,

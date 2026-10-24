@@ -1,4 +1,4 @@
-import { ApiError } from '@qitu/api-client';
+import { ApiError, createIdempotencyKey as createFeedbackIdempotencyKey } from '@qitu/api-client';
 import type {
   ParentFeedbackSource,
   SubmitParentFeedbackRequest,
@@ -51,6 +51,7 @@ export class FeedbackSubmitError extends Error {
 }
 
 export interface SubmitFeedbackInput {
+  attachmentRefs?: string[];
   source: ParentFeedbackSource;
   content: string;
   childId?: string | null;
@@ -120,6 +121,7 @@ export async function submitParentFeedback(
     messageId: input.messageId ?? null,
     projectId: input.projectId ?? null,
     childId: input.childId ?? null,
+    attachmentRefs: input.attachmentRefs,
   };
 
   try {
@@ -161,12 +163,7 @@ function isFeedbackType(value: unknown): value is FeedbackType {
   return FEEDBACK_TYPES.some((option) => option.value === value);
 }
 
-export function createFeedbackIdempotencyKey(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  return `fb-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-}
+export { createFeedbackIdempotencyKey };
 
 export function createEmptyFeedbackDraft(childId = ''): FeedbackDraft {
   return {
@@ -203,6 +200,8 @@ export function readFeedbackDraft(parentId: string): FeedbackDraft | null {
       childId: parsed.childId,
       projectId: parsed.projectId,
       idempotencyKey: parsed.idempotencyKey,
+      attachments: Array.isArray(parsed.attachments) ? parsed.attachments.filter(file => file && typeof file.id === 'string'
+        && typeof file.fileName === 'string' && typeof file.contentType === 'string' && typeof file.sizeBytes === 'number' && typeof file.createdAt === 'string') : [],
     };
   } catch {
     storage.removeItem(draftKey(parentId));

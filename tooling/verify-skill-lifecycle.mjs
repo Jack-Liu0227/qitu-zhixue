@@ -81,7 +81,7 @@ const tests = [
   join(api, 'modules/growth/skill-lifecycle.test.js'),
   join(api, 'modules/growth/growth-projection-expression-flow.test.js'),
   join(api, 'modules/works/artifact-format.test.js'),
-  join(api, 'modules/platform-registry/team-version.test.js'),
+  join(api, 'modules/platform-registry/teaching-team-capture.test.js'),
   join(api, 'modules/ai-tutor/tutor.runtime-identity.test.js'),
   join(api, 'modules/learning-plan/optics-fullflow.test.js'),
   join(worker, 'team-runtime-executor.test.js'),

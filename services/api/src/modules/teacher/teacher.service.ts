@@ -2,6 +2,10 @@ import { BadRequestException, ConflictException, ForbiddenException, Inject, Inj
 import { and, desc, eq } from 'drizzle-orm';
 import { mentorReviews, withTransaction, type Database } from '@qitu/database';
 import { DirectoryService } from '../directory/directory.service';
+import { LearningInsightsService } from '../learning-insights/learning-insights.service';
+import { GrowthService } from '../growth/growth.service';
+import { FeedbackService } from '../feedback/feedback.service';
+import { TeacherInterventionService } from './teacher-intervention.service';
 import { PlatformDataService } from '../platform-data/platform-data.service';
 import { LearningPlanStore } from '../learning-plan/learning-plan.store';
 import { WorksService } from '../works/works.service';
@@ -9,7 +13,7 @@ import { InMemoryWorksStore, type MentorReviewRecord } from '../works/works.stor
 import { currentStudentProject } from '../projects/current-project';
 import { TeamRuntimeService, type TeacherAgentRunProjection } from '../team-runtime/team-runtime.service';
 import type { AuditEntry } from '../../common/audit/audit-entry';
-import type { AuditWriter } from '../../common/audit/audit.service';
+import { AuditWriter } from '../../common/audit/audit.service';
 import type {
   CurrentUser,
   TeacherReviewDecision,
@@ -271,6 +275,11 @@ export class TeacherService {
     @Optional() @Inject(TeacherReviewRepository) private readonly reviews?: TeacherReviewRepository,
     @Optional() private readonly learningStore?: LearningPlanStore,
     @Optional() private readonly works?: WorksService,
+    @Optional() private readonly insights?: LearningInsightsService,
+    @Optional() private readonly growth?: GrowthService,
+    @Optional() private readonly feedback?: FeedbackService,
+    @Optional() private readonly interventions?: TeacherInterventionService,
+    @Optional() private readonly audit?: AuditWriter,
   ) {}
 
   async listStudentReviews(actor: CurrentUser, studentId: string, offset = 0, limit = 20) {
@@ -334,6 +343,8 @@ export class TeacherService {
    */
   async getRoster(teacherUserId: string): Promise<TeacherStudentRow[]> {
     const students = await this.directory.studentsOfMentor(teacherUserId);
+    await this.audit?.write({ actorId: teacherUserId, actorRole: 'teacher', action: 'teacher.learning.read',
+      targetType: 'mentor_roster', targetId: teacherUserId, detail: { studentCount: students.length, projection: 'family-learning.v1' } });
 
     // 监护人数必须真算。之前这里是写死的 `guardianCount: 0`，于是教师端
     // 「尚无监护人接入」统计永远等于学生总数 —— 和管理后台的关系绑定页
@@ -347,9 +358,14 @@ export class TeacherService {
     }
 
     if (!this.learningStore) throw new ServiceUnavailableException('项目统计暂不可用');
+    const feedback = this.feedback ? await this.feedback.listForTeacher(teacherUserId) : [];
+    const interventions = this.interventions ? await this.interventions.list(teacherUserId) : [];
     return Promise.all(students.map(async (s) => {
       const projects = await this.learningStore!.listProjectsByStudent(s.userId);
       const current = currentStudentProject(projects);
+      const activity = this.insights ? await this.insights.activity(s.userId) : undefined;
+      const attentionCount = feedback.filter(ticket => ticket.studentId === s.userId && ['processing', 'reopened'].includes(ticket.status)).length
+        + interventions.filter(row => row.studentId === s.userId && row.status !== 'resolved').length;
       return {
         studentId: s.userId, displayName: s.displayName, email: s.email,
         gradeLabel: null, classLabel: null, avatarInitial: s.displayName.charAt(0),
@@ -357,9 +373,10 @@ export class TeacherService {
         projectsCompleted: projects.filter((project) => ['completed', 'published'].includes(project.status)).length,
         currentProjectId: current?.id ?? null, currentProjectTitle: current?.title ?? null,
         currentStage: current?.status ?? null, progressPercent: current?.progressPercent ?? 0,
-        lastActivityAt: null, stuck: false, attentionCount: 0,
-        guardianCount: guardianCounts.get(s.userId) ?? 0, activeDays: 0, weeklyTasks: 0,
-        signalsAvailable: false,
+        lastActivityAt: activity?.lastActivityAt ?? null, stuck: false, attentionCount,
+        guardianCount: guardianCounts.get(s.userId) ?? 0, activeDays: activity?.activeDays ?? 0,
+        weeklyTasks: activity?.completedSessionsThisWeek ?? 0, activity,
+        signalsAvailable: activity !== undefined,
       };
     }));
   }
@@ -380,19 +397,21 @@ export class TeacherService {
     const studentRow = (await this.getRoster(teacherUserId)).find((row) => row.studentId === studentUserId);
     if (!studentRow || !this.learningStore) throw new NotFoundException('学生数据不可用');
     const projects = await this.learningStore.listProjectsByStudent(studentUserId);
+    const growth = this.growth ? await this.growth.getParentPage(studentUserId,
+      { type: 'all', projectId: null, from: null, to: null, cursor: null, limit: 6 }) : null;
 
     return {
       student: studentRow,
       projects: projects.map((project) => ({ projectId: project.id, title: project.title, stage: project.status, progressPercent: project.progressPercent, updatedAt: project.createdAt.toISOString() })),
-      interventions: [],
-      recentGrowth: [],
+      interventions: (await this.listInterventions(teacherUserId)).filter(row => row.studentId === studentUserId),
+      recentGrowth: growth?.timeline.items.map(entry => ({ id: entry.id, occurredAt: entry.occurredAt, title: entry.title, summary: entry.summaryParent })) ?? [],
       guardians: guardians.map((g) => ({
         userId: g.userId,
         displayName: g.displayName,
-        relationship: 'guardian' as any,
+        relationship: 'guardian',
       })),
-      sessionsThisWeek: 0,
-      minutesThisWeek: 0,
+      sessionsThisWeek: studentRow.activity?.sessionsThisWeek ?? 0,
+      minutesThisWeek: studentRow.activity?.minutesThisWeek ?? 0,
     };
   }
 
@@ -418,18 +437,21 @@ export class TeacherService {
    * List interventions for this teacher's students.
    */
   async listInterventions(teacherUserId: string): Promise<TeacherInterventionRow[]> {
-    const students = await this.directory.studentsOfMentor(teacherUserId);
-
-    // Demo: no interventions yet
-    return [];
+    if (!this.interventions) return [];
+    return this.interventions.list(teacherUserId);
   }
 
   /**
    * Get one intervention detail. Enforces that the student is assigned to this teacher.
    */
   async getInterventionDetail(teacherUserId: string, interventionId: string): Promise<TeacherInterventionDetail> {
-    // Demo: no interventions exist
-    throw new NotFoundException('干预记录不存在');
+    const intervention = (await this.listInterventions(teacherUserId)).find(row => row.id === interventionId);
+    if (!intervention) throw new NotFoundException('学习支持请求不存在');
+    const student = (await this.getRoster(teacherUserId)).find(row => row.studentId === intervention.studentId);
+    if (!student) throw new NotFoundException('学习支持请求不存在');
+    return { intervention, student, diagnostic: '学生的项目中存在服务端记录的协助请求。',
+      suggestion: '先了解孩子尝试过哪些方法，再一起确定一个可以验证的小步骤。',
+      suggestedPrompt: '你已经尝试了哪些方法？哪一步最希望我们一起看看？' };
   }
 
   /**
@@ -439,9 +461,10 @@ export class TeacherService {
     teacherUserId: string,
     interventionId: string,
     action: TeacherInterventionAction,
+    note: string | null = null,
   ): Promise<TeacherInterventionActionResponse> {
-    // Demo: no interventions exist
-    throw new NotFoundException('干预记录不存在');
+    if (!this.interventions) throw new ServiceUnavailableException('学习支持服务暂不可用');
+    return this.interventions.act(teacherUserId, interventionId, action, note);
   }
 
   /**
@@ -464,6 +487,17 @@ export class TeacherService {
    * 归属字段（`studentUserId` / `mentorUserId` / `projectId` / `kind` /
    * `artifactRef`）一律从复核行读——方法签名里就没有它们，客户端无法直写。
    */
+  async requireAssignedReview(actor: CurrentUser, reviewId: string): Promise<TeacherReviewRecord> {
+    if (!this.reviews) throw new ServiceUnavailableException({ code: TEACHER_REVIEW_ERROR_CODES.UNAVAILABLE, message: '复核存储不可用' });
+    const review = await this.reviews.findReviewById(reviewId);
+    if (!review) throw new NotFoundException({ code: TEACHER_REVIEW_ERROR_CODES.NOT_FOUND, message: '复核记录不存在' });
+    if (actor.role !== 'teacher' || review.mentorUserId !== actor.id) {
+      throw new ForbiddenException({ code: TEACHER_REVIEW_ERROR_CODES.NOT_OWNER, message: '只能查看归属自己的复核记录' });
+    }
+    await this.assertTeacherCanAccessStudent(actor.id, review.studentUserId);
+    return review;
+  }
+
   async decideReview(
     actor: CurrentUser,
     reviewId: string,
@@ -576,7 +610,7 @@ export class TeacherService {
     const students = await this.getRoster(teacherUserId);
     if (!this.learningStore) throw new ServiceUnavailableException('项目统计暂不可用');
     const projects = (await Promise.all(students.map((student) => this.learningStore!.listProjectsByStudent(student.studentId)))).flat();
-    const stageDistribution = countStages(projects.map((project) => project.status));
+    const stageDistribution = countStages(projects.filter(project => project.status !== 'exploration').map((project) => project.status));
     const interventions = await this.listInterventions(teacherUserId);
 
     return {
@@ -584,16 +618,16 @@ export class TeacherService {
       totals: {
         studentCount: students.length,
         activeStudentCount: students.filter((student) => student.activeDays > 0).length,
-        sessionsThisWeek: 0,
-        minutesThisWeek: 0,
+        sessionsThisWeek: students.reduce((sum, student) => sum + (student.activity?.sessionsThisWeek ?? 0), 0),
+        minutesThisWeek: students.reduce((sum, student) => sum + (student.activity?.minutesThisWeek ?? 0), 0),
         tasksCompletedThisWeek: students.reduce((sum, student) => sum + student.weeklyTasks, 0),
-        openInterventions: interventions.length,
+        openInterventions: interventions.filter(row => row.status !== 'resolved').length,
       },
-      weeklyActivity: [],
+      weeklyActivity: buildWeeklyActivity(students),
       stageDistribution,
       needsAttention: students.filter((student) => student.stuck || student.attentionCount > 0),
       dataSource: 'live',
-      signalsAvailable: false,
+      signalsAvailable: students.every(student => student.signalsAvailable === true),
     };
   }
 }
@@ -648,15 +682,12 @@ function countStages(stages: ProjectStage[]): { stage: ProjectStage; count: numb
 function buildWeeklyActivity(
   students: TeacherStudentRow[],
 ): { weekLabel: string; activeStudents: number; tasksCompleted: number }[] {
-  const today = new Date();
-  return Array.from({ length: 7 }, (_, index) => {
-    const date = new Date(today);
-    date.setDate(today.getDate() - (6 - index));
-    const key = date.toISOString().slice(0, 10);
+  const dates = [...new Set(students.flatMap(student => student.activity?.daily.map(day => day.date) ?? []))].sort();
+  return dates.map(key => {
     return {
-      weekLabel: `${date.getMonth() + 1}/${date.getDate()}`,
-      activeStudents: students.filter((student) => student.lastActivityAt?.slice(0, 10) === key).length,
-      tasksCompleted: 0,
+      weekLabel: `${Number(key.slice(5, 7))}/${Number(key.slice(8, 10))}`,
+      activeStudents: students.filter(student => student.activity?.daily.some(day => day.date === key && day.sessions > 0)).length,
+      tasksCompleted: students.reduce((sum, student) => sum + (student.activity?.daily.find(day => day.date === key)?.completedSessions ?? 0), 0),
     };
   });
 }

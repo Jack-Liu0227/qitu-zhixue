@@ -1,5 +1,6 @@
 import type { KnowledgeType, QuestionKind } from '@qitu/contracts';
 import { buildWaveReadinessQuestion } from './wave-readiness.js';
+import { buildRegisteredQuizQuestion } from './registered-quiz.js';
 
 /**
  * 题库与题面边界（纯函数，零 I/O）。
@@ -189,6 +190,8 @@ function mutate(value: string, seed: number): string {
 export function buildQuestion(input: BuildQuestionInput): QuestionCard {
   const readiness = buildWaveReadinessQuestion(input);
   if (readiness) return readiness;
+  const registered = buildRegisteredQuizQuestion(input);
+  if (registered) return registered;
   const { objective, index } = input;
   const seed = input.seed ?? objective.id;
   const questionType = questionKindForType(objective.type, index);

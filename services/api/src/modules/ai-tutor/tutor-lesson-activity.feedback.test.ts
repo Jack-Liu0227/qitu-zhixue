@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { ConflictException } from '@nestjs/common';
 import { createLessonActivityChannel, LESSON_ACTIVITY_TOOL } from './tutor-lesson-activity';
 import { teachingContextFixture } from './tutor-teaching-context.test-fixture';
 import { resolveTutorTeachingContext } from './tutor-teaching-context';
@@ -26,9 +27,17 @@ test('a rejected board receives bounded repair guidance and a corrected retry ac
       objectiveId: teaching.objective!.id, tutorSessionId: 'synthetic-feedback-session' },
     idempotencyKey: 'synthetic-feedback-turn', refresh: async () => ({ teaching, runtime }),
     verifyEvidence: async () => [], acceptQuestion: async () => { throw Error('not used'); },
-    proposeOptics: async () => { throw Error('not used'); },
+    proposeOptics: async () => { throw new ConflictException({ code: 'OPTICS_PARAMETER_OUT_OF_RANGE', message: 'private owner detail' }); },
   });
   const tool = channel.tools[0]!;
+  for (const extra of [{ sourceRefs: ['untrusted-source'] }, {}]) {
+    const rejected = await tool.execute({ kind: 'optics', title: 'Diffraction', summary: 'Observe the central band',
+      mode: 'diffraction', parameters: {}, ...extra });
+    assert.equal(rejected.isError, true);
+    assert.match(rejected.text, /OPTICS_CANDIDATE_REJECTED/);
+    assert.doesNotMatch(rejected.text, /private owner detail|untrusted-source/);
+    assert.equal(channel.blocks().length, 0);
+  }
   const board = { kind: 'board', title: 'Observe and explain', steps: [{ caption: 'Which statement is an observation?',
     nodes: [{ id: 'observe', label: 'Observation' }], edges: [] }] };
   for (const bad of [

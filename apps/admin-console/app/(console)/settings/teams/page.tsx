@@ -74,6 +74,22 @@ export default function AdminTeamsPage() {
     void loadData();
   }, [loadData]);
 
+  // 当带有 ?teamId=... 或 ?id=... 参数时，自动切换到该团队的详情/成员编辑视图
+  useEffect(() => {
+    if (typeof window !== 'undefined' && teams.length > 0) {
+      const params = new URLSearchParams(window.location.search);
+      const targetId = params.get('teamId') || params.get('id');
+      if (targetId) {
+        const found = teams.find((t) => t.id === targetId);
+        if (found) {
+          setActiveTeamId(targetId);
+          setViewingTeamId(targetId);
+          setViewMode('detail');
+        }
+      }
+    }
+  }, [teams]);
+
   const activeTeam = useMemo(() => {
     return teams.find((t) => t.id === activeTeamId) || teams[0] || null;
   }, [teams, activeTeamId]);
@@ -298,7 +314,7 @@ export default function AdminTeamsPage() {
 
     try {
       const updatedMembers = viewingTeam.members.map((m) => {
-        if (m.assistantId === editingMember.assistantId) {
+        if (m.slotId === editingMember.slotId) {
           return {
             slotId: m.slotId,
             assistantId: m.assistantId,
@@ -324,13 +340,14 @@ export default function AdminTeamsPage() {
       handleCloseMemberEdit();
     } catch (err: any) {
       alert(`保存成员失败：${err?.message || '保存异常'}`);
+      throw err;
     }
   };
 
   // 创建新助手
   const handleCreateNewAssistant = () => {
     // 跳转到助手创建页面
-    window.location.href = '/settings/assistants?action=create';
+    window.location.href = '/admin/settings/assistants?action=create';
   };
 
   const stateView = AdminStateViews({ loading, error, onRetry: loadData });
@@ -362,6 +379,7 @@ export default function AdminTeamsPage() {
           onBack={handleBackToList}
           onUpdateTeam={(updates) => handleUpdateTeam(viewingTeam.id, updates)}
           onOpenMemberEdit={handleOpenMemberEdit}
+          onAddMember={() => setShowAddMemberModal(true)}
           onRemoveMember={handleRemoveMember}
           onSetLeader={handleSetLeader}
         />

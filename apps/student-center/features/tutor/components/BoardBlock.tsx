@@ -3,6 +3,7 @@
 import { createElement, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { MarkdownMathView } from './MarkdownMathView';
 import { MermaidView } from './MermaidView';
+import presentation from './CoursewarePresentation.module.css';
 
 type BoardStep = { caption: string; mermaid?: string; tex?: string; svg?: string };
 
@@ -14,15 +15,20 @@ export function BoardBlock({ title, steps }: { title?: string; steps: BoardStep[
   return (
     <section className="qitu-board-card" aria-label={title ?? '分步白板'}>
       <header className="qitu-board-header"><div><span className="qitu-quiz-badge">分步白板</span>{title ? <h4>{title}</h4> : null}</div><span>步骤 {boundedIndex + 1} / {steps.length}</span></header>
-      <p className="qitu-board-caption">{step.caption}</p>
-      <div className="qitu-board-canvas">
-        {step.tex ? <MarkdownMathView content={`$$${step.tex}$$`} /> : null}
+      <ol className={presentation.steps} aria-label="图示步骤">{steps.map((item, index) => <li key={index}>
+        <button type="button" aria-label={`查看第 ${index + 1} 步：${item.caption}`} aria-current={index === boundedIndex ? 'step' : undefined}
+          onClick={() => setStepIndex(index)}>{String(index + 1).padStart(2, '0')}</button>
+      </li>)}</ol>
+      <p className={`qitu-board-caption ${presentation.caption}`}>{step.caption}</p>
+      {step.tex || step.mermaid || step.svg ? <div key={boundedIndex} className={`qitu-board-canvas ${presentation.stage}`}>
+        {step.tex ? <div className={presentation.formula}><MarkdownMathView content={`$$${step.tex}$$`} /></div> : null}
         {step.mermaid ? <MermaidView code={step.mermaid} /> : null}
         {step.svg ? <SafeSvg source={step.svg} /> : null}
-      </div>
+      </div> : null}
       <footer className="qitu-board-footer">
         <button type="button" className="qitu-button qitu-button-ghost qitu-button-sm" disabled={boundedIndex === 0} onClick={() => setStepIndex(boundedIndex - 1)}>上一页图示</button>
         <button type="button" className="qitu-button qitu-button-primary qitu-button-sm" disabled={boundedIndex >= steps.length - 1} onClick={() => setStepIndex(boundedIndex + 1)}>下一页图示</button>
+        {boundedIndex > 0 ? <button type="button" className="qitu-button qitu-button-ghost qitu-button-sm" onClick={() => setStepIndex(0)}>从头再看</button> : null}
       </footer>
     </section>
   );

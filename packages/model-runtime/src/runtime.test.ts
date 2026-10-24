@@ -3,6 +3,32 @@ import { createServer } from 'node:http';
 import { test } from 'node:test';
 import { createModelRuntime, ModelRuntimeError } from './runtime.js';
 
+for (const ignoresBudget of [false, true]) test(`tool budget closes with one text-only request; ignores budget=${ignoresBudget}`, async () => {
+  let requests = 0, executions = 0;
+  const server = createServer(async (request, response) => {
+    let raw = ''; for await (const chunk of request) raw += String(chunk);
+    const body = JSON.parse(raw); requests++;
+    if (requests === 2) {
+      assert.equal(body.tools?.length ?? 0, 0);
+      assert.equal(body.messages.filter((m: { role: string; content: string }) => m.role === 'tool' && m.content.includes('TOOL_BUDGET_EXHAUSTED')).length, 1);
+    }
+    const call = requests === 1 || ignoresBudget;
+    const delta = call ? { tool_calls: Array.from({ length: requests === 1 ? 9 : 1 }, (_, index) => ({ index, id: `call-${requests}-${index}`, type: 'function', function: { name: 'read_source', arguments: '{}' } })) } : { content: 'Only eight verified reads were completed.' };
+    response.writeHead(200, { 'content-type': 'text/event-stream' });
+    response.end(['data: ' + JSON.stringify({ id: 'x', choices: [{ index: 0, delta, finish_reason: null }] }),
+      'data: ' + JSON.stringify({ id: 'x', choices: [{ index: 0, delta: {}, finish_reason: call ? 'tool_calls' : 'stop' }] }), 'data: [DONE]', ''].join('\n\n'));
+  });
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address(); assert.ok(address && typeof address !== 'string');
+  try {
+    const runtime = createModelRuntime({ resolveRuntimeTarget: () => ({ providerId: 'test', providerName: 'Test', modelId: 'test', baseUrl: `http://127.0.0.1:${address.port}`, api: 'openai-completions', credential: 'test-key' }) });
+    const promise = runtime.complete({ usageId: 'test', messages: [{ role: 'user', content: 'Read sources' }], tools: [{ name: 'read_source', description: 'Read', inputSchema: { type: 'object' }, execute: async () => { executions++; return { text: 'Verified read' }; } }] });
+    if (ignoresBudget) await assert.rejects(promise, error => error instanceof ModelRuntimeError && error.code === 'MODEL_REQUEST_INVALID');
+    else assert.match((await promise).text, /eight verified reads/);
+    assert.equal(executions, 8); assert.equal(requests, 2);
+  } finally { server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve())); }
+});
+
 for (const status of [401, 403, 429, 500]) {
   test(`native HTTP ${status} retains safe status and retryability without provider bodies`, async () => {
     const secret = 'private-upstream-fixture';
@@ -53,6 +79,7 @@ for (const mode of ['complete', 'stream'] as const) test(mode + ' tool loop retu
   let requests = 0;
   let executions = 0;
   const events: string[] = [];
+  const failures: string[] = [];
   const server = createServer(async (request, response) => {
     let raw = '';
     for await (const chunk of request) raw += String(chunk);
@@ -85,7 +112,7 @@ for (const mode of ['complete', 'stream'] as const) test(mode + ' tool loop retu
     const request: import('./runtime.js').ModelRuntimeRequest = { usageId: 'tutor.chat', messages: [{ role: 'user', content: '查教材' }], tools: [{
       name: 'ima_read_document', description: 'read authorized document', inputSchema: { type: 'object', properties: { start_page: { type: 'integer' } } },
       execute: async (args) => { assert.equal(args.start_page, 10); executions++; return { text: '教材第10页：集合的含义' }; },
-    }], onToolEvent: (event) => events.push(event.type) };
+    }], onToolEvent: (event) => { events.push(event.type); if (event.type === 'result' && event.isError) failures.push(event.errorCode ?? 'missing'); } };
     let result: import('./runtime.js').ModelRuntimeResult | undefined;
     if (mode === 'complete') result = await runtime.complete(request);
     else for await (const event of runtime.stream(request)) { if (event.type === 'done') result = event.result; }
@@ -94,6 +121,7 @@ for (const mode of ['complete', 'stream'] as const) test(mode + ' tool loop retu
     assert.equal(executions, 1);
     assert.equal(requests, 2);
     assert.deepEqual(events, ['call', 'result', 'call', 'result']);
+    assert.deepEqual(failures, ['TOOL_NOT_ALLOWED']);
   } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
 

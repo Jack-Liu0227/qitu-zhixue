@@ -192,6 +192,7 @@ test('project MCP execution filters KBs, records real search provenance and reje
   let drift = false;
   let allowed = true;
   let revokeDuringRead = false;
+  let deniedSearch = false;
   const calls: string[] = [];
   const server = createServer(async (request, response) => {
     let raw = '';
@@ -210,6 +211,8 @@ test('project MCP execution filters KBs, records real search provenance and reje
           : { items: [{ kind: 'document', knowledge_base_id: 'allowed', document_ref: 'signed-source-reference' }] };
       if (name === 'ima_read_document' && revokeDuringRead) allowed = false;
       result = { content: [{ type: 'text', text: JSON.stringify(value) }] };
+      if (name === 'ima_search_knowledge' && deniedSearch) result = { isError: true,
+        content: [{ type: 'text', text: JSON.stringify({ error: 'IMA_ACCESS_DENIED', message: 'private upstream body' }) }] };
     }
     response.setHeader('content-type', 'application/json');
     response.end(JSON.stringify({ jsonrpc: '2.0', id: rpc.id, result }));
@@ -228,6 +231,13 @@ test('project MCP execution filters KBs, records real search provenance and reje
     assert.equal(JSON.parse((await tool(names[0]!).execute({})).text).knowledge_bases.length, 1);
     await assert.rejects(tool(names[1]!).execute({ knowledge_base_id: 'outside', query: 'light' }), /SCOPE_DENIED/);
     await assert.rejects(tool(names[3]!).execute({ document_ref: 'signed-source-reference' }), /REFERENCE_REQUIRED/);
+    deniedSearch = true;
+    const denied = await tool(names[1]!).execute({ knowledge_base_id: 'allowed', query: 'light' });
+    assert.equal(denied.isError, true);
+    assert.match(denied.text, /^KNOWLEDGE_UPSTREAM_DENIED/);
+    assert.doesNotMatch(denied.text, /private upstream body/);
+    await assert.rejects(tool(names[3]!).execute({ document_ref: 'signed-source-reference' }), /REFERENCE_REQUIRED/);
+    deniedSearch = false;
     await tool(names[1]!).execute({ knowledge_base_id: 'allowed', query: 'light' });
     assert.match((await tool(names[3]!).execute({ document_ref: 'signed-source-reference' })).text, /Retrieved text/);
     const otherTurn = await client.toolsFor([{ ...binding, toolIds: names }], async () => true, { ...scope, projectId: 'other-project' });

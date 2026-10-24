@@ -10,6 +10,20 @@ import { KnowledgeBuildWorker } from './knowledge-build.worker';
 
 const scope = { authorizeTool: async () => true, key: 'fixture-exploration', knowledgeBaseIds: null };
 
+test('empty search is a successful lookup; permission and invalid citations remain failures', async () => {
+  const f = fixture();
+  f.engine.execute = async () => ({ ok: true, hits: [] });
+  const [search, read] = f.service.tools('student', 'assistant', scope);
+  const empty = await search!.execute({ query: 'no matching material' });
+  assert.notEqual(empty.isError, true); assert.equal(empty.outcome, 'empty');
+  assert.equal(JSON.parse(empty.text).state, 'NO_KNOWLEDGE_EVIDENCE');
+  const invalid = await read!.execute({ citationId: 'invented' });
+  assert.equal(invalid.isError, true); assert.match(invalid.text, /^KNOWLEDGE_SOURCE_UNAVAILABLE/);
+  f.revoke();
+  const denied = await search!.execute({ query: 'private' });
+  assert.equal(denied.isError, true); assert.match(denied.text, /^KNOWLEDGE_RETRIEVAL_DISABLED/);
+});
+
 function fixture() {
   let authorized = true;
   let version = 'v1';

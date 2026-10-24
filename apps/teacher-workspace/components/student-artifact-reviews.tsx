@@ -1,4 +1,5 @@
 'use client';
+import { createIdempotencyKey } from '@qitu/api-client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
@@ -135,16 +136,21 @@ function StudentReviewList({ studentId }: { studentId: string }) {
       ) : null}
 
       {page && page.items.length > 0 ? (
-        <div style={{ display: 'grid', gap: 8 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 8 }}>
           {page.items.map((item) => {
             const isSelected = selected?.reviewId === item.reviewId;
             const tone = statusToneMap[item.status] ?? 'amber';
             return (
-              <div
+              <button
+                type="button"
+                aria-pressed={isSelected}
                 key={item.reviewId}
                 onClick={() => setSelected(item)}
                 style={{
                   display: 'flex',
+                  width: '100%',
+                  minWidth: 0,
+                  textAlign: 'left',
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   padding: '12px 14px',
@@ -156,16 +162,16 @@ function StudentReviewList({ studentId }: { studentId: string }) {
                   boxShadow: isSelected ? '0 2px 8px rgba(37,99,235,0.08)' : 'none',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
                   <span style={{ fontSize: 18 }}>📄</span>
                   <strong style={{ fontSize: 13, color: isSelected ? '#1d4ed8' : '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {item.artifactTitle}
                   </strong>
                 </div>
-                <span className={`qtx-badge qtx-badge-${tone}`}>
+                <span className={`qtx-badge qtx-badge-${tone}`} style={{ flexShrink: 0 }}>
                   {statusLabels[item.status]}
                 </span>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -246,7 +252,7 @@ function ReviewDetail({ review, studentId, disabled, onSaved }: {
     const body = { decision, comment: comment.trim() };
     const fingerprint = JSON.stringify([review.reviewId, version.id, body]);
     if (keyRef.current?.fingerprint !== fingerprint) {
-      keyRef.current = { fingerprint, key: `review-${globalThis.crypto.randomUUID()}` };
+      keyRef.current = { fingerprint, key: `review-${createIdempotencyKey()}` };
     }
     try {
       const { data } = await teacherApi.decideArtifactReview(review.reviewId, body, keyRef.current.key);

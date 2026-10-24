@@ -1,4 +1,5 @@
 'use client';
+import { createIdempotencyKey } from '@qitu/api-client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { LessonQualityQueueItem } from '@qitu/contracts';
@@ -167,7 +168,7 @@ function QualityReview({ item, onSaved }: { item: LessonQualityQueueItem; onSave
     };
     const fingerprint = JSON.stringify(body);
     if (key.current?.fingerprint !== fingerprint) {
-      key.current = { fingerprint, value: `lesson-quality-${crypto.randomUUID()}` };
+      key.current = { fingerprint, value: `lesson-quality-${createIdempotencyKey()}` };
     }
     try {
       const { data } = await teacherApi.reviewLessonQuality(item.planId, item.learningSessionId, body, key.current.value);

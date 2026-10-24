@@ -2,6 +2,8 @@ import { BadRequestException, ConflictException, ForbiddenException, Injectable 
 import type { CurrentUser, TutorLearningScope, TutorLessonAssessmentAnswer, TutorLessonAssessmentResult, TutorLessonAssessmentView } from '@qitu/contracts';
 import { LearningPlanService } from '../learning-plan/learning-plan.service';
 import { LearningPlanStore } from '../learning-plan/learning-plan.store';
+import { ProjectLearningLifecycleService } from '../projects/project-learning-lifecycle.service';
+import { hashIdempotentInput } from '../../common/idempotency/idempotency.hash';
 import { TutorService } from './tutor.service';
 
 /** Tutor is an adapter; the existing pending-question and mastery owners retain grading. */
@@ -11,6 +13,7 @@ export class TutorLessonAssessmentService {
     private readonly tutor: TutorService,
     private readonly plans: LearningPlanService,
     private readonly store: LearningPlanStore,
+    private readonly lifecycle: ProjectLearningLifecycleService,
   ) {}
 
   async start(actor: CurrentUser, projectId: string, expected: TutorLearningScope): Promise<TutorLessonAssessmentView> {
@@ -38,6 +41,8 @@ export class TutorLessonAssessmentService {
       throw new ConflictException({ code: 'TUTOR_ASSESSMENT_SCOPE_INVALID', message: '题目与当前课时不一致，请重新读取。' });
     }
     const answer = await this.plans.submitAnswer(actor, scope.planId, scope.learningSessionId, { questionId: input.questionId, answer: input.answer }, key);
+    if (answer.theoryMastered) await this.lifecycle.syncAfterAnswer(actor, scope.planId,
+      hashIdempotentInput('formal.answer.sync', { sessionId: scope.learningSessionId, questionId: input.questionId }, { key }));
     return { projectId, scope, answer };
   }
 

@@ -1,4 +1,4 @@
-import type { AdminProjectBindingRecovery, AdminProjectBindingReconfirmation, PblPhase, PblTemplateTeamBinding, TeachingBundleDraft } from '@qitu/contracts';
+import type { AdminProjectBindingRecovery, AdminProjectBindingReconfirmation, PblPhase, PblTemplateTeamBinding, TeachingBundleDraft, PrepareTeachingArrangementInput } from '@qitu/contracts';
 import { adminEnvelopeRequest, newIdempotencyKey } from './types';
 
 export interface TemplateTeamBinding {
@@ -32,23 +32,23 @@ export interface PublishedTeamVersion {
   members?: readonly PublishedTeamMember[];
 }
 const path = (templateId: string, versionId: string) => `/api/v1/admin/project-templates/${encodeURIComponent(templateId)}/versions/${encodeURIComponent(versionId)}/bindings`;
+export function prepareCurrentTeachingArrangement(templateId: string, versionId: string, input: PrepareTeachingArrangementInput, key: string) {
+  return adminEnvelopeRequest<{ binding: PblTemplateTeamBinding; replayed: boolean }>({ path: `${path(templateId, versionId)}/prepare-current`, method: 'POST', body: input, idempotencyKey: key });
+}
 export function fetchTemplateBindings(templateId: string, versionId: string) {
   return adminEnvelopeRequest<TemplateTeamBinding[]>({ path: path(templateId, versionId), method: 'GET' });
 }
-export function fetchTeamVersions(teamId: string) {
-  return adminEnvelopeRequest<PublishedTeamVersion[]>({ path: `/api/v1/admin/teams/${encodeURIComponent(teamId)}/versions`, method: 'GET' });
-}
-export function publishTeamVersion(teamId: string, expectedUpdatedAt: string, key = newIdempotencyKey()) {
-  return adminEnvelopeRequest<PublishedTeamVersion>({ path: `/api/v1/admin/teams/${encodeURIComponent(teamId)}/versions`, method: 'POST', body: { expectedUpdatedAt }, idempotencyKey: key });
-}
-export function createTemplateBinding(templateId: string, versionId: string, teamVersionId: string, key = newIdempotencyKey()) {
-  return adminEnvelopeRequest<{ binding: PblTemplateTeamBinding }>({ path: path(templateId, versionId), method: 'POST', body: { teamVersionId }, idempotencyKey: key });
+export function fetchBindingTeamSnapshots(templateId: string, versionId: string, bindingId: string) {
+  return adminEnvelopeRequest<{ versions: PublishedTeamVersion[]; issues: { teamVersionId: string; code: string }[] }>({
+    path: `${path(templateId, versionId)}/${encodeURIComponent(bindingId)}/team-snapshots`, method: 'GET',
+  });
 }
 export function saveTemplateBundle(templateId: string, versionId: string, bindingId: string, draft: unknown, key = newIdempotencyKey()) {
   return adminEnvelopeRequest<{ binding: PblTemplateTeamBinding }>({ path: `${path(templateId, versionId)}/${encodeURIComponent(bindingId)}/teaching-bundle`, method: 'PATCH', body: draft, idempotencyKey: key });
 }
-export function prepareTemplateBundle(templateId: string, versionId: string, bindingId: string, scheduleProfileId: string, key = newIdempotencyKey(), phaseAssignments?: Readonly<Record<string, string>>) {
-  return adminEnvelopeRequest<{ binding: PblTemplateTeamBinding }>({ path: `${path(templateId, versionId)}/${encodeURIComponent(bindingId)}/prepare`, method: 'POST', body: { scheduleProfileId, phaseAssignments }, idempotencyKey: key });
+export function prepareTemplateBundle(templateId: string, versionId: string, bindingId: string, scheduleProfileId: string, key = newIdempotencyKey(), phaseAssignments?: Readonly<Record<string, string>>,
+  sessionAssignments?: TeachingBundleDraft['sessionAssignments']) {
+  return adminEnvelopeRequest<{ binding: PblTemplateTeamBinding }>({ path: `${path(templateId, versionId)}/${encodeURIComponent(bindingId)}/prepare`, method: 'POST', body: { scheduleProfileId, phaseAssignments, sessionAssignments }, idempotencyKey: key });
 }
 export function transitionTemplateBinding(templateId: string, versionId: string, bindingId: string, action: 'validate' | 'activate', key = newIdempotencyKey()) {
   return adminEnvelopeRequest<{ binding: PblTemplateTeamBinding }>({ path: `${path(templateId, versionId)}/${encodeURIComponent(bindingId)}/${action}`, method: 'POST', idempotencyKey: key });

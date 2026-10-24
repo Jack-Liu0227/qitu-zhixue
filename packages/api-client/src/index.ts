@@ -1,5 +1,7 @@
 import type { MasteryReadPort } from '@qitu/contracts';
 import { createMasteryReadPort } from './mastery';
+export { createIdempotencyKey } from './idempotency';
+export { uploadFeedbackAttachment, removeFeedbackAttachment } from './feedback-attachments';
 
 export { createQituReadSDK } from './qitu-sdk';
 export type { QituReadSDK } from './qitu-sdk';

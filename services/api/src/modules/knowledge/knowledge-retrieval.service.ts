@@ -1,6 +1,6 @@
 import { RUNTIME_TOOL_CATALOG } from '@qitu/contracts';
 import type { ManagedKnowledgeScope } from '../ai-tutor/tutor-knowledge-access';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
 import type { ModelRuntimeTool } from '@qitu/model-runtime';
 import {
@@ -15,12 +15,13 @@ import { libraryEngine } from './knowledge-library.service';
 /** Read-only access to administrator-managed bases. Projects never provision or own a base. */
 @Injectable()
 export class KnowledgeRetrievalService {
+  private readonly logger = new Logger(KnowledgeRetrievalService.name);
   constructor(
     private readonly center: KnowledgeCenterService,
     private readonly engine: KnowledgeEngineService,
   ) {}
 
-  private async attestRead(base: KnowledgeBaseRow, citationId: string, title: string, scope?: ManagedKnowledgeScope, fingerprint?: string) {
+  private async attestRead(base: KnowledgeBaseRow, citationId: string, title: string, scope?: ManagedKnowledgeScope, fingerprint?: string, sourceIdentity?: unknown) {
     if (!scope?.recordReadEvidence) return {};
     const connection = await this.connection(base);
     const kb = connection?.external_ref.remoteKnowledgeBaseId;
@@ -28,7 +29,8 @@ export class KnowledgeRetrievalService {
       || fingerprint && connection.fingerprint !== fingerprint) {
       throw new NotFoundException('资料不可用');
     }
-    const documentRefHash = checksum(JSON.stringify({ citationId, fingerprint: connection.fingerprint }));
+    // Stable content identity permits reuse; authorization still comes from this scoped read.
+    const documentRefHash = checksum(JSON.stringify({ source: sourceIdentity ?? citationId, fingerprint: connection.fingerprint }));
     const sourceRef = `knowledge-read:${checksum(JSON.stringify([scope.key, kb, documentRefHash]))}`;
     if (!await scope.recordReadEvidence({ sourceRef, knowledgeBaseId: kb, documentRefHash, title,
       expiresAt: Date.now() + 5 * 60_000 })) throw new NotFoundException('资料不可用');
@@ -68,7 +70,7 @@ export class KnowledgeRetrievalService {
       externalRef: connection.external_ref,
       remoteKnowledgeBaseId: connection.external_ref.remoteKnowledgeBaseId,
     });
-    if (!receipt.ok) return [];
+    if (!receipt.ok) return { failure: this.retrievalFailure(receipt.errorCode) };
     const fresh = (await this.accessible(studentId, assistantId, scope)).find((b) => b.id === base.id);
     if (!fresh || (await this.connection(fresh))?.fingerprint !== connection.fingerprint) return [];
     const manifest = receipt.manifest ?? {};
@@ -117,6 +119,13 @@ export class KnowledgeRetrievalService {
       });
     }
     return output;
+  }
+
+  private retrievalFailure(code?: string): 'UPSTREAM_DENIED' | 'UPSTREAM_UNAVAILABLE' {
+    const reason = ['IMA_CREDENTIALS_REJECTED', 'IMA_ACCESS_DENIED', 'SOURCE_NOT_AUTHORIZED'].includes(code ?? '')
+      ? 'UPSTREAM_DENIED' : 'UPSTREAM_UNAVAILABLE';
+    this.logger.warn(JSON.stringify({ event: 'knowledge.retrieval.failed', reason }));
+    return reason;
   }
 
   private async accessible(studentId: string, assistantId: string, scope?: ManagedKnowledgeScope) {
@@ -169,10 +178,13 @@ export class KnowledgeRetrievalService {
   }
 
   async search(studentId: string, assistantId: string, query: string, topK = 5, scope?: ManagedKnowledgeScope) {
-    if (!await scope?.authorizeTool?.('knowledge_search') || !(await this.center.canRetrieve(assistantId)))
-      return { state: 'CAPABILITY_NOT_AUTHORIZED', evidence: [] };
+    if (!await scope?.authorizeTool?.('knowledge_search'))
+      return { state: 'CAPABILITY_NOT_AUTHORIZED', reason: 'TOOL_REVOKED', evidence: [] };
+    if (!(await this.center.canRetrieve(assistantId)))
+      return { state: 'CAPABILITY_NOT_AUTHORIZED', reason: 'RETRIEVAL_DISABLED', evidence: [] };
     if (scope?.knowledgeBaseIds?.length === 0) return { state: 'PROJECT_KNOWLEDGE_SCOPE_UNAVAILABLE', evidence: [] };
     const bases = await this.accessible(studentId, assistantId, scope);
+    const failures: Array<'UPSTREAM_DENIED' | 'UPSTREAM_UNAVAILABLE'> = [];
     const evidence: {
       citationId: string;
       knowledgeBaseId: string;
@@ -195,7 +207,8 @@ export class KnowledgeRetrievalService {
         scope,
       );
       if (linked) {
-        evidence.push(...linked);
+        if ('failure' in linked) failures.push(linked.failure);
+        else evidence.push(...linked);
         continue;
       }
       const snapshot = await this.snapshot(base);
@@ -208,7 +221,7 @@ export class KnowledgeRetrievalService {
         allowedMemberIds: snapshot.members.map((m) => m.id),
         topK,
       });
-      if (!receipt.ok) continue;
+      if (!receipt.ok) { failures.push(this.retrievalFailure(receipt.errorCode)); continue; }
       // Revocation, scope, index replacement and source mutation take effect in this turn.
       const fresh = (await this.accessible(studentId, assistantId, scope)).find((k) => k.id === base.id);
       if (!fresh || fresh.active_index_version_id !== base.active_index_version_id) continue;
@@ -236,6 +249,9 @@ export class KnowledgeRetrievalService {
     }
     if (!await scope?.authorizeTool?.('knowledge_search')) return { state: 'CAPABILITY_NOT_AUTHORIZED', evidence: [] };
     evidence.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+    if (!evidence.length && failures.length) return {
+      state: 'KNOWLEDGE_RETRIEVAL_FAILED', reason: failures.includes('UPSTREAM_DENIED') ? 'UPSTREAM_DENIED' : 'UPSTREAM_UNAVAILABLE', evidence,
+    };
     return {
       state: evidence.length ? 'ready' : 'NO_KNOWLEDGE_EVIDENCE',
       evidence: evidence.slice(0, topK),
@@ -266,7 +282,7 @@ export class KnowledgeRetrievalService {
         origin: record.origin,
         knowledgeBase: base.name,
         locator: null,
-        ...await this.attestRead(base, citationId, record.title, scope, record.fingerprint),
+        ...await this.attestRead(base, citationId, record.title, scope, record.fingerprint, { id: record.origin.sourceId, content: record.content }),
       };
     }
     const parts = citationId.split('~');
@@ -313,7 +329,7 @@ export class KnowledgeRetrievalService {
             (args.topK !== undefined &&
               (!Number.isInteger(args.topK) || Number(args.topK) < 1 || Number(args.topK) > 8))
           )
-            return { isError: true, text: 'INVALID_ARGUMENT' };
+            return { isError: true, text: 'TOOL_ARGUMENT_INVALID' };
           const result = await this.search(
             studentId,
             assistantId,
@@ -321,7 +337,12 @@ export class KnowledgeRetrievalService {
             args.topK as number | undefined,
             scope,
           );
-          return { isError: result.state !== 'ready', text: JSON.stringify(result) };
+          if (result.state === 'NO_KNOWLEDGE_EVIDENCE') return { outcome: 'empty', text: JSON.stringify(result) };
+          if (result.state === 'KNOWLEDGE_RETRIEVAL_FAILED') return { isError: true,
+            text: `KNOWLEDGE_${result.reason}. Retrieval failed; this is not an empty search. Do not repeat the same request or claim the textbook was verified. ${JSON.stringify(result)}` };
+          if (result.state !== 'ready') return { isError: true,
+            text: `KNOWLEDGE_${'reason' in result ? result.reason : 'PROJECT_SCOPE_UNAVAILABLE'}. Scope is no longer authorized. Do not retry the same request; explain the missing authorization. ${JSON.stringify(result)}` };
+          return { outcome: 'retrieved', text: JSON.stringify(result) };
         },
       },
       {
@@ -336,14 +357,14 @@ export class KnowledgeRetrievalService {
             Object.keys(args).some((k) => k !== 'citationId') ||
             typeof args.citationId !== 'string'
           )
-            return { isError: true, text: 'INVALID_ARGUMENT' };
+            return { isError: true, text: 'TOOL_ARGUMENT_INVALID' };
           try {
             return {
-              isError: false,
+              isError: false, outcome: 'retrieved',
               text: JSON.stringify(await this.read(studentId, assistantId, args.citationId, scope)),
             };
           } catch {
-            return { isError: true, text: 'RESOURCE_UNAVAILABLE' };
+            return { isError: true, text: 'KNOWLEDGE_SOURCE_UNAVAILABLE. Search again and copy an exact citationId returned in this scope. Do not invent a citation.' };
           }
         },
       },

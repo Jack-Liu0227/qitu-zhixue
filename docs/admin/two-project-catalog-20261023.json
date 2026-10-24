@@ -1,0 +1,482 @@
+{
+  "schemaVersion": 1,
+  "verifiedAt": "2026-10-23T15:47:49.270124+00:00",
+  "release": {
+    "visible": [
+      {
+        "id": "tpl-04bd8624-c1c4-41de-97de-318d055038e4",
+        "slug": "wave-interference-diffraction-8s-zero-base",
+        "title": "光为什么会出现明暗条纹？干涉与衍射探究 · 从基础开始",
+        "status": "piloting"
+      },
+      {
+        "id": "tpl-9e0535b3-72ad-4224-8b66-bfc147f1b58c",
+        "slug": "thunder-fighter-zero-base",
+        "title": "雷霆战机",
+        "status": "piloting"
+      }
+    ],
+    "archived": [
+      {
+        "id": "tpl-curriculum-plan",
+        "slug": "curriculum-plan"
+      },
+      {
+        "id": "tpl-f37fa560-ecc4-4559-83df-e888a01406e7",
+        "slug": "wave-interference-diffraction-8s"
+      },
+      {
+        "id": "tpl-0ee75238-e367-4722-aff7-584e7868ef1d",
+        "slug": "optics-physical-inquiry-16s-guided"
+      }
+    ],
+    "game": {
+      "templateVersionId": "tplv-65948f14-7ca0-4d1c-aa32-967651196399",
+      "bindingId": "bnd-05eaf099544a8687",
+      "teamVersionId": "team-version-46b9061ea107835b3d681f6acbc677a5",
+      "bundleDigest": "9b474f230db25bcd8513d2f5ba22415ce7abe3ace8af1c21fafb04f5361b2dfd",
+      "lessonCount": 8,
+      "classroomValidated": false,
+      "programmingKnowledgeBaseBound": false
+    },
+    "preservedOptics": {
+      "templateId": "tpl-04bd8624-c1c4-41de-97de-318d055038e4",
+      "versionId": "tplv-e6e78f26-9943-4450-adb7-67a9f288cc40",
+      "bindingId": "bnd-8e056bfef49a4728",
+      "bundleDigest": "b6b0bb24314a65dadba68e1ec1f186e339b88aca8df7aa96e5e468461a69121b"
+    }
+  },
+  "beforeTemplates": [
+    {
+      "id": "tpl-a83c1185-074b-4977-90c6-887e248fbbde",
+      "slug": "optics-physical-inquiry-16s",
+      "title": "光学探究：从光路模型到衍射与散射证据",
+      "status": "archived",
+      "versions": [
+        {
+          "id": "tplv-a024e9d6-025e-4b47-876b-d14ab5d6c8b0",
+          "status": "published",
+          "version": "v1",
+          "bootstrapKey": "optics-physical-inquiry:16s-v2"
+        }
+      ],
+      "active": [
+        {
+          "versionId": "tplv-a024e9d6-025e-4b47-876b-d14ab5d6c8b0",
+          "bindingId": "bnd-78418c631fcd9306",
+          "teamVersionId": "team-version-0097047a54c8d8fe8cc010673eef2bc6",
+          "hash": "f7c2a90f47816065dfa272f9c9af1847dc3cb9e2f7aee86ed513e2611c9ba451"
+        }
+      ]
+    },
+    {
+      "id": "tpl-curriculum-plan",
+      "slug": "curriculum-plan",
+      "title": "按课时学习计划课程模板",
+      "status": "published",
+      "versions": [],
+      "active": []
+    },
+    {
+      "id": "tpl-f37fa560-ecc4-4559-83df-e888a01406e7",
+      "slug": "wave-interference-diffraction-8s",
+      "title": "光为什么会出现明暗条纹？干涉与衍射探究",
+      "status": "piloting",
+      "versions": [
+        {
+          "id": "tplv-efd7f9b0-3e59-4824-85c9-2f271a33eeb8",
+          "status": "piloting",
+          "version": "v1",
+          "bootstrapKey": "wave-interference-diffraction:8s-v1"
+        }
+      ],
+      "active": [
+        {
+          "versionId": "tplv-efd7f9b0-3e59-4824-85c9-2f271a33eeb8",
+          "bindingId": "bnd-4f1a274b280348f5",
+          "teamVersionId": "team-version-97648af88b3a44bf19ada41589126ad3",
+          "hash": "29833aaaf76cab3f98011c663ac6f5ec3a6fc24a7e0d317732b173fff252535e"
+        }
+      ]
+    },
+    {
+      "id": "tpl-0ee75238-e367-4722-aff7-584e7868ef1d",
+      "slug": "optics-physical-inquiry-16s-guided",
+      "title": "光学探究：从光路模型到衍射与散射证据",
+      "status": "piloting",
+      "versions": [
+        {
+          "id": "tplv-eddfd12e-3c9f-460e-a8fc-840160c009d3",
+          "status": "piloting",
+          "version": "v1",
+          "bootstrapKey": "optics-physical-inquiry:16s-v5-guided"
+        }
+      ],
+      "active": [
+        {
+          "versionId": "tplv-eddfd12e-3c9f-460e-a8fc-840160c009d3",
+          "bindingId": "bnd-cf791c9f41bae62b",
+          "teamVersionId": "team-version-dd8606f23902734c2d8a544973bc4d40",
+          "hash": "6e10c5bb03cf3945d1177150f0568bb99ab0e73103e5a1128f7d9895987af4c7"
+        }
+      ]
+    },
+    {
+      "id": "tpl-04bd8624-c1c4-41de-97de-318d055038e4",
+      "slug": "wave-interference-diffraction-8s-zero-base",
+      "title": "光为什么会出现明暗条纹？干涉与衍射探究 · 从基础开始",
+      "status": "piloting",
+      "versions": [
+        {
+          "id": "tplv-1331db5c-8525-40ca-8b37-ddee040ef12f",
+          "status": "piloting",
+          "version": "v1",
+          "bootstrapKey": "wave-interference-diffraction:8s-zero-base-v1"
+        },
+        {
+          "id": "tplv-e6e78f26-9943-4450-adb7-67a9f288cc40",
+          "status": "piloting",
+          "version": "v2",
+          "bootstrapKey": "wave-interference-diffraction:8s-zero-base-v2"
+        }
+      ],
+      "active": [
+        {
+          "versionId": "tplv-e6e78f26-9943-4450-adb7-67a9f288cc40",
+          "bindingId": "bnd-8e056bfef49a4728",
+          "teamVersionId": "team-version-19932d5641ef882926993c31deb624f8",
+          "hash": "b6b0bb24314a65dadba68e1ec1f186e339b88aca8df7aa96e5e468461a69121b"
+        }
+      ]
+    }
+  ],
+  "afterTemplates": [
+    {
+      "id": "tpl-a83c1185-074b-4977-90c6-887e248fbbde",
+      "slug": "optics-physical-inquiry-16s",
+      "title": "光学探究：从光路模型到衍射与散射证据",
+      "status": "archived",
+      "versions": [
+        {
+          "id": "tplv-a024e9d6-025e-4b47-876b-d14ab5d6c8b0",
+          "status": "published",
+          "version": "v1",
+          "bootstrapKey": "optics-physical-inquiry:16s-v2"
+        }
+      ],
+      "active": [
+        {
+          "versionId": "tplv-a024e9d6-025e-4b47-876b-d14ab5d6c8b0",
+          "bindingId": "bnd-78418c631fcd9306",
+          "teamVersionId": "team-version-0097047a54c8d8fe8cc010673eef2bc6",
+          "hash": "f7c2a90f47816065dfa272f9c9af1847dc3cb9e2f7aee86ed513e2611c9ba451"
+        }
+      ]
+    },
+    {
+      "id": "tpl-curriculum-plan",
+      "slug": "curriculum-plan",
+      "title": "按课时学习计划课程模板",
+      "status": "archived",
+      "versions": [],
+      "active": []
+    },
+    {
+      "id": "tpl-f37fa560-ecc4-4559-83df-e888a01406e7",
+      "slug": "wave-interference-diffraction-8s",
+      "title": "光为什么会出现明暗条纹？干涉与衍射探究",
+      "status": "archived",
+      "versions": [
+        {
+          "id": "tplv-efd7f9b0-3e59-4824-85c9-2f271a33eeb8",
+          "status": "piloting",
+          "version": "v1",
+          "bootstrapKey": "wave-interference-diffraction:8s-v1"
+        }
+      ],
+      "active": [
+        {
+          "versionId": "tplv-efd7f9b0-3e59-4824-85c9-2f271a33eeb8",
+          "bindingId": "bnd-4f1a274b280348f5",
+          "teamVersionId": "team-version-97648af88b3a44bf19ada41589126ad3",
+          "hash": "29833aaaf76cab3f98011c663ac6f5ec3a6fc24a7e0d317732b173fff252535e"
+        }
+      ]
+    },
+    {
+      "id": "tpl-0ee75238-e367-4722-aff7-584e7868ef1d",
+      "slug": "optics-physical-inquiry-16s-guided",
+      "title": "光学探究：从光路模型到衍射与散射证据",
+      "status": "archived",
+      "versions": [
+        {
+          "id": "tplv-eddfd12e-3c9f-460e-a8fc-840160c009d3",
+          "status": "piloting",
+          "version": "v1",
+          "bootstrapKey": "optics-physical-inquiry:16s-v5-guided"
+        }
+      ],
+      "active": [
+        {
+          "versionId": "tplv-eddfd12e-3c9f-460e-a8fc-840160c009d3",
+          "bindingId": "bnd-cf791c9f41bae62b",
+          "teamVersionId": "team-version-dd8606f23902734c2d8a544973bc4d40",
+          "hash": "6e10c5bb03cf3945d1177150f0568bb99ab0e73103e5a1128f7d9895987af4c7"
+        }
+      ]
+    },
+    {
+      "id": "tpl-04bd8624-c1c4-41de-97de-318d055038e4",
+      "slug": "wave-interference-diffraction-8s-zero-base",
+      "title": "光为什么会出现明暗条纹？干涉与衍射探究 · 从基础开始",
+      "status": "piloting",
+      "versions": [
+        {
+          "id": "tplv-1331db5c-8525-40ca-8b37-ddee040ef12f",
+          "status": "piloting",
+          "version": "v1",
+          "bootstrapKey": "wave-interference-diffraction:8s-zero-base-v1"
+        },
+        {
+          "id": "tplv-e6e78f26-9943-4450-adb7-67a9f288cc40",
+          "status": "piloting",
+          "version": "v2",
+          "bootstrapKey": "wave-interference-diffraction:8s-zero-base-v2"
+        }
+      ],
+      "active": [
+        {
+          "versionId": "tplv-e6e78f26-9943-4450-adb7-67a9f288cc40",
+          "bindingId": "bnd-8e056bfef49a4728",
+          "teamVersionId": "team-version-19932d5641ef882926993c31deb624f8",
+          "hash": "b6b0bb24314a65dadba68e1ec1f186e339b88aca8df7aa96e5e468461a69121b"
+        }
+      ]
+    },
+    {
+      "id": "tpl-9e0535b3-72ad-4224-8b66-bfc147f1b58c",
+      "slug": "thunder-fighter-zero-base",
+      "title": "雷霆战机",
+      "status": "piloting",
+      "versions": [
+        {
+          "id": "tplv-65948f14-7ca0-4d1c-aa32-967651196399",
+          "status": "piloting",
+          "version": "v1",
+          "bootstrapKey": "thunder-fighter:8x60-zero-base-v2"
+        }
+      ],
+      "active": [
+        {
+          "versionId": "tplv-65948f14-7ca0-4d1c-aa32-967651196399",
+          "bindingId": "bnd-05eaf099544a8687",
+          "teamVersionId": "team-version-46b9061ea107835b3d681f6acbc677a5",
+          "hash": "9b474f230db25bcd8513d2f5ba22415ce7abe3ace8af1c21fafb04f5361b2dfd"
+        }
+      ]
+    }
+  ],
+  "existingVersionsAndBindingsUnchanged": true,
+  "fixtureBrowser": {
+    "passed": true,
+    "environment": "isolated-fixture",
+    "templates": [
+      {
+        "id": "tpl-04bd8624-c1c4-41de-97de-318d055038e4",
+        "title": "光为什么会出现明暗条纹？干涉与衍射探究 · 从基础开始",
+        "lessonCount": 8,
+        "status": "piloting"
+      },
+      {
+        "id": "tpl-c8546604-cd07-4ef9-b6b5-78c7bf548b5d",
+        "title": "雷霆战机",
+        "lessonCount": 8,
+        "status": "piloting"
+      }
+    ],
+    "projectId": "proj-f30ed0d2-150f-4369-8170-89d5e435c5cc",
+    "gameRole": "fighter-concept-coach",
+    "historicalProjectsPreserved": true,
+    "pageErrors": []
+  },
+  "liveReadOnlyBrowser": {
+    "passed": true,
+    "environment": "production-read-only",
+    "templates": [
+      {
+        "id": "tpl-04bd8624-c1c4-41de-97de-318d055038e4",
+        "title": "光为什么会出现明暗条纹？干涉与衍射探究 · 从基础开始",
+        "lessonCount": 8,
+        "status": "piloting"
+      },
+      {
+        "id": "tpl-9e0535b3-72ad-4224-8b66-bfc147f1b58c",
+        "title": "雷霆战机",
+        "lessonCount": 8,
+        "status": "piloting"
+      }
+    ],
+    "projectId": null,
+    "historicalProjectsPreserved": null,
+    "pageErrors": []
+  },
+  "verification": {
+    "runDirectory": "services/api/.tmp/pbl-capability/run-1792769206275-2422672",
+    "checks": [
+      {
+        "name": "build-contracts",
+        "exitCode": 0,
+        "passed": 0,
+        "failed": 0
+      },
+      {
+        "name": "contracts-esm-extensions",
+        "exitCode": 0,
+        "passed": 0,
+        "failed": 0
+      },
+      {
+        "name": "build-database",
+        "exitCode": 0,
+        "passed": 0,
+        "failed": 0
+      },
+      {
+        "name": "build-infra",
+        "exitCode": 0,
+        "passed": 0,
+        "failed": 0
+      },
+      {
+        "name": "build-agent-memory",
+        "exitCode": 0,
+        "passed": 0,
+        "failed": 0
+      },
+      {
+        "name": "build-ai-client",
+        "exitCode": 0,
+        "passed": 0,
+        "failed": 0
+      },
+      {
+        "name": "build-model-runtime",
+        "exitCode": 0,
+        "passed": 0,
+        "failed": 0
+      },
+      {
+        "name": "build-api",
+        "exitCode": 0,
+        "passed": 0,
+        "failed": 0
+      },
+      {
+        "name": "api-behavior-tests",
+        "exitCode": 0,
+        "passed": 329,
+        "failed": 0
+      },
+      {
+        "name": "ai-client-assertions",
+        "exitCode": 0,
+        "passed": 0,
+        "failed": 0
+      },
+      {
+        "name": "build-student-center-types",
+        "exitCode": 0,
+        "passed": 0,
+        "failed": 0
+      },
+      {
+        "name": "build-teacher-workspace-types",
+        "exitCode": 0,
+        "passed": 0,
+        "failed": 0
+      },
+      {
+        "name": "build-admin-console-types",
+        "exitCode": 0,
+        "passed": 0,
+        "failed": 0
+      },
+      {
+        "name": "student-pbl-data-tests",
+        "exitCode": 0,
+        "passed": 17,
+        "failed": 0
+      },
+      {
+        "name": "student-live-boundary-tests",
+        "exitCode": 0,
+        "passed": 7,
+        "failed": 0
+      },
+      {
+        "name": "build-workers",
+        "exitCode": 0,
+        "passed": 0,
+        "failed": 0
+      },
+      {
+        "name": "workers-esm-extensions",
+        "exitCode": 0,
+        "passed": 0,
+        "failed": 0
+      },
+      {
+        "name": "team-worker-tests",
+        "exitCode": 0,
+        "passed": 30,
+        "failed": 0
+      },
+      {
+        "name": "thunder-template",
+        "passed": 3,
+        "failed": 0
+      }
+    ],
+    "passed": 386,
+    "failed": 0,
+    "sourceSha256": {
+      "packages/ai-client/src/quiz-bank/index.ts": "cb6694837bd00d14a43b8360a10cc2ae016ff9839a2a96bffea0e97859af98b9",
+      "packages/ai-client/src/quiz-bank/optics-quiz-bank.test.ts": "05a1897de1849406017c3478789d1c5202e71c8f0ccd4c61e992fbb201271ce5",
+      "packages/ai-client/src/quiz-bank/thunder-fighter.ts": "309586efb95b93ee7389b005fcef959d59e3ba80eb726dc0cdf7e07aba6d6eff",
+      "services/api/src/modules/templates/content/thunder-fighter.ts": "044b63ef34764ae08c4a5b08d7e1545036fee82a485a939701fe2178062c88ff",
+      "services/api/src/modules/templates/thunder-fighter.test.ts": "14579b13e5b1d8a6f3bafabbdf5112b7db83b028d0c3c1e190543f28d7a6d6b3",
+      "services/api/src/scripts/two-project-catalog.ts": "e6c238c5f09d285b716924a268312978aee01c1f490d9a36c4bc2c5fcf05e108",
+      "services/api/src/modules/learning-plan/learning-session-progress.service.ts": "986ef56a93b6adfcbb350ed6c687d28ba68ab1a71b35b8a099fe7d0f91e0d918",
+      "services/api/src/modules/learning-plan/learning-session-progress.test.ts": "3c56fa1f30772225657a281bcd43ef65d5fb4c93a6032cf8d623a26979f3365b",
+      "services/api/src/modules/projects/project-learning-lifecycle.service.ts": "40a27bd361791dcf97b6c20b63a499cd769fa74af3d2f01d5fd9ec42be3a0d27"
+    },
+    "services": [
+      {
+        "Id": "qitu-api.service",
+        "ActiveState": "active",
+        "ActiveEnterTimestamp": "Fri 2026-10-23 23:44:18 CST",
+        "MainPID": "2432917"
+      },
+      {
+        "Id": "qitu-workers.service",
+        "ActiveState": "active",
+        "ActiveEnterTimestamp": "Fri 2026-10-23 23:44:05 CST",
+        "MainPID": "2432674"
+      }
+    ]
+  },
+  "localSourceSha256": {
+    "packages/ai-client/src/quiz-bank/index.ts": "cb6694837bd00d14a43b8360a10cc2ae016ff9839a2a96bffea0e97859af98b9",
+    "packages/ai-client/src/quiz-bank/optics-quiz-bank.test.ts": "05a1897de1849406017c3478789d1c5202e71c8f0ccd4c61e992fbb201271ce5",
+    "packages/ai-client/src/quiz-bank/thunder-fighter.ts": "309586efb95b93ee7389b005fcef959d59e3ba80eb726dc0cdf7e07aba6d6eff",
+    "services/api/src/modules/templates/content/thunder-fighter.ts": "044b63ef34764ae08c4a5b08d7e1545036fee82a485a939701fe2178062c88ff",
+    "services/api/src/modules/templates/thunder-fighter.test.ts": "14579b13e5b1d8a6f3bafabbdf5112b7db83b028d0c3c1e190543f28d7a6d6b3",
+    "services/api/src/scripts/two-project-catalog.ts": "e00df3fdbf95b55863a39700b489da257d95ce6c6511434154f2d0ecb3167738",
+    "services/api/src/modules/learning-plan/learning-session-progress.service.ts": "986ef56a93b6adfcbb350ed6c687d28ba68ab1a71b35b8a099fe7d0f91e0d918",
+    "services/api/src/modules/learning-plan/learning-session-progress.test.ts": "3c56fa1f30772225657a281bcd43ef65d5fb4c93a6032cf8d623a26979f3365b",
+    "services/api/src/modules/projects/project-learning-lifecycle.service.ts": "40a27bd361791dcf97b6c20b63a499cd769fa74af3d2f01d5fd9ec42be3a0d27"
+  },
+  "concurrentLocalSourceDifferences": [
+    "services/api/src/scripts/two-project-catalog.ts"
+  ]
+}

@@ -10,6 +10,11 @@ import { currentStudentProject } from './current-project';
 import { ParentController } from '../parent/parent.controller';
 import { GrowthService } from '../growth/growth.service';
 import { WorksService } from '../works/works.service';
+import { ParentLearningReadService } from '../parent/parent-learning-read.service';
+import { LearningInsightsService } from '../learning-insights/learning-insights.service';
+import { FeedbackService } from '../feedback/feedback.service';
+import { ParentCommunicationService } from '../parent/parent-communication.service';
+import { summarizeLearningActivity } from '../learning-insights/learning-activity';
 
 test('a correct public demo credential cannot create a live session', async () => {
   const fixturePassword = 'isolated-fixture-only';
@@ -43,16 +48,20 @@ test('parent dashboard reads the same current project and rejects an unrelated c
   const project = { id: 'current', studentId: 'child', title: 'Current inquiry', status: 'intent_confirmed', progressPercent: 11, createdAt: new Date('2026-10-20') } as LearningProjectRecord;
   const parent = { id: 'guardian', role: 'parent', displayName: 'Fixture parent', email: 'fixture@example.invalid' };
   const auth = { getSession: () => ({ user: parent }) } as unknown as AuthService;
-  const directory = { findUser: async () => ({ userId: 'child', displayName: 'Directory child' }) } as unknown as DirectoryService;
-  const growth = { canParentReadChild: async (_parent: string, child: string) => child === 'child', getSummary: () => ({ streakDays: 0 }) } as unknown as GrowthService;
-  const store = { listProjectsByStudent: async () => { projectReads += 1; return [project]; } } as unknown as LearningPlanStore;
+  const directory = { childrenOfParent: async () => [{ userId: 'child' }], findUser: async () => ({ userId: 'child', displayName: 'Directory child' }) } as unknown as DirectoryService;
+  const growth = { canParentReadChild: async (_parent: string, child: string) => child === 'child',
+    getParentPage: async () => ({ timeline: { items: [] }, summary: { streakDays: 0 } }) } as unknown as GrowthService;
+  const store = { listPlansByStudent: async () => [], listProjectsByStudent: async () => { projectReads += 1; return [project]; } } as unknown as LearningPlanStore;
   const works = { listArtifacts: async (actor: { id: string }) => { assert.equal(actor.id, parent.id); return []; } } as unknown as WorksService;
-  const controller = new ParentController(auth, directory, growth, {} as PlatformDataService, null!, null!, undefined, store, works);
+  const reads = new ParentLearningReadService(directory, growth,
+    new class extends LearningInsightsService { constructor() { super(null); } override async activity() { return summarizeLearningActivity([], []); } }(), store, works,
+    { listForParent: async () => [] } as unknown as FeedbackService, {} as ParentCommunicationService);
+  const controller = new ParentController(auth, directory, growth, {} as PlatformDataService, null!, null!, undefined, store, works, reads);
   const { data } = await controller.getDashboard('qitu_session=fixture', 'child');
   assert.equal(data.currentProject?.projectId, project.id);
   assert.equal(data.currentProject?.progressPercent, 11);
   assert.equal(data.childDisplayName, 'Directory child');
-  assert.equal(data.kpis[0]?.value, '暂未接入');
+  assert.equal(data.kpis[0]?.value, '0 次');
   assert.deepEqual(data.recentArtifacts, []);
   await assert.rejects(controller.getDashboard('qitu_session=fixture', 'unrelated'), (error: unknown) => (error as { getStatus(): number }).getStatus() === 403);
   assert.equal(projectReads, 1);

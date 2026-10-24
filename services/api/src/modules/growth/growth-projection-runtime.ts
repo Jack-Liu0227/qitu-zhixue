@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import type { GrowthProjectionSettings } from '@qitu/contracts';
-import { adminAssistants, adminTeams, adminTeamVersions, agentConfigs, agentRoutes, projectBindingSnapshots, type Database } from '@qitu/database';
+import { adminAssistants, adminTeams, pblTemplateTeamBindings, agentConfigs, agentRoutes, projectBindingSnapshots, type Database } from '@qitu/database';
 import { createHash } from 'node:crypto';
 import { assistantIdsForRuntimeAgent, runtimeIdsForAssistant } from '../platform-registry/assistant-runtime-identity';
 
@@ -28,17 +28,20 @@ export async function provisionGrowthProjectionRuntime(
       roleDefinition: '', capabilities: ['reflect'], enabled: true, updatedBy: actorId,
     }).onConflictDoNothing({ target: agentConfigs.id });
   }
-  const [teams, versions, snapshots] = await Promise.all([
-    db.select().from(adminTeams), db.select().from(adminTeamVersions), db.select().from(projectBindingSnapshots),
+  const [teams, bindings, snapshots] = await Promise.all([
+    db.select().from(adminTeams), db.select().from(pblTemplateTeamBindings), db.select().from(projectBindingSnapshots),
   ]);
-  const frozenVersions = new Set(snapshots.map((row) => row.teamVersionId));
+  const versions = snapshots.flatMap(snapshot => {
+    const team = bindings.find(binding => binding.id === snapshot.bindingId)?.teamSnapshots?.[snapshot.teamVersionId];
+    return team ? [team] : [];
+  });
   const assistantEnabled = (id: string) => assistants.some((row) => row.id === id && row.enabled);
   const leaders = new Set([
     'qitu-learning-partner',
     // Free exploration is explicitly owned by this server-registered intake assistant.
     ...(assistantEnabled('qitu-intake-assistant') ? ['qitu-intake-assistant'] : []),
     ...teams.filter((row) => row.enabled && assistantEnabled(row.leaderAssistantId)).map((row) => row.leaderAssistantId),
-    ...versions.filter((row) => row.enabled && frozenVersions.has(row.id) && assistantEnabled(row.leaderAssistantId))
+    ...versions.filter((row) => row.enabled && assistantEnabled(row.leaderAssistantId))
       .map((row) => row.leaderAssistantId),
   ].flatMap((id) => [...runtimeIdsForAssistant(id)]));
   const sourcePermitted = (id: string) => {
