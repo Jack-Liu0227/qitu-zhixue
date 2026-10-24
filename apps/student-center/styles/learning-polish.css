@@ -57,16 +57,7 @@
 .qitu-project-collected { display: flex; align-items: center; gap: 7px; font-size: 13px; white-space: nowrap; color: var(--qitu-muted); }
 .qitu-project-history-hint { font-size: 13px; line-height: 1.7; }
 .qitu-projects-layout.qitu-resizable-panels { grid-template-columns: var(--qitu-panel-tracks); }
-.qitu-project-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 310px), 1fr)); gap: 20px; }
-.qitu-project-entry { display: flex; flex-direction: column; min-width: 0; border: 1px solid var(--qitu-border); border-radius: 16px; background: var(--qitu-surface, #fff); box-shadow: 0 3px 12px rgb(25 54 94 / 3%); }
-.qitu-project-entry .qitu-project-card { flex: 1; border: 0; border-radius: 16px 16px 0 0; box-shadow: none; transform: none; }
-.qitu-project-entry .qitu-project-card-body { padding: 18px; gap: 10px; }
-.qitu-project-entry .qitu-project-card-title { font-size: 17px; line-height: 1.55; }
-.qitu-project-entry .qitu-project-card-subtitle { font-size: 13px; line-height: 1.6; }
-.qitu-project-entry > .qitu-project-actions { padding: 12px 16px; border-top: 1px solid var(--qitu-border); align-items: center; gap: 8px; }
-.qitu-project-actions > label { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--qitu-muted); }
-.qitu-project-actions > button { min-height: 34px; padding: 7px 10px; border-radius: 8px; }
-.qitu-project-delete { color: #b4233b; }
+/* 项目列表与项目卡样式由 projects.css 统一管控 */
 .qitu-tutor-workspace-layout.qitu-resizable-panels { display: grid; grid-template-columns: var(--qitu-panel-tracks); gap: 0; padding: 0 8px 8px; }
 .qitu-tutor-workspace-layout > .qitu-resizable-panel { height: 100%; overflow: hidden; }
 .qitu-tutor-workspace-layout .qitu-live-session-sidebar, .qitu-tutor-workspace-layout .qitu-tutor-context-sidebar { width: 100% !important; height: 100%; max-height: none; flex-basis: auto; }

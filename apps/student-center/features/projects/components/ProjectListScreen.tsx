@@ -104,7 +104,6 @@ export function ProjectListScreen({
         {!explorations && <label className="qitu-project-collected"><input type="checkbox" checked={includeCollected} onChange={event => { setIncludeCollected(event.target.checked); setCursors([undefined]); }} />包含已收纳</label>}
       </div>
       <p className="qitu-project-history-hint">{explorations ? '继续之前的兴趣讨论，或查看待确认的学习计划。明确确认后，项目会出现在“我的项目”中。' : '这里保留你已确认的项目。收纳可保留记录，永久删除会清除项目及相关学习记录。'}</p>
-      {page ? <p>{explorations ? `探索记录 ${page.counts.draft}` : `进行中 ${page.counts.active} · 已完成 ${page.counts.done}`}</p> : null}
       {notice ? <p role="status">{notice}</p> : null}
       <ScreenState
         state={list.state}
@@ -119,18 +118,47 @@ export function ProjectListScreen({
           const hasAside = !explorations && Boolean(nextStepData);
           const mainContent = (
             <div className="qitu-projects-main">
-              {projectsDataSource.deleteHistory && result.items.length ? (
-                <div className="qitu-project-actions" style={{ marginBottom: 14 }}>
-                  <button className="qitu-button qitu-button-ghost" disabled={offline || saving} onClick={() => setSelected(result.items.map(entryKey))}>全选本页</button>
-                  {selected.length > 0 && (
-                    <>
-                      <button className="qitu-button qitu-button-ghost" disabled={offline || saving} onClick={() => setSelected([])}>取消选择</button>
-                      <button className="qitu-button qitu-button-ghost qitu-project-delete" disabled={offline || saving}
-                        onClick={() => void removeEntries(result.items.filter(item => selected.includes(entryKey(item))))}>删除所选（{selected.length}）</button>
-                    </>
-                  )}
-                </div>
-              ) : null}
+              <div className="qitu-project-list-toolbar">
+                <span className="qitu-project-count-badge">
+                  {explorations
+                    ? `探索记录 ${page?.counts.draft ?? result.items.length}`
+                    : `进行中 ${page?.counts.active ?? 0} · 已完成 ${page?.counts.done ?? 0}`}
+                </span>
+                {projectsDataSource.deleteHistory && result.items.length ? (
+                  <div className="qitu-project-batch-bar">
+                    {selected.length > 0 ? (
+                      <>
+                        <span className="qitu-batch-selected-label">已选择 <strong>{selected.length}</strong> 项</span>
+                        <button
+                          type="button"
+                          className="qitu-batch-action-btn"
+                          disabled={offline || saving}
+                          onClick={() => setSelected([])}
+                        >
+                          取消选择
+                        </button>
+                        <button
+                          type="button"
+                          className="qitu-batch-action-btn is-danger"
+                          disabled={offline || saving}
+                          onClick={() => void removeEntries(result.items.filter(item => selected.includes(entryKey(item))))}
+                        >
+                          批量删除（{selected.length}）
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        className="qitu-batch-action-btn"
+                        disabled={offline || saving}
+                        onClick={() => setSelected(result.items.map(entryKey))}
+                      >
+                        全选本页
+                      </button>
+                    )}
+                  </div>
+                ) : null}
+              </div>
               <ProjectList projects={result.items} readOnly={offline} renderActions={item => (
                 <div className="qitu-project-actions">
                   <div className="qitu-project-actions-left">
