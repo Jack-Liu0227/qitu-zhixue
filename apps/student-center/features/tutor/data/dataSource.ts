@@ -47,6 +47,7 @@ export interface TutorDataSource {
   getProjectConversationHistory?(projectId: string): Promise<GetTutorSessionResponse | null>;
   reconcileLearning?(projectId: string, request: ReconcileProjectLearningRequest, idempotencyKey: string): Promise<ReconcileProjectLearningResponse>;
   getLessonEvidence?(scope: Pick<LearningEvidenceScope, 'projectId' | 'planId' | 'planRevision' | 'learningSessionId'>): Promise<LessonEvidenceView>;
+  evaluateLessonEvidence?(scope: Pick<LearningEvidenceScope, 'projectId' | 'planId' | 'planRevision' | 'learningSessionId'>, evidenceRef: string, key: string): Promise<void>;
   submitLessonEvidence?(scope: Pick<LearningEvidenceScope, 'projectId' | 'planId' | 'planRevision' | 'learningSessionId'>, kind: 'responses' | 'artifacts' | 'reflections', request: LearningTextSubmission, idempotencyKey: string): Promise<LearningSubmissionResponse>;
   getLearningArtifact?(projectId: string, artifactId: string): Promise<LearningSubmissionArtifactView>;
   exportLearningArtifact?(artifactId: string, versionId: string, format: import('@qitu/contracts').ArtifactExportFormat, signal: AbortSignal): Promise<Blob>;

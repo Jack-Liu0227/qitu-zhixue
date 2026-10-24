@@ -280,9 +280,6 @@ export class InMemoryWorksStore extends WorksStore {
   ): Promise<{ artifact: ArtifactRecord; version: ArtifactVersionRecord }> {
     const record = this.artifacts.get(input.artifactId);
     if (record === undefined) throw new WorksStoreConflictError('artifact not found');
-    if (input.expectedVersionIndex !== undefined && record.currentVersionIndex !== input.expectedVersionIndex) {
-      throw new WorksStoreConflictError('artifact version changed during evaluation');
-    }
     if (record.currentVersionIndex !== input.expectedRevision) {
       throw new WorksStoreConflictError(
         `artifact revision mismatch: expected ${input.expectedRevision}, actual ${record.currentVersionIndex}`,
@@ -316,6 +313,10 @@ export class InMemoryWorksStore extends WorksStore {
   async transitionArtifact(input: TransitionArtifactInput): Promise<ArtifactRecord> {
     const record = this.artifacts.get(input.artifactId);
     if (record === undefined) throw new WorksStoreConflictError('artifact not found');
+    if (input.expectedVersionIndex !== undefined && record.currentVersionIndex !== input.expectedVersionIndex) {
+      throw new WorksStoreConflictError('artifact version changed during evaluation');
+    }
+
     if (!input.expectedStatuses.includes(record.status)) {
       throw new WorksStoreConflictError(
         `artifact status mismatch: expected ${input.expectedStatuses.join('|')}, actual ${record.status}`,

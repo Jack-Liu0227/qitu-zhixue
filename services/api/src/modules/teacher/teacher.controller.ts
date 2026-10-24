@@ -268,32 +268,7 @@ export class TeacherController {
   ): Promise<{ data: TeacherReviewDecisionResponse }> {
     const user = requireRole(this.authService, cookieHeader, 'teacher', '该操作仅向班主任开放');
 
-    // 取键在解析之前：缺键 → 400，不进入任何业务写入。
-    const key = idempotencyKey?.trim();
-    if (key === undefined || key.length === 0 || key.length > 160) {
-      throw new BadRequestException({
-        code: 'IDEMPOTENCY_KEY_REQUIRED',
-        message: '缺少或无效的 Idempotency-Key 请求头',
-      });
-    }
-
-    const input = parseReviewDecisionInput(body);
-    await this.teacherService.requireAssignedReview(user, reviewId);
-    const scope = `teacher.review.decision:${reviewId}`;
-    try {
-      const result = await this.idempotency.execute(
-        scope,
-        key,
-        hashIdempotentInput(scope, { actorId: user.id, reviewId }, input),
-        async () => ({
-          status: 200,
-          body: await this.teacherService.decideReview(user, reviewId, input),
-        }),
-      );
-      return { data: result.body };
-    } catch (error) {
-      throwHttpForIdempotencyError(error);
-    }
+    return { data: await this.teacherService.decideReview(user, reviewId, parseReviewDecisionInput(body)) };
   }
 
   @Get('statistics')

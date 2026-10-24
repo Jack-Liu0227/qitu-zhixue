@@ -29,7 +29,7 @@ import { LiveTutorSocket } from './liveTutorSocket';
 import { exportArtifactVersion } from './artifactExportApi';
 import type { TutorProjectContext } from '../types';
 import { completeLesson, getLessonProgress, reconcileLearning } from './lessonProgressApi';
-import { getLessonEvidence, submitLessonEvidence, getLearningArtifact, publishLearningArtifact, type LessonScope, type LessonSubmissionKind } from './lessonEvidenceApi';
+import { getLessonEvidence, submitLessonEvidence, evaluateLessonEvidence, getLearningArtifact, publishLearningArtifact, type LessonScope, type LessonSubmissionKind } from './lessonEvidenceApi';
 
 /**
  * The tutor data source the app actually runs on.
@@ -70,6 +70,10 @@ export class TutorApiDataSource implements TutorDataSource {
 
   getLessonEvidence(scope: LessonScope) {
     return getLessonEvidence(this.fetchJson.bind(this), scope);
+  }
+
+  evaluateLessonEvidence(scope: LessonScope, evidenceRef: string, key: string) {
+    return evaluateLessonEvidence(this.fetchJson.bind(this), scope, evidenceRef, key);
   }
 
   submitLessonEvidence(scope: LessonScope, kind: LessonSubmissionKind, request: LearningTextSubmission, idempotencyKey: string) {

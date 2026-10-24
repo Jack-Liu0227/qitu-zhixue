@@ -34,6 +34,14 @@ function path(scope: LessonScope) {
   return `/api/v1/learning-plans/${encodeURIComponent(scope.planId)}/sessions/${encodeURIComponent(scope.learningSessionId)}`;
 }
 
+export async function evaluateLessonEvidence(fetchJson: TutorJsonRequest, scope: LessonScope, evidenceRef: string, key: string): Promise<void> {
+  const data = unwrap(await fetchJson(`${path(scope)}/evaluations`, '自动评价未完成，请重试。', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key },
+    body: JSON.stringify({ planRevision: scope.planRevision, evidenceRef }),
+  }));
+  if (!record(data) || !record(data.quality) || !['accepted', 'needs_revision'].includes(String(data.quality.status))) invalid();
+}
+
 export async function getLessonEvidence(fetchJson: TutorJsonRequest, scope: LessonScope): Promise<LessonEvidenceView> {
   const data = unwrap(await fetchJson(`${path(scope)}/evidence?planRevision=${scope.planRevision}`, '学习证据读取失败'));
   if (!record(data) || !scopeMatches(data.scope, scope) || typeof data.sessionType !== 'string'

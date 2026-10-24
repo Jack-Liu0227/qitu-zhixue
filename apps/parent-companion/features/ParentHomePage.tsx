@@ -1,5 +1,5 @@
-import { normalizeProjectTitle } from '@qitu/contracts';
 'use client';
+import { normalizeProjectTitle } from '@qitu/contracts';
 import { ResizablePanels } from '@qitu/ui';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
