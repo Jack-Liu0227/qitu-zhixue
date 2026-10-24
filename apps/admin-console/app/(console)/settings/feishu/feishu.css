@@ -1,8 +1,9 @@
 /* 飞书机器人配置页面样式 - 遵循原生 Admin 控制台浅色卡片与 Aion 规范 */
 
 .feishu-settings-page {
-  max-width: 1260px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
   padding: 24px 32px 64px;
   color: var(--aion-t-primary, #102a5c);
   display: flex;

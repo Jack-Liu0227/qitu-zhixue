@@ -5,11 +5,11 @@
 }
 
 .about-page .shell {
-  max-width:1180px;
+  max-width:min(1440px, 94vw);
 }
 
 .about-page .header {
-  max-width:1280px;
+  max-width:min(1440px, 94vw);
 }
 
 .about-page .label {

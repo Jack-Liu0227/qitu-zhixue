@@ -129,7 +129,7 @@ export default function ProfileGrowthSettingsPage() {
   const totalWeight = dimensions.reduce((sum, d) => sum + (d.enabled ? d.weight : 0), 0);
 
   return (
-    <div style={{ maxWidth: '1280px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+    <div style={{ maxWidth: '100%', width: '100%', margin: 0, display: 'flex', flexDirection: 'column', gap: '24px' }}>
       {/* 顶部标题栏 */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '20px', flexWrap: 'wrap' }}>
         <div>

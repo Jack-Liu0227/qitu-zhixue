@@ -1,5 +1,5 @@
 .page { grid-template-columns: minmax(0, 1fr); }
-.grid { display: grid; width: 100%; min-width: 0; grid-template-columns: repeat(auto-fill, minmax(min(100%, 290px), 1fr)); gap: 20px; max-width: 1480px; }
+.grid { display: grid; width: 100%; min-width: 0; grid-template-columns: repeat(auto-fill, minmax(min(100%, 290px), 1fr)); gap: 20px; max-width: 100%; }
 .editorPage { min-width: 0; max-width: 100%; }
 .editorPage :global(.admin-template-editor-topbar) { flex-wrap: wrap; gap: 16px; }
 .editorPage :global(.admin-template-editor-topbar)>div { flex-wrap: wrap; }

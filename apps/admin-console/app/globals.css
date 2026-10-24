@@ -1368,7 +1368,8 @@ section[aria-label="模型用途场景分发与链路绑定"] .provider-preset s
   font-size: 0.78rem;
 }
 .admin-console-topbar .auth-logout:hover { border-color: #f2bec4; background: #fff5f6; color: #c53d4d; }
-.admin-console-content { width: min(100%, 1600px); margin: 0 auto; padding: 28px 32px 52px; }
+.admin-console-content { width: 100%; max-width: 100%; margin: 0; padding: 20px 28px 40px; box-sizing: border-box; }
+.admin-console-content:has(.copilot-page) { width: 100%; max-width: 100%; margin: 0; padding: 0 !important; overflow: hidden; height: 100%; }
 .admin-console-content:has(.settings-shell) {
   width: 100%;
   max-width: 100%;
@@ -1827,8 +1828,9 @@ section[aria-label="模型用途场景分发与链路绑定"] .provider-preset s
 }
 
 /* Denser operational views; six overview metrics never leave an orphan row. */
-.admin-console-content { padding: 18px 20px 28px; }
-.admin-console-content:has(.settings-shell) { padding: 0 !important; }
+.admin-console-content { width: 100%; max-width: 100%; margin: 0; padding: 18px 20px 28px; box-sizing: border-box; }
+.admin-console-content:has(.settings-shell),
+.admin-console-content:has(.copilot-page) { padding: 0 !important; width: 100%; max-width: 100%; margin: 0; height: 100%; overflow: hidden; }
 .admin-overview-page, .admin-statistics-page, .admin-relationships-page { gap: 16px; }
 .admin-hero-banner.admin-card { min-height: 0; padding: 14px 18px; gap: 16px; }
 .admin-hero-copy { min-width: 0; flex: 1; max-width: none; }

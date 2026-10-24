@@ -135,8 +135,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   -webkit-text-fill-color: currentColor;
   animation: none;
 }
-.home-page .home-section--fullscreen { min-height: auto; padding-block: 100px; }
-.home-page .home-hero { min-height: calc(100svh - 80px); padding-block: 64px; }
+.home-page .home-section--fullscreen { min-height: auto; padding-block: clamp(48px, 6vh, 68px); }
+.home-page .home-hero { min-height: calc(100svh - 80px); padding-block: clamp(32px, 4.5vh, 48px); }
 .home-page .home-hero-switch-btn { white-space: nowrap; min-height: 44px; }
 .home-page .home-hero-mode-switch { flex-wrap: wrap; }
 .home-page .react-bits-hero-spotlight {

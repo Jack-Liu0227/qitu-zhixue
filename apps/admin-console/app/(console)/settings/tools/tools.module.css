@@ -1,4 +1,4 @@
-.page { max-width: 1200px; margin: 0 auto; padding-bottom: 32px; color: #0f172a; min-width: 0; }
+.page { width: 100%; max-width: 100%; margin: 0; padding-bottom: 32px; color: #0f172a; min-width: 0; }
 .page h1 { font-size: 20px; margin: 0 0 6px; }
 .page h2 { font-size: 16px; margin: 0 0 8px; }
 .page h3 { font-size: 14px; margin: 22px 0 8px; }

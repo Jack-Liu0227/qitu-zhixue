@@ -522,8 +522,9 @@ export default function CopilotPage() {
   return (
     <div className="copilot-page" style={{
       display: 'flex',
-      height: 'calc(100vh - 65px)',
-      margin: '-20px -24px -40px',
+      height: '100%',
+      width: '100%',
+      margin: 0,
       overflow: 'hidden',
       background: 'radial-gradient(900px 520px at 8% -10%, rgb(30 79 217 / 10%), transparent 62%), radial-gradient(760px 500px at 108% 110%, rgb(111 250 208 / 12%), transparent 58%), linear-gradient(135deg, #f8faff 0%, #faf8ff 48%, #effcf8 100%)'
     }}>
@@ -1090,7 +1091,7 @@ export default function CopilotPage() {
               alignItems: 'center',
               justifyContent: 'center',
               padding: '32px 24px',
-              maxWidth: '860px',
+              maxWidth: '1000px',
               margin: '0 auto',
               width: '100%',
             }}>
@@ -1201,7 +1202,7 @@ export default function CopilotPage() {
                     display: 'flex',
                     gap: '12px',
                     alignSelf: isUser ? 'flex-end' : 'flex-start',
-                    maxWidth: isSidebarCollapsed ? '90%' : '80%',
+                    maxWidth: isSidebarCollapsed ? '94%' : '88%',
                   }}
                 >
                   {!isUser && (
@@ -1546,7 +1547,7 @@ export default function CopilotPage() {
 
         {/* 4. 底部现代化输入框 */}
         <div className="copilot-composer-container" style={{ padding: '16px 24px 20px', background: 'rgba(255, 255, 255, 0.96)', borderTop: '1px solid #e2e8f0', flexShrink: 0 }}>
-          <div style={{ maxWidth: '960px', margin: '0 auto', width: '100%' }}>
+          <div style={{ maxWidth: '100%', width: '100%' }}>
             {isListening && (
               <div style={{ marginBottom: '10px', padding: '8px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', fontSize: '12px', color: '#b91c1c', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444' }} />

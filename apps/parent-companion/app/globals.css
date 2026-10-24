@@ -1089,7 +1089,7 @@ body {
 /* Compact reading layout: one page heading and one child selector. */
 .parent-topbar { min-height: 60px; padding: 10px 20px; gap: 12px; }
 .parent-topbar h1 { font-size: 1.25rem; }
-.parent-content { padding: 16px 20px 28px; }
+.parent-content { padding: 16px 20px 28px; width: 100%; max-width: 100%; margin: 0; box-sizing: border-box; }
 .page-heading { margin-bottom: 12px; align-items: center; gap: 12px; }
 .page-subtitle { margin: 0; font-size: .88rem; line-height: 1.5; }
 .demo-pill { flex-shrink: 0; }

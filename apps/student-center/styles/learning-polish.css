@@ -1,9 +1,9 @@
-.qitu-growth-page, .qitu-projects-list-screen { width: 100%; max-width: 1440px; margin-inline: auto; gap: 20px; }
+.qitu-growth-page, .qitu-projects-list-screen { width: 100%; max-width: 100%; margin: 0; gap: 20px; }
 .qitu-inspiration-recommended { grid-template-columns: minmax(0, 1fr); }
 .qitu-inspiration-grid { min-width: 0; width: 100%; grid-template-columns: repeat(auto-fill, minmax(min(100%, 310px), 1fr)); }
 .qitu-inspiration-template-card, .qitu-inspiration-template-footer, .qitu-inspiration-card-actions { min-width: 0; max-width: 100%; }
 .qitu-inspiration-template-title { overflow-wrap: anywhere; }
-.qitu-works-gallery { display: grid; gap: 20px; max-width: 1440px; margin-inline: auto; }
+.qitu-works-gallery { display: grid; gap: 20px; width: 100%; max-width: 100%; margin: 0; }
 .qitu-works-heading, .qitu-works-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
 .qitu-works-heading h1 { margin: 0 0 8px; font-size: 28px; color: var(--qitu-heading); }
 .qitu-works-heading p { margin: 0; color: var(--qitu-muted); font-size: 14px; line-height: 1.7; }

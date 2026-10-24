@@ -53,9 +53,9 @@
 
 .home-shell {
   width: 100%;
-  max-width: 1200px;
+  max-width: min(1520px, 94vw);
   margin: 0 auto;
-  padding: 0 20px;
+  padding: 0 clamp(20px, 3vw, 40px);
 }
 
 /* ---- 背景光斑（`body` 上的登录页渐变由不透明容器覆盖） ---- */
@@ -2250,7 +2250,7 @@
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 1200px;
+  max-width: min(1520px, 94vw);
   margin: 0 auto;
   padding: 88px 20px 72px;
 }
@@ -2966,7 +2966,7 @@ html {
   gap: 48px;
   align-items: center;
   width: 100%;
-  max-width: 1140px;
+  max-width: min(1440px, 100%);
   margin: 0 auto;
 }
 

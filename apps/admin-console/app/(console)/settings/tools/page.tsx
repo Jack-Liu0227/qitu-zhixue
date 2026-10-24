@@ -297,7 +297,7 @@ export default function ToolsSettingsPage() {
   const loading = registryPending && !snapshot;
 
   return (
-    <div className="admin-tools-page-view" style={{ maxWidth: '1200px', margin: '0 auto', paddingBottom: '32px' }}>
+    <div className="admin-tools-page-view" style={{ width: '100%', maxWidth: '100%', margin: 0, paddingBottom: '32px' }}>
       {/* 页头 */}
       <div className="admin-tools-header" style={{ marginBottom: '16px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
