@@ -4,7 +4,7 @@ import { ResizablePanels } from '@qitu/ui';
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import type { AdminStudentDetail, AdminInterventionRow, AdminStudentProject } from '@qitu/contracts';
+import { normalizeProjectTitle, type AdminStudentDetail, type AdminInterventionRow, type AdminStudentProject } from '@qitu/contracts';
 import { Badge, SectionCard, InfoRow, ErrorState } from '@qitu/ui';
 import { fetchStudentDetail } from '../../../../lib/api/students';
 import { AdminPermissionError } from '../../../../lib/api/types';
