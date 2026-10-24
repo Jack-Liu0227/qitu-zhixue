@@ -70,7 +70,7 @@
 .qitu-work-check-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #166534; background: rgba(255, 255, 255, 0.7); padding: 4px 8px; border-radius: 4px; border: 1px solid #bbf7d0; }
 .qitu-work-check-icon { font-weight: bold; color: #16a34a; }
 .qitu-work-receipt-scope { font-size: 12px; color: #15803d; line-height: 1.6; border-top: 1px dashed #bbf7d0; padding-top: 8px; }
-.qitu-work-code-block { border-radius: 12px; overflow: hidden; background: #0f172a; color: #f8fafc; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15); margin: 10px 0; border: 1px solid #1e293b; }
+.qitu-work-code-block { flex-shrink: 0; border-radius: 12px; overflow: hidden; background: #0f172a; color: #f8fafc; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15); margin: 10px 0; border: 1px solid #1e293b; }
 .qitu-work-code-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background: #1e293b; border-bottom: 1px solid #334155; font-size: 12px; color: #94a3b8; flex-wrap: wrap; gap: 8px; }
 .qitu-work-code-title-group { display: flex; align-items: center; gap: 10px; }
 .qitu-work-code-dots { display: flex; gap: 5px; }

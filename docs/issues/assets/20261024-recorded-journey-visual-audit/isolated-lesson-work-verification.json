@@ -1,0 +1,33 @@
+{
+  "kind": "isolated CurrentLessonCard + LessonWorkPanel React DOM, mocked read owner; no production writes",
+  "results": [
+    {
+      "case": "same lesson final activity ends: selection retained, draft cleared, completion enabled",
+      "passed": true
+    },
+    {
+      "case": "accepted response uses lesson evaluation receipt only",
+      "passed": true
+    },
+    {
+      "case": "new lesson clears selection and preview",
+      "passed": true
+    },
+    {
+      "case": "plan revision clears evidence selection",
+      "passed": true
+    },
+    {
+      "case": "real artifact retains its own review status",
+      "passed": true
+    },
+    {
+      "case": "removed evidence is no longer selectable",
+      "passed": true
+    },
+    {
+      "case": "next response activity resets incompatible artifact submission kind",
+      "passed": true
+    }
+  ]
+}

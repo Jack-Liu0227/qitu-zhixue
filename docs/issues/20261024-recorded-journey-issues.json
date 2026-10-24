@@ -1,0 +1,1727 @@
+{
+  "schemaVersion": "journey-issue-registry.v1",
+  "updatedAt": "2026-10-25T02:08:00+08:00",
+  "status": "journeys_complete_final_checks_verified",
+  "scope": "两个项目均已8/8；最终build、15个应用服务重启、线上只读复验和审阅证据同步均已完成。开放缺陷继续逐项列出；共享演示学生已有mastery，不能声称完成零基础门禁验收。",
+  "countingRule": "每个主ID只计一次。aliases/跨课复现/修复后正面证据不增加计数。确认线上与仅隔离确认分列；正确保护、验收限制、测试异常、未确认风险或单次未归因事件不进确认缺陷数。",
+  "statusDefinitions": {
+    "fixed_verified": "已修复，已有真实路径或同类场景复测",
+    "fixed_unverified": "隔离验证通过，线上专项尚未完成",
+    "pending_deployment": "修复已写，待末次发布与复测",
+    "deployed_unverified": "结构性补丁已发布，原始失败尚未同条件复测",
+    "partial": "部分场景恢复，其他场景仍复现",
+    "open": "已确认，尚未解决",
+    "unconfirmed": "风险或设计改进项，不能算已确认缺陷",
+    "unknown_cause": "事件已恢复，但不足以确定产品根因",
+    "limitation": "验收边界，不计产品缺陷",
+    "expected": "正确保护或正面路径，不计缺陷",
+    "test_error": "测试工具/操作异常，不计产品缺陷",
+    "operational_event": "服务管理事件，调用来源未知，不计产品缺陷"
+  },
+  "summary": {
+    "uniqueConfirmedProductDefects": 40,
+    "confirmedLive": 38,
+    "confirmedIsolatedOnly": 2,
+    "byStatus": {
+      "fixed_verified": 14,
+      "open": 22,
+      "fixed_unverified": 2,
+      "partial": 1,
+      "deployed_unverified": 1
+    },
+    "bySeverity": {
+      "P2": 16,
+      "P1": 22,
+      "P3": 2
+    },
+    "unconfirmedRisksOrEvents": 8,
+    "excludedNonDefectRecords": 12
+  },
+  "issues": [
+    {
+      "id": "V10",
+      "aliases": [],
+      "title": "新回复被自动滚到历史区域之后",
+      "severity": "P2",
+      "isProductDefect": true,
+      "confirmation": "live",
+      "status": "fixed_verified",
+      "statusLabel": "已修复，已有真实路径或同类场景复测",
+      "rootCauseStatus": "confirmed-code-or-measurement",
+      "notes": "",
+      "evidence": [
+        {
+          "type": "review-index",
+          "video": "O1",
+          "seconds": 55,
+          "screenshot": "images/optics-02-lesson1-opening.png",
+          "reviewKey": "V10-optics-1-0",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        },
+        {
+          "type": "review-index",
+          "video": "T1",
+          "seconds": 62,
+          "screenshot": "images/thunder-002-start-thunder.png",
+          "reviewKey": "V10-thunder-1-10",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        }
+      ]
+    },
+    {
+      "id": "V11",
+      "aliases": [
+        "V06",
+        "T01",
+        "T18",
+        "I01",
+        "I02"
+      ],
+      "title": "缺少有回执的就地答题路径，聊天后另到侧栏保存",
+      "severity": "P1",
+      "isProductDefect": true,
+      "confirmation": "live",
+      "status": "open",
+      "statusLabel": "已确认，尚未解决",
+      "rootCauseStatus": "confirmed-code-or-measurement",
+      "notes": "T18的无交互题卡与T01重复到侧栏保存合并为同一缺少就地提交路径；不把每课再次发生计成新缺陷。",
+      "evidence": [
+        {
+          "type": "review-index",
+          "video": "T1",
+          "seconds": 132,
+          "screenshot": "images/thunder-003-lesson1-answer-in-chat.png",
+          "reviewKey": "V11-thunder-1-11",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        }
+      ]
+    },
+    {
+      "id": "T02",
+      "aliases": [],
+      "title": "打开本课记录只展开侧栏，表单未进入可见位置",
+      "severity": "P2",
+      "isProductDefect": true,
+      "confirmation": "live",
+      "status": "open",
+      "statusLabel": "已确认，尚未解决",
+      "rootCauseStatus": "observed-cause-not-fully-traced",
+      "notes": "",
+      "evidence": [
+        {
+          "type": "journey-agent-record",
+          "video": "T1",
+          "seconds": 195,
+          "sourceFile": "C:\\Users\\HK\\AppData\\Local\\Temp\\qitu-thunder-journey-20261024\\005-open-records.png",
+          "independentlyViewed": false,
+          "note": "执行agent原始定位；未自动升级为视觉agent亲眼确认。"
+        }
+      ]
+    },
+    {
+      "id": "V15",
+      "aliases": [
+        "T03"
+      ],
+      "title": "面向生成器的内部指令直接显示给学生",
+      "severity": "P2",
+      "isProductDefect": true,
+      "confirmation": "live",
+      "status": "open",
+      "statusLabel": "已确认，尚未解决",
+      "rootCauseStatus": "observed-cause-not-fully-traced",
+      "notes": "",
+      "evidence": [
+        {
+          "type": "review-index",
+          "video": "T1",
+          "seconds": 369,
+          "screenshot": "images/thunder-011-theory-save.png",
+          "reviewKey": "V15-thunder-1-14",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        }
+      ]
+    },
+    {
+      "id": "T04",
+      "aliases": [],
+      "title": "零基础首轮同时堆入多个未解释的编程术语",
+      "severity": "P2",
+      "isProductDefect": true,
+      "confirmation": "live",
+      "status": "open",
+      "statusLabel": "已确认，尚未解决",
+      "rootCauseStatus": "observed-cause-not-fully-traced",
+      "notes": "",
+      "evidence": [
+        {
+          "type": "journey-agent-record",
+          "video": "T1",
+          "seconds": 132,
+          "sourceFile": "C:\\Users\\HK\\AppData\\Local\\Temp\\qitu-thunder-journey-20261024\\003-lesson1-answer-in-chat.png",
+          "independentlyViewed": false,
+          "note": "执行agent原始定位；未自动升级为视觉agent亲眼确认。"
+        }
+      ]
+    },
+    {
+      "id": "T06",
+      "aliases": [],
+      "title": "活动变化后依赖学生再次点击或发言，自动提问体验待设计确认",
+      "severity": "P2",
+      "isProductDefect": null,
+      "confirmation": "risk",
+      "status": "unconfirmed",
+      "statusLabel": "风险或设计改进项，不能算已确认缺陷",
+      "rootCauseStatus": "not-a-confirmed-product-defect",
+      "notes": "",
+      "evidence": [
+        {
+          "type": "journey-agent-record",
+          "video": "T2",
+          "seconds": 51,
+          "sourceFile": "C:\\Users\\HK\\AppData\\Local\\Temp\\qitu-thunder-journey-20261024\\segment2\\004-theory-save-retry.png",
+          "independentlyViewed": false,
+          "note": "执行agent原始定位；未自动升级为视觉agent亲眼确认。"
+        }
+      ]
+    },
+    {
+      "id": "T07",
+      "aliases": [],
+      "title": "逐活动表单与末课勾选负担，规则正确但操作成本高",
+      "severity": "P2",
+      "isProductDefect": null,
+      "confirmation": "risk",
+      "status": "unconfirmed",
+      "statusLabel": "风险或设计改进项，不能算已确认缺陷",
+      "rootCauseStatus": "not-a-confirmed-product-defect",
+      "notes": "",
+      "evidence": [
+        {
+          "type": "journey-agent-record",
+          "video": "T2",
+          "seconds": 146,
+          "sourceFile": "C:\\Users\\HK\\AppData\\Local\\Temp\\qitu-thunder-journey-20261024\\segment2\\013-complete-lesson1.png",
+          "independentlyViewed": false,
+          "note": "执行agent原始定位；未自动升级为视觉agent亲眼确认。"
+        }
+      ]
+    },
+    {
+      "id": "V04",
+      "aliases": [
+        "T08"
+      ],
+      "title": "流程板书缺少可操作坐标或游戏演示，不能仅因静态图就认定渲染故障",
+      "severity": "P2",
+      "isProductDefect": null,
+      "confirmation": "risk",
+      "status": "unconfirmed",
+      "statusLabel": "风险或设计改进项，不能算已确认缺陷",
+      "rootCauseStatus": "not-a-confirmed-product-defect",
+      "notes": "",
+      "evidence": [
+        {
+          "type": "review-index",
+          "video": "T1",
+          "seconds": 228,
+          "screenshot": "images/thunder-006-board-detail.png",
+          "reviewKey": "V04-thunder-1-12",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        }
+      ]
+    },
+    {
+      "id": "V12",
+      "aliases": [
+        "O01"
+      ],
+      "title": "开场观察任务没有同时准备所需课件",
+      "severity": "P2",
+      "isProductDefect": true,
+      "confirmation": "live",
+      "status": "open",
+      "statusLabel": "已确认，尚未解决",
+      "rootCauseStatus": "observed-cause-not-fully-traced",
+      "notes": "",
+      "evidence": [
+        {
+          "type": "review-index",
+          "video": "O1",
+          "seconds": 55,
+          "screenshot": "images/optics-02-lesson1-opening.png",
+          "reviewKey": "V12-optics-1-1",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        }
+      ]
+    },
+    {
+      "id": "V13",
+      "aliases": [
+        "O02"
+      ],
+      "title": "要求观察条纹却只给公式或装置框图",
+      "severity": "P2",
+      "isProductDefect": true,
+      "confirmation": "live",
+      "status": "open",
+      "statusLabel": "已确认，尚未解决",
+      "rootCauseStatus": "observed-cause-not-fully-traced",
+      "notes": "",
+      "evidence": [
+        {
+          "type": "review-index",
+          "video": "O1",
+          "seconds": 143,
+          "screenshot": "images/optics-05-lesson1-board-step2.png",
+          "reviewKey": "V13-optics-1-2",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        },
+        {
+          "type": "review-index",
+          "video": "O2",
+          "seconds": 389,
+          "screenshot": "images/optics-L2-review-0-step2.png",
+          "reviewKey": "V13-optics-2-5",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        }
+      ]
+    },
+    {
+      "id": "O03",
+      "aliases": [],
+      "title": "聊天板书翻页与正式课件阅读确认不联动",
+      "severity": "P1",
+      "isProductDefect": true,
+      "confirmation": "live",
+      "status": "open",
+      "statusLabel": "已确认，尚未解决",
+      "rootCauseStatus": "confirmed-code-or-measurement",
+      "notes": "",
+      "evidence": [
+        {
+          "type": "journey-agent-record",
+          "video": "O1",
+          "seconds": 190,
+          "sourceFile": "C:\\Users\\HK\\AppData\\Local\\Temp\\qitu-optics-journey-20261024\\07-lesson1-duplicate-reading.png",
+          "independentlyViewed": false,
+          "note": "执行agent原始定位；未自动升级为视觉agent亲眼确认。"
+        }
+      ]
+    },
+    {
+      "id": "O08",
+      "aliases": [
+        "O10"
+      ],
+      "title": "相邻活动反复生成内容高度近似的整套课件",
+      "severity": "P2",
+      "isProductDefect": true,
+      "confirmation": "live",
+      "status": "open",
+      "statusLabel": "已确认，尚未解决",
+      "rootCauseStatus": "observed-cause-not-fully-traced",
+      "notes": "跨活动重复生成与O03的同一课件两处阅读确认是两个不同问题。",
+      "evidence": [
+        {
+          "type": "review-index",
+          "video": "O4",
+          "seconds": 341,
+          "screenshot": "images/optics-part4-L5-theory-1-step2.png",
+          "reviewKey": "O08-L5-optics-5-29",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        }
+      ]
+    },
+    {
+      "id": "O04",
+      "aliases": [],
+      "title": "部分光学解释缺少路径差对象与模型条件，待逐条领域核验",
+      "severity": "P1",
+      "isProductDefect": null,
+      "confirmation": "risk",
+      "status": "unconfirmed",
+      "statusLabel": "风险或设计改进项，不能算已确认缺陷",
+      "rootCauseStatus": "not-a-confirmed-product-defect",
+      "notes": "",
+      "evidence": [
+        {
+          "type": "review-index",
+          "video": "O4",
+          "seconds": 348,
+          "screenshot": "images/optics-part4-L5-theory-1-step4.png",
+          "reviewKey": "O04-L5-optics-5-30",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        }
+      ]
+    },
+    {
+      "id": "V14",
+      "aliases": [
+        "O05",
+        "T05"
+      ],
+      "title": "认证失效后缺就地恢复，连接文案仍正常",
+      "severity": "P1",
+      "isProductDefect": true,
+      "confirmation": "live",
+      "status": "open",
+      "statusLabel": "已确认，尚未解决",
+      "rootCauseStatus": "structural-cause-confirmed-incident-trigger-partly-unknown",
+      "notes": "23:28为未确认来源的服务管理stop/start，内存认证随重启失效；后来401须按时段独立核查，不全归因重启或设备挤出。",
+      "evidence": [
+        {
+          "type": "review-index",
+          "video": "O1",
+          "seconds": 233,
+          "screenshot": "images/optics-11-lesson1-theory-courseware.png",
+          "reviewKey": "V14-optics-1-3",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        },
+        {
+          "type": "review-index",
+          "video": "T1",
+          "seconds": 369,
+          "screenshot": "images/thunder-011-theory-save.png",
+          "reviewKey": "V14-thunder-1-13",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        },
+        {
+          "type": "review-index",
+          "video": "T11",
+          "seconds": 356,
+          "screenshot": "images/thunder-segment11-018-auth-interruption-stop.png",
+          "reviewKey": "V14-L8-thunder-8-51",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        }
+      ]
+    },
+    {
+      "id": "O06",
+      "aliases": [],
+      "title": "AI丢失自己刚出的公开问题，误称学生复述",
+      "severity": "P1",
+      "isProductDefect": true,
+      "confirmation": "live",
+      "status": "fixed_verified",
+      "statusLabel": "已修复，已有真实路径或同类场景复测",
+      "rootCauseStatus": "confirmed-code-or-measurement",
+      "notes": "",
+      "evidence": [
+        {
+          "type": "journey-agent-record",
+          "video": "O2",
+          "seconds": 194,
+          "sourceFile": "C:\\Users\\HK\\AppData\\Local\\Temp\\qitu-optics-journey-20261024\\17-lesson1-chat-answer.png",
+          "independentlyViewed": false,
+          "note": "执行agent原始定位；未自动升级为视觉agent亲眼确认。"
+        }
+      ]
+    },
+    {
+      "id": "V16",
+      "aliases": [
+        "O07"
+      ],
+      "title": "普通回应质量达标却显示作品未提交状态",
+      "severity": "P2",
+      "isProductDefect": true,
+      "confirmation": "live",
+      "status": "fixed_verified",
+      "statusLabel": "已修复，已有真实路径或同类场景复测",
+      "rootCauseStatus": "confirmed-code-or-measurement",
+      "notes": "视觉隔离7项通过；第7课真实近景独立复核：普通回应显示学习质量，正式作品保留已发布/已通过状态。",
+      "evidence": [
+        {
+          "type": "review-index",
+          "video": "O2",
+          "seconds": 258,
+          "screenshot": "images/optics-20-lesson1-check-evaluation.png",
+          "reviewKey": "V16-optics-1-4",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        },
+        {
+          "type": "review-index",
+          "video": "O4",
+          "seconds": 2083,
+          "screenshot": "images/optics-part4-L7-normal-response-detail-fixed.png",
+          "reviewKey": "V16-RETEST-optics-7-40",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        },
+        {
+          "type": "journey-agent-live-dom",
+          "video": "O3",
+          "seconds": 50,
+          "source": "docs/issues/20261024-recorded-optics-journey.md",
+          "independentlyViewed": false,
+          "note": "执行agent回读学习记录已保存/本版本质量已达标；该截图仅拍到列表，详情近景待补。"
+        }
+      ]
+    },
+    {
+      "id": "V01",
+      "aliases": [
+        "O13"
+      ],
+      "title": "手机内嵌波光学图标签被缩至约4.82px",
+      "severity": "P2",
+      "isProductDefect": true,
+      "confirmation": "live",
+      "status": "open",
+      "statusLabel": "已确认，尚未解决",
+      "rootCauseStatus": "confirmed-code-or-measurement",
+      "notes": "",
+      "evidence": [
+        {
+          "type": "review-index",
+          "video": "O2",
+          "seconds": 1083,
+          "screenshot": "images/optics-L3-inline-mobile-390.png",
+          "reviewKey": "V01-optics-3-9",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        },
+        {
+          "type": "review-index",
+          "video": "O3",
+          "seconds": 111,
+          "screenshot": "images/optics-part3-L3-inline-mobile-390-measured.png",
+          "reviewKey": "V01-MEASURED-optics-3-19",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        }
+      ]
+    },
+    {
+      "id": "V02",
+      "aliases": [],
+      "title": "多层滚动与大输入区压缩手机学习正文",
+      "severity": "P2",
+      "isProductDefect": true,
+      "confirmation": "live",
+      "status": "open",
+      "statusLabel": "已确认，尚未解决",
+      "rootCauseStatus": "confirmed-code-or-measurement",
+      "notes": "",
+      "evidence": [
+        {
+          "type": "review-index",
+          "video": "T2",
+          "seconds": 932,
+          "screenshot": "images/thunder-segment2-061-lesson4-mobile.png",
+          "reviewKey": "V02-thunder-4-18",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        }
+      ]
+    },
+    {
+      "id": "V03",
+      "aliases": [],
+      "title": "历史失败与当前成功并置，缺少清楚的版本关系",
+      "severity": "P2",
+      "isProductDefect": true,
+      "confirmation": "live",
+      "status": "open",
+      "statusLabel": "已确认，尚未解决",
+      "rootCauseStatus": "observed-cause-not-fully-traced",
+      "notes": "",
+      "evidence": [
+        {
+          "type": "journey-agent-record",
+          "video": "T5",
+          "seconds": 58,
+          "sourceFile": "C:\\Users\\HK\\AppData\\Local\\Temp\\qitu-thunder-journey-20261024\\segment5\\003-theory-resubmit-scope-fix.png",
+          "independentlyViewed": false,
+          "note": "执行agent原始定位；未自动升级为视觉agent亲眼确认。"
+        },
+        {
+          "type": "journey-agent-record",
+          "video": "T5",
+          "seconds": 521,
+          "sourceFile": "C:\\Users\\HK\\AppData\\Local\\Temp\\qitu-thunder-journey-20261024\\segment5\\020-reflection-retry-after-readback.png",
+          "independentlyViewed": false,
+          "note": "执行agent原始定位；未自动升级为视觉agent亲眼确认。"
+        }
+      ]
+    },
+    {
+      "id": "V05",
+      "aliases": [],
+      "title": "窄屏重复夜间入口占空间，项目定位文字截断",
+      "severity": "P3",
+      "isProductDefect": true,
+      "confirmation": "live",
+      "status": "open",
+      "statusLabel": "已确认，尚未解决",
+      "rootCauseStatus": "observed-cause-not-fully-traced",
+      "notes": "",
+      "evidence": [
+        {
+          "type": "journey-agent-record",
+          "video": "O2",
+          "seconds": 1083,
+          "sourceFile": "C:\\Users\\HK\\AppData\\Local\\Temp\\qitu-optics-journey-20261024\\L3-inline-mobile-390.png",
+          "independentlyViewed": false,
+          "note": "执行agent原始定位；未自动升级为视觉agent亲眼确认。"
+        }
+      ]
+    },
+    {
+      "id": "V07",
+      "aliases": [],
+      "title": "部分合并禁用条件缺附近原因，源码风险待专项复现",
+      "severity": "P2",
+      "isProductDefect": null,
+      "confirmation": "risk",
+      "status": "unconfirmed",
+      "statusLabel": "风险或设计改进项，不能算已确认缺陷",
+      "rootCauseStatus": "not-a-confirmed-product-defect",
+      "notes": "",
+      "evidence": [
+        {
+          "type": "document-or-code",
+          "source": "docs/issues/20261024-recorded-journey-visual-audit.md",
+          "sectionId": "V07",
+          "independentlyViewed": false
+        }
+      ]
+    },
+    {
+      "id": "V08",
+      "aliases": [],
+      "title": "历史选中课件的泛化求助指向风险，不能等同已读概念去重故障",
+      "severity": "P2",
+      "isProductDefect": null,
+      "confirmation": "risk",
+      "status": "unconfirmed",
+      "statusLabel": "风险或设计改进项，不能算已确认缺陷",
+      "rootCauseStatus": "not-a-confirmed-product-defect",
+      "notes": "",
+      "evidence": [
+        {
+          "type": "document-or-code",
+          "source": "docs/issues/20261024-recorded-journey-visual-audit.md",
+          "sectionId": "V08",
+          "independentlyViewed": false
+        }
+      ]
+    },
+    {
+      "id": "I03",
+      "aliases": [],
+      "title": "已读概念补救被去重拒绝",
+      "severity": "P1",
+      "isProductDefect": true,
+      "confirmation": "isolated",
+      "status": "fixed_unverified",
+      "statusLabel": "隔离验证通过，线上专项尚未完成",
+      "rootCauseStatus": "confirmed-code-or-measurement",
+      "notes": "源码/隔离已确认并修复，线上同目标补讲成功相关但不等于完整重现旧失败前置条件。",
+      "evidence": [
+        {
+          "type": "document-or-code",
+          "source": "docs/issues/20261024-recorded-journey-visual-audit.md",
+          "sectionId": "I03",
+          "independentlyViewed": false
+        }
+      ]
+    },
+    {
+      "id": "I04",
+      "aliases": [],
+      "title": "旧失效来源连带阻断仍有效的当前课件",
+      "severity": "P1",
+      "isProductDefect": true,
+      "confirmation": "isolated",
+      "status": "fixed_unverified",
+      "statusLabel": "隔离验证通过，线上专项尚未完成",
+      "rootCauseStatus": "confirmed-code-or-measurement",
+      "notes": "未在生产伪造来源失效；只按隔离确认计数，不纳入已录制线上独立缺陷数。",
+      "evidence": [
+        {
+          "type": "document-or-code",
+          "source": "docs/issues/20261024-recorded-journey-visual-audit.md",
+          "sectionId": "I04",
+          "independentlyViewed": false
+        }
+      ]
+    },
+    {
+      "id": "V17",
+      "aliases": [
+        "T09"
+      ],
+      "title": "评价pending后主操作继续教学，重试评价入口不突出",
+      "severity": "P1",
+      "isProductDefect": true,
+      "confirmation": "live",
+      "status": "open",
+      "statusLabel": "已确认，尚未解决",
+      "rootCauseStatus": "observed-cause-not-fully-traced",
+      "notes": "",
+      "evidence": [
+        {
+          "type": "review-index",
+          "video": "T2",
+          "seconds": 370,
+          "screenshot": "images/thunder-segment2-028-lesson2-complete-error.png",
+          "reviewKey": "V17-thunder-2-15",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        },
+        {
+          "type": "review-index",
+          "video": "T2",
+          "seconds": 400,
+          "screenshot": "images/thunder-segment2-029-lesson3-teaching.png",
+          "reviewKey": "V17-RETRY-thunder-2-16",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        }
+      ]
+    },
+    {
+      "id": "T10",
+      "aliases": [],
+      "title": "最后活动结束重挂载表单，丢失合法证据勾选",
+      "severity": "P1",
+      "isProductDefect": true,
+      "confirmation": "live",
+      "status": "fixed_verified",
+      "statusLabel": "已修复，已有真实路径或同类场景复测",
+      "rootCauseStatus": "confirmed-code-or-measurement",
+      "notes": "",
+      "evidence": [
+        {
+          "type": "review-index",
+          "video": "T5",
+          "seconds": 521,
+          "screenshot": "images/thunder-segment5-020-reflection-retry-after-readback.png",
+          "reviewKey": "T10-RETEST-thunder-4-26",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        }
+      ]
+    },
+    {
+      "id": "T11",
+      "aliases": [],
+      "title": "已有实践权限，AI仍口头要求等待TheoryMastered",
+      "severity": "P1",
+      "isProductDefect": true,
+      "confirmation": "live",
+      "status": "fixed_verified",
+      "statusLabel": "已修复，已有真实路径或同类场景复测",
+      "rootCauseStatus": "confirmed-code-or-measurement",
+      "notes": "",
+      "evidence": [
+        {
+          "type": "journey-agent-record",
+          "video": "T2",
+          "seconds": 931,
+          "sourceFile": "C:\\Users\\HK\\AppData\\Local\\Temp\\qitu-thunder-journey-20261024\\segment2\\060-lesson4-ask-code.png",
+          "independentlyViewed": false,
+          "note": "执行agent原始定位；未自动升级为视觉agent亲眼确认。"
+        },
+        {
+          "type": "journey-agent-record",
+          "video": "T3",
+          "seconds": 50,
+          "sourceFile": "C:\\Users\\HK\\AppData\\Local\\Temp\\qitu-thunder-journey-20261024\\segment3\\001-after-fix-ask-small-code.png",
+          "independentlyViewed": false,
+          "note": "执行agent原始定位；未自动升级为视觉agent亲眼确认。"
+        }
+      ]
+    },
+    {
+      "id": "T12",
+      "aliases": [],
+      "title": "概念到可运行代码的教学增量不足，需要测试人员补写作品",
+      "severity": "P1",
+      "isProductDefect": true,
+      "confirmation": "live",
+      "status": "partial",
+      "statusLabel": "部分场景恢复，其他场景仍复现",
+      "rootCauseStatus": "observed-cause-not-fully-traced",
+      "notes": "后续已给完整最小循环，脚手架部分改善；更完整作品仍有测试者辅助，不能宣布整个教学缺口消失。",
+      "evidence": [
+        {
+          "type": "review-index",
+          "video": "N5",
+          "seconds": 2.63,
+          "screenshot": "images/thunder-native-lesson5-two-bullets.png",
+          "reviewKey": "T12-EXTERNAL-N5",
+          "independentlyViewed": true,
+          "note": "本轮站外窗口录屏+原始PNG，480×640。"
+        },
+        {
+          "type": "journey-agent-record",
+          "video": "T2",
+          "seconds": 931,
+          "sourceFile": "C:\\Users\\HK\\AppData\\Local\\Temp\\qitu-thunder-journey-20261024\\segment2\\060-lesson4-ask-code.png",
+          "independentlyViewed": false,
+          "note": "执行agent原始定位；未自动升级为视觉agent亲眼确认。"
+        },
+        {
+          "type": "journey-agent-record",
+          "video": "T5",
+          "seconds": 111,
+          "sourceFile": "C:\\Users\\HK\\AppData\\Local\\Temp\\qitu-thunder-journey-20261024\\segment5\\004-check-and-executable-loop.png",
+          "independentlyViewed": false,
+          "note": "执行agent原始定位；未自动升级为视觉agent亲眼确认。"
+        }
+      ]
+    },
+    {
+      "id": "T13",
+      "aliases": [],
+      "title": "理论或回顾被整课未来代码与实测要求拒绝",
+      "severity": "P1",
+      "isProductDefect": true,
+      "confirmation": "live",
+      "status": "fixed_verified",
+      "statusLabel": "已修复，已有真实路径或同类场景复测",
+      "rootCauseStatus": "confirmed-code-or-measurement",
+      "notes": "L4原回答重交恢复后L6仍复现；活动标准投影补丁00:18:17发布，新L7 review/theory计划与预测首次accepted。同类路径复测通过，不是原L6输入逐字重放，不外推全部评价稳定。",
+      "evidence": [
+        {
+          "type": "review-index",
+          "video": "T4",
+          "seconds": 48,
+          "screenshot": "images/thunder-segment4-003-lesson4-theory-save.png",
+          "reviewKey": "T13-thunder-4-20",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        },
+        {
+          "type": "review-index",
+          "video": "T4",
+          "seconds": 113,
+          "screenshot": "images/thunder-segment4-004-theory-needs-code-question.png",
+          "reviewKey": "T13-FOLLOWUP-thunder-4-21",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        },
+        {
+          "type": "review-index",
+          "video": "T5",
+          "seconds": 58,
+          "screenshot": "images/thunder-segment5-003-theory-resubmit-scope-fix.png",
+          "reviewKey": "T13-RETEST-thunder-4-25",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        },
+        {
+          "type": "review-index",
+          "video": "T7",
+          "seconds": 36,
+          "screenshot": "images/thunder-segment7-003-lesson6-review-save.png",
+          "reviewKey": "T13-L6-thunder-6-38",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        },
+        {
+          "type": "review-index",
+          "video": "T9",
+          "seconds": 247,
+          "screenshot": "images/thunder-segment9-006-lesson7-theory-save.png",
+          "reviewKey": "T13-L7-RETEST-thunder-7-50",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        },
+        {
+          "type": "journey-agent-record",
+          "video": "T7",
+          "seconds": 36,
+          "sourceFile": "C:\\Users\\HK\\AppData\\Local\\Temp\\qitu-thunder-journey-20261024\\segment7\\003-lesson6-review-save.png",
+          "independentlyViewed": false,
+          "note": "执行agent原始定位；未自动升级为视觉agent亲眼确认。"
+        },
+        {
+          "type": "journey-agent-record",
+          "video": "T7",
+          "seconds": 159,
+          "sourceFile": "C:\\Users\\HK\\AppData\\Local\\Temp\\qitu-thunder-journey-20261024\\segment7\\006-lesson6-review-revised-save.png",
+          "independentlyViewed": false,
+          "note": "执行agent原始定位；未自动升级为视觉agent亲眼确认。"
+        }
+      ]
+    },
+    {
+      "id": "T14",
+      "aliases": [],
+      "title": "反思评价遗漏同课已通过的practice正文，要求重复贴代码",
+      "severity": "P1",
+      "isProductDefect": true,
+      "confirmation": "live",
+      "status": "fixed_verified",
+      "statusLabel": "已修复，已有真实路径或同类场景复测",
+      "rootCauseStatus": "confirmed-code-or-measurement",
+      "notes": "第5课短反思引用同课已通过实践后accepted；不是第4课原失败输入逐字重放。",
+      "evidence": [
+        {
+          "type": "review-index",
+          "video": "T6",
+          "seconds": 442,
+          "screenshot": "images/thunder-segment6-016-lesson5-reflection-save.png",
+          "reviewKey": "T14-RETEST-thunder-5-35",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        }
+      ]
+    },
+    {
+      "id": "T15",
+      "aliases": [],
+      "title": "一次responses非JSON502，重试恢复，根因未证实",
+      "severity": "P1",
+      "isProductDefect": null,
+      "confirmation": "event",
+      "status": "unknown_cause",
+      "statusLabel": "事件已恢复，但不足以确定产品根因",
+      "rootCauseStatus": "not-a-confirmed-product-defect",
+      "notes": "请求502是实际事件；API未重启且根因未证实，不能据此多计认证/门禁/代码缺陷。",
+      "evidence": [
+        {
+          "type": "journey-agent-record",
+          "video": "T5",
+          "seconds": 434,
+          "sourceFile": "C:\\Users\\HK\\AppData\\Local\\Temp\\qitu-thunder-journey-20261024\\segment5\\018-lesson4-evaluation-settled.png",
+          "independentlyViewed": false,
+          "note": "执行agent原始定位；未自动升级为视觉agent亲眼确认。"
+        },
+        {
+          "type": "journey-agent-record",
+          "video": "T5",
+          "seconds": 521,
+          "sourceFile": "C:\\Users\\HK\\AppData\\Local\\Temp\\qitu-thunder-journey-20261024\\segment5\\020-reflection-retry-after-readback.png",
+          "independentlyViewed": false,
+          "note": "执行agent原始定位；未自动升级为视觉agent亲眼确认。"
+        }
+      ]
+    },
+    {
+      "id": "T16",
+      "aliases": [],
+      "title": "工具失败只报告不可用，旧runtime吞掉owner具体异常",
+      "severity": "P1",
+      "isProductDefect": true,
+      "confirmation": "live",
+      "status": "deployed_unverified",
+      "statusLabel": "结构性补丁已发布，原始失败尚未同条件复测",
+      "rootCauseStatus": "structural-cause-confirmed-incident-trigger-partly-unknown",
+      "notes": "安全错误和source authority结构补丁00:18:17已发布；该次owner原始拒绝原因仍未知，不宣称工具执行故障根因已修。",
+      "evidence": [
+        {
+          "type": "journey-agent-record",
+          "video": "T6",
+          "seconds": 183,
+          "sourceFile": "C:\\Users\\HK\\AppData\\Local\\Temp\\qitu-thunder-journey-20261024\\segment6\\009-lesson5-check-question.png",
+          "independentlyViewed": false,
+          "note": "执行agent原始定位；未自动升级为视觉agent亲眼确认。"
+        }
+      ]
+    },
+    {
+      "id": "T17",
+      "aliases": [],
+      "title": "碰撞检查题采用错误前提，学生质疑后导师才纠正",
+      "severity": "P1",
+      "isProductDefect": true,
+      "confirmation": "live",
+      "status": "open",
+      "statusLabel": "已确认，尚未解决",
+      "rootCauseStatus": "content-error-confirmed-generation-cause-untraced",
+      "notes": "单子弹碰撞后已删除却预设持续加分；学生质疑后改成多子弹。纠正不等于首题正确。",
+      "evidence": [
+        {
+          "type": "review-index",
+          "video": "T7",
+          "seconds": 291,
+          "screenshot": "images/thunder-segment7-008-lesson6-question-ambiguity.png",
+          "reviewKey": "T17-thunder-6-39",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        },
+        {
+          "type": "journey-agent-record",
+          "video": "T7",
+          "seconds": 220,
+          "sourceFile": "C:\\Users\\HK\\AppData\\Local\\Temp\\qitu-thunder-journey-20261024\\segment7\\007-lesson6-theory-question.png",
+          "independentlyViewed": false,
+          "note": "执行agent原始定位；未自动升级为视觉agent亲眼确认。"
+        },
+        {
+          "type": "journey-agent-record",
+          "video": "T7",
+          "seconds": 291,
+          "sourceFile": "C:\\Users\\HK\\AppData\\Local\\Temp\\qitu-thunder-journey-20261024\\segment7\\008-lesson6-question-ambiguity.png",
+          "independentlyViewed": false,
+          "note": "执行agent原始定位；未自动升级为视觉agent亲眼确认。"
+        }
+      ]
+    },
+    {
+      "id": "T19",
+      "aliases": [],
+      "title": "上一课已通过的实际运行证据被开场误说成缺失",
+      "severity": "P1",
+      "isProductDefect": true,
+      "confirmation": "live",
+      "status": "open",
+      "statusLabel": "已确认，尚未解决",
+      "rootCauseStatus": "observed-cause-not-fully-traced",
+      "notes": "独立于O06：旧问题是缺自己的公开追问，此处是跨课已有accepted实践证据未被正确使用；原生成链根因未完整追踪，不能并入O06已修复。第9段004承认13.8秒11项实测已存在。",
+      "evidence": [
+        {
+          "type": "review-index",
+          "video": "T9",
+          "seconds": 167,
+          "screenshot": "images/thunder-segment9-004-lesson7-theory-guidance.png",
+          "reviewKey": "T19-thunder-7-48",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        },
+        {
+          "type": "review-index",
+          "video": "T13",
+          "seconds": 134,
+          "screenshot": "images/thunder-postrestart-017-original-l7-missing-evidence-board.png",
+          "reviewKey": "T19-HISTORICAL-BOARD-thunder-7-58",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        }
+      ]
+    },
+    {
+      "id": "V18",
+      "aliases": [],
+      "title": "长中文或多条件公式横向溢出，需左右滚动",
+      "severity": "P2",
+      "isProductDefect": true,
+      "confirmation": "live",
+      "status": "open",
+      "statusLabel": "已确认，尚未解决",
+      "rootCauseStatus": "confirmed-code-or-measurement",
+      "notes": "",
+      "evidence": [
+        {
+          "type": "review-index",
+          "video": "T2",
+          "seconds": 623,
+          "screenshot": "images/thunder-segment2-038-lesson3-board.png",
+          "reviewKey": "V18-thunder-3-17",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        },
+        {
+          "type": "review-index",
+          "video": "T2",
+          "seconds": 754,
+          "screenshot": "images/thunder-segment2-047-collision-step5.png",
+          "reviewKey": "V18-LONG-MATH-thunder-3-22",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        }
+      ]
+    },
+    {
+      "id": "V19",
+      "aliases": [
+        "O12"
+      ],
+      "title": "全屏按钮仍显示全屏探究，未提示可退出",
+      "severity": "P3",
+      "isProductDefect": true,
+      "confirmation": "live",
+      "status": "fixed_verified",
+      "statusLabel": "已修复，已有真实路径或同类场景复测",
+      "rootCauseStatus": "confirmed-code-or-measurement",
+      "notes": "",
+      "evidence": [
+        {
+          "type": "review-index",
+          "video": "O2",
+          "seconds": 963,
+          "screenshot": "images/optics-L3-lab-fullscreen.png",
+          "reviewKey": "V19-optics-3-8",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        },
+        {
+          "type": "review-index",
+          "video": "O5",
+          "seconds": 43,
+          "screenshot": "images/optics-part5-all-services-restarted-fullscreen-label.png",
+          "reviewKey": "V19-FINAL-RETEST-optics-5-53",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        }
+      ]
+    },
+    {
+      "id": "V20",
+      "aliases": [
+        "O14"
+      ],
+      "title": "历史模拟观察仅投影评价和回执，缺原预测观察正文",
+      "severity": "P1",
+      "isProductDefect": true,
+      "confirmation": "live",
+      "status": "open",
+      "statusLabel": "已确认，尚未解决",
+      "rootCauseStatus": "confirmed-code-or-measurement",
+      "notes": "",
+      "evidence": [
+        {
+          "type": "review-index",
+          "video": "O4",
+          "seconds": 2821,
+          "screenshot": "images/optics-part4-L3-observation-receipt-expanded.png",
+          "reviewKey": "V20-CLOSEUP-optics-3-46",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        },
+        {
+          "type": "live-browser-dom",
+          "video": "O3",
+          "seconds": 111,
+          "source": "docs/issues/assets/20261024-recorded-journey-visual-audit/optics-L3-history-dom-excerpt.json",
+          "independentlyViewed": true,
+          "note": "已独立读取完整观察项DOM；截图视口未覆盖观察项，不用截图独自证明。"
+        }
+      ]
+    },
+    {
+      "id": "O15",
+      "aliases": [],
+      "title": "检查活动提示点击不存在的课件看完按钮",
+      "severity": "P1",
+      "isProductDefect": true,
+      "confirmation": "live",
+      "status": "fixed_verified",
+      "statusLabel": "已修复，已有真实路径或同类场景复测",
+      "rootCauseStatus": "confirmed-code-or-measurement",
+      "notes": "",
+      "evidence": [
+        {
+          "type": "journey-agent-record",
+          "video": "O3",
+          "seconds": 451,
+          "sourceFile": "C:\\Users\\HK\\AppData\\Local\\Temp\\qitu-optics-journey-20261024\\part3-L4-check-guidance.png",
+          "independentlyViewed": false,
+          "note": "执行agent原始定位；未自动升级为视觉agent亲眼确认。"
+        },
+        {
+          "type": "journey-agent-record",
+          "video": "O4",
+          "seconds": 461,
+          "sourceFile": "C:\\Users\\HK\\AppData\\Local\\Temp\\qitu-optics-journey-20261024\\part4-L5-check-guidance.png",
+          "independentlyViewed": false,
+          "note": "执行agent原始定位；未自动升级为视觉agent亲眼确认。"
+        }
+      ]
+    },
+    {
+      "id": "O17",
+      "aliases": [
+        "V22"
+      ],
+      "title": "两条观察的冻结要求未显示已接受与剩余数量",
+      "severity": "P1",
+      "isProductDefect": true,
+      "confirmation": "live",
+      "status": "fixed_verified",
+      "statusLabel": "已修复，已有真实路径或同类场景复测",
+      "rootCauseStatus": "confirmed-code-or-measurement",
+      "notes": "",
+      "evidence": [
+        {
+          "type": "review-index",
+          "video": "O3",
+          "seconds": 1202,
+          "screenshot": "images/optics-part3-L4-observation-quality.png",
+          "reviewKey": "O17-V22-optics-4-28",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        },
+        {
+          "type": "review-index",
+          "video": "O4",
+          "seconds": 965,
+          "screenshot": "images/optics-part4-L6-count-1.png",
+          "reviewKey": "O17-RETEST-optics-6-37",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        }
+      ]
+    },
+    {
+      "id": "O19",
+      "aliases": [],
+      "title": "近轴单缝宽度公式配上a与波长可比或更小的适用条件",
+      "severity": "P1",
+      "isProductDefect": true,
+      "confirmation": "live",
+      "status": "open",
+      "statusLabel": "已确认，尚未解决",
+      "rootCauseStatus": "content-error-confirmed-generation-cause-untraced",
+      "notes": "官方OpenStax4.2给出小角限制；由a sinθ=λ推论a<λ时第一暗纹无实角解。",
+      "evidence": [
+        {
+          "type": "review-index",
+          "video": "O4",
+          "seconds": 747,
+          "screenshot": "images/optics-part4-L6-theory-1-step5.png",
+          "reviewKey": "O19-optics-6-34",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        },
+        {
+          "type": "review-index",
+          "video": "O5",
+          "seconds": 107,
+          "screenshot": "images/optics-part5-post-restart-domain-condition-open-issue.png",
+          "reviewKey": "O19-FINAL-optics-6-55",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        }
+      ]
+    },
+    {
+      "id": "V24",
+      "aliases": [
+        "O20"
+      ],
+      "title": "动态图自动换横轴尺度，参数对照的像素宽度可能误导",
+      "severity": "P2",
+      "isProductDefect": true,
+      "confirmation": "live",
+      "status": "open",
+      "statusLabel": "已确认，尚未解决",
+      "rootCauseStatus": "confirmed-code-or-measurement",
+      "notes": "模型数值正确，问题是动态图与比较曲线使用不同横轴范围；不是把模拟写成实测。",
+      "evidence": [
+        {
+          "type": "review-index",
+          "video": "O4",
+          "seconds": 564,
+          "screenshot": "images/optics-part4-L5-single-figure.png",
+          "reviewKey": "V24-optics-5-32",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        }
+      ]
+    },
+    {
+      "id": "V23",
+      "aliases": [],
+      "title": "桌面侧栏展开后横向Mermaid图节点字被大幅缩小",
+      "severity": "P2",
+      "isProductDefect": true,
+      "confirmation": "live",
+      "status": "open",
+      "statusLabel": "已确认，尚未解决",
+      "rootCauseStatus": "confirmed-code-or-measurement",
+      "notes": "",
+      "evidence": [
+        {
+          "type": "review-index",
+          "video": "T5",
+          "seconds": 655,
+          "screenshot": "images/thunder-segment5-027-lesson5-theory.png",
+          "reviewKey": "V23-thunder-5-31",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        }
+      ]
+    },
+    {
+      "id": "V21",
+      "aliases": [],
+      "title": "长板书排在追问之前，首屏看不到当前问题",
+      "severity": "P2",
+      "isProductDefect": true,
+      "confirmation": "live",
+      "status": "open",
+      "statusLabel": "已确认，尚未解决",
+      "rootCauseStatus": "confirmed-code-or-measurement",
+      "notes": "",
+      "evidence": [
+        {
+          "type": "review-index",
+          "video": "O3",
+          "seconds": 589,
+          "screenshot": "images/optics-part3-L4-corrected-chat-answer.png",
+          "reviewKey": "V21-optics-4-24",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        }
+      ]
+    },
+    {
+      "id": "V25",
+      "aliases": [],
+      "title": "生成的Markdown表格未渲染，规则以管道与分隔行显示",
+      "severity": "P2",
+      "isProductDefect": true,
+      "confirmation": "live",
+      "status": "fixed_verified",
+      "statusLabel": "已修复，已有真实路径或同类场景复测",
+      "rootCauseStatus": "confirmed-code-or-measurement",
+      "notes": "T8第6课123秒原图已亲眼确认；最终版本s5Q4jZLyDa5-d0TBO3lMz回看同一历史消息，T13第135秒桌面4列表格及第135–136秒390px左右滚动原图已独立复核。",
+      "evidence": [
+        {
+          "type": "review-index",
+          "video": "T8",
+          "seconds": 123,
+          "screenshot": "images/thunder-segment8-003-lesson6-practice-guidance-restored.png",
+          "reviewKey": "V25-thunder-6-41",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        },
+        {
+          "type": "review-index",
+          "video": "T13",
+          "seconds": 135,
+          "screenshot": "images/thunder-postrestart-018-original-l6-table-desktop.png",
+          "reviewKey": "V25-FINAL-DESKTOP-thunder-6-56",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        },
+        {
+          "type": "review-index",
+          "video": "T13",
+          "seconds": 136,
+          "screenshot": "images/thunder-postrestart-021-original-l6-table-mobile-scroll.png",
+          "reviewKey": "V25-FINAL-MOBILE-thunder-6-57",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        }
+      ]
+    },
+    {
+      "id": "T20",
+      "aliases": [],
+      "title": "作品代码展示吞入后续中文说明，复制代码边界错误",
+      "severity": "P1",
+      "isProductDefect": true,
+      "confirmation": "live",
+      "status": "fixed_verified",
+      "statusLabel": "已修复，已有真实路径或同类场景复测",
+      "rootCauseStatus": "confirmed-code-or-measurement",
+      "notes": "旧预览第128行混入中文，DOM导出ast确认为全角冒号语法错误。T16片段161秒同一正式作品普通点击成功，HTTP fallback实际复制结果等显示源码；独立重验125行ast有效且规范化等native，尾说明保留正文。 不改历史正文，不将AST验证说成从剪贴板启动了新一轮游戏。",
+      "evidence": [
+        {
+          "type": "review-index",
+          "video": "T13",
+          "seconds": 289,
+          "screenshot": "images/thunder-postrestart-027-work-code-includes-prose.png",
+          "reviewKey": "T20-thunder-7-60",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        },
+        {
+          "type": "review-index",
+          "video": "T16",
+          "seconds": 161,
+          "screenshot": "images/thunder-copy-final-002-copy-success.png",
+          "reviewKey": "T20-FINAL-thunder-7-64",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        }
+      ]
+    },
+    {
+      "id": "T21",
+      "aliases": [],
+      "title": "HTTP站点缺Clipboard API时复制按钮静默失败",
+      "severity": "P1",
+      "isProductDefect": true,
+      "confirmation": "live",
+      "status": "fixed_verified",
+      "statusLabel": "已修复，已有真实路径或同类场景复测",
+      "rootCauseStatus": "confirmed-code-or-measurement",
+      "notes": "旧HTTP无ClipboardAPI时点击静默失败。T16片段161秒同一正式作品普通点击成功，HTTP fallback实际复制结果等显示源码；独立重验125行ast有效且规范化等native，尾说明保留正文。 另有4项隔离复制失败/成功路径测试，不与线上复测混计。",
+      "evidence": [
+        {
+          "type": "review-index",
+          "video": "T14",
+          "seconds": 22,
+          "screenshot": "images/thunder-copy-before-002-copy-before.png",
+          "reviewKey": "T21-thunder-7-61",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        },
+        {
+          "type": "review-index",
+          "video": "T16",
+          "seconds": 161,
+          "screenshot": "images/thunder-copy-final-002-copy-success.png",
+          "reviewKey": "T21-FINAL-thunder-7-65",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        }
+      ]
+    },
+    {
+      "id": "T22",
+      "aliases": [],
+      "title": "长作品源码块被列flex布局压缩至零高，复制按钮不可点击",
+      "severity": "P1",
+      "isProductDefect": true,
+      "confirmation": "live",
+      "status": "fixed_verified",
+      "statusLabel": "已修复，已有真实路径或同类场景复测",
+      "rootCauseStatus": "confirmed-code-or-measurement",
+      "notes": "旧受限高度列flex压缩overflow:hidden代码块，正常点击被父层拦截。flex-shrink:0修复后实际CSS隔离点击通过；T16片段161秒同一正式作品普通点击成功，HTTP fallback实际复制结果等显示源码；独立重验125行ast有效且规范化等native，尾说明保留正文。",
+      "evidence": [
+        {
+          "type": "review-index",
+          "video": "T15",
+          "seconds": 35,
+          "screenshot": "images/thunder-copy-after-002-copy-success-error.png",
+          "reviewKey": "T22-thunder-7-63",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        },
+        {
+          "type": "review-index",
+          "video": "T16",
+          "seconds": 161,
+          "screenshot": "images/thunder-copy-final-002-copy-success.png",
+          "reviewKey": "T22-FINAL-thunder-7-66",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        }
+      ]
+    },
+    {
+      "id": "R00",
+      "aliases": [
+        "O09"
+      ],
+      "title": "演示学生已有mastery，新项目不能证明从零首次掌握",
+      "severity": "N/A",
+      "isProductDefect": false,
+      "confirmation": "excluded",
+      "status": "limitation",
+      "statusLabel": "验收边界，不计产品缺陷",
+      "rootCauseStatus": "not-a-confirmed-product-defect",
+      "notes": "",
+      "evidence": [
+        {
+          "type": "document-or-code",
+          "source": "docs/issues/20261024-recorded-optics-journey.md",
+          "sectionId": "R00",
+          "independentlyViewed": false
+        }
+      ]
+    },
+    {
+      "id": "R01",
+      "aliases": [],
+      "title": "站外测试作品由测试人员辅助，不能宣称学生仅靠平台独立完成",
+      "severity": "N/A",
+      "isProductDefect": false,
+      "confirmation": "excluded",
+      "status": "limitation",
+      "statusLabel": "验收边界，不计产品缺陷",
+      "rootCauseStatus": "not-a-confirmed-product-defect",
+      "notes": "",
+      "evidence": [
+        {
+          "type": "review-index",
+          "video": "N6",
+          "seconds": 2.43,
+          "screenshot": "images/thunder-native-lesson6-hit-score.png",
+          "reviewKey": "R01-N6-hit-score",
+          "independentlyViewed": true,
+          "note": "站外窗口原始录像/PNG；秒数来自lesson6-result.json的输入检查，三张原图均已独立查看。"
+        },
+        {
+          "type": "review-index",
+          "video": "N6",
+          "seconds": 12.03,
+          "screenshot": "images/thunder-native-lesson6-game-over.png",
+          "reviewKey": "R01-N6-game-over",
+          "independentlyViewed": true,
+          "note": "站外窗口原始录像/PNG；秒数来自lesson6-result.json的输入检查，三张原图均已独立查看。"
+        },
+        {
+          "type": "review-index",
+          "video": "N6",
+          "seconds": 13.77,
+          "screenshot": "images/thunder-native-lesson6-restarted.png",
+          "reviewKey": "R01-N6-restarted",
+          "independentlyViewed": true,
+          "note": "站外窗口原始录像/PNG；秒数来自lesson6-result.json的输入检查，三张原图均已独立查看。"
+        },
+        {
+          "type": "review-index",
+          "video": "N7I",
+          "seconds": 3.517,
+          "screenshot": "images/thunder-independent-native7-hud.png",
+          "reviewKey": "R01-N7-INDEPENDENT",
+          "independentlyViewed": true,
+          "note": "独立agent亲眼复核原始PNG，结果见independent-native7-verification.json。"
+        }
+      ]
+    },
+    {
+      "id": "G01",
+      "aliases": [
+        "O11"
+      ],
+      "title": "正式动态实验和重复播放成功，合法门禁及预测要求保留",
+      "severity": "N/A",
+      "isProductDefect": false,
+      "confirmation": "excluded",
+      "status": "expected",
+      "statusLabel": "正确保护或正面路径，不计缺陷",
+      "rootCauseStatus": "not-a-confirmed-product-defect",
+      "notes": "",
+      "evidence": [
+        {
+          "type": "review-index",
+          "video": "O4",
+          "seconds": 2825,
+          "screenshot": "images/optics-part4-L5-repeat-paused-after-completion.png",
+          "reviewKey": "G01-REPLAY-optics-5-47",
+          "independentlyViewed": true,
+          "note": "本轮原始截图亲眼复核；动作/服务端事实以对应 journey 日志为准。时间允许前后 2 秒差异。"
+        }
+      ]
+    },
+    {
+      "id": "G02",
+      "aliases": [
+        "O16"
+      ],
+      "title": "错误回答被拒绝并经同目标补救修订恢复",
+      "severity": "N/A",
+      "isProductDefect": false,
+      "confirmation": "excluded",
+      "status": "expected",
+      "statusLabel": "正确保护或正面路径，不计缺陷",
+      "rootCauseStatus": "not-a-confirmed-product-defect",
+      "notes": "",
+      "evidence": [
+        {
+          "type": "document-or-code",
+          "source": "docs/issues/20261024-recorded-optics-journey.md",
+          "sectionId": "G02",
+          "independentlyViewed": false
+        }
+      ]
+    },
+    {
+      "id": "G03",
+      "aliases": [
+        "O18"
+      ],
+      "title": "超出注册远场参数域被正确阻止，合法值可恢复",
+      "severity": "N/A",
+      "isProductDefect": false,
+      "confirmation": "excluded",
+      "status": "expected",
+      "statusLabel": "正确保护或正面路径，不计缺陷",
+      "rootCauseStatus": "not-a-confirmed-product-defect",
+      "notes": "",
+      "evidence": [
+        {
+          "type": "document-or-code",
+          "source": "docs/issues/20261024-recorded-optics-journey.md",
+          "sectionId": "G03",
+          "independentlyViewed": false
+        }
+      ]
+    },
+    {
+      "id": "G04",
+      "aliases": [
+        "V09"
+      ],
+      "title": "减少动态设置可禁用播放，当前源码已有明确状态文案",
+      "severity": "N/A",
+      "isProductDefect": false,
+      "confirmation": "excluded",
+      "status": "expected",
+      "statusLabel": "正确保护或正面路径，不计缺陷",
+      "rootCauseStatus": "not-a-confirmed-product-defect",
+      "notes": "",
+      "evidence": [
+        {
+          "type": "document-or-code",
+          "source": "docs/issues/20261024-recorded-optics-journey.md",
+          "sectionId": "G04",
+          "independentlyViewed": false
+        }
+      ]
+    },
+    {
+      "id": "H01",
+      "aliases": [],
+      "title": "测试脚本用了不存在的继续波动演示按钮名称",
+      "severity": "N/A",
+      "isProductDefect": false,
+      "confirmation": "excluded",
+      "status": "test_error",
+      "statusLabel": "测试工具/操作异常，不计产品缺陷",
+      "rootCauseStatus": "not-a-confirmed-product-defect",
+      "notes": "错误播放按钮名以及 T16 末尾额外 reveal 时中文经 stdin 编码成问号字符，造成选择器超时；均为测试定位错误，真实 002 复制成功与其证据保留。",
+      "evidence": [
+        {
+          "type": "document-or-code",
+          "source": "docs/issues/20261024-recorded-journey-visual-audit.md",
+          "sectionId": "H01",
+          "independentlyViewed": false
+        }
+      ]
+    },
+    {
+      "id": "H02",
+      "aliases": [],
+      "title": "O3未捕获等待不存在请求的超时导致录屏异常结束",
+      "severity": "N/A",
+      "isProductDefect": false,
+      "confirmation": "excluded",
+      "status": "test_error",
+      "statusLabel": "测试工具/操作异常，不计产品缺陷",
+      "rootCauseStatus": "not-a-confirmed-product-defect",
+      "notes": "",
+      "evidence": [
+        {
+          "type": "document-or-code",
+          "source": "docs/issues/20261024-recorded-journey-visual-audit.md",
+          "sectionId": "H02",
+          "independentlyViewed": false
+        }
+      ]
+    },
+    {
+      "id": "H03",
+      "aliases": [],
+      "title": "脚本未先检查无效参数禁用或全屏状态，造成操作超时",
+      "severity": "N/A",
+      "isProductDefect": false,
+      "confirmation": "excluded",
+      "status": "test_error",
+      "statusLabel": "测试工具/操作异常，不计产品缺陷",
+      "rootCauseStatus": "not-a-confirmed-product-defect",
+      "notes": "",
+      "evidence": [
+        {
+          "type": "document-or-code",
+          "source": "docs/issues/20261024-recorded-journey-visual-audit.md",
+          "sectionId": "H03",
+          "independentlyViewed": false
+        }
+      ]
+    },
+    {
+      "id": "H04",
+      "aliases": [],
+      "title": "T8页面来源未明地关闭，录像完整，暂无证据归因产品或认证",
+      "severity": "N/A",
+      "isProductDefect": false,
+      "confirmation": "excluded",
+      "status": "limitation",
+      "statusLabel": "验收边界，不计产品缺陷",
+      "rootCauseStatus": "not-a-confirmed-product-defect",
+      "notes": "",
+      "evidence": [
+        {
+          "type": "document-or-code",
+          "source": "docs/issues/20261024-recorded-journey-visual-audit.md",
+          "sectionId": "H04",
+          "independentlyViewed": false
+        }
+      ]
+    },
+    {
+      "id": "H05",
+      "aliases": [],
+      "title": "T10录制脚本宽匹配自身输出导致递归路径过长",
+      "severity": "N/A",
+      "isProductDefect": false,
+      "confirmation": "excluded",
+      "status": "test_error",
+      "statusLabel": "测试工具/操作异常，不计产品缺陷",
+      "rootCauseStatus": "not-a-confirmed-product-defect",
+      "notes": "录制工具遗漏id后默认command-*输出又被命令宽匹配递归，导致路径过长；作品007成功保存后才收尾，不计产品拒绝。",
+      "evidence": [
+        {
+          "type": "document-or-code",
+          "source": "docs/issues/20261024-recorded-journey-visual-audit.md",
+          "sectionId": "H05",
+          "independentlyViewed": false
+        }
+      ]
+    },
+    {
+      "id": "E01",
+      "aliases": [],
+      "title": "23:28及00:37和00:48服务管理停止启动来源未确认",
+      "severity": "N/A",
+      "isProductDefect": false,
+      "confirmation": "excluded",
+      "status": "operational_event",
+      "statusLabel": "服务管理事件，调用来源未知，不计产品缺陷",
+      "rootCauseStatus": "not-a-confirmed-product-defect",
+      "notes": "00:36与00:48前端重新构建并于00:37:20、00:48:56重启，主agent未activate，API仍00:18。源文件曾漂移又00:47:32恢复；调用来源未知。不能归因为其他会话部署、崩溃或测试人员操作。",
+      "evidence": [
+        {
+          "type": "document-or-code",
+          "source": "docs/issues/20261024-recorded-optics-journey.md",
+          "sectionId": "E01",
+          "independentlyViewed": false
+        }
+      ]
+    },
+    {
+      "id": "U01",
+      "aliases": [],
+      "title": "已完成项目legacy阶段仍active且交付物submitted固定false，UI影响未验证",
+      "severity": "P2",
+      "isProductDefect": null,
+      "confirmation": "risk",
+      "status": "unconfirmed",
+      "statusLabel": "风险或设计改进项，不能算已确认缺陷",
+      "rootCauseStatus": "projection-mismatch-confirmed-ui-impact-unverified",
+      "notes": "只读结果104/106均显示project completed/100与8/8，但deliverable_review active、portfolio submitted=false。tutor.service.ts相等索引永远active且submitted硬编码false；对应错误阶段卡未独立看到，暂不计线上产品缺陷。证据：assets/20261024-recorded-journey-visual-audit/completed-project-projection-risk.json。",
+      "evidence": [
+        {
+          "type": "document-or-code",
+          "source": "docs/issues/20261024-recorded-optics-journey.md",
+          "sectionId": "U01",
+          "independentlyViewed": false
+        }
+      ]
+    }
+  ],
+  "acceptance": {
+    "recordedJourneysComplete": true,
+    "finalRemoteRestartVerified": true,
+    "finalVisualRetestsPending": [],
+    "reviewBundleVideos": 28,
+    "finalBuild": "qHOvk6OE_mu5uH9HMW_rF"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "video": "O3",
+  "seconds": 111,
+  "source": "optics journey result-35.json live DOM",
+  "section": "模拟观察回执 3",
+  "text": "\n\n本版本质量已达标\n\n观察记录包含本次产物的双缝路径判断与参数：λ550nm、a20μm、L2m、d由150μm改300μm，并给出前后条纹间距7.33mm与3.67mm；说明这是模拟而非实测，且指出图样按中央归一化不能比较绝对亮度，依据可追溯、与本课一致，符合当前观察核对的范围。\n\n已把两条路径（经S1、经S2到P）与到达相位联系起来：中央P0两路等长同相为亮，光程差半波长时反相变暗，符合本课明暗判据。也区分了缝间距d与缝宽a的不同作用：用同一组λ、a、L只改d得到条纹间距由7.33mm变为3.67mm、包络宽度不变，正确说明d控制细条纹、a控制包络。\n\n查看保存回执",
+  "note": "Full history contained student response bodies before this section; this observation section only contains evaluation and save-receipt entry. Screenshot viewport did not include this lower section."
+}

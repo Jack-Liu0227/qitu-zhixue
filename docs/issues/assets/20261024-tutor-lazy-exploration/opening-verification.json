@@ -1,0 +1,84 @@
+{
+  "at": "2026-10-24T14:02:26.353Z",
+  "base": "http://122.51.130.204",
+  "release": "opening-preview-60caf7c",
+  "checks": [
+    {
+      "name": "default_entry_has_no_creation",
+      "passed": true
+    },
+    {
+      "name": "opening_heading_and_greeting_visible",
+      "passed": true
+    },
+    {
+      "name": "opening_starts_at_top",
+      "passed": true
+    },
+    {
+      "name": "opening_heading_visible_in_short_window",
+      "passed": true
+    },
+    {
+      "name": "all_opening_choices_only_prepare_drafts",
+      "passed": true
+    },
+    {
+      "name": "three_refreshes_have_no_creation",
+      "passed": true
+    },
+    {
+      "name": "two_reentries_have_no_creation",
+      "passed": true
+    },
+    {
+      "name": "new_conversation_button_has_no_creation",
+      "passed": true
+    },
+    {
+      "name": "unsent_draft_has_no_creation",
+      "passed": true
+    },
+    {
+      "name": "browser_downloaded_new_bundle",
+      "passed": true
+    },
+    {
+      "name": "first_send_creates_once_and_adopts_url",
+      "passed": true,
+      "streamStatus": 200
+    },
+    {
+      "name": "first_message_persisted_once",
+      "passed": true
+    },
+    {
+      "name": "history_has_one_new_record",
+      "passed": true,
+      "newHistoryCount": 1
+    },
+    {
+      "name": "refresh_resumes_same_exploration",
+      "passed": true
+    },
+    {
+      "name": "return_to_welcome_keeps_single_record",
+      "passed": true
+    }
+  ],
+  "requests": {
+    "creates": 1,
+    "sessionReads": 4,
+    "streams": 1
+  },
+  "errors": [],
+  "baselineCount": 17,
+  "streamFinished": true,
+  "passed": true,
+  "cleanup": {
+    "deleted": true,
+    "baselineRestored": true
+  },
+  "finishedAt": "2026-10-24T14:02:53.934Z",
+  "buildId": "W4S5RCtDnNVEtEMD8iUXv"
+}

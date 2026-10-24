@@ -1,0 +1,35 @@
+{
+  "kind": "isolated React DOM behavior, not production acceptance",
+  "results": [
+    {
+      "case": "project opening begins at message",
+      "scrollTop": 2,
+      "relativeTop": 20
+    },
+    {
+      "case": "new reply begins above trailing records",
+      "scrollTop": 1052,
+      "relativeTop": 20
+    },
+    {
+      "case": "same reply growth preserves reading position",
+      "scrollTop": 1252,
+      "relativeTop": -180
+    },
+    {
+      "case": "new reply preserves older message reading",
+      "scrollTop": 0,
+      "relativeTop": 2472
+    },
+    {
+      "case": "explicit submission resumes reply reveal",
+      "scrollTop": 3475.333251953125,
+      "relativeTop": 19.833335876464844
+    },
+    {
+      "case": "session switch reveals its message",
+      "scrollTop": 2,
+      "relativeTop": 20
+    }
+  ]
+}

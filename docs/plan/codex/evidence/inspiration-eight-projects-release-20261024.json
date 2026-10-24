@@ -1,0 +1,864 @@
+{
+  "recordedAt": "2026-10-24T14:10:52.237400+00:00",
+  "environment": "study-remote",
+  "status": "available_to_students_ui_deployed",
+  "newTeams": 8,
+  "newAssistants": 24,
+  "newTemplates": 8,
+  "visibleTemplates": 10,
+  "lessonsPerTemplate": 8,
+  "minutesPerLesson": 60,
+  "resources": [
+    {
+      "slug": "seed-observation-inquiry",
+      "title": "一颗种子的七天日记",
+      "templateId": "tpl-04b9e2e4-7765-4b11-a58d-3409940ed743",
+      "templateVersionId": "tplv-fe026fa0-e286-46a6-941c-1f6b014a1809",
+      "templateStatus": "piloting",
+      "versionStatus": "piloting",
+      "teamId": "team-seed-observation-inquiry",
+      "assistantIds": [
+        "seed-observation-inquiry-concept",
+        "seed-observation-inquiry-practice",
+        "seed-observation-inquiry-review"
+      ],
+      "bindingId": "bnd-f0654129f3187fc8",
+      "bindingStatus": "active",
+      "bindingHash": "0d88fd98a983b40e390f671b4540ee98e455f7b49f3ad696824fc39859cf798b",
+      "bundleDigest": "d1c2da9c568a84c75ac76d0248a31a2381f455820f21688cdabeb11774d00517",
+      "lessonCount": 8,
+      "liveRequestVerified": false,
+      "classroomValidated": false
+    },
+    {
+      "slug": "packaging-reduction-action",
+      "title": "让一周的包装少一点",
+      "templateId": "tpl-0549a310-6a7b-4383-bb29-66e32fa7d50d",
+      "templateVersionId": "tplv-59d87e0f-86ae-4ccb-87c2-0f42d46d697f",
+      "templateStatus": "piloting",
+      "versionStatus": "piloting",
+      "teamId": "team-packaging-reduction-action",
+      "assistantIds": [
+        "packaging-reduction-action-concept",
+        "packaging-reduction-action-practice",
+        "packaging-reduction-action-review"
+      ],
+      "bindingId": "bnd-a0b84da388f6949e",
+      "bindingStatus": "active",
+      "bindingHash": "0d540672134b40a35edd83501b1040f13efad4a9f5b886f3b8f2cea083b8ade8",
+      "bundleDigest": "5dfc6be3857cc7fbf08ab5e7cd6320f972fb1f59f11ea7ba294ae1c0b0518283",
+      "lessonCount": 8,
+      "liveRequestVerified": false,
+      "classroomValidated": false
+    },
+    {
+      "slug": "library-data-inquiry",
+      "title": "给图书角做一次数据诊断",
+      "templateId": "tpl-5b8f6ebc-1e2b-4c8d-8a2b-440ca171d3cc",
+      "templateVersionId": "tplv-6f1085df-ff34-4855-aec3-7ef116f61117",
+      "templateStatus": "piloting",
+      "versionStatus": "piloting",
+      "teamId": "team-library-data-inquiry",
+      "assistantIds": [
+        "library-data-inquiry-concept",
+        "library-data-inquiry-practice",
+        "library-data-inquiry-review"
+      ],
+      "bindingId": "bnd-9e7bf3f2697174a7",
+      "bindingStatus": "active",
+      "bindingHash": "d50708db57377bd6ce1d88e275bad9bfb6e0793842158d2e4fe5644faac18358",
+      "bundleDigest": "b8adf8e096fe5a9df390faae1919161762c1fec6f9b841f35e1a83c5c50a6642",
+      "lessonCount": 8,
+      "liveRequestVerified": false,
+      "classroomValidated": false
+    },
+    {
+      "slug": "inclusive-wayfinding-design",
+      "title": "让第一次来的人也能找到路",
+      "templateId": "tpl-9b9d1c54-f365-48f4-b21e-72d79cae0955",
+      "templateVersionId": "tplv-5d37b83e-17c9-4e14-ade4-77aad826fd7d",
+      "templateStatus": "piloting",
+      "versionStatus": "piloting",
+      "teamId": "team-inclusive-wayfinding-design",
+      "assistantIds": [
+        "inclusive-wayfinding-design-concept",
+        "inclusive-wayfinding-design-practice",
+        "inclusive-wayfinding-design-review"
+      ],
+      "bindingId": "bnd-92625bc4a98b4d6a",
+      "bindingStatus": "active",
+      "bindingHash": "567253314b990be259e4139db261912ee193ef01a146ead00504b36ebd7d5e71",
+      "bundleDigest": "380965cc857e4a55a606b49d7b47f5d228cb1ed927ae5c39aacb1b634839b7c1",
+      "lessonCount": 8,
+      "liveRequestVerified": false,
+      "classroomValidated": false
+    },
+    {
+      "slug": "object-history-exhibition",
+      "title": "给一件老物件办微型展览",
+      "templateId": "tpl-784a87af-94cb-4377-91ac-b17f96a91272",
+      "templateVersionId": "tplv-70fc5796-7695-4003-bd3d-115b7a672cfd",
+      "templateStatus": "piloting",
+      "versionStatus": "piloting",
+      "teamId": "team-object-history-exhibition",
+      "assistantIds": [
+        "object-history-exhibition-concept",
+        "object-history-exhibition-practice",
+        "object-history-exhibition-review"
+      ],
+      "bindingId": "bnd-c0353268411f4afb",
+      "bindingStatus": "active",
+      "bindingHash": "d77db62b352b57156e99885558613cb2d091138f52aba3ccb95d5bdb51609c08",
+      "bundleDigest": "a5f09cc843439c7af017862274b1091dbd07fdd4322ca2c0435f47f8182486f4",
+      "lessonCount": 8,
+      "liveRequestVerified": false,
+      "classroomValidated": false
+    },
+    {
+      "slug": "choice-story-studio",
+      "title": "一个选择，两种结局",
+      "templateId": "tpl-3bcc7672-2a29-4a4a-b1f9-c23770168f8d",
+      "templateVersionId": "tplv-02ffab8c-5149-4f8a-863b-5fa8ab738fa7",
+      "templateStatus": "piloting",
+      "versionStatus": "piloting",
+      "teamId": "team-choice-story-studio",
+      "assistantIds": [
+        "choice-story-studio-concept",
+        "choice-story-studio-practice",
+        "choice-story-studio-review"
+      ],
+      "bindingId": "bnd-5fa2e014d362c1b3",
+      "bindingStatus": "active",
+      "bindingHash": "8a02f5f6ec3cb8911794543f1432947bbc7a240b21c2e098cf849044631361d6",
+      "bundleDigest": "14327ba4940384cb2545dca82a13220c3378f8b6d89a04db1d14d47d17d3e292",
+      "lessonCount": 8,
+      "liveRequestVerified": false,
+      "classroomValidated": false
+    },
+    {
+      "slug": "claim-verification-lab",
+      "title": "为一条流传说法做核验",
+      "templateId": "tpl-d1c7e101-3bd0-4540-ad98-5e752c1364db",
+      "templateVersionId": "tplv-8c717bf9-4149-453a-904d-106ac5005ea8",
+      "templateStatus": "piloting",
+      "versionStatus": "piloting",
+      "teamId": "team-claim-verification-lab",
+      "assistantIds": [
+        "claim-verification-lab-concept",
+        "claim-verification-lab-practice",
+        "claim-verification-lab-review"
+      ],
+      "bindingId": "bnd-a940ccbc4c761d00",
+      "bindingStatus": "active",
+      "bindingHash": "c00b6d07b5ae5bf6f4bb8c9755c71a02b106eca755be17ec14ded5c8c0ca97b4",
+      "bundleDigest": "670292ce73cf1e2c1ac4e3b2da9f0281b406452225e8e10562e828acfd14af24",
+      "lessonCount": 8,
+      "liveRequestVerified": false,
+      "classroomValidated": false
+    },
+    {
+      "slug": "creative-market-budget",
+      "title": "用一百元设计一次文创试售",
+      "templateId": "tpl-d8875d5b-a8dc-4829-b9de-ad48cb8bbf11",
+      "templateVersionId": "tplv-c127d7ee-8ec3-488c-8544-745313a56d13",
+      "templateStatus": "piloting",
+      "versionStatus": "piloting",
+      "teamId": "team-creative-market-budget",
+      "assistantIds": [
+        "creative-market-budget-concept",
+        "creative-market-budget-practice",
+        "creative-market-budget-review"
+      ],
+      "bindingId": "bnd-8ce37b0ab208e54d",
+      "bindingStatus": "active",
+      "bindingHash": "c1cf582e0fe9f34fe057099c506113c7718315b6baa97a1730f66787e218c016",
+      "bundleDigest": "109d041de014171baf982b3a93bdfeef30668c3eb912316490297258f81b6ece",
+      "lessonCount": 8,
+      "liveRequestVerified": false,
+      "classroomValidated": false
+    }
+  ],
+  "preservedHistoricalVersions": 6,
+  "attestation": {
+    "verifiedSourceFiles": 41,
+    "sourceHashes": {
+      "apps/admin-console/app/(console)/settings/plugins/page.tsx": "96f4b299b7cc6c63b2661b042b4de9512a0f4bfc1d6b232af590b3fbfd397d59",
+      "apps/admin-console/app/(console)/settings/skills/page.tsx": "c2135b370861047031162096319623c0b8129ba1382bfc93925cfc634f215437",
+      "apps/admin-console/app/(console)/settings/templates/page.tsx": "d046f2968145fdda8183d9e03a6370f9a29c1b1c4a295f8e5d58fbb2ec1ac127",
+      "apps/admin-console/lib/api/content.ts": "d0b94f610c3343d6f30383a7be312419c845164ded94b0a5a33867a50f2d9a79",
+      "apps/admin-console/lib/components/KnowledgeConfiguration.tsx": "7325ffa79b89f0e55fd4a87152131b3cf53f41d6d013d788b1457b16d4094d6a",
+      "apps/admin-console/lib/components/TemplateTeamBindingPanel.tsx": "9fe828d9369f1efdd52271b0a681b798e2e24bcaa6e3bca0231a2c6547ca41d4",
+      "apps/admin-console/lib/components/knowledge-library/KnowledgeBindingMatrix.tsx": "8a8bf84497f089ce113438343fadbbbf8a9f5d8ee3ef34c9c9e1b37e4ef3187f",
+      "apps/admin-console/lib/components/knowledge-library/RemoteConnectionChecks.tsx": "ea064b2bd6d7c8937c57d7b820a9af2c189a2107cb8d231734b7c41bf39c3d88",
+      "apps/admin-console/lib/components/teaching-binding/CourseVersionActions.tsx": "7c4cb9a5f492129f57cad352412ddfb09c79b247f0ab19bbcf139d78b19a9e8c",
+      "apps/admin-console/lib/components/teaching-binding/LessonDraftEditor.tsx": "a71c10d31dcb233f8f036ea6a840766c15f922ad06742519845fb32e39a15057",
+      "apps/admin-console/lib/components/teaching-binding/TeamRosterEditor.tsx": "c9bb6025879fbf6dfba2ac99f50f947cc6d2159464e02203f52f069df4534415",
+      "apps/admin-console/lib/components/template-library/TemplateLibrary.module.css": "87ef2adbaced17d05963d1547c4792038ef7129d292efcd9f166b2b4e56d2676",
+      "apps/admin-console/lib/components/template-library/TemplateLibraryCard.tsx": "016b780821d74261c4d85b09ca0bc9d14c6b7648da85bdf3dbc539fbb49c4510",
+      "apps/parent-companion/features/ParentFeedbackWidget.tsx": "f630d78db8214fd8c683a640da11a45d10098270e14417e324ded68fd07f099d",
+      "apps/parent-companion/features/feedback/feedbackService.ts": "cd7d2fb865ee39900d611b98a14ae4507780851fd14149fdf9e99e3be6b04fec",
+      "apps/parent-companion/features/feedback/types.ts": "09a121b92c6c8a75f61c50341e5f8c0fedfcb443d545198dce52f78c519574e7",
+      "apps/parent-companion/features/parentFormat.ts": "ef47a82de43939e9e00d6584991b26eb8c12174056723d60aaad81eab44a2748",
+      "apps/student-center/features/inspiration/components/RecommendedTemplates.tsx": "f17ea955c7c7b99ec4988dd2d8eb5a1a3da0cee161260f6e3f8c0968cfe73196",
+      "apps/student-center/features/inspiration/components/TemplateCard.tsx": "133cd2758b1a877a8a0f3d9413ae0ebb307b62a5e5e2bd12e18f4df5bc52d054",
+      "apps/student-center/features/inspiration/data/inspiration-api-data-source.test.ts": "b35cba3cee3939d53bf1593bbd867d643804cddbf0723db1cde8bb5ee20b7111",
+      "apps/student-center/features/inspiration/data/inspiration-api-data-source.ts": "467116f053c4da315910f66ce362f7e12ee189ef54cf26a72bc9168af6aea049",
+      "apps/student-center/features/inspiration/hooks/useInspirationData.ts": "27a37bceb76a51305eb5fa91a2ec3df73a5add9864b8fcab9fa9ce21fe0e3733",
+      "apps/student-center/features/projects/components/ProjectTabs.tsx": "f8b29ad5ce6fb8b6f34dd5cfa82deb7968c4db6d62a1e116adf817ad4ce85868",
+      "apps/student-center/features/projects/types/index.ts": "855033e81aa2a388264c3b43e07b7335cd9156d71c4e5525ba34661ab47d1948",
+      "apps/student-center/features/tutor/components/LessonWorkPanel.tsx": "b467361f2a1d5a87b7cede1dd6da86b94394f5d092d4eed10a025279408a2797",
+      "apps/student-center/features/workbench/components/AutosaveStatus.tsx": "306e76dbdc96f1a2db2d78f04e94c1a72fd8463361eff114734b048c35a1d72c",
+      "apps/student-center/features/workbench/components/ConflictDialog.tsx": "61ff58db56d0739a9b843da0437dcbe7455cb2e0340e2fb31b1dab0df17af69d",
+      "apps/student-center/features/workbench/components/SimulatorPanel.tsx": "f7198dc6cae5ed547715e5250948fad9de952f994abb51a4d1a9211bc871396e",
+      "apps/student-center/features/workbench/components/TutorAdviceRail.tsx": "a70b0a6741da2a786093e199b94b9bf7b679e6a6069bb95a389f7bcd4c6dee1a",
+      "apps/student-center/features/workbench/components/WorkbenchPage.tsx": "2e12766f323578b03e6b86bcc428e65b3988d4d70ba34b9df96cedd52064cd58",
+      "apps/student-center/features/workbench/hooks/useWorkbenchDraft.ts": "48c8fb6cad5a78d06256c508b981a6db79498000031920ffaf39d3ce4f642bbf",
+      "apps/student-center/styles/inspiration.css": "a8cf7f9f10aac872667997bafe118819c6082d824f94e8e73de41cc17b95327c",
+      "services/api/src/modules/templates/templates-governance.service.ts": "42eca46ceb5715d8e5a7b9ef03f76a1e907fcc6725199b554c930ce9760afd45",
+      "services/api/src/modules/templates/templates.presentation.ts": "a9b07a0f5dd0c9a083455db00fa28a8a1e2942534fbcf4c9e1ccc74649ddb5e2",
+      "services/api/src/modules/templates/templates.service.test.ts": "68c55acb1b26e48b795d3dd7bd849ef6867a6120dc98815d404ef70ed35e8452",
+      "services/api/src/modules/templates/templates.service.ts": "4ee0d2e6c2fad14d9354df6d890d279b59c294e511233ca6734563e5a7661da9",
+      "apps/admin-console/lib/components/teaching-binding/LessonDraftEditor.module.css": "f19b6f122a86fca01b45507325f33ab264149e7c75a131417601410aa5937ddf",
+      "apps/admin-console/lib/components/teaching-binding/TeachingBinding.module.css": "057bb88b792da4e0908694bd245cfface6876b2ccf60a15ff512d5bb1d9cf8f4",
+      "apps/admin-console/lib/components/teaching-binding/SessionBindingEditor.tsx": "5a26edec4a2cb5ac0e4e37e255b2d83dedb4e9f666d274f1c4bb20fc39c0d9e3",
+      "apps/admin-console/lib/components/teaching-binding/TeachingWorkspace.tsx": "152ea9ed45e739a2165d1e1ced0945a22fe80ff6aced60c7d18f61db096e766a",
+      "apps/admin-console/lib/components/teaching-binding/TeachingRoleInspector.tsx": "447ae336ec99ba3011defba5185afd8a88e92ce146a3f1aa63b2038f1e7f8ec4"
+    },
+    "buildIds": {
+      "student-center": "W4S5RCtDnNVEtEMD8iUXv",
+      "admin-console": "gqpEPeYDUC_QUUB7rKime",
+      "parent-companion": "zjmxwUprbquFBKMVKttg1"
+    },
+    "services": {
+      "api": "active",
+      "student": "active",
+      "admin": "active",
+      "parent": "active"
+    },
+    "health": {
+      "service": "qitu-zhixue-api",
+      "status": "ready",
+      "version": "0.1.0",
+      "checkedAt": "2026-10-24T14:09:43.489Z",
+      "dataMode": "live",
+      "dependencies": {
+        "database": {
+          "status": "ok"
+        },
+        "redis": {
+          "status": "ok"
+        }
+      }
+    }
+  },
+  "browser": {
+    "at": "2026-10-24T14:04:02.373Z",
+    "admin": {
+      "availableCourses": 10,
+      "lessonCount": 8,
+      "lessonMinutes": 60,
+      "noDraftText": true,
+      "conciseCards": true,
+      "singleWorkspace": true,
+      "lessonSelectionAndLocalEdits": true,
+      "noProductionCourseWrites": true
+    },
+    "student": {
+      "realReleasedTemplates": 10,
+      "allSchedulesVerified": true,
+      "mobileOverflow": false,
+      "detailVerified": true,
+      "adminDenied": true
+    },
+    "refreshFixture": {
+      "syntheticReadResponsesOnly": true,
+      "focusReceivesReleaseWithoutReload": true,
+      "latestResponseWins": true,
+      "permissionClearsCards": true,
+      "offlineRetainsReadOnlyCards": true
+    },
+    "issues": [],
+    "success": true
+  },
+  "validation": {
+    "isolatedDeliveryOwnerTests": 83,
+    "studentDataAdapterTests": 19,
+    "linuxTemplateTests": 171,
+    "earlierLinuxApiAndCourseTests": 165,
+    "earlierLinuxCopilotTests": 64,
+    "note": "Test scopes overlap. Browser release reads are real; refresh/error/race fixtures are synthetic read responses only.",
+    "localAdminTypes": "passed after final UI edits",
+    "productionBuilds": [
+      "api dependency graph",
+      "student",
+      "admin",
+      "parent"
+    ],
+    "reviewedSourceFiles": 87,
+    "maximumSourceLines": 2301,
+    "historicalBrokenDocLinks": [
+      {
+        "path": "docs/admin/platform-governance.md",
+        "link": "../plan/20261018-issue-digest-feishu-assistant.md",
+        "reason": "unchanged link already present in HEAD"
+      },
+      {
+        "path": "docs/admin/platform-governance.md",
+        "link": "../plan/codex/visual-assets/04-implementation.md",
+        "reason": "unchanged link already present in HEAD"
+      },
+      {
+        "path": "docs/admin/platform-governance.md",
+        "link": "../plan/codex/configuration-binding-recovery-20261021.md",
+        "reason": "unchanged link already present in HEAD"
+      },
+      {
+        "path": "docs/plan/codex/README.md",
+        "link": "./validation-20261019.md",
+        "reason": "unchanged link already present in HEAD"
+      },
+      {
+        "path": "docs/plan/codex/README.md",
+        "link": "./delivery-status.json",
+        "reason": "unchanged link already present in HEAD"
+      },
+      {
+        "path": "docs/plan/codex/README.md",
+        "link": "./architecture.md",
+        "reason": "unchanged link already present in HEAD"
+      },
+      {
+        "path": "docs/plan/codex/README.md",
+        "link": "./implementation-plan.md",
+        "reason": "unchanged link already present in HEAD"
+      },
+      {
+        "path": "docs/plan/codex/README.md",
+        "link": "./skills-catalog.md",
+        "reason": "unchanged link already present in HEAD"
+      },
+      {
+        "path": "docs/plan/codex/README.md",
+        "link": "./mcp-tool-governance.md",
+        "reason": "unchanged link already present in HEAD"
+      },
+      {
+        "path": "docs/plan/codex/README.md",
+        "link": "./theme-session-team-ima-design.md",
+        "reason": "unchanged link already present in HEAD"
+      },
+      {
+        "path": "docs/plan/codex/README.md",
+        "link": "./gap-audit-20261019.md",
+        "reason": "unchanged link already present in HEAD"
+      },
+      {
+        "path": "docs/plan/codex/README.md",
+        "link": "./optics-scattering-diffraction-analysis.md",
+        "reason": "unchanged link already present in HEAD"
+      },
+      {
+        "path": "docs/plan/codex/README.md",
+        "link": "./research-report.md",
+        "reason": "unchanged link already present in HEAD"
+      },
+      {
+        "path": "docs/plan/codex/README.md",
+        "link": "./source-lock.json",
+        "reason": "unchanged link already present in HEAD"
+      },
+      {
+        "path": "docs/plan/codex/README.md",
+        "link": "./validation-20261019.md",
+        "reason": "unchanged link already present in HEAD"
+      },
+      {
+        "path": "docs/plan/codex/README.md",
+        "link": "./delivery-status.json",
+        "reason": "unchanged link already present in HEAD"
+      },
+      {
+        "path": "docs/plan/codex/README.md",
+        "link": "./takeover-validation-20261019.md",
+        "reason": "unchanged link already present in HEAD"
+      },
+      {
+        "path": "docs/plan/codex/README.md",
+        "link": "./optics-template-runtime/06-fullflow-implementation-20261021.md",
+        "reason": "unchanged link already present in HEAD"
+      },
+      {
+        "path": "docs/plan/codex/README.md",
+        "link": "./optics-template-runtime/README.md",
+        "reason": "unchanged link already present in HEAD"
+      },
+      {
+        "path": "docs/plan/codex/README.md",
+        "link": "./profile-growth-projection/README.md",
+        "reason": "unchanged link already present in HEAD"
+      },
+      {
+        "path": "docs/plan/codex/README.md",
+        "link": "./optics-template-runtime/09-copilot-implementation-20261021.md",
+        "reason": "unchanged link already present in HEAD"
+      },
+      {
+        "path": "docs/plan/codex/README.md",
+        "link": "./optics-template-runtime/10-template-team-assistant-knowledge-architecture.md",
+        "reason": "unchanged link already present in HEAD"
+      },
+      {
+        "path": "docs/plan/codex/README.md",
+        "link": "./optics-template-runtime/11-copilot-verification-20261021.md",
+        "reason": "unchanged link already present in HEAD"
+      },
+      {
+        "path": "docs/plan/codex/README.md",
+        "link": "./optics-template-runtime/00-completion-audit.md",
+        "reason": "unchanged link already present in HEAD"
+      },
+      {
+        "path": "docs/plan/codex/README.md",
+        "link": "./profile-growth-projection/00-completion-audit.md",
+        "reason": "unchanged link already present in HEAD"
+      },
+      {
+        "path": "docs/plan/codex/README.md",
+        "link": "./optics-template-runtime/08-validation-20261021.md",
+        "reason": "unchanged link already present in HEAD"
+      },
+      {
+        "path": "docs/plan/codex/README.md",
+        "link": "./skills-mcp-tools-sdk-audit-20261021.md",
+        "reason": "unchanged link already present in HEAD"
+      },
+      {
+        "path": "docs/plan/codex/README.md",
+        "link": "./agent-driven-pbl-requirements-20261021.md",
+        "reason": "unchanged link already present in HEAD"
+      },
+      {
+        "path": "docs/plan/codex/README.md",
+        "link": "./runtime-governance-optimization-20261021.md",
+        "reason": "unchanged link already present in HEAD"
+      },
+      {
+        "path": "docs/plan/codex/README.md",
+        "link": "./copilot-module-references-20261021.md",
+        "reason": "unchanged link already present in HEAD"
+      },
+      {
+        "path": "docs/plan/codex/README.md",
+        "link": "./copilot-lifecycle-verification-20261021.md",
+        "reason": "unchanged link already present in HEAD"
+      },
+      {
+        "path": "docs/plan/codex/README.md",
+        "link": "./visual-assets/README.md",
+        "reason": "unchanged link already present in HEAD"
+      },
+      {
+        "path": "docs/plan/codex/README.md",
+        "link": "./visual-assets/04-implementation.md",
+        "reason": "unchanged link already present in HEAD"
+      }
+    ],
+    "sourceFormatOnlyAfterFinalBuild": "Removed trailing whitespace in templates page; same runtime behavior, source hash re-attested. No repeat behavior run needed.",
+    "sourceLineLimit": 2500
+  },
+  "backups": [
+    "/root/qitu-backups/inspiration-deploy-20261024-210506",
+    "/root/qitu-backups/inspiration-polish-20261024-214217",
+    "/root/qitu-backups/inspiration-polish-20261024-215635",
+    "/root/qitu-backups/inspiration-polish-20261024-220212"
+  ],
+  "boundaries": {
+    "formalEvidenceBasedPublicationPerformed": false,
+    "studentProjectCreated": false,
+    "learningEvidenceInjected": false,
+    "newCourseLiveTutorClassroomVerified": false,
+    "frozenHistoricalContentChanged": false,
+    "navigationChanged": false
+  },
+  "coexistingWorkspaceChanges": {
+    "outsideDeliveryManifests": [
+      {
+        "path": "AGENTS.md",
+        "gitStatus": " M"
+      },
+      {
+        "path": "apps/student-center/features/tutor/TutorPage.tsx",
+        "gitStatus": " M"
+      },
+      {
+        "path": "apps/student-center/features/tutor/components/BoardBlock.tsx",
+        "gitStatus": " M"
+      },
+      {
+        "path": "apps/student-center/features/tutor/components/ChatBubble.tsx",
+        "gitStatus": " M"
+      },
+      {
+        "path": "apps/student-center/features/tutor/components/ChatThread.tsx",
+        "gitStatus": " M"
+      },
+      {
+        "path": "apps/student-center/features/tutor/components/CurrentLessonCard.tsx",
+        "gitStatus": " M"
+      },
+      {
+        "path": "apps/student-center/features/tutor/components/ExplorationWelcome.tsx",
+        "gitStatus": " M"
+      },
+      {
+        "path": "apps/student-center/features/tutor/components/LessonCoursewareCard.tsx",
+        "gitStatus": " M"
+      },
+      {
+        "path": "apps/student-center/features/tutor/components/LessonHistory.tsx",
+        "gitStatus": " M"
+      },
+      {
+        "path": "apps/student-center/features/tutor/components/LessonNextStep.tsx",
+        "gitStatus": " M"
+      },
+      {
+        "path": "apps/student-center/features/tutor/components/TutorReplyBlockView.tsx",
+        "gitStatus": " M"
+      },
+      {
+        "path": "apps/student-center/features/tutor/components/lessonBlockers.ts",
+        "gitStatus": " M"
+      },
+      {
+        "path": "apps/student-center/features/tutor/hooks/useTutorSession.ts",
+        "gitStatus": " M"
+      },
+      {
+        "path": "apps/student-center/tsconfig.test.json",
+        "gitStatus": " M"
+      },
+      {
+        "path": "apps/teacher-workspace/app/(workspace)/issues/page.tsx",
+        "gitStatus": " M"
+      },
+      {
+        "path": "apps/teacher-workspace/components/student-artifact-reviews.tsx",
+        "gitStatus": " M"
+      },
+      {
+        "path": "apps/teacher-workspace/components/student-lesson-quality-reviews.tsx",
+        "gitStatus": " M"
+      },
+      {
+        "path": "docs/issues/20261024-tutor-lesson-progression.md",
+        "gitStatus": " M"
+      },
+      {
+        "path": "docs/student/tutor.md",
+        "gitStatus": " M"
+      },
+      {
+        "path": "docs/teacher/dashboard.md",
+        "gitStatus": " M"
+      },
+      {
+        "path": "docs/teacher/issues.md",
+        "gitStatus": " M"
+      },
+      {
+        "path": "docs/teacher/students.md",
+        "gitStatus": " M"
+      },
+      {
+        "path": "packages/model-runtime/UPSTREAM.md",
+        "gitStatus": " M"
+      },
+      {
+        "path": "packages/model-runtime/src/pi/api/openai-completions.ts",
+        "gitStatus": " M"
+      },
+      {
+        "path": "packages/model-runtime/src/runtime.ts",
+        "gitStatus": " M"
+      },
+      {
+        "path": "services/api/src/modules/ai-tutor/gateway-tutor.provider.ts",
+        "gitStatus": " M"
+      },
+      {
+        "path": "services/api/src/modules/ai-tutor/tutor-experiment.service.ts",
+        "gitStatus": " M"
+      },
+      {
+        "path": "services/api/src/modules/ai-tutor/tutor.service.ts",
+        "gitStatus": " M"
+      },
+      {
+        "path": "services/api/src/modules/learning-plan/guided-lesson-flow.test.ts",
+        "gitStatus": " M"
+      },
+      {
+        "path": "services/api/src/modules/learning-plan/optics-fullflow.test.ts",
+        "gitStatus": " M"
+      },
+      {
+        "path": "services/api/src/modules/learning-plan/thunder-course-fullflow.test.ts",
+        "gitStatus": " M"
+      },
+      {
+        "path": "services/api/src/modules/learning-plan/wave-course-fullflow.test.ts",
+        "gitStatus": " M"
+      },
+      {
+        "path": "services/api/src/modules/model-registry/model-gateway.errors.ts",
+        "gitStatus": " M"
+      },
+      {
+        "path": "services/api/src/modules/model-registry/model-gateway.ts",
+        "gitStatus": " M"
+      },
+      {
+        "path": "services/api/src/modules/teacher/teacher-review-decision.test.ts",
+        "gitStatus": " M"
+      },
+      {
+        "path": "services/api/src/modules/teacher/teacher.controller.ts",
+        "gitStatus": " M"
+      },
+      {
+        "path": "services/api/src/modules/teacher/teacher.service.ts",
+        "gitStatus": " M"
+      },
+      {
+        "path": "services/api/src/modules/works/works-learning-evidence.service.ts",
+        "gitStatus": " M"
+      },
+      {
+        "path": "services/api/src/modules/works/works-learning-evidence.test.ts",
+        "gitStatus": " M"
+      },
+      {
+        "path": "services/api/src/modules/works/works-lesson-quality.test.ts",
+        "gitStatus": " M"
+      },
+      {
+        "path": "tooling/fixtures/thunder-fighter-synthetic/verify.py",
+        "gitStatus": " M"
+      },
+      {
+        "path": "tooling/verify-live-courseware.cjs",
+        "gitStatus": " M"
+      },
+      {
+        "path": "apps/student-center/features/tutor/components/ProjectLearningHistory.tsx",
+        "gitStatus": "??"
+      },
+      {
+        "path": "apps/student-center/features/tutor/lib/coursewareVisual.test.ts",
+        "gitStatus": "??"
+      },
+      {
+        "path": "apps/student-center/features/tutor/lib/coursewareVisual.ts",
+        "gitStatus": "??"
+      },
+      {
+        "path": "apps/student-center/features/tutor/lib/timelinePresentation.test.ts",
+        "gitStatus": "??"
+      },
+      {
+        "path": "apps/student-center/features/tutor/lib/timelinePresentation.ts",
+        "gitStatus": "??"
+      },
+      {
+        "path": "docs/issues/20261024-autonomous-fullflow-live.md",
+        "gitStatus": "??"
+      },
+      {
+        "path": "docs/issues/20261024-autonomous-learning.md",
+        "gitStatus": "??"
+      },
+      {
+        "path": "docs/issues/20261024-dynamic-experiment-visibility.md",
+        "gitStatus": "??"
+      },
+      {
+        "path": "docs/issues/20261024-tutor-lazy-exploration.md",
+        "gitStatus": "??"
+      },
+      {
+        "path": "docs/issues/assets/20261024-autonomous-fullflow-live/game-game-over.png",
+        "gitStatus": "??"
+      },
+      {
+        "path": "docs/issues/assets/20261024-autonomous-fullflow-live/game-lesson-6-playing.png",
+        "gitStatus": "??"
+      },
+      {
+        "path": "docs/issues/assets/20261024-autonomous-fullflow-live/game-restarted.png",
+        "gitStatus": "??"
+      },
+      {
+        "path": "docs/issues/assets/20261024-autonomous-fullflow-live/optics-desktop.png",
+        "gitStatus": "??"
+      },
+      {
+        "path": "docs/issues/assets/20261024-autonomous-fullflow-live/optics-mobile.png",
+        "gitStatus": "??"
+      },
+      {
+        "path": "docs/issues/assets/20261024-autonomous-fullflow-live/saved-timeline-courseware.png",
+        "gitStatus": "??"
+      },
+      {
+        "path": "docs/issues/assets/20261024-autonomous-fullflow-live/thinking-step-courseware-fixed.png",
+        "gitStatus": "??"
+      },
+      {
+        "path": "docs/issues/assets/20261024-autonomous-fullflow-live/thinking-step-retained-visual.png",
+        "gitStatus": "??"
+      },
+      {
+        "path": "docs/issues/assets/20261024-autonomous-fullflow-live/thunder-board.png",
+        "gitStatus": "??"
+      },
+      {
+        "path": "docs/issues/assets/20261024-autonomous-fullflow-live/thunder-lesson-1-records.png",
+        "gitStatus": "??"
+      },
+      {
+        "path": "docs/issues/assets/20261024-autonomous-fullflow-live/thunder-lesson-2-records.png",
+        "gitStatus": "??"
+      },
+      {
+        "path": "docs/issues/assets/20261024-autonomous-fullflow-live/thunder-lesson-3-records.png",
+        "gitStatus": "??"
+      },
+      {
+        "path": "docs/issues/assets/20261024-autonomous-fullflow-live/thunder-lesson-4-records.png",
+        "gitStatus": "??"
+      },
+      {
+        "path": "docs/issues/assets/20261024-autonomous-fullflow-live/thunder-lesson-5-records.png",
+        "gitStatus": "??"
+      },
+      {
+        "path": "docs/issues/assets/20261024-autonomous-fullflow-live/thunder-lesson-6-records.png",
+        "gitStatus": "??"
+      },
+      {
+        "path": "docs/issues/assets/20261024-autonomous-fullflow-live/thunder-lesson-7-records.png",
+        "gitStatus": "??"
+      },
+      {
+        "path": "docs/issues/assets/20261024-autonomous-fullflow-live/thunder-lesson-8-records.png",
+        "gitStatus": "??"
+      },
+      {
+        "path": "docs/issues/assets/20261024-autonomous-fullflow-live/verification.json",
+        "gitStatus": "??"
+      },
+      {
+        "path": "docs/issues/assets/20261024-autonomous-fullflow-live/zero8-board.png",
+        "gitStatus": "??"
+      },
+      {
+        "path": "docs/issues/assets/20261024-autonomous-fullflow-live/zero8-lesson-1-records.png",
+        "gitStatus": "??"
+      },
+      {
+        "path": "docs/issues/assets/20261024-autonomous-fullflow-live/zero8-lesson-2-records.png",
+        "gitStatus": "??"
+      },
+      {
+        "path": "docs/issues/assets/20261024-autonomous-fullflow-live/zero8-lesson-3-records.png",
+        "gitStatus": "??"
+      },
+      {
+        "path": "docs/issues/assets/20261024-autonomous-fullflow-live/zero8-lesson-4-records.png",
+        "gitStatus": "??"
+      },
+      {
+        "path": "docs/issues/assets/20261024-autonomous-fullflow-live/zero8-lesson-5-records.png",
+        "gitStatus": "??"
+      },
+      {
+        "path": "docs/issues/assets/20261024-autonomous-fullflow-live/zero8-lesson-6-records.png",
+        "gitStatus": "??"
+      },
+      {
+        "path": "docs/issues/assets/20261024-autonomous-fullflow-live/zero8-lesson-7-records.png",
+        "gitStatus": "??"
+      },
+      {
+        "path": "docs/issues/assets/20261024-autonomous-fullflow-live/zero8-lesson-8-records.png",
+        "gitStatus": "??"
+      },
+      {
+        "path": "docs/issues/assets/20261024-dynamic-experiment-visible/dynamic-experiment-access.png",
+        "gitStatus": "??"
+      },
+      {
+        "path": "docs/issues/assets/20261024-dynamic-experiment-visible/dynamic-experiment-visible.png",
+        "gitStatus": "??"
+      },
+      {
+        "path": "docs/issues/assets/20261024-dynamic-experiment-visible/optics-desktop.png",
+        "gitStatus": "??"
+      },
+      {
+        "path": "docs/issues/assets/20261024-dynamic-experiment-visible/optics-mobile.png",
+        "gitStatus": "??"
+      },
+      {
+        "path": "docs/issues/assets/20261024-dynamic-experiment-visible/verification.json",
+        "gitStatus": "??"
+      },
+      {
+        "path": "docs/issues/assets/20261024-tutor-lazy-exploration/live-verification.json",
+        "gitStatus": "??"
+      },
+      {
+        "path": "docs/issues/assets/20261024-tutor-lazy-exploration/opening-desktop.png",
+        "gitStatus": "??"
+      },
+      {
+        "path": "docs/issues/assets/20261024-tutor-lazy-exploration/opening-verification.json",
+        "gitStatus": "??"
+      },
+      {
+        "path": "packages/model-runtime/src/deepseek-thinking.test.ts",
+        "gitStatus": "??"
+      },
+      {
+        "path": "services/api/src/modules/works/lesson-quality-evaluator.test.ts",
+        "gitStatus": "??"
+      },
+      {
+        "path": "services/api/src/modules/works/lesson-quality-evaluator.ts",
+        "gitStatus": "??"
+      },
+      {
+        "path": "tooling/fixtures/autonomous-learner-responses.json",
+        "gitStatus": "??"
+      },
+      {
+        "path": "tooling/verify-autonomous-project-lessons.cjs",
+        "gitStatus": "??"
+      },
+      {
+        "path": "tooling/verify-autonomous-project-records.cjs",
+        "gitStatus": "??"
+      },
+      {
+        "path": "tooling/verify-dynamic-experiment-visibility.cjs",
+        "gitStatus": "??"
+      },
+      {
+        "path": "tooling/verify-tutor-timeline.cjs",
+        "gitStatus": "??"
+      }
+    ],
+    "validationBoundary": "These working-tree changes are outside the scoped delivery manifests. They were preserved; unrelated feature behavior is not claimed as verified. Shared owner behavior is covered only by the identified regression scopes."
+  }
+}

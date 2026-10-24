@@ -1,0 +1,101 @@
+{
+  "id": "U01",
+  "boundary": "Read-only production projection plus source review; no visible incorrect phase card independently verified.",
+  "source": "services/api/src/modules/ai-tutor/tutor.service.ts:594,615",
+  "observations": [
+    {
+      "sourceFile": "result-p4-104.json",
+      "project": {
+        "id": "proj-6de90ad2-3fc8-42a9-85f6-536864069958",
+        "title": "光为什么会出现明暗条纹？干涉与衍射探究 · 从基础开始",
+        "stage": "completed",
+        "progress": 100,
+        "templateVersionId": "tplv-e6e78f26-9943-4450-adb7-67a9f288cc40"
+      },
+      "lesson": {
+        "completedCount": 8,
+        "lessonCount": 8,
+        "status": "completed"
+      },
+      "phases": [
+        {
+          "phaseId": "exploration",
+          "status": "completed",
+          "gateStatus": "passed",
+          "requiredDeliverables": []
+        },
+        {
+          "phaseId": "concept_mastery",
+          "status": "completed",
+          "gateStatus": "passed",
+          "requiredDeliverables": []
+        },
+        {
+          "phaseId": "guided_practice",
+          "status": "completed",
+          "gateStatus": "passed",
+          "requiredDeliverables": [
+            {
+              "id": "guided_practice:wave_optics_inquiry_portfolio",
+              "title": "wave_optics_inquiry_portfolio",
+              "submitted": false
+            }
+          ]
+        },
+        {
+          "phaseId": "deliverable_review",
+          "status": "active",
+          "gateStatus": "passed",
+          "requiredDeliverables": []
+        }
+      ]
+    },
+    {
+      "sourceFile": "result-p4-106.json",
+      "project": {
+        "id": "proj-6de90ad2-3fc8-42a9-85f6-536864069958",
+        "title": "光为什么会出现明暗条纹？干涉与衍射探究 · 从基础开始",
+        "stage": "completed",
+        "progress": 100,
+        "templateVersionId": "tplv-e6e78f26-9943-4450-adb7-67a9f288cc40"
+      },
+      "lesson": {
+        "completedCount": 8,
+        "lessonCount": 8,
+        "status": "completed"
+      },
+      "phases": [
+        {
+          "phaseId": "exploration",
+          "status": "completed",
+          "gateStatus": "passed",
+          "requiredDeliverables": []
+        },
+        {
+          "phaseId": "concept_mastery",
+          "status": "completed",
+          "gateStatus": "passed",
+          "requiredDeliverables": []
+        },
+        {
+          "phaseId": "guided_practice",
+          "status": "completed",
+          "gateStatus": "passed",
+          "requiredDeliverables": [
+            {
+              "id": "guided_practice:wave_optics_inquiry_portfolio",
+              "title": "wave_optics_inquiry_portfolio",
+              "submitted": false
+            }
+          ]
+        },
+        {
+          "phaseId": "deliverable_review",
+          "status": "active",
+          "gateStatus": "passed",
+          "requiredDeliverables": []
+        }
+      ]
+    }
+  ]
+}

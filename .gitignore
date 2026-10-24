@@ -93,3 +93,9 @@ services/knowledge/
 # Local test scratch scripts
 scratch/
 提交文件/
+
+
+# Root ad-hoc debug and probe scripts
+/*.js
+/*.mjs
+/*.cjs

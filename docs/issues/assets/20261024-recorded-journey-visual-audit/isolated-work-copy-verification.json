@@ -1,0 +1,33 @@
+{
+  "kind": "isolated actual WorkTextRenderer React DOM; injected clipboard endpoints; no OS clipboard access, no production requests",
+  "results": [
+    {
+      "case": "no Clipboard API and fallback false shows explicit alert; temporary field removed",
+      "passed": true
+    },
+    {
+      "case": "HTTP fallback true reports success, passes only code, keeps prose outside code",
+      "passed": true,
+      "copiedSource": "import pygame\n\ndef main():\n    print(\"synthetic\")\n\nif __name__ == \"__main__\":\n    main()"
+    },
+    {
+      "case": "Clipboard API rejection recovers through fallback with only code",
+      "passed": true
+    },
+    {
+      "case": "available Clipboard API success uses only clean code and skips fallback",
+      "passed": true
+    },
+    {
+      "case": "real learning-polish CSS with actual native source under72dvh retains visible source header and permits normal click",
+      "passed": true,
+      "blockHeight": 566,
+      "headerHeight": 84.66667175292969,
+      "buttonHeight": 24,
+      "parentHeight": 676,
+      "parentScrollHeight": 1192,
+      "scrollHeight": 480,
+      "flexShrink": "0"
+    }
+  ]
+}
