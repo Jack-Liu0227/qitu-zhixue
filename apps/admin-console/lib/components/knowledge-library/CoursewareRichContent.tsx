@@ -211,8 +211,8 @@ export function CoursewareRichText({ content }: { content: string }) {
         // 1. Code blocks
         if (block.startsWith('```') && block.endsWith('```')) {
           const match = block.match(/^```([a-zA-Z0-9_-]*)\s*([\s\S]*?)```$/);
-          const lang = match ? match[1] : '';
-          const code = match ? match[2].trim() : block.slice(3, -3).trim();
+          const lang = match && match[1] ? match[1] : '';
+          const code = (match && match[2] ? match[2] : block.slice(3, -3)).trim();
           return <CoursewareCodeBlock key={bIdx} code={code} language={lang} />;
         }
 
