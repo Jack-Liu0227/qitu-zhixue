@@ -144,7 +144,7 @@ type ParsedBlock =
   | { type: 'table'; headers: string[]; rows: string[][] }
   | { type: 'modelRecords'; records: ControlledModelRecord[] }
   | { type: 'runtimeReceipt'; receipt: RuntimeReceipt }
-  | { type: 'code'; language: string; code: string }
+  | { type: 'code'; language: string; filename?: string; code: string }
   | { type: 'diary'; entries: string[] }
   | { type: 'heading'; level: number; text: string }
   | { type: 'list'; items: string[]; ordered: boolean }
@@ -333,21 +333,56 @@ function parseWorkText(rawText: string): ParsedBlock[] {
       continue;
     }
 
-    // 1. Source code block indicator: `对应源码片段：`
-    if (/^(?:对应源码片段|源码片段)\s*[:：]/i.test(trimmed)) {
-      const firstLineCode = trimmed.replace(/^(?:对应源码片段|源码片段)\s*[:：]\s*/i, '');
+    // 1. Source code block indicator: `完整源码 game.py:`, `对应源码片段：`, `源码:`, etc.
+    const codeHeaderMatch = trimmed.match(
+      /^(?:完整源码|对应源码片段|源码片段|完整代码|源码实现|Python\s*源码|源码|代码片段|代码|Source\s*Code|Code)(?:\s+([a-zA-Z0-9_.-]+\.[a-zA-Z0-9]+|[a-zA-Z0-9_.-]+))?\s*[:：]\s*(.*)$/i
+    );
+    if (codeHeaderMatch) {
+      const filename = codeHeaderMatch[1];
+      const inlineCode = codeHeaderMatch[2];
       const codeLines: string[] = [];
-      if (firstLineCode.trim()) codeLines.push(firstLineCode);
+      if (inlineCode && inlineCode.trim()) codeLines.push(inlineCode);
       for (let j = i + 1; j < lines.length; j++) {
         const nextLine = lines[j];
         if (nextLine !== undefined) codeLines.push(nextLine);
       }
+      const language = filename && filename.endsWith('.py') ? 'python' : 'python';
       blocks.push({
         type: 'code',
-        language: 'python',
-        code: codeLines.join('\n').trim(),
+        language,
+        filename: filename || undefined,
+        code: codeLines.join('\n').trimEnd(),
       });
       break;
+    }
+
+    // 2. Fallback: raw code detection (e.g. `"""docstring..."""`, `import random`, `import pygame`, `class Game:`)
+    if (
+      trimmed.startsWith('"""') ||
+      trimmed.startsWith("'''") ||
+      /^(?:import\s+[a-zA-Z0-9_]+|from\s+[a-zA-Z0-9_]+\s+import|class\s+[a-zA-Z0-9_]+[:(]|def\s+[a-zA-Z0-9_]+\s*\()/.test(trimmed)
+    ) {
+      const codeLines: string[] = [line];
+      let j = i + 1;
+      while (j < lines.length) {
+        const nextLine = lines[j];
+        if (nextLine === undefined) break;
+        if (/^[【\[]/.test(nextLine.trim()) || CER_PATTERNS.some(p => p.regex.test(nextLine.trim()))) {
+          break;
+        }
+        codeLines.push(nextLine);
+        j++;
+      }
+      if (codeLines.length >= 3) {
+        blocks.push({
+          type: 'code',
+          language: 'python',
+          filename: 'game.py',
+          code: codeLines.join('\n').trimEnd(),
+        });
+        i = j;
+        continue;
+      }
     }
 
     // 2. Markdown fenced code block ```
@@ -559,7 +594,7 @@ function parseWorkText(rawText: string): ParsedBlock[] {
   return blocks;
 }
 
-function CodeBlockView({ language, code }: { language: string; code: string }) {
+function CodeBlockView({ language, filename, code }: { language: string; filename?: string; code: string }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
@@ -571,20 +606,38 @@ function CodeBlockView({ language, code }: { language: string; code: string }) {
     }
   };
 
+  const codeLines = code.split('\n');
+
   return (
-    <div className="qitu-work-code-block" tabIndex={0} aria-label={`${language} 源码展示`}>
+    <div className="qitu-work-code-block" tabIndex={0} aria-label={`${filename || language} 源码展示`}>
       <div className="qitu-work-code-header">
-        <span className="qitu-work-code-lang">
-          <span className="qitu-work-code-dot" />
-          {language === 'python' ? 'Python 源码实现' : `${language.toUpperCase()} 源码`}
-        </span>
+        <div className="qitu-work-code-title-group">
+          <div className="qitu-work-code-dots">
+            <span className="qitu-dot-red" />
+            <span className="qitu-dot-yellow" />
+            <span className="qitu-dot-green" />
+          </div>
+          <span className="qitu-work-code-lang">
+            {filename ? `📄 ${filename} · Python` : (language === 'python' ? '🐍 Python 源码实现' : `${language.toUpperCase()} 源码`)}
+          </span>
+          <span className="qitu-work-code-linecount">{codeLines.length} 行代码</span>
+        </div>
         <button type="button" className="qitu-work-code-copy" onClick={handleCopy}>
           {copied ? '✓ 已复制到剪贴板' : '复制代码'}
         </button>
       </div>
-      <pre className="qitu-work-code-pre">
-        <code>{code}</code>
-      </pre>
+      <div className="qitu-work-code-scroll">
+        <pre className="qitu-work-code-pre">
+          <code>
+            {codeLines.map((line, idx) => (
+              <span key={idx} className="qitu-code-line">
+                <span className="qitu-code-linenum">{idx + 1}</span>
+                <span className="qitu-code-content">{line || ' '}</span>
+              </span>
+            ))}
+          </code>
+        </pre>
+      </div>
     </div>
   );
 }
@@ -793,7 +846,7 @@ export function WorkTextRenderer({ text }: { text: string }) {
             return <RuntimeReceiptView key={idx} receipt={block.receipt} />;
 
           case 'code':
-            return <CodeBlockView key={idx} language={block.language} code={block.code} />;
+            return <CodeBlockView key={idx} language={block.language} filename={block.filename} code={block.code} />;
 
           case 'diary':
             return (

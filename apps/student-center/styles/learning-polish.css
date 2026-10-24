@@ -70,14 +70,25 @@
 .qitu-work-check-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #166534; background: rgba(255, 255, 255, 0.7); padding: 4px 8px; border-radius: 4px; border: 1px solid #bbf7d0; }
 .qitu-work-check-icon { font-weight: bold; color: #16a34a; }
 .qitu-work-receipt-scope { font-size: 12px; color: #15803d; line-height: 1.6; border-top: 1px dashed #bbf7d0; padding-top: 8px; }
-.qitu-work-code-block { border-radius: 12px; overflow: hidden; background: #0f172a; color: #f8fafc; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12); margin: 6px 0; }
-.qitu-work-code-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 16px; background: #1e293b; border-bottom: 1px solid #334155; font-size: 12px; color: #94a3b8; }
-.qitu-work-code-lang { display: flex; align-items: center; gap: 6px; font-family: JetBrains Mono, Consolas, monospace; font-weight: 600; }
-.qitu-work-code-dot { width: 8px; height: 8px; border-radius: 50%; background: #38bdf8; }
-.qitu-work-code-copy { background: transparent; border: 1px solid #475569; color: #cbd5e1; padding: 2px 8px; font-size: 11.5px; border-radius: 4px; cursor: pointer; transition: all 0.15s ease; }
-.qitu-work-code-copy:hover { background: #334155; color: #ffffff; }
-.qitu-work-code-pre { margin: 0; padding: 16px; font-family: JetBrains Mono, Consolas, Monaco, monospace; font-size: 13px; line-height: 1.6; overflow-x: auto; scrollbar-width: thin; }
-.qitu-work-code-pre code { color: #e2e8f0; }
+.qitu-work-code-block { border-radius: 12px; overflow: hidden; background: #0f172a; color: #f8fafc; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15); margin: 10px 0; border: 1px solid #1e293b; }
+.qitu-work-code-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background: #1e293b; border-bottom: 1px solid #334155; font-size: 12px; color: #94a3b8; flex-wrap: wrap; gap: 8px; }
+.qitu-work-code-title-group { display: flex; align-items: center; gap: 10px; }
+.qitu-work-code-dots { display: flex; gap: 5px; }
+.qitu-work-code-dots span { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.qitu-dot-red { background: #ef4444; }
+.qitu-dot-yellow { background: #f59e0b; }
+.qitu-dot-green { background: #10b981; }
+.qitu-work-code-lang { display: flex; align-items: center; gap: 6px; font-family: JetBrains Mono, Consolas, monospace; font-weight: 600; color: #e2e8f0; }
+.qitu-work-code-linecount { font-size: 11px; color: #64748b; background: rgba(255, 255, 255, 0.06); padding: 1px 6px; border-radius: 4px; }
+.qitu-work-code-copy { background: rgba(255, 255, 255, 0.08); border: 1px solid #475569; color: #cbd5e1; padding: 3px 10px; font-size: 11.5px; border-radius: 5px; cursor: pointer; transition: all 0.15s ease; font-weight: 500; }
+.qitu-work-code-copy:hover { background: #334155; color: #ffffff; border-color: #64748b; }
+.qitu-work-code-scroll { max-height: 480px; overflow: auto; scrollbar-width: thin; }
+.qitu-work-code-pre { margin: 0; padding: 14px 0; font-family: JetBrains Mono, Consolas, Monaco, "Courier New", monospace; font-size: 13px; line-height: 1.6; white-space: pre; tab-size: 4; }
+.qitu-work-code-pre code { display: table; width: 100%; color: #e2e8f0; }
+.qitu-code-line { display: table-row; }
+.qitu-code-line:hover { background: rgba(255, 255, 255, 0.03); }
+.qitu-code-linenum { display: table-cell; text-align: right; padding: 0 16px 0 12px; color: #475569; user-select: none; font-size: 12px; width: 44px; }
+.qitu-code-content { display: table-cell; padding-right: 16px; white-space: pre; }
 .qitu-work-diary-card { border: 1px solid #fed7aa; border-radius: 12px; background: #fffbeb; padding: 14px 18px; display: flex; flex-direction: column; gap: 10px; }
 .qitu-work-diary-head { font-size: 13.5px; font-weight: 650; color: #b45309; }
 .qitu-work-diary-body { display: flex; flex-direction: column; gap: 6px; }
