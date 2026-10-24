@@ -1092,8 +1092,8 @@ export default function CopilotPage() {
               alignItems: 'center',
               justifyContent: 'center',
               padding: '32px 24px',
-              maxWidth: '1000px',
-              margin: '0 auto',
+              maxWidth: '100%',
+              margin: 0,
               width: '100%',
             }}>
               <div style={{
@@ -1115,7 +1115,7 @@ export default function CopilotPage() {
                 启途智学 AI 管家工作台
               </h2>
 
-              <p style={{ fontSize: '13.5px', color: '#64748b', margin: '0 0 24px', textAlign: 'center', maxWidth: '620px', lineHeight: 1.6 }}>
+              <p style={{ fontSize: '13.5px', color: '#64748b', margin: '0 0 24px', textAlign: 'center', maxWidth: '100%', lineHeight: 1.6 }}>
                 统一调度底层模型、校验运行时技能、配置导师团队与编排 PBL 教学资源。操作以核验后的技能目录为准，变更具有严格的服务端闭环回执。
               </p>
 
@@ -1190,7 +1190,7 @@ export default function CopilotPage() {
 
               if (isSystem) {
                 return (
-                  <div key={msg.id} style={{ alignSelf: 'center', maxWidth: '80%', background: '#f1f5f9', color: '#475569', fontSize: '12px', padding: '6px 14px', borderRadius: '20px', textAlign: 'center' }}>
+                  <div key={msg.id} style={{ alignSelf: 'center', maxWidth: '100%', background: '#f1f5f9', color: '#475569', fontSize: '12px', padding: '6px 14px', borderRadius: '20px', textAlign: 'center' }}>
                     {msg.content}
                   </div>
                 );

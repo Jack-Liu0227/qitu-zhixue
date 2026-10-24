@@ -584,8 +584,8 @@
 }
 
 .hostedDetail {
-  max-width: 1040px;
-  margin: 8px auto 0;
+  max-width: 100%;
+  margin: 8px 0 0;
 }
 .hostedDetail .detailHeader {
   align-items: flex-start;

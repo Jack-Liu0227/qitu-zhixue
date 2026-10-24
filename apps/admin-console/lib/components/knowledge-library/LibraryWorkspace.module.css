@@ -124,8 +124,9 @@
   background: var(--qitu-background, #f8fafc);
 }
 .form {
-  max-width: 900px;
-  margin: 0 auto;
+  max-width: 100%;
+  width: 100%;
+  margin: 0;
   display: grid;
   gap: 18px;
 }

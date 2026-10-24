@@ -46,7 +46,7 @@
   font-size: 13.5px;
   line-height: 1.6;
   color: var(--aion-t-tertiary, #64748b);
-  max-width: 900px;
+  max-width: 100%;
 }
 
 /* 助手选择框与官方链接栏 */

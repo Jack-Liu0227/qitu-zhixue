@@ -44,7 +44,7 @@
 .admin-console-main .member-editor-note { color: var(--qitu-muted); font-size: 13px; line-height: 1.8; }
 .admin-console-main .member-instruction-readonly { padding: 18px; border: 1px solid var(--qitu-border); border-radius: 10px; background: var(--qitu-page); white-space: pre-wrap; overflow-wrap: anywhere; font-family: inherit; font-size: 13px; line-height: 1.8; max-height: 480px; overflow-y: auto; }
 .admin-console-main .member-editor-links { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0; }
-.admin-console-main .member-editor-form { display: grid; gap: 18px; max-width: 620px; }
+.admin-console-main .member-editor-form { display: grid; gap: 18px; max-width: 100%; }
 .admin-console-main .member-editor-form label { display: grid; gap: 8px; font-size: 13px; }
 .admin-console-main .member-capability-section + .member-capability-section { margin-top: 24px; border-top: 1px solid var(--qitu-border); padding-top: 16px; }
 .admin-console-main .member-capability-section header { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; justify-content: space-between; }

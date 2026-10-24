@@ -1418,7 +1418,7 @@ section[aria-label="模型用途场景分发与链路绑定"] .provider-preset s
   content: '';
   filter: blur(22px);
 }
-.admin-hero-copy { position: relative; z-index: 1; max-width: 720px; }
+.admin-hero-copy { position: relative; z-index: 1; max-width: 100%; flex: 1; }
 .admin-hero-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; margin-bottom: 13px; }
 .admin-live-badge,
 .admin-hero-note,
@@ -1436,7 +1436,7 @@ section[aria-label="模型用途场景分发与链路绑定"] .provider-preset s
 .admin-hero-note { color: #73839b; font-weight: 600; }
 .admin-hero-copy h1 { margin: 0; color: #17243b; font-size: clamp(1.55rem, 2.4vw, 2.25rem); line-height: 1.25; letter-spacing: -0.01em; }
 .admin-hero-copy h1 em { color: #1b68f8; font-style: normal; }
-.admin-hero-copy p { max-width: 650px; margin: 12px 0 0; color: #5f6e83; font-size: 0.92rem; line-height: 1.75; }
+.admin-hero-copy p { max-width: 100%; margin: 12px 0 0; color: #5f6e83; font-size: 0.92rem; line-height: 1.75; }
 .admin-hero-signals { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 17px; }
 .admin-hero-signals span { padding: 7px 10px; border: 1px solid rgb(255 255 255 / 85%); background: rgb(255 255 255 / 68%); color: #53647b; font-size: 0.75rem; }
 .admin-hero-signals svg { width: 15px; height: 15px; color: #139c93; }
@@ -1472,7 +1472,7 @@ section[aria-label="模型用途场景分发与链路绑定"] .provider-preset s
 .admin-governance-info-title small { display: block; margin-top: 3px; color: #8190a5; font-size: 0.72rem; }
 .admin-governance-icon { display: grid; width: 44px; height: 44px; place-items: center; border-radius: 12px; background: #1b68f8; color: white; box-shadow: 0 5px 14px rgb(27 104 248 / 20%); }
 .admin-governance-icon svg { width: 22px; height: 22px; }
-.admin-governance-info p { position: relative; z-index: 1; max-width: 620px; margin: 25px 0 0; color: #5f6e83; font-size: 0.86rem; line-height: 1.75; }
+.admin-governance-info p { position: relative; z-index: 1; max-width: 100%; margin: 25px 0 0; color: #5f6e83; font-size: 0.86rem; line-height: 1.75; }
 .admin-governance-tags { position: absolute; bottom: 20px; left: 20px; display: flex; flex-wrap: wrap; gap: 9px; }
 .admin-governance-tags span { display: inline-flex; align-items: center; gap: 6px; padding: 7px 10px; border: 1px solid rgb(198 220 251 / 60%); border-radius: 8px; background: rgb(255 255 255 / 72%); color: #607188; font-size: 0.72rem; font-weight: 600; }
 .admin-governance-tags svg { width: 15px; height: 15px; color: #139c93; }

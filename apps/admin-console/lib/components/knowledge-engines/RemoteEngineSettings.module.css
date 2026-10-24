@@ -9,7 +9,7 @@
   color: #6b7f9b;
   font-size: 14px;
   margin: -12px 0 32px !important;
-  max-width: 880px;
+  max-width: 100%;
 }
 .section {
   margin-top: 30px;
@@ -41,7 +41,7 @@
   color: #71829b;
   margin: 0 0 22px;
   line-height: 1.9;
-  max-width: 900px;
+  max-width: 100%;
 }
 .environment summary,
 .advanced summary {
