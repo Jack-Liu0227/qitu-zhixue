@@ -24,7 +24,80 @@
 .qitu-works-detail-body { padding: 24px; display: grid; gap: 20px; }
 .qitu-works-version { display: grid; gap: 8px; color: var(--qitu-muted); font-size: 12px; }
 .qitu-works-version select { width: 100%; }
-.qitu-works-text { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.9; max-height: 64dvh; overflow-y: auto; padding: 0 6px; }
+.qitu-works-text { max-height: 72dvh; overflow-y: auto; padding: 4px 10px 24px 2px; scrollbar-width: thin; }
+.qitu-work-article { display: flex; flex-direction: column; gap: 16px; color: var(--qitu-text, #1e293b); font-size: 14.5px; line-height: 1.75; }
+.qitu-work-header-badge-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 4px; }
+.qitu-work-header-badge { display: inline-flex; align-items: center; font-size: 12px; font-weight: 650; color: #1d4ed8; background: #eff6ff; border: 1px solid #bfdbfe; padding: 3px 10px; border-radius: 9999px; letter-spacing: 0.02em; }
+.qitu-work-header-rest { font-size: 13.5px; color: var(--qitu-muted, #64748b); font-weight: 500; }
+.qitu-cer-card { border-radius: 12px; border: 1px solid var(--qitu-border, #e2e8f0); border-left-width: 5px; border-left-style: solid; padding: 14px 18px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03); transition: box-shadow 0.2s ease; }
+.qitu-cer-card:hover { box-shadow: 0 3px 8px rgba(0, 0, 0, 0.06); }
+.qitu-cer-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.qitu-cer-badge { display: inline-flex; align-items: center; font-size: 12px; font-weight: 650; padding: 3px 10px; border-radius: 6px; letter-spacing: 0.02em; }
+.qitu-cer-content { font-size: 14.5px; line-height: 1.8; color: var(--qitu-text, #1e293b); overflow-wrap: anywhere; }
+.qitu-work-table-container { overflow-x: auto; border: 1px solid var(--qitu-border, #e2e8f0); border-radius: 12px; background: var(--qitu-surface, #ffffff); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03); margin: 6px 0; scrollbar-width: thin; }
+.qitu-work-table { width: 100%; border-collapse: collapse; font-size: 13.5px; text-align: left; line-height: 1.6; }
+.qitu-work-table th { background: var(--qitu-primary-soft, #f0f7ff); color: var(--qitu-heading, #0f172a); font-weight: 650; padding: 12px 16px; border-bottom: 1px solid var(--qitu-border, #e2e8f0); white-space: nowrap; }
+.qitu-work-table td { padding: 12px 16px; border-bottom: 1px solid var(--qitu-border-subtle, #f1f5f9); color: var(--qitu-text, #334155); }
+.qitu-work-table tbody tr:nth-child(even) { background: rgba(0, 0, 0, 0.015); }
+.qitu-work-table tbody tr:hover { background: rgba(37, 99, 235, 0.04); }
+.qitu-work-table tbody tr:last-child td { border-bottom: none; }
+.qitu-work-model-dashboard { border: 1px solid #bae6fd; border-radius: 14px; background: linear-gradient(180deg, #f0f9ff 0%, var(--qitu-surface, #ffffff) 100%); padding: 18px 20px; box-shadow: 0 2px 6px rgba(2, 132, 199, 0.06); display: flex; flex-direction: column; gap: 16px; }
+.qitu-work-model-banner strong { font-size: 15px; color: #0369a1; }
+.qitu-work-model-list { display: flex; flex-direction: column; gap: 14px; }
+.qitu-work-model-card { background: var(--qitu-surface, #ffffff); border: 1px solid var(--qitu-border, #e2e8f0); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+.qitu-work-model-card-head { display: flex; align-items: center; justify-content: space-between; }
+.qitu-work-model-badge { font-size: 11.5px; font-weight: 600; color: #0369a1; background: #e0f2fe; padding: 2px 8px; border-radius: 4px; }
+.qitu-work-model-group-title { display: block; font-size: 12px; font-weight: 600; color: var(--qitu-muted, #64748b); margin-bottom: 6px; }
+.qitu-work-param-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+.qitu-work-param-pill { display: flex; flex-direction: column; background: rgba(0, 0, 0, 0.02); border: 1px solid var(--qitu-border, #e2e8f0); border-radius: 6px; padding: 6px 10px; }
+.qitu-work-param-name { font-size: 11px; color: var(--qitu-muted, #64748b); }
+.qitu-work-param-val { font-size: 13.5px; font-weight: 600; color: var(--qitu-heading, #0f172a); font-family: KaTeX_Math, 'Cambria Math', monospace; }
+.qitu-work-obs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.qitu-work-obs-card { display: flex; flex-direction: column; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 8px 12px; }
+.qitu-work-obs-metric { font-size: 11.5px; color: #15803d; font-weight: 500; }
+.qitu-work-obs-val { font-size: 15px; font-weight: 700; color: #166534; font-family: KaTeX_Math, 'Cambria Math', monospace; margin-top: 2px; }
+.qitu-work-model-note { font-size: 12px; line-height: 1.6; color: var(--qitu-muted, #64748b); background: rgba(0, 0, 0, 0.02); padding: 8px 12px; border-radius: 6px; }
+.qitu-work-receipt-card { border: 1px solid #bbf7d0; border-radius: 14px; background: #f0fdf4; padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 2px 6px rgba(22, 101, 52, 0.05); }
+.qitu-work-receipt-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.qitu-work-receipt-status { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 9999px; }
+.qitu-work-receipt-status.is-passed { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+.qitu-work-receipt-status.is-warning { background: #fef9c3; color: #a16207; border: 1px solid #fde047; }
+.qitu-work-receipt-meta { display: flex; flex-wrap: wrap; gap: 8px; font-size: 12px; color: #166534; }
+.qitu-work-receipt-meta span { background: #dcfce7; padding: 2px 8px; border-radius: 4px; }
+.qitu-work-receipt-checks { display: flex; flex-direction: column; gap: 8px; }
+.qitu-work-receipt-checks-title { font-size: 12.5px; font-weight: 600; color: #14532d; }
+.qitu-work-checks-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px; }
+.qitu-work-check-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #166534; background: rgba(255, 255, 255, 0.7); padding: 4px 8px; border-radius: 4px; border: 1px solid #bbf7d0; }
+.qitu-work-check-icon { font-weight: bold; color: #16a34a; }
+.qitu-work-receipt-scope { font-size: 12px; color: #15803d; line-height: 1.6; border-top: 1px dashed #bbf7d0; padding-top: 8px; }
+.qitu-work-code-block { border-radius: 12px; overflow: hidden; background: #0f172a; color: #f8fafc; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12); margin: 6px 0; }
+.qitu-work-code-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 16px; background: #1e293b; border-bottom: 1px solid #334155; font-size: 12px; color: #94a3b8; }
+.qitu-work-code-lang { display: flex; align-items: center; gap: 6px; font-family: JetBrains Mono, Consolas, monospace; font-weight: 600; }
+.qitu-work-code-dot { width: 8px; height: 8px; border-radius: 50%; background: #38bdf8; }
+.qitu-work-code-copy { background: transparent; border: 1px solid #475569; color: #cbd5e1; padding: 2px 8px; font-size: 11.5px; border-radius: 4px; cursor: pointer; transition: all 0.15s ease; }
+.qitu-work-code-copy:hover { background: #334155; color: #ffffff; }
+.qitu-work-code-pre { margin: 0; padding: 16px; font-family: JetBrains Mono, Consolas, Monaco, monospace; font-size: 13px; line-height: 1.6; overflow-x: auto; scrollbar-width: thin; }
+.qitu-work-code-pre code { color: #e2e8f0; }
+.qitu-work-diary-card { border: 1px solid #fed7aa; border-radius: 12px; background: #fffbeb; padding: 14px 18px; display: flex; flex-direction: column; gap: 10px; }
+.qitu-work-diary-head { font-size: 13.5px; font-weight: 650; color: #b45309; }
+.qitu-work-diary-body { display: flex; flex-direction: column; gap: 6px; }
+.qitu-work-diary-entry { font-size: 13.5px; line-height: 1.7; color: #78350f; }
+.qitu-work-katex { display: inline-block; margin: 0 2px; vertical-align: baseline; }
+.qitu-work-math-fallback { font-family: KaTeX_Math, 'Cambria Math', 'Times New Roman', serif; font-style: italic; margin: 0 2px; }
+.qitu-work-inline-code { font-family: JetBrains Mono, Consolas, monospace; font-size: 12.5px; padding: 2px 6px; border-radius: 4px; background: rgba(0, 0, 0, 0.05); color: #d97706; }
+.qitu-work-bold { font-weight: 650; color: var(--qitu-heading, inherit); }
+.qitu-work-heading { margin: 12px 0 6px; color: var(--qitu-heading, #0f172a); font-weight: 700; }
+.qitu-work-list { padding-left: 20px; margin: 4px 0; }
+.qitu-work-list li { margin: 4px 0; line-height: 1.7; }
+.qitu-work-paragraph { margin: 0; line-height: 1.8; }
+.qitu-work-empty { padding: 32px 20px; text-align: center; color: var(--qitu-muted); }
+:root[data-qitu-eyecare="true"] .qitu-work-model-dashboard, :root[data-theme="dark"] .qitu-work-model-dashboard { background: var(--qitu-surface-raised, #1e293b); border-color: #0369a1; }
+:root[data-qitu-eyecare="true"] .qitu-work-model-card, :root[data-theme="dark"] .qitu-work-model-card { background: var(--qitu-surface, #0f172a); border-color: var(--qitu-border, #334155); }
+:root[data-qitu-eyecare="true"] .qitu-work-obs-card, :root[data-theme="dark"] .qitu-work-obs-card { background: rgba(5, 150, 105, 0.15); border-color: rgba(5, 150, 105, 0.3); }
+:root[data-qitu-eyecare="true"] .qitu-work-receipt-card, :root[data-theme="dark"] .qitu-work-receipt-card { background: rgba(22, 101, 52, 0.15); border-color: rgba(22, 101, 52, 0.3); }
+:root[data-qitu-eyecare="true"] .qitu-work-check-item, :root[data-theme="dark"] .qitu-work-check-item { background: var(--qitu-surface, #0f172a); color: #86efac; border-color: rgba(134, 239, 172, 0.2); }
+:root[data-qitu-eyecare="true"] .qitu-work-diary-card, :root[data-theme="dark"] .qitu-work-diary-card { background: rgba(217, 119, 6, 0.12); border-color: rgba(217, 119, 6, 0.3); }
+:root[data-qitu-eyecare="true"] .qitu-work-diary-entry, :root[data-theme="dark"] .qitu-work-diary-entry { color: #fde68a; }
 .qitu-works-notice { padding: 24px; border: 1px solid var(--qitu-border); border-radius: 12px; background: var(--qitu-surface); line-height: 1.8; }
 @media (max-width: 600px) { .qitu-works-detail > header, .qitu-works-detail-body { padding: 18px; } .qitu-works-list { max-height: 360px; } }
 .qitu-growth-page .qitu-section-card { border-radius: 16px; box-shadow: 0 3px 12px rgb(25 54 94 / 3%); }

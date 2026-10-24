@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { ResizablePanels, SkeletonBlock } from '@qitu/ui';
 import { normalizeArtifactTitle, normalizeProjectTitle } from '@qitu/contracts';
 import { StudentLink } from '../../components/student-link';
+import { WorkTextRenderer } from './WorkTextRenderer';
 
 // Bounded read projection of the existing Works owner response. No publishing or review writes.
 type WorkVersion = { id: string; ordinal: number; title: string; inlineText: string | null; note?: string };
@@ -30,7 +31,40 @@ function resolveProjectTitle(work: PublishedWork): string {
   if (text.includes('战机') || text.includes('游戏') || text.includes('thunder') || text.includes('pygame')) {
     return '雷霆战机';
   }
-  return '光为什么会出现明暗条纹？干涉与衍射探究 · 从基础开始';
+  if (text.includes('动能') || text.includes('kinetic')) {
+    return '动手学动能定理：物理虚拟仿真与规律探究';
+  }
+  if (text.includes('生态瓶') || text.includes('碳氧') || text.includes('eco-bottle')) {
+    return '校园微生态瓶的建立与碳氧平衡微观测';
+  }
+  if (text.includes('图书角') || text.includes('数据诊断')) {
+    return '给图书角做一次数据诊断';
+  }
+  if (text.includes('找到路') || text.includes('导览') || text.includes('地图')) {
+    return '让第一次来的人也能找到路';
+  }
+  if (text.includes('老物件') || text.includes('微型展览') || text.includes('展览')) {
+    return '给一件老物件办微型展览';
+  }
+  if (text.includes('文创') || text.includes('试售')) {
+    return '用一百元设计一次文创试售';
+  }
+  if (text.includes('种子') || text.includes('日记')) {
+    return '一颗种子的七天日记';
+  }
+  if (text.includes('核验') || text.includes('说法') || text.includes('流传')) {
+    return '为一条流传说法做核验';
+  }
+  if (text.includes('包装') || text.includes('少一点')) {
+    return '让一周的包装少一点';
+  }
+  if (text.includes('结局') || text.includes('选择')) {
+    return '一个选择，两种结局';
+  }
+  if (text.includes('光') || text.includes('干涉') || text.includes('衍射') || text.includes('条纹') || text.includes('optics')) {
+    return '光为什么会出现明暗条纹？干涉与衍射探究 · 从基础开始';
+  }
+  return normalizeProjectTitle(work.title);
 }
 
 function useWorksRead<T>(path: string, revision: number, isItem: (value: unknown) => value is T) {
@@ -88,7 +122,7 @@ function WorkDetail({ work }: { work: PublishedWork }) {
         <label className="qitu-works-version">查看保存版本<select value={selected?.id ?? ''} onChange={event => setVersionId(event.target.value)}>
           {versions.data.map(version => <option key={version.id} value={version.id}>第 {version.ordinal} 版 · {normalizeArtifactTitle(version.title)}</option>)}
         </select></label>
-        {selected?.inlineText ? <div className="qitu-works-text">{selected.inlineText}</div>
+        {selected?.inlineText ? <WorkTextRenderer text={selected.inlineText} />
           : <p className="qitu-works-notice">这份作品保存在项目附件中，可返回项目查看文件与相关记录。</p>}
       </> : <ReadNotice state={versions} retry={() => setRevision(value => value + 1)} />}
       {work.projectId && <StudentLink className="qitu-button qitu-button-primary" href={`/student/projects/${encodeURIComponent(work.projectId)}`}>查看所属项目</StudentLink>}
