@@ -950,8 +950,70 @@
 .provider-stats { gap: 12px; margin: 0; }
 .provider-stats > div { min-width: 136px; padding: 14px 16px; border-color: #e0e7f0; border-radius: 10px; }
 .provider-toolbar { padding: 12px; margin: 0; border-color: #e0e7f0; border-radius: 10px; background: #fbfcfe; }
-.provider-table, .admin-runtime-table { border-color: #e0e7f0; border-radius: 10px; }
-.provider-table table, .admin-runtime-table table { min-width: 860px; }
+.admin-runtime-table { border-color: #e0e7f0; border-radius: 10px; }
+.admin-runtime-table table { min-width: 860px; }
+.provider-table {
+  overflow-x: auto !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  border-color: #e0e7f0;
+  border-radius: 10px;
+}
+.provider-table table {
+  min-width: 1420px !important;
+  width: 100% !important;
+  border-collapse: collapse !important;
+  table-layout: auto !important;
+}
+.provider-table th {
+  white-space: nowrap !important;
+  word-break: keep-all !important;
+}
+.provider-table td:not([colspan]) {
+  white-space: nowrap !important;
+  word-break: keep-all !important;
+}
+.provider-table td[colspan] {
+  white-space: normal;
+}
+.provider-table .provider-name-cell {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  white-space: nowrap !important;
+  min-width: 200px !important;
+}
+.provider-table .provider-name-cell strong,
+.provider-table .provider-name-cell code {
+  white-space: nowrap !important;
+  word-break: keep-all !important;
+}
+.provider-table .provider-url {
+  max-width: 320px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  display: inline-block !important;
+}
+.provider-table .protocol-chip,
+.provider-table .runtime-status {
+  white-space: nowrap !important;
+  display: inline-block !important;
+}
+.provider-table .runtime-actions {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  gap: 8px !important;
+  white-space: nowrap !important;
+}
+.provider-table .runtime-actions .settings-pill-btn,
+.provider-table .runtime-actions button {
+  white-space: nowrap !important;
+  min-width: max-content !important;
+  flex-shrink: 0 !important;
+}
 .provider-detail { background: #f7faff; }
 .runtime-section { margin-top: 0; }
 .runtime-section-head { margin-bottom: 10px; }

@@ -2332,7 +2332,7 @@ export default function AdminModelPage() {
           <table>
             <thead>
               <tr>
-                <th>
+                <th style={{ width: '48px', minWidth: '48px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                   <input
                     type="checkbox"
                     checked={allSelected}
@@ -2342,13 +2342,13 @@ export default function AdminModelPage() {
                     aria-label="全选通道"
                   />
                 </th>
-                <th>通道名称</th>
-                <th>网关地址</th>
-                <th>协议</th>
-                <th>状态</th>
-                <th>已挂载模型</th>
-                <th>最近同步</th>
-                <th style={{ minWidth: "420px", whiteSpace: "nowrap" }}>操作</th>
+                <th style={{ minWidth: '220px', whiteSpace: 'nowrap' }}>通道名称</th>
+                <th style={{ minWidth: '240px', whiteSpace: 'nowrap' }}>网关地址</th>
+                <th style={{ minWidth: '110px', whiteSpace: 'nowrap' }}>协议</th>
+                <th style={{ minWidth: '90px', whiteSpace: 'nowrap' }}>状态</th>
+                <th style={{ minWidth: '110px', whiteSpace: 'nowrap' }}>已挂载模型</th>
+                <th style={{ minWidth: '160px', whiteSpace: 'nowrap' }}>最近同步</th>
+                <th style={{ minWidth: '440px', whiteSpace: 'nowrap' }}>操作</th>
               </tr>
             </thead>
             <tbody>
@@ -2357,7 +2357,7 @@ export default function AdminModelPage() {
                 return (
                   <Fragment key={provider.id}>
                     <tr className={isRowExpanded ? 'is-expanded' : ''}>
-                      <td>
+                      <td style={{ width: '48px', minWidth: '48px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                         <input
                           type="checkbox"
                           checked={selected.has(provider.id)}
@@ -2372,24 +2372,24 @@ export default function AdminModelPage() {
                           aria-label={`选择 ${provider.name}`}
                         />
                       </td>
-                      <td>
-                        <div className="provider-name-cell">
+                      <td style={{ minWidth: '220px', whiteSpace: 'nowrap' }}>
+                        <div className="provider-name-cell" style={{ whiteSpace: 'nowrap' }}>
                           <span className="provider-logo">{provider.name.slice(0, 1).toUpperCase()}</span>
                           <div>
-                            <strong>{provider.name}</strong>
-                            <code>{provider.id}</code>
+                            <strong style={{ whiteSpace: 'nowrap' }}>{provider.name}</strong>
+                            <code style={{ whiteSpace: 'nowrap' }}>{provider.id}</code>
                           </div>
                         </div>
                       </td>
-                      <td>
-                        <code className="provider-url">{provider.baseUrl}</code>
+                      <td style={{ minWidth: '240px', whiteSpace: 'nowrap' }}>
+                        <code className="provider-url" style={{ whiteSpace: 'nowrap', maxWidth: '320px' }}>{provider.baseUrl}</code>
                       </td>
-                      <td>
-                        <span className="protocol-chip">
+                      <td style={{ minWidth: '110px', whiteSpace: 'nowrap' }}>
+                        <span className="protocol-chip" style={{ whiteSpace: 'nowrap' }}>
                           {provider.api.replace('openai-', '').replace('anthropic-', 'Anthropic ')}
                         </span>
                       </td>
-                      <td>
+                      <td style={{ minWidth: '90px', whiteSpace: 'nowrap' }}>
                         <span
                           className={`runtime-status ${
                             provider.enabled && provider.auth.configured
@@ -2398,6 +2398,7 @@ export default function AdminModelPage() {
                               ? 'is-warning'
                               : 'is-off'
                           }`}
+                          style={{ whiteSpace: 'nowrap' }}
                         >
                           {provider.enabled
                             ? provider.auth.configured
@@ -2406,17 +2407,20 @@ export default function AdminModelPage() {
                             : '已停用'}
                         </span>
                         {provider.lastError ? (
-                          <small className="provider-error-dot" title={provider.lastError}>
+                          <small className="provider-error-dot" title={provider.lastError} style={{ whiteSpace: 'nowrap' }}>
                             同步异常
                           </small>
                         ) : null}
                       </td>
-                      <td>
-                        <strong>{provider.models.length}</strong> <span className="provider-muted">个模型</span>
+                      <td style={{ minWidth: '110px', whiteSpace: 'nowrap' }}>
+                        <strong style={{ whiteSpace: 'nowrap' }}>{provider.models.length}</strong>{' '}
+                        <span className="provider-muted" style={{ whiteSpace: 'nowrap' }}>个模型</span>
                       </td>
-                      <td>{formatTime(provider.modelsFetchedAt)}</td>
-                      <td>
-                        <div className="runtime-actions">
+                      <td style={{ minWidth: '160px', whiteSpace: 'nowrap' }}>
+                        <span style={{ whiteSpace: 'nowrap' }}>{formatTime(provider.modelsFetchedAt)}</span>
+                      </td>
+                      <td style={{ minWidth: '440px', whiteSpace: 'nowrap' }}>
+                        <div className="runtime-actions" style={{ display: 'flex', flexWrap: 'nowrap', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap' }}>
                           <button
                             type="button"
                             className="settings-pill-btn"
@@ -2428,6 +2432,7 @@ export default function AdminModelPage() {
                               whiteSpace: 'nowrap',
                               minWidth: 'max-content',
                               padding: '6px 14px',
+                              flexShrink: 0,
                             }}
                             onClick={() => setExpanded(isRowExpanded ? null : provider.id)}
                           >
@@ -2436,6 +2441,7 @@ export default function AdminModelPage() {
                           <button
                             type="button"
                             className="settings-pill-btn"
+                            style={{ whiteSpace: 'nowrap', minWidth: 'max-content', flexShrink: 0 }}
                             onClick={() => setEditing({ initial: provider })}
                           >
                             配置通道
@@ -2443,6 +2449,7 @@ export default function AdminModelPage() {
                           <button
                             type="button"
                             className="settings-pill-btn"
+                            style={{ whiteSpace: 'nowrap', minWidth: 'max-content', flexShrink: 0 }}
                             onClick={() => setEditing({ initial: provider, isCopy: true })}
                             title="复制已有配置并新建通道"
                           >
@@ -2451,7 +2458,7 @@ export default function AdminModelPage() {
                           <button
                             type="button"
                             className="settings-pill-btn"
-                            style={{ color: '#ef4444' }}
+                            style={{ color: '#ef4444', whiteSpace: 'nowrap', minWidth: 'max-content', flexShrink: 0 }}
                             onClick={() => void handleDeleteProvider(provider)}
                           >
                             删除通道

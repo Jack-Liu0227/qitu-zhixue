@@ -1800,10 +1800,50 @@
   color: #34D399 !important;
 }
 
+:root[data-qitu-eyecare="true"] .provider-table {
+  overflow-x: auto !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+:root[data-qitu-eyecare="true"] .provider-table table {
+  min-width: 1420px !important;
+  width: 100% !important;
+  table-layout: auto !important;
+}
+
+:root[data-qitu-eyecare="true"] .provider-table th,
+:root[data-qitu-eyecare="true"] .provider-table td:not([colspan]) {
+  white-space: nowrap !important;
+  word-break: keep-all !important;
+}
+
 :root[data-qitu-eyecare="true"] .provider-table th:last-child,
 :root[data-qitu-eyecare="true"] .provider-table td:last-child {
   min-width: 440px !important;
   white-space: nowrap !important;
+}
+
+:root[data-qitu-eyecare="true"] .provider-table .provider-name-cell,
+:root[data-qitu-eyecare="true"] .provider-table .provider-name-cell strong,
+:root[data-qitu-eyecare="true"] .provider-table .provider-name-cell code {
+  white-space: nowrap !important;
+  word-break: keep-all !important;
+}
+
+:root[data-qitu-eyecare="true"] .provider-table .runtime-actions {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  gap: 8px !important;
+  white-space: nowrap !important;
+}
+
+:root[data-qitu-eyecare="true"] .provider-table .runtime-actions .settings-pill-btn,
+:root[data-qitu-eyecare="true"] .provider-table .runtime-actions button {
+  white-space: nowrap !important;
+  min-width: max-content !important;
+  flex-shrink: 0 !important;
 }
 
 :root[data-qitu-eyecare="true"] .provider-table,
