@@ -662,7 +662,8 @@ export default function CopilotPage() {
         <div
           className="copilot-sidebar"
           style={{
-            width: '280px',
+            width: '100%',
+            height: '100%',
             background: 'rgba(255, 255, 255, 0.95)',
             backdropFilter: 'blur(12px)',
             borderRight: '1px solid #e2e8f0',
@@ -1202,7 +1203,8 @@ export default function CopilotPage() {
                     display: 'flex',
                     gap: '12px',
                     alignSelf: isUser ? 'flex-end' : 'flex-start',
-                    maxWidth: isSidebarCollapsed ? '94%' : '88%',
+                    maxWidth: isUser ? (isSidebarCollapsed ? '94%' : '88%') : '100%',
+                    width: isUser ? 'auto' : '100%',
                   }}
                 >
                   {!isUser && (
@@ -1210,7 +1212,7 @@ export default function CopilotPage() {
                       <RobotMascot size={28} decorative />
                     </div>
                   )}
-                  <div>
+                  <div style={{ flex: isUser ? undefined : 1, minWidth: 0 }}>
                     <div
                       className={`copilot-bubble ${isUser ? 'copilot-bubble-user' : 'copilot-bubble-assistant'}`}
                       style={{

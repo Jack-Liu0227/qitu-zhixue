@@ -188,7 +188,12 @@ export default function ConsoleLayout({ children }: Readonly<{ children: ReactNo
             </div>
           </header>
           {/* key 绑定内部路径：客户端跳转时内容区重挂载，统一页面转场得以重播。 */}
-          <main className="admin-console-content qitu-page-transition" key={internalPath}>
+          <main
+            className={`admin-console-content qitu-page-transition ${
+              internalPath === '/copilot' ? 'is-copilot-view' : ''
+            } ${internalPath.startsWith('/settings') ? 'is-settings-view' : ''}`}
+            key={internalPath}
+          >
             {children}
           </main>
         </div>
