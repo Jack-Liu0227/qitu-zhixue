@@ -248,6 +248,11 @@ export interface ModelUsageSlot {
 /** Shared purpose policy for API and background Agent execution. */
 export const MODEL_USAGE_SLOTS: readonly ModelUsageSlot[] = [
   {
+    id: 'learning.evaluate', agent: 'tutor', label: '自主学习 · 证据评价',
+    description: '按冻结课时标准生成评价候选，由服务端核验并记录；教师只读。',
+    requiresInput: ['text'], requiresOutput: ['text'], fallbackTo: 'tutor.chat',
+  },
+  {
     id: 'admin.copilot', agent: 'admin', label: '启途智学管家 · 默认模型',
     description: '管家新对话自动使用的模型，由管理员选择并保存。',
     requiresInput: ['text'], requiresOutput: ['text'], fallbackTo: 'tutor.chat',

@@ -1,25 +1,555 @@
-.feishu-settings-page { max-width: 1260px; margin: 0 auto; padding: 28px 32px 56px; color: #102a5c; }
-.feishu-settings-page .settings-pagehead { display: flex; justify-content: space-between; gap: 24px; align-items: flex-end; }
-.feishu-settings-page .settings-page-actions { display: flex; gap: 10px; flex-wrap: wrap; }
-.feishu-notice { margin: 18px 0; padding: 12px 14px; border: 1px solid #bfdbfe; background: #eff6ff; color: #1d4ed8; border-radius: 12px; }
-.feishu-offline { margin: 18px 0; padding: 12px 14px; border: 1px solid #fed7aa; background: #fff7ed; color: #9a3412; border-radius: 12px; }
-.feishu-hero-card { margin: 24px 0; display: flex; justify-content: space-between; gap: 20px; align-items: center; padding: 26px 30px; border: 1px solid #d9e5fb; border-radius: 20px; background: linear-gradient(120deg, #f1f7ff, #f4fffb); box-shadow: 0 16px 38px rgb(37 99 235 / 8%); }
-.feishu-kicker { color: #2878f0; font-size: 11px; letter-spacing: .14em; font-weight: 700; }
-.feishu-hero-card h2 { margin: 7px 0; font-size: 26px; }
-.feishu-hero-card p, .feishu-card-head p { margin: 0; color: #64748b; line-height: 1.6; }
-.feishu-status-pill { display: inline-flex; align-items: center; gap: 8px; padding: 8px 13px; border-radius: 999px; font-size: 13px; font-weight: 700; white-space: nowrap; background: #f1f5f9; color: #475569; }
-.feishu-status-pill.is-connected { color: #065f46; background: #d1fae5; border: 1px solid #10b981; }.feishu-status-pill.is-pending { color: #a16207; background: #fef3c7; }.feishu-status-pill.is-error { color: #b91c1c; background: #fee2e2; }
-.feishu-status-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
-.feishu-grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); gap: 20px; }
-.feishu-card { padding: 24px; border: 1px solid #e2e8f0; border-radius: 18px; background: #fff; box-shadow: 0 8px 28px rgb(15 23 42 / 5%); }
-.feishu-card-head { margin-bottom: 22px; }.feishu-card h2 { margin: 0 0 5px; font-size: 18px; }
-.feishu-field { display: flex; flex-direction: column; gap: 8px; margin: 17px 0; font-size: 13px; font-weight: 700; color: #334155; }.feishu-field small { color: #94a3b8; font-weight: 400; }
-.feishu-field input:not([type='checkbox']), .feishu-field select { width: 100%; border: 1px solid #d9e2ef; background: #f8fafc; padding: 10px 12px; border-radius: 10px; color: #102a5c; font: inherit; font-weight: 500; }.feishu-field input:focus, .feishu-field select:focus { outline: 2px solid #bfdbfe; border-color: #60a5fa; }
-.feishu-field input[type='checkbox'] { width: 18px; height: 18px; accent-color: #2878f0; }.feishu-field:has(input[type='checkbox']) { flex-direction: row; align-items: center; justify-content: space-between; }
-.feishu-scope-list { display: flex; gap: 18px; flex-wrap: wrap; font-weight: 500; }.feishu-scope-list label { display: inline-flex; align-items: center; gap: 7px; }
-.feishu-empty { padding: 12px 14px; border-radius: 10px; background: #fff7ed; color: #9a3412; font-size: 13px; }.feishu-empty a { color: #c2410c; font-weight: 700; }
-.feishu-binding { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: 10px; background: #f0fdf4; color: #166534; font-size: 13px; }.feishu-binding span { color: #4d7c5d; }
-.feishu-qr-content { display: flex; gap: 22px; align-items: center; }.feishu-qr-image, .feishu-qr-placeholder { width: 180px; height: 180px; flex: 0 0 180px; border-radius: 14px; }.feishu-qr-image { object-fit: contain; border: 1px solid #e2e8f0; background: #fff; }.feishu-qr-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; background: repeating-linear-gradient(45deg, #f8fafc, #f8fafc 8px, #f1f5f9 8px, #f1f5f9 16px); color: #94a3b8; }.feishu-qr-placeholder span { font-size: 56px; line-height: 1; }.feishu-qr-placeholder small { margin-top: 12px; }.feishu-qr-copy { display: flex; flex-direction: column; gap: 10px; }.feishu-qr-copy strong { color: #102a5c; }.feishu-qr-copy p { color: #64748b; font-size: 13px; line-height: 1.6; margin: 0; }.feishu-inline-error { color: #b91c1c; font-size: 12px; }.feishu-security-note { margin-top: 22px; display: flex; gap: 8px; padding: 11px 12px; border-radius: 10px; color: #64748b; background: #f8fafc; font-size: 12px; line-height: 1.5; }
-@media (max-width: 820px) { .feishu-settings-page { padding: 20px 16px 42px; }.feishu-settings-page .settings-pagehead, .feishu-hero-card { align-items: flex-start; flex-direction: column; }.feishu-grid { grid-template-columns: 1fr; }.feishu-qr-content { align-items: flex-start; flex-direction: column; } }
+/* 飞书机器人配置页面样式 - 遵循原生 Admin 控制台浅色卡片与 Aion 规范 */
 
-.feishu-qr-copy a { color: #2563eb; font-size: 13px; font-weight: 700; }.feishu-countdown { color: #a16207; font-size: 13px; font-variant-numeric: tabular-nums; font-weight: 700; }.feishu-inline-hint { color: #64748b; font-size: 12px; }.feishu-inline-error button { border: 0; background: none; color: inherit; font: inherit; text-decoration: underline; cursor: pointer; }
+.feishu-settings-page {
+  max-width: 1260px;
+  margin: 0 auto;
+  padding: 24px 32px 64px;
+  color: var(--aion-t-primary, #102a5c);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* 顶部页头与动作区 */
+.feishu-top-header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.feishu-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--aion-primary, #2878f0);
+  text-transform: uppercase;
+}
+
+.feishu-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.feishu-title-row h1 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--aion-t-primary, #102a5c);
+}
+
+.feishu-header-desc {
+  margin: 4px 0 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--aion-t-tertiary, #64748b);
+  max-width: 900px;
+}
+
+/* 助手选择框与官方链接栏 */
+.feishu-assistant-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 20px;
+  background: var(--aion-fill-1, #f8fafc);
+  border: 1px solid var(--aion-border, #e2e8f0);
+  border-radius: 14px;
+}
+
+.feishu-assistant-selector {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.feishu-assistant-selector label {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--aion-t-primary, #102a5c);
+}
+
+.feishu-assistant-select {
+  min-width: 240px;
+  max-width: 360px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--aion-border, #d9e2ef);
+  background: #ffffff;
+  color: var(--aion-t-primary, #102a5c);
+  font: inherit;
+  font-weight: 500;
+}
+
+.feishu-assistant-select:focus {
+  outline: 2px solid var(--aion-primary-soft, #bfdbfe);
+  border-color: var(--aion-primary, #2878f0);
+}
+
+.feishu-quick-links {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+  padding-top: 4px;
+  border-top: 1px dashed var(--aion-border, #e2e8f0);
+}
+
+.feishu-quick-links a {
+  color: var(--aion-primary, #2878f0);
+  text-decoration: none;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: opacity 0.15s;
+}
+
+.feishu-quick-links a:hover {
+  text-decoration: underline;
+  opacity: 0.85;
+}
+
+/* 状态概览条 */
+.feishu-status-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 16px;
+  background: #f0f7ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  font-size: 13px;
+  color: #1e40af;
+}
+
+.feishu-status-items {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-weight: 600;
+}
+
+.feishu-status-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.feishu-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #94a3b8;
+}
+
+.feishu-dot.is-ok { background: #10b981; }
+.feishu-dot.is-warn { background: #f59e0b; }
+.feishu-dot.is-err { background: #ef4444; }
+
+.feishu-status-strip p {
+  margin: 0;
+  font-size: 12px;
+  color: #3b82f6;
+  line-height: 1.5;
+}
+
+/* 提示与离线横幅 */
+.feishu-notice-banner {
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.feishu-offline-banner {
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #9a3412;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* 原生通用卡片 */
+.feishu-card {
+  padding: 24px;
+  border: 1px solid var(--aion-border, #e2e8f0);
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.feishu-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.feishu-card-header-main h2 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--aion-t-primary, #102a5c);
+}
+
+.feishu-card-header-main p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--aion-t-tertiary, #64748b);
+  line-height: 1.6;
+}
+
+.feishu-card-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* 手机扫码主体区域 */
+.feishu-qr-panel {
+  display: flex;
+  gap: 28px;
+  align-items: flex-start;
+  padding-top: 8px;
+}
+
+.feishu-qr-box {
+  width: 180px;
+  height: 180px;
+  flex: 0 0 180px;
+  border-radius: 12px;
+  border: 1px solid var(--aion-border, #e2e8f0);
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+}
+
+.feishu-qr-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 6px;
+}
+
+.feishu-qr-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #94a3b8;
+  font-size: 13px;
+  padding: 16px;
+  text-align: center;
+}
+
+.feishu-qr-placeholder-icon {
+  font-size: 40px;
+  line-height: 1;
+  opacity: 0.5;
+}
+
+.feishu-qr-info {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+}
+
+.feishu-qr-status-text {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--aion-t-primary, #102a5c);
+}
+
+.feishu-qr-countdown {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #d97706;
+  font-variant-numeric: tabular-nums;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.feishu-qr-hint {
+  font-size: 12.5px;
+  color: var(--aion-t-tertiary, #64748b);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.feishu-qr-direct-link {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--aion-primary, #2878f0);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.feishu-qr-direct-link:hover {
+  text-decoration: underline;
+}
+
+/* 两列表单网格 */
+.feishu-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 24px;
+}
+
+.feishu-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.feishu-form-field.is-full {
+  grid-column: span 2;
+}
+
+.feishu-form-field span {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--aion-t-primary, #102a5c);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.feishu-form-field small {
+  font-size: 11.5px;
+  font-weight: 400;
+  color: #94a3b8;
+}
+
+.feishu-form-field input,
+.feishu-form-field select {
+  width: 100%;
+  border: 1px solid var(--aion-border, #d9e2ef);
+  background: var(--aion-fill-1, #f8fafc);
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: var(--aion-t-primary, #102a5c);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  box-sizing: border-box;
+}
+
+.feishu-form-field input:focus,
+.feishu-form-field select:focus {
+  outline: 2px solid var(--aion-primary-soft, #bfdbfe);
+  border-color: var(--aion-primary, #2878f0);
+  background: #ffffff;
+}
+
+.feishu-form-field input[readonly] {
+  background: #f1f5f9;
+  color: #64748b;
+  cursor: default;
+}
+
+/* 复选框行 */
+.feishu-checkbox-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--aion-t-primary, #102a5c);
+  cursor: pointer;
+  user-select: none;
+}
+
+.feishu-checkbox-row input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--aion-primary, #2878f0);
+  cursor: pointer;
+}
+
+/* 折叠面板 */
+.feishu-accordion {
+  border: 1px solid var(--aion-border, #e2e8f0);
+  border-radius: 12px;
+  background: #fbfdff;
+  overflow: hidden;
+}
+
+.feishu-accordion-header {
+  padding: 14px 18px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--aion-t-primary, #102a5c);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #ffffff;
+  user-select: none;
+  transition: background 0.15s;
+}
+
+.feishu-accordion-header:hover {
+  background: #f8fafc;
+}
+
+.feishu-accordion-body {
+  padding: 18px;
+  border-top: 1px solid var(--aion-border, #e2e8f0);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* 底部操作工具栏 */
+.feishu-bottom-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 16px 20px;
+  background: #ffffff;
+  border: 1px solid var(--aion-border, #e2e8f0);
+  border-radius: 14px;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
+  margin-top: 4px;
+}
+
+.feishu-bottom-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.feishu-bottom-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.feishu-link-btn {
+  border: 0;
+  background: transparent;
+  color: var(--aion-primary, #2878f0);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 6px;
+  text-decoration: underline;
+}
+
+.feishu-link-btn:hover {
+  opacity: 0.8;
+}
+
+/* 按钮通用 */
+.feishu-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--aion-border, #d9e2ef);
+  background: #ffffff;
+  color: var(--aion-t-primary, #102a5c);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.feishu-btn:hover:not(:disabled) {
+  background: var(--aion-fill-1, #f8fafc);
+  border-color: #cbd5e1;
+}
+
+.feishu-btn.is-primary {
+  background: var(--aion-primary, #2878f0);
+  color: #ffffff;
+  border-color: var(--aion-primary, #2878f0);
+}
+
+.feishu-btn.is-primary:hover:not(:disabled) {
+  background: #1d65d4;
+  border-color: #1d65d4;
+}
+
+.feishu-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 错误与状态高亮 */
+.feishu-inline-error {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  color: #b91c1c;
+  font-size: 12.5px;
+}
+
+/* 移动端与平板响应式适配 */
+@media (max-width: 860px) {
+  .feishu-settings-page {
+    padding: 16px 16px 48px;
+  }
+
+  .feishu-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .feishu-form-field.is-full {
+    grid-column: span 1;
+  }
+
+  .feishu-qr-panel {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .feishu-qr-info {
+    align-items: center;
+  }
+
+  .feishu-bottom-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .feishu-bottom-left,
+  .feishu-bottom-right {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}

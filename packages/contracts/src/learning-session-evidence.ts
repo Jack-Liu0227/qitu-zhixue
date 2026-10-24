@@ -75,6 +75,7 @@ export interface LearningSubmissionArtifactView {
   latestVersion: { id: string; inlineText: string | null } | null;
 }
 export interface LearningSubmissionResponse {
+  evaluationError?: string;
   proof: LearningEvidenceProof;
   artifact: LearningSubmissionArtifactView;
   assessmentStatus: 'assessment_required';

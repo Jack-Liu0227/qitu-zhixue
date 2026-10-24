@@ -60,6 +60,9 @@ import { LearningPlanStore } from '../learning-plan/learning-plan.store';
 import { TemplatesModule } from '../templates/templates.module';
 import { MasteryModule } from '../mastery/mastery.module';
 import { CoursewareStorageModule } from '../knowledge/courseware-storage.module';
+import { ModelRegistryModule } from '../model-registry/model-registry.module';
+import { LessonQualityEvaluator, GatewayLessonQualityEvaluator } from './lesson-quality-evaluator';
+import { WorksPublicationReview } from './works-publication-review';
 
 /**
  * 作品 / 证据模块（Works）。
@@ -75,10 +78,12 @@ import { CoursewareStorageModule } from '../knowledge/courseware-storage.module'
 @Module({
   // T17：TeamRuntimeModule 提供服务端内部的门禁证据写入（review_completed_and_archived）。
   // 它不反向依赖 WorksModule，因此无循环导入。
-  imports: [AuthModule, DirectoryModule, TeamRuntimeModule, LearningPlanStorageModule, TemplatesModule, MasteryModule, CoursewareStorageModule],
+  imports: [AuthModule, DirectoryModule, TeamRuntimeModule, LearningPlanStorageModule, TemplatesModule, MasteryModule, CoursewareStorageModule, ModelRegistryModule],
   controllers: [ArtifactsController, FilesController, ProjectEvidenceController, WorksLearningController, WorksLessonQualityController, ArtifactFormatController],
   providers: [
     WorksService,
+    WorksPublicationReview,
+    { provide: LessonQualityEvaluator, useClass: GatewayLessonQualityEvaluator },
     ArtifactFormatService,
     WorksLearningEvidenceService,
     ProjectEvidenceMaterializer,

@@ -1,9 +1,12 @@
+import { WorksPublicationReview } from './works-publication-review';
+import { LEARNING_REVIEW_POLICY } from './lesson-quality-evaluator';
 import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
   Inject,
   Injectable,
+  Optional,
   Logger,
   NotFoundException,
   ServiceUnavailableException,
@@ -173,6 +176,7 @@ export class WorksService {
     private readonly idempotency: IdempotencyStore,
     private readonly audit: AuditWriter,
     private readonly teamRuntime: TeamRuntimeService,
+    @Optional() private readonly automaticReview?: WorksPublicationReview,
   ) {}
 
   /* ============================== 读 ============================== */
@@ -345,16 +349,7 @@ export class WorksService {
     }
   }
 
-  /**
-   * 学生申请发布。
-   *
-   * - 已有班主任批准的复核记录 → 直接发布并写入 `publishedAt`，同时物化
-   *   `independent` 证据（作品发布是服务端事实，不是客户端字段）；
-   * - 没有批准记录 → 先进入 `submitted`，并（幂等地）创建一条
-   *   `mentor_reviews`（kind=artifact, status=requested）等待班主任复核。
-   *
-   * 客户端永远不能通过请求体设置 `publishedAt` / `status` / 证据。
-   */
+  /** 发布消费确切版本的自动评价回执；没有教师审批或客户端放行路径。 */
   async publishArtifact(
     studentId: string,
     artifactId: string,
@@ -372,108 +367,28 @@ export class WorksService {
         const artifact = await this.requireArtifact(artifactId);
         const latest = (await this.store.listVersions(artifactId)).find((version) => version.ordinal === artifact.currentVersionIndex);
         if (!latest) throw new ConflictException({ code: 'ARTIFACT_VERSION_REQUIRED', message: '作品缺少可审核的版本' });
-        const mentorUserId = await this.directory.mentorOfStudent(studentId);
-        if (!mentorUserId) throw new ConflictException({ code: 'ARTIFACT_MENTOR_REQUIRED', message: '当前没有在任班主任，无法提交作品复核' });
-        const reviews = await this.store.listReviewsForArtifact(artifactId);
-        let approved: MentorReviewRecord | null = null;
-        for (const review of reviews) {
-          if (review.status !== 'approved' || review.mentorUserId !== mentorUserId || review.studentId !== studentId
-            || review.projectId !== artifact.projectId || !review.reviewedAt) continue;
-          const bound = await this.evidence.hasArtifactReviewRequest(artifact, latest, review);
-          // Legacy external-file artifacts retain their existing timestamp-bound approval path.
-          const legacy = decodeInlineVersion(latest.note).inlineText === null && review.requestedAt >= latest.createdAt;
-          if (bound || legacy) { approved = review; break; }
+        if (!this.automaticReview) throw new ServiceUnavailableException({ code: 'LESSON_EVALUATION_UNAVAILABLE', message: '自动评价暂不可用，请稍后重试。' });
+        const quality = await this.automaticReview.evaluate(artifact, latest);
+        if (quality.status !== 'accepted') {
+          const revised = await this.transitionOrConflict(artifactId, [artifact.status], 'changes_requested', now, undefined, latest.ordinal);
+          return { status: 200, body: await this.toView(revised) };
         }
-        if (approved !== null) {
-          if (artifact.status === 'published') return { status: 200, body: await this.toView(artifact) };
-          const published = await this.transitionOrConflict(
-            artifactId,
-            ['draft', 'changes_requested', 'submitted', 'in_review', 'archived'],
-            publishFromReview(artifact.status),
-            now,
-            now,
-          );
-          await this.evidence.materializeArtifactPublished(published, now);
-          await this.audit.write({
-            actorId: studentId,
-            actorRole: 'student',
-            action: 'artifact.publish',
-            targetType: 'artifact',
-            targetId: artifactId,
-            idempotencyKey: `${scope}:${idempotencyKey}`,
-            detail: {
-              reviewId: approved.id,
-              status: published.status,
-              projectId: published.projectId,
-            },
-          });
-          return { status: 200, body: await this.toView(published) };
-        }
-
-        // 无批准：进入待审核，并联动复核记录。
-        const nextStatus = submitForReview(artifact.status);
-        if (nextStatus !== artifact.status) {
-          await this.transitionOrConflict(
-            artifactId,
-            [artifact.status],
-            nextStatus,
-            now,
-            undefined,
-          );
-        }
-        let active = reviews.find((review) => review.mentorUserId === mentorUserId
-          && (review.status === 'requested' || review.status === 'in_review')) ?? null;
-        if (active === null) {
-          active = await this.store.createMentorReview({
-            id: `mr-${randomUUID()}`,
-            schoolId: artifact.schoolId,
-            studentId,
-            mentorUserId,
-            projectId: artifact.projectId,
-            artifactId,
-            status: 'requested',
-            idempotencyKey: `${scope}:${idempotencyKey}:review`,
-            now,
-          });
-        }
-        await this.evidence.recordArtifactReviewRequest(artifact, latest, active);
-        const submitted = (await this.store.findArtifact(artifactId)) ?? artifact;
-        await this.audit.write({
-          actorId: studentId,
-          actorRole: 'student',
-          action: 'artifact.submit_review',
-          targetType: 'artifact',
-          targetId: artifactId,
-          idempotencyKey: `${scope}:${idempotencyKey}`,
-          detail: {
-            mentorUserId,
-            status: submitted.status,
-            projectId: submitted.projectId,
-          },
-        });
-        return { status: 200, body: await this.toView(submitted) };
+        const published = artifact.status === 'published' ? artifact
+          : await this.transitionOrConflict(artifactId, ['draft', 'changes_requested', 'submitted', 'in_review', 'archived'],
+            'published', now, now, latest.ordinal);
+        await this.evidence.materializeArtifactPublished(published, now);
+        await this.audit.write({ actorId: studentId, actorRole: 'student', action: 'artifact.publish',
+          targetType: 'artifact', targetId: artifactId, idempotencyKey: `${scope}:${idempotencyKey}`,
+          detail: { policyVersion: LEARNING_REVIEW_POLICY, artifactVersionId: latest.id,
+            subjectDigest: quality.subjectDigest, status: published.status, projectId: published.projectId } });
+        return { status: 200, body: await this.toView(published) };
       });
-      // T17：仅当「复核已通过并真的进入 published」才写 review_completed_and_archived。
-      // 调用放在幂等 execute **之外**：重放路径不执行回调，放内部会漏记；
-      // 且门禁写入失败绝不能回滚已成立的发布。
-      // 撑回（archived）**不算**复核完成——该路径不经过这里。
       if (result.body.status === 'published') {
         const current = await this.requireArtifact(artifactId);
-        const latest = (await this.store.listVersions(artifactId)).find((version) => version.ordinal === current.currentVersionIndex);
-        const mentorId = await this.directory.mentorOfStudent(studentId);
-        let validApproval = false;
-        if (current.status === 'published' && latest && mentorId) {
-          for (const review of await this.store.listReviewsForArtifact(artifactId)) {
-            if (review.status !== 'approved' || review.mentorUserId !== mentorId || review.studentId !== studentId
-              || review.projectId !== current.projectId || !review.reviewedAt) continue;
-            if (await this.evidence.hasArtifactReviewRequest(current, latest, review)
-              || decodeInlineVersion(latest.note).inlineText === null && review.requestedAt >= latest.createdAt) {
-              validApproval = true;
-              break;
-            }
-          }
+        const latest = (await this.store.listVersions(artifactId)).find(version => version.ordinal === current.currentVersionIndex);
+        if (current.status !== 'published' || !latest || await this.automaticReview?.status(current, latest) !== 'accepted') {
+          throw new ConflictException({ code: 'ARTIFACT_APPROVAL_STALE', message: '作品版本或自动评价已变化，请重新提交。' });
         }
-        if (!validApproval) throw new ConflictException({ code: 'ARTIFACT_CURRENT_REVIEW_REQUIRED', message: '当前版本需要在任班主任复核，不能重放旧发布结果' });
         await this.recordReviewCompletedGate(studentId, artifactId, current.projectId);
       }
       return result.body;
@@ -483,17 +398,7 @@ export class WorksService {
     }
   }
 
-  /**
-   * T17：把「班主任复核已通过且作品已发布」写入 PBL 门禁 `review_completed_and_archived`。
-   *
-   * 判据全部来自服务端真源，客户端无法影响：
-   * - 复核通过 = `store.findApprovedReviewForArtifact` 命中 `mentor_reviews`
-   *   （`artifact_ref = artifactId AND status = 'approved'`）；
-   * - 已发布 = 上面那条分支返回的视图 `status === 'published'`。
-   *
-   * 三条约束与 T15 一致（放 execute 之外 / 失败不回滚发布 / 靠确定性幂等键去重），
-   * `recorded` | `already_satisfied` | `deferred` 三种状态都视为成功。
-   */
+  /** 已发布且自动评价有效才写服务端门禁；最终归档仍由 Projects 核验证据。 */
   private async recordReviewCompletedGate(studentId: string, artifactId: string, projectId: string | null): Promise<void> {
     try {
       await this.teamRuntime.recordGateForStudent({
@@ -751,6 +656,7 @@ export class WorksService {
     status: ArtifactStatus,
     now: Date,
     publishedAt: Date | null | undefined,
+    expectedVersionIndex?: number,
   ): Promise<ArtifactRecord> {
     try {
       return await this.store.transitionArtifact({
@@ -758,6 +664,7 @@ export class WorksService {
         expectedStatuses,
         status,
         publishedAt,
+        expectedVersionIndex,
         now,
       });
     } catch (error) {
@@ -775,8 +682,7 @@ export class WorksService {
     // 家长 / 班主任投影也复用同一视图：其中不含原始对话、语音或审计字段。
     const versions = await this.store.listVersions(artifact.id);
     const latest = versions.length === 0 ? null : versions[versions.length - 1]!;
-    const reviewed = await this.store.listReviewsForArtifact(artifact.id);
-    const latestReview = reviewed.length === 0 ? null : reviewed[reviewed.length - 1]!;
+    const automaticStatus = latest ? await this.automaticReview?.status(artifact, latest) : null;
     return {
       id: artifact.id,
       projectId: artifact.projectId,
@@ -792,7 +698,7 @@ export class WorksService {
       updatedAt: artifact.updatedAt.toISOString(),
       versionCount: versions.length,
       latestVersion: latest === null ? null : toVersionView(latest),
-      reviewStatus: latestReview?.status ?? 'none',
+      reviewStatus: automaticStatus === 'accepted' ? 'approved' : automaticStatus === 'needs_revision' ? 'changes_requested' : 'none',
     };
   }
 

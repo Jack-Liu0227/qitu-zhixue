@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable, Optional } from '@nestjs/common';
+import { BadRequestException, Injectable, Optional, ServiceUnavailableException } from '@nestjs/common';
+import { LessonQualityEvaluator } from './lesson-quality-evaluator';
 import { createHash } from 'node:crypto';
 import type { CurrentUser, TutorExperimentActionResponse, LessonQualityDecision } from '@qitu/contracts';
 import { WorksLessonQuality } from './works-lesson-quality';
@@ -54,8 +55,9 @@ export class WorksLearningEvidenceService {
     private readonly idempotency: IdempotencyStore,
     private readonly audit: AuditWriter,
     @Optional() private readonly courseware?: CoursewareStore,
+    @Optional() evaluator?: LessonQualityEvaluator,
   ) {
-    this.quality = new WorksLessonQuality({ plans, bindings, directory, artifacts, facts, evidence, idempotency, audit,
+    this.quality = new WorksLessonQuality({ plans, bindings, directory, artifacts, facts, evidence, idempotency, audit, evaluator,
       readProofs: (actor, scope, refs) => this.readLessonProofs(actor, scope, refs) });
   }
 
@@ -64,6 +66,14 @@ export class WorksLearningEvidenceService {
   }
 
   listStudentLessonQuality(actor: CurrentUser, studentId: string,cursor?:string) { return this.quality.queue(actor, studentId,cursor); }
+
+  async evaluateLessonQuality(actor: CurrentUser, planId: string, sessionId: string, revision: number, evidenceRef: string) {
+    const context = await this.context(actor, { planId, learningSessionId: sessionId, planRevision: revision }, true);
+    const proofs = await this.readLessonProofs(actor, context.scope, [evidenceRef]);
+    const proof = [...proofs.submissions, ...proofs.observations, ...proofs.reflections].find(item => item.ref === evidenceRef);
+    if (!proof) conflict('LESSON_QUALITY_SCOPE_INVALID', '仅能评价本课已保存的证据');
+    return { quality: await this.quality.evaluate(actor, context, proof) };
+  }
 
   async lessonQualityAccepted(actor: CurrentUser, scope: LearningEvidenceScope, proof: LearningEvidenceProof) {
     const context = await this.context(actor, scope);
@@ -117,17 +127,10 @@ export class WorksLearningEvidenceService {
       if (receipt.kind !== 'submitted_artifact' || row.sourceKind !== 'task_submission'
         || stored.artifact.status !== 'published' || !stored.artifact.publishedAt
         || stored.version.ordinal !== stored.artifact.currentVersionIndex) continue;
-      const mentorId = await this.directory.mentorOfStudent(context.project.studentId);
-      if (!mentorId) continue;
-      const reviews = await this.artifacts.listReviewsForArtifact(stored.artifact.id);
-      for (const review of reviews) {
-        if (review.status !== 'approved' || review.mentorUserId !== mentorId || review.studentId !== context.project.studentId
-          || review.projectId !== scope.projectId || !review.reviewedAt
-          || !await this.evidence.hasArtifactReviewRequest(stored.artifact, stored.version, review)) continue;
-        const approved: LearningEvidenceProof = { ...proof, kind: 'approved_artifact', ref: `artifact:${stored.artifact.id}`,
-          reviewId: review.id, mentorId };
+      const approvalContext = await this.context(actor, receipt.scope);
+      if ((await this.quality.read(approvalContext, proof)).status === 'accepted') {
+        const approved: LearningEvidenceProof = { ...proof, kind: 'approved_artifact', ref: `artifact:${stored.artifact.id}` };
         if (!requested || requested.has(approved.ref)) result.approvedArtifacts.push(approved);
-        break;
       }
     }
     if (requested) {
@@ -217,7 +220,7 @@ export class WorksLearningEvidenceService {
         if (evidenceRefs.length) await this.readLessonProofs(actor, context.scope, evidenceRefs);
         if (reflection) {
           const projectProofs = await this.readLessonProofs(actor, context.scope);
-          if (!projectProofs.approvedArtifacts.length) conflict('PROJECT_REVIEW_REQUIRED', '需先完成当前班主任审核并发布报告');
+          if (!projectProofs.approvedArtifacts.length) conflict('PROJECT_REVIEW_REQUIRED', '需先完成自动评价并发布作品');
         }
         const childKey = digest(`${idemScope}:${key}`);
         const artifact = await this.works.createArtifact(actor.id, {
@@ -241,8 +244,7 @@ export class WorksLearningEvidenceService {
         const saved = await this.readLessonProofs(actor, context.scope, [`${sourceKind}:${sourceId}`]);
         const proof = (reflection ? saved.reflections : saved.submissions)[0];
         if (!proof) conflict('LEARNING_EVIDENCE_READBACK_FAILED', '学习产物引用回读失败');
-        const view = kind === 'submitted_artifact' && body.requestReview
-          ? await this.works.publishArtifact(actor.id, artifact.id, `${childKey}:review`) : artifact;
+        const view = artifact;
         await this.audit.write({ actorId: actor.id, actorRole: actor.role, action: `learning.${operation}.submitted`,
           targetType: 'learning_session', targetId: learningSessionId, idempotencyKey: `learning-submission:${sourceId}`,
           detail: { planId, planRevision: body.planRevision, artifactId: artifact.id, artifactVersionId: versionId, contentDigest: receipt.contentDigest } });
@@ -251,7 +253,24 @@ export class WorksLearningEvidenceService {
       // Idempotent replays still revalidate live scope and original proof.
       await this.context(actor, inputScope);
       await this.readLessonProofs(actor, initial.scope, [result.body.proof.ref]);
-      return { ...result.body, replayed: result.replayed };
+      // Submission is durable before model work. A failed evaluation must not lose or duplicate it.
+      let quality = result.body.proof.quality;
+      let evaluationError: string | undefined;
+      let artifact = result.body.artifact;
+      if (initial.lesson.completionSpec?.version === 'learning-session-completion.v2') {
+        try {
+          quality = await this.quality.evaluate(actor, await this.context(actor, inputScope), result.body.proof);
+          if (kind === 'submitted_artifact' && body.requestReview && quality.status === 'accepted') {
+            artifact = await this.works.publishArtifact(actor.id, artifact.id, `${digest(`${idemScope}:${key}`)}:publish`);
+          }
+        } catch (error) {
+          if (!(error instanceof ServiceUnavailableException)) throw error;
+          quality = await this.quality.read(initial, result.body.proof);
+          evaluationError = '记录已保存，自动评价暂未完成，请重试评价；无需等待老师。';
+        }
+      }
+      return { ...result.body, proof: { ...result.body.proof, ...(quality ? { quality } : {}) }, artifact,
+        ...(evaluationError ? { evaluationError } : {}), replayed: result.replayed };
     } catch (error) { throwHttpForIdempotencyError(error); throw error; }
   }
 

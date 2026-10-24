@@ -8,6 +8,15 @@ import type { LessonQualityDecision } from '@qitu/contracts';
 export class WorksLearningController {
   constructor(private readonly learning: WorksLearningEvidenceService, private readonly auth: AuthService) {}
 
+  @Post('evaluations')
+  async evaluate(@Headers('cookie') cookie: string | undefined, @Headers('idempotency-key') key: string | undefined,
+    @Param('planId') planId: string, @Param('sessionId') sessionId: string, @Body() body: unknown) {
+    const actor = requireRole(this.auth, cookie, 'student', '仅学生本人可触发自动评价');
+    requireKey(key);
+    const input = pickFields<{ planRevision: number; evidenceRef: string }>(body, ['planRevision', 'evidenceRef']);
+    return { data: await this.learning.evaluateLessonQuality(actor, planId, sessionId, input.planRevision, input.evidenceRef) };
+  }
+
   @Post('quality-reviews')
   async qualityReview(@Headers('cookie') cookie: string | undefined, @Headers('idempotency-key') key: string | undefined,
     @Param('planId') planId: string, @Param('sessionId') sessionId: string, @Body() body: unknown) {

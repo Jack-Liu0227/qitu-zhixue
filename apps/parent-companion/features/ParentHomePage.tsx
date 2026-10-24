@@ -1,3 +1,4 @@
+import { normalizeProjectTitle } from '@qitu/contracts';
 'use client';
 import { ResizablePanels } from '@qitu/ui';
 

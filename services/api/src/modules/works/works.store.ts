@@ -114,6 +114,7 @@ export interface AppendArtifactVersionInput {
 }
 
 export interface TransitionArtifactInput {
+  expectedVersionIndex?: number;
   artifactId: string;
   /** CAS：只有当前状态在集合内才迁移。 */
   expectedStatuses: readonly ArtifactStatus[];
@@ -279,6 +280,9 @@ export class InMemoryWorksStore extends WorksStore {
   ): Promise<{ artifact: ArtifactRecord; version: ArtifactVersionRecord }> {
     const record = this.artifacts.get(input.artifactId);
     if (record === undefined) throw new WorksStoreConflictError('artifact not found');
+    if (input.expectedVersionIndex !== undefined && record.currentVersionIndex !== input.expectedVersionIndex) {
+      throw new WorksStoreConflictError('artifact version changed during evaluation');
+    }
     if (record.currentVersionIndex !== input.expectedRevision) {
       throw new WorksStoreConflictError(
         `artifact revision mismatch: expected ${input.expectedRevision}, actual ${record.currentVersionIndex}`,

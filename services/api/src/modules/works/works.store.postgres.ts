@@ -186,6 +186,7 @@ export class PostgresWorksStore extends WorksStore {
             and(
               eq(artifactsTable.id, input.artifactId),
               inArray(artifactsTable.status, [...input.expectedStatuses]),
+              input.expectedVersionIndex === undefined ? undefined : eq(artifactsTable.currentVersionIndex, input.expectedVersionIndex),
             ),
           )
           .returning();
