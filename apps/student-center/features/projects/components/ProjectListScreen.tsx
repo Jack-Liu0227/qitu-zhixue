@@ -115,7 +115,8 @@ export function ProjectListScreen({
         emptyDescription="去灵感空间找一找，想做的事会变成正式项目。"
         emptyAction={<CreateProjectEntry />}
         render={(result, offline) => {
-          const hasAside = !explorations && (nextStep.state.status === 'ready' || nextStep.state.status === 'offline') && Boolean(nextStep.state.data);
+          const nextStepData = (nextStep.state.status === 'ready' || nextStep.state.status === 'offline') ? nextStep.state.data : null;
+          const hasAside = !explorations && Boolean(nextStepData);
           const mainContent = (
             <div className="qitu-projects-main">
               {projectsDataSource.deleteHistory && result.items.length ? (
@@ -175,7 +176,7 @@ export function ProjectListScreen({
           return (
             <ResizablePanels storageKey="student-project-list" initialSizes={[74, 26]} minWidths={[420, 260]} className="qitu-projects-layout">
               {mainContent}
-              <aside><NextStepCard nextStep={nextStep.state.data!} disabled={offline} /></aside>
+              <aside><NextStepCard nextStep={nextStepData!} disabled={offline} /></aside>
             </ResizablePanels>
           );
         }}
