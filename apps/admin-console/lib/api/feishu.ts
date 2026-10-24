@@ -12,6 +12,7 @@ export interface FeishuIntegrationConfig {
   botName: string;
   reportAssistantId: string;
   reportScope: string[];
+  reportRecipients?: readonly string[];
   status: FeishuConnectionStatus;
   statusMessage?: string;
   credentialConfigured: boolean;
@@ -56,6 +57,7 @@ function mapSettings(value: AdminFeishuSettings): FeishuIntegrationConfig {
     botName: value.domain === 'lark' ? 'Lark 汇报助手' : '飞书汇报助手',
     reportAssistantId: value.assistantId,
     reportScope: ['student', 'parent', 'teacher'],
+    reportRecipients: value.reportRecipients,
     status: value.connected ? 'connected' : 'disconnected',
     credentialConfigured: value.credentialConfigured,
     qrBinding: value.qrBinding,
@@ -100,15 +102,14 @@ export function fetchFeishuIntegration(assistantId?: string, signal?: AbortSigna
 }
 
 export function updateFeishuIntegration(input: Partial<FeishuIntegrationConfig>, idempotencyKey = newIdempotencyKey()): Promise<FeishuIntegrationConfig> {
-  const body = {
+  const body: Record<string, unknown> = {
     enabled: input.enabled,
     inboundEnabled: input.inboundEnabled,
     appId: input.appId === undefined ? undefined : input.appId.trim() || null,
     domain: input.domain,
     reportAssistantId: input.reportAssistantId || null,
-    // Report categories are assistant policy, not Feishu recipient identities.
-    // Never overwrite the server-owned allowlist when an admin saves this form.
   };
+  if (input.reportRecipients) body.reportRecipients = [...input.reportRecipients];
   if (input.appSecret?.trim()) Object.assign(body, { appSecret: input.appSecret.trim() });
   if (input.verificationToken?.trim()) Object.assign(body, { verificationToken: input.verificationToken.trim() });
   if (input.encryptKey?.trim()) Object.assign(body, { encryptKey: input.encryptKey.trim() });

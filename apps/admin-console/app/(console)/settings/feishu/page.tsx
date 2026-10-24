@@ -379,7 +379,7 @@ export default function FeishuSettingsPage() {
     try {
       const status = await fetchFeishuBridgeStatus(config.reportAssistantId);
       setBridge(status);
-      setNotice(`长连接状态：${status.state === 'connected' ? '运行中 (running)' : status.state}`);
+      setNotice(`长连接状态：${status.state === 'connected' ? '运行中 (已连接)' : status.state}`);
     } catch (err) {
       setNotice(err instanceof Error ? err.message : '长连接测试失败');
     }
@@ -419,7 +419,7 @@ export default function FeishuSettingsPage() {
   const bridgeStateLabel = bridge ? ({
     stopped: '未启动',
     starting: '连接中',
-    connected: 'running',
+    connected: '运行中 (已连接)',
     reconnecting: '重连中',
     error: '连接异常',
   }[bridge.state]) : (bridgeError ? '连接异常' : '未连接');
@@ -431,7 +431,7 @@ export default function FeishuSettingsPage() {
     <div className="feishu-settings-page">
       {/* 1. 顶部页头与动作区 */}
       <div className="feishu-top-header">
-        <span className="feishu-eyebrow">ASSISTANT CONNECTION</span>
+        <span className="feishu-eyebrow">助手连线与外部机器人对接</span>
         <div className="feishu-title-row">
           <div>
             <h1>飞书机器人</h1>
@@ -683,10 +683,10 @@ export default function FeishuSettingsPage() {
                   disabled={!online}
                   onChange={(event) => setRecipientType(event.target.value as typeof recipientType)}
                 >
-                  <option value="open_id">open_id</option>
-                  <option value="chat_id">chat_id</option>
-                  <option value="user_id">user_id</option>
-                  <option value="email">email</option>
+                  <option value="open_id">用户 ID (open_id)</option>
+                  <option value="chat_id">群聊 ID (chat_id)</option>
+                  <option value="user_id">员工工号 (user_id)</option>
+                  <option value="email">企业邮箱 (email)</option>
                 </select>
               </label>
 

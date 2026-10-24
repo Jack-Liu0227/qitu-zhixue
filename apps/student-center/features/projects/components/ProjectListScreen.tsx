@@ -133,27 +133,32 @@ export function ProjectListScreen({
               ) : null}
               <ProjectList projects={result.items} readOnly={offline} renderActions={item => (
                 <div className="qitu-project-actions">
-                  {projectsDataSource.deleteHistory ? (
-                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
-                      <input type="checkbox" aria-label={`选择清理：${item.title}`} checked={selected.includes(entryKey(item))} disabled={offline || saving}
-                        onChange={event => setSelected(values => event.target.checked ? [...values, entryKey(item)] : values.filter(value => value !== entryKey(item)))} />选择
-                    </label>
-                  ) : null}
-                  {item.kind === 'project' && projectsDataSource.changeProjectDisplay ? (
-                    <>
-                      {!item.collectedAt && !['completed','published','exploration'].includes(item.status) ? (
-                        <button className="qitu-button qitu-button-ghost" disabled={offline || saving || item.isCurrent} onClick={() => void change(null,{ currentProjectId:item.id })}>
-                          {item.isCurrent ? '当前继续学习项目' : '设为继续学习项目'}
+                  <div className="qitu-project-actions-left">
+                    {projectsDataSource.deleteHistory ? (
+                      <label className="qitu-project-select-label">
+                        <input type="checkbox" aria-label={`选择清理：${item.title}`} checked={selected.includes(entryKey(item))} disabled={offline || saving}
+                          onChange={event => setSelected(values => event.target.checked ? [...values, entryKey(item)] : values.filter(value => value !== entryKey(item)))} />
+                        <span>选择</span>
+                      </label>
+                    ) : null}
+                  </div>
+                  <div className="qitu-project-actions-right">
+                    {item.kind === 'project' && projectsDataSource.changeProjectDisplay ? (
+                      <>
+                        {!item.collectedAt && !['completed','published','exploration'].includes(item.status) ? (
+                          <button className="qitu-button qitu-button-ghost qitu-action-btn" disabled={offline || saving || item.isCurrent} onClick={() => void change(null,{ currentProjectId:item.id })}>
+                            {item.isCurrent ? '当前继续学习项目' : '设为继续学习项目'}
+                          </button>
+                        ) : null}
+                        <button className="qitu-button qitu-button-ghost qitu-action-btn" disabled={offline || saving} onClick={() => void change(item.id,{ collected:!item.collectedAt,...(item.isCurrent && !item.collectedAt ? { currentProjectId:null } : {}) })}>
+                          {item.collectedAt ? '恢复显示' : item.isCurrent ? '收纳并清空当前选择' : '收纳'}
                         </button>
-                      ) : null}
-                      <button className="qitu-button qitu-button-ghost" disabled={offline || saving} onClick={() => void change(item.id,{ collected:!item.collectedAt,...(item.isCurrent && !item.collectedAt ? { currentProjectId:null } : {}) })}>
-                        {item.collectedAt ? '恢复显示' : item.isCurrent ? '收纳并清空当前选择' : '收纳'}
-                      </button>
-                    </>
-                  ) : null}
-                  {projectsDataSource.deleteHistory ? (
-                    <button className="qitu-button qitu-button-ghost" disabled={offline || saving} aria-label={`永久删除：${item.title}`} onClick={() => void removeEntries([item])}>永久删除</button>
-                  ) : null}
+                      </>
+                    ) : null}
+                    {projectsDataSource.deleteHistory ? (
+                      <button className="qitu-button qitu-button-ghost qitu-action-btn is-danger" disabled={offline || saving} aria-label={`永久删除：${item.title}`} onClick={() => void removeEntries([item])}>永久删除</button>
+                    ) : null}
+                  </div>
                 </div>
               )} />
               {result.items.length === 0 ? <p style={{ padding: '24px 0', textAlign: 'center', color: 'var(--qitu-muted)' }}>暂无匹配记录</p> : null}

@@ -57,12 +57,18 @@
   }
 }
 
-/* 项目卡网格：现代横向卡片自适应多列网格，充分利用屏幕宽度，彻底消除右侧空白 */
+/* 项目卡网格：现代横向宽卡片双列排版，高利用率，彻底告别狭窄挤压 */
 .qitu-project-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(460px, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
   width: 100%;
+}
+
+@media (max-width: 1080px) {
+  .qitu-project-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .qitu-projects-main {
@@ -74,20 +80,17 @@
 .qitu-project-entry {
   display: flex;
   flex-direction: column;
-  height: 100%;
   background: #ffffff;
   border: 1px solid var(--qitu-border, #e2e8f0);
-  border-radius: var(--qitu-radius-lg, 16px);
+  border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
-  transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-              box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .qitu-project-entry:hover {
-  border-color: var(--qitu-primary-border, #bfdbfe);
-  box-shadow: 0 12px 28px rgba(37, 99, 235, 0.09);
+  border-color: #93c5fd;
+  box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.1), 0 8px 10px -6px rgba(37, 99, 235, 0.06);
   transform: translateY(-2px);
 }
 
@@ -108,32 +111,8 @@
 
 .qitu-projects-list-screen > p { margin: 4px 0; }
 
-.qitu-project-actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  padding: 8px 14px;
-  background: #f8fafc;
-  border-top: 1px solid #f1f5f9;
-}
-
-.qitu-project-actions > button,
-.qitu-project-actions > label {
-  min-height: 28px;
-  padding: 3px 10px;
-  font-size: 12px;
-  border-radius: 6px;
-}
-
 .qitu-project-history-hint, .qitu-project-created { color: var(--qitu-muted, #64748b); font-size: 0.8rem; }
 .qitu-project-pagination { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 24px 0; }
-@media (max-width: 640px) {
-  .qitu-project-grid {
-    grid-template-columns: 1fr;
-  }
-}
 
 /* ---------- 分组标签 ---------- */
 
@@ -212,22 +191,17 @@
   display: flex;
   flex-direction: row;
   align-items: stretch;
-  min-height: 148px;
-  overflow: hidden;
-  background: #fff;
-  border: 1px solid var(--qitu-border);
-  border-radius: var(--qitu-radius-lg);
+  padding: 16px;
+  gap: 18px;
+  background: #ffffff;
   color: inherit;
   text-decoration: none;
-  transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-              box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  transition: background-color 0.2s ease;
 }
 
 .qitu-project-card:hover {
-  border-color: var(--qitu-primary-border, #bfdbfe);
-  box-shadow: 0 12px 28px rgba(16, 42, 92, 0.08);
-  transform: translateY(-3px);
+  background-color: #fafcff;
 }
 
 .qitu-project-card:focus-visible {
@@ -241,22 +215,20 @@
 }
 
 .qitu-project-card.is-readonly:hover {
-  border-color: var(--qitu-border);
-  box-shadow: none;
-  transform: none;
+  background-color: #ffffff;
 }
 
+/* 缩略图容器：精致独立悬浮圆角缩略图 */
 .qitu-project-cover {
   position: relative;
-  width: 190px;
-  min-width: 190px;
-  max-width: 190px;
-  height: auto;
-  min-height: 100%;
+  width: 210px;
+  min-width: 210px;
+  max-width: 210px;
+  height: 135px;
+  border-radius: 12px;
   overflow: hidden;
-  background: var(--qitu-page);
-  border-bottom: none;
-  border-right: 1px solid var(--qitu-border);
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
   flex-shrink: 0;
 }
 
@@ -266,47 +238,142 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform 0.35s ease;
 }
 
-/* 没有封面时的占位：用极浅的品牌渐变，不假装是一张图片。 */
+.qitu-project-entry:hover .qitu-project-cover img {
+  transform: scale(1.04);
+}
+
+/* 没有封面时的占位：品牌渐变 */
 .qitu-project-cover-fallback {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 6px;
   width: 100%;
   height: 100%;
-  background: var(--qitu-gradient-banner);
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  color: #2563eb;
+  font-size: 13px;
+  font-weight: 600;
 }
 
-.qitu-project-cover.is-placeholder { width: 140px; min-width: 140px; max-width: 140px; height: auto; aspect-ratio: auto; color: var(--qitu-primary); }
-.qitu-project-cover-fallback > span:first-child { font-size: 32px; }
+.qitu-project-cover-fallback > span:first-child {
+  font-size: 26px;
+}
 
+.qitu-project-cover.is-placeholder {
+  width: 170px;
+  min-width: 170px;
+  max-width: 170px;
+  height: 135px;
+}
+
+/* 右侧内容区：上下三层结构，自适应拉伸与对齐 */
 .qitu-project-card-body {
   display: flex;
   flex-direction: column;
-  gap: var(--qitu-space-xs);
-  padding: var(--qitu-space-md);
+  justify-content: space-between;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  gap: 8px;
+}
+
+.qitu-project-card-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.qitu-project-card-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.qitu-project-created {
+  color: #94a3b8;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.qitu-project-card-main-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .qitu-project-card-title {
   margin: 0;
-  color: var(--qitu-heading);
-  font-size: 1rem;
+  color: #0f172a;
+  font-size: 16px;
   font-weight: 700;
-  line-height: 1.35;
-}
-
-.qitu-project-card-subtitle {
-  margin: 0;
-  color: var(--qitu-muted);
-  font-size: 0.85rem;
-  line-height: 1.5;
-  /* 副标题最多两行，防止长短不一的项目卡高度差太大。 */
+  line-height: 1.4;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.qitu-project-card-subtitle {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.qitu-project-card-footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.qitu-project-card-tags {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.qitu-project-card-cta {
+  flex-shrink: 0;
+}
+
+.qitu-project-card-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  background: #f0f7ff;
+  color: #2563eb;
+  font-size: 12.5px;
+  font-weight: 600;
+  border-radius: 20px;
+  border: 1px solid #bfdbfe;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.qitu-project-entry:hover .qitu-project-card-action {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+  transform: translateX(2px);
 }
 
 .qitu-project-card-stage {
@@ -314,6 +381,69 @@
   color: var(--qitu-text);
   font-size: 0.8rem;
   font-weight: 600;
+}
+
+/* 底部操作条 */
+.qitu-project-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: #f8fafc;
+  border-top: 1px solid #f1f5f9;
+  font-size: 12.5px;
+}
+
+.qitu-project-actions-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.qitu-project-select-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #64748b;
+  font-size: 12.5px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.qitu-project-actions-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.qitu-action-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.qitu-action-btn:hover:not(:disabled) {
+  border-color: #cbd5e1;
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.qitu-action-btn.is-danger {
+  color: #dc2626;
+  border-color: #fee2e2;
+  background: #fff;
+}
+
+.qitu-action-btn.is-danger:hover:not(:disabled) {
+  border-color: #fca5a5;
+  background: #fef2f2;
+  color: #b91c1c;
 }
 
 /* ---------- 项目头 ---------- */
