@@ -312,6 +312,54 @@ function splitInlineCer(text: string): Array<{ type: CerType; content: string }>
 /**
  * Parses raw artifact text into structured semantic blocks.
  */
+type PythonQuote = '"""' | "'''";
+
+function multilineQuoteAfter(line: string, opened: PythonQuote | null): PythonQuote | null {
+  let quote: PythonQuote | '"' | "'" | null = opened;
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index];
+    if (char === '\\') { index += 1; continue; }
+    if (quote) {
+      if (line.startsWith(quote, index)) { index += quote.length - 1; quote = null; }
+      continue;
+    }
+    if (char === '#') break;
+    if (line.startsWith('"""', index)) { quote = '"""'; index += 2; }
+    else if (line.startsWith("'''", index)) { quote = "'''"; index += 2; }
+    else if (char === '"' || char === "'") quote = char;
+  }
+  return quote === '"""' || quote === "'''" ? quote : null;
+}
+
+function readImplicitSource(lines: string[], start: number, inlineCode = '') {
+  const codeLines = inlineCode ? [inlineCode] : [];
+  let quote = multilineQuoteAfter(inlineCode, null);
+  let nextLine = start;
+  while (nextLine < lines.length) {
+    const line = lines[nextLine];
+    if (line === undefined) break;
+    if (!quote && !/^\s/.test(line) && (/^[【\[]/.test(line)
+      || CER_PATTERNS.some(pattern => pattern.regex.test(line))
+      || /^[\p{Script=Han}][^=()\[\]{}'"#]*[：。！？]/u.test(line))) break;
+    codeLines.push(line);
+    quote = multilineQuoteAfter(line, quote);
+    nextLine += 1;
+  }
+  return { code: codeLines.join('\n').trimEnd(), nextLine, lineCount: codeLines.length };
+}
+
+function readFencedSource(lines: string[], start: number) {
+  const language = lines[start]?.trim().match(/^```([a-zA-Z0-9_-]*)/)?.[1] || 'code';
+  const codeLines: string[] = [];
+  let nextLine = start + 1;
+  while (nextLine < lines.length) {
+    const line = lines[nextLine];
+    if (line === undefined || line.trim().startsWith('```')) break;
+    codeLines.push(line); nextLine += 1;
+  }
+  return { language, code: codeLines.join('\n'), nextLine: Math.min(nextLine + 1, lines.length) };
+}
+
 function parseWorkText(rawText: string): ParsedBlock[] {
   if (!rawText || !rawText.trim()) return [];
   const normalized = rawText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
@@ -335,25 +383,24 @@ function parseWorkText(rawText: string): ParsedBlock[] {
 
     // 1. Source code block indicator: `完整源码 game.py:`, `对应源码片段：`, `源码:`, etc.
     const codeHeaderMatch = trimmed.match(
-      /^(?:完整源码|对应源码片段|源码片段|完整代码|源码实现|Python\s*源码|源码|代码片段|代码|Source\s*Code|Code)(?:\s+([a-zA-Z0-9_.-]+\.[a-zA-Z0-9]+|[a-zA-Z0-9_.-]+))?\s*[:：]\s*(.*)$/i
+      /^(?:完整(?:可运行)?源码|对应源码片段|源码片段|完整代码|源码实现|Python\s*源码|源码|代码片段|代码|Source\s*Code|Code)(?:\s+([a-zA-Z0-9_.-]+\.[a-zA-Z0-9]+|[a-zA-Z0-9_.-]+))?\s*[:：]\s*(.*)$/i
     );
     if (codeHeaderMatch) {
       const filename = codeHeaderMatch[1];
       const inlineCode = codeHeaderMatch[2];
-      const codeLines: string[] = [];
-      if (inlineCode && inlineCode.trim()) codeLines.push(inlineCode);
-      for (let j = i + 1; j < lines.length; j++) {
-        const nextLine = lines[j];
-        if (nextLine !== undefined) codeLines.push(nextLine);
-      }
-      const language = filename && filename.endsWith('.py') ? 'python' : 'python';
+      let start = i + 1;
+      while (!lines[start]?.trim() && start < lines.length) start += 1;
+      const fenced = !inlineCode?.trim() && lines[start]?.trim().startsWith('```')
+        ? readFencedSource(lines, start) : null;
+      const source = fenced ?? readImplicitSource(lines, i + 1, inlineCode?.trim());
       blocks.push({
         type: 'code',
-        language,
+        language: fenced?.language ?? 'python',
         filename: filename || undefined,
-        code: codeLines.join('\n').trimEnd(),
+        code: source.code,
       });
-      break;
+      i = source.nextLine;
+      continue;
     }
 
     // 2. Fallback: raw code detection (e.g. `"""docstring..."""`, `import random`, `import pygame`, `class Game:`)
@@ -362,47 +409,28 @@ function parseWorkText(rawText: string): ParsedBlock[] {
       trimmed.startsWith("'''") ||
       /^(?:import\s+[a-zA-Z0-9_]+|from\s+[a-zA-Z0-9_]+\s+import|class\s+[a-zA-Z0-9_]+[:(]|def\s+[a-zA-Z0-9_]+\s*\()/.test(trimmed)
     ) {
-      const codeLines: string[] = [line];
-      let j = i + 1;
-      while (j < lines.length) {
-        const nextLine = lines[j];
-        if (nextLine === undefined) break;
-        if (/^[【\[]/.test(nextLine.trim()) || CER_PATTERNS.some(p => p.regex.test(nextLine.trim()))) {
-          break;
-        }
-        codeLines.push(nextLine);
-        j++;
-      }
-      if (codeLines.length >= 3) {
+      const source = readImplicitSource(lines, i);
+      if (source.lineCount >= 3) {
         blocks.push({
           type: 'code',
           language: 'python',
           filename: 'game.py',
-          code: codeLines.join('\n').trimEnd(),
+          code: source.code,
         });
-        i = j;
+        i = source.nextLine;
         continue;
       }
     }
 
     // 2. Markdown fenced code block ```
     if (trimmed.startsWith('```')) {
-      const langMatch = trimmed.match(/^```([a-zA-Z0-9_-]*)/);
-      const language = langMatch && langMatch[1] ? langMatch[1] : 'code';
-      const codeLines: string[] = [];
-      i++;
-      while (i < lines.length) {
-        const codeLine = lines[i];
-        if (codeLine === undefined || codeLine.trim().startsWith('```')) break;
-        codeLines.push(codeLine);
-        i++;
-      }
-      i++; // skip closing ```
+      const source = readFencedSource(lines, i);
       blocks.push({
         type: 'code',
-        language,
-        code: codeLines.join('\n'),
+        language: source.language,
+        code: source.code,
       });
+      i = source.nextLine;
       continue;
     }
 
@@ -595,14 +623,27 @@ function parseWorkText(rawText: string): ParsedBlock[] {
 }
 
 function CodeBlockView({ language, filename, code }: { language: string; filename?: string; code: string }) {
-  const [copied, setCopied] = useState(false);
+  const [copyState, setCopyState] = useState<'idle' | 'copying' | 'copied' | 'error'>('idle');
 
-  const handleCopy = () => {
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      void navigator.clipboard.writeText(code).then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      });
+  const handleCopy = async () => {
+    setCopyState('copying');
+    try {
+      let copied = false;
+      if (navigator.clipboard?.writeText) {
+        try { await navigator.clipboard.writeText(code); copied = true; } catch { /* Try the HTTP-compatible path. */ }
+      }
+      if (!copied) {
+        const field = document.createElement('textarea');
+        const previousFocus = document.activeElement;
+        field.value = code; field.setAttribute('readonly', '');
+        field.style.position = 'fixed'; field.style.opacity = '0';
+        document.body.append(field);
+        try { field.select(); copied = document.execCommand('copy'); }
+        finally { field.remove(); if (previousFocus instanceof HTMLElement) previousFocus.focus({ preventScroll: true }); }
+      }
+      setCopyState(copied ? 'copied' : 'error');
+    } catch {
+      setCopyState('error');
     }
   };
 
@@ -622,10 +663,11 @@ function CodeBlockView({ language, filename, code }: { language: string; filenam
           </span>
           <span className="qitu-work-code-linecount">{codeLines.length} 行代码</span>
         </div>
-        <button type="button" className="qitu-work-code-copy" onClick={handleCopy}>
-          {copied ? '✓ 已复制到剪贴板' : '复制代码'}
+        <button type="button" className="qitu-work-code-copy" disabled={copyState === 'copying'} onClick={() => { void handleCopy(); }}>
+          {copyState === 'copied' ? '✓ 已复制到剪贴板' : copyState === 'copying' ? '正在复制…' : '复制代码'}
         </button>
       </div>
+      {copyState === 'error' ? <p role="alert">未能自动复制，请选中下方代码手动复制，或重试。</p> : null}
       <div className="qitu-work-code-scroll">
         <pre className="qitu-work-code-pre">
           <code>

@@ -60,7 +60,7 @@ export function CoursewareLibrary() {
         setItems(data);
         if (select) {
           setSelected(select);
-        } else if (!selected && data.length > 0) {
+        } else if (!selected && data.length > 0 && data[0]) {
           setSelected(data[0].versionId);
         }
       }
@@ -282,7 +282,7 @@ export function CoursewareLibrary() {
                       <span className={styles.stepCountTag}>{item.content.steps.length} 步骤</span>
                       {item.objectiveRefs.length > 0 && (
                         <span className={styles.objectiveTag} title={item.objectiveRefs.join('、')}>
-                          {item.objectiveRefs[0]}
+                          {item.objectiveRefs[0] ?? ''}
                           {item.objectiveRefs.length > 1 ? ` +${item.objectiveRefs.length - 1}` : ''}
                         </span>
                       )}
