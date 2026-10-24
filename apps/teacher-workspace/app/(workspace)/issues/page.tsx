@@ -703,6 +703,41 @@ export default function IssuesPage() {
             </span>
           </div>
 
+          {/* 筛选：状态快捷药丸 */}
+          <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className={`qtx-btn ${statusFilter === 'all' ? 'qtx-btn-primary' : 'qtx-btn-ghost-blue'}`}
+              style={{ borderRadius: 16, padding: '3px 10px', fontSize: 12 }}
+              onClick={() => setStatusFilter('all')}
+            >
+              全部状态
+            </button>
+            <button
+              type="button"
+              className={`qtx-btn ${statusFilter === 'open' ? 'qtx-btn-primary' : 'qtx-btn-ghost-blue'}`}
+              style={{ borderRadius: 16, padding: '3px 10px', fontSize: 12 }}
+              onClick={() => setStatusFilter('open')}
+            >
+              待介入 ({data.totals.open})
+            </button>
+            <button
+              type="button"
+              className={`qtx-btn ${statusFilter === 'acknowledged' ? 'qtx-btn-primary' : 'qtx-btn-ghost-blue'}`}
+              style={{ borderRadius: 16, padding: '3px 10px', fontSize: 12 }}
+              onClick={() => setStatusFilter('acknowledged')}
+            >
+              处理中 ({data.totals.acknowledged})
+            </button>
+            <button
+              type="button"
+              className={`qtx-btn ${statusFilter === 'resolved' ? 'qtx-btn-primary' : 'qtx-btn-ghost-blue'}`}
+              style={{ borderRadius: 16, padding: '3px 10px', fontSize: 12 }}
+              onClick={() => setStatusFilter('resolved')}
+            >
+              已解决 ({data.totals.resolved})
+            </button>
+          </div>
           {/* 筛选：状态 + 问题类型（含家长反馈） */}
           <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
             <select

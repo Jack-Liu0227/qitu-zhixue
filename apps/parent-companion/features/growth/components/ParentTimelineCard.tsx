@@ -1,12 +1,12 @@
-import { Badge, Button, SectionCard } from '@qitu/ui';
+import { Button, SectionCard } from '@qitu/ui';
+import { normalizeProjectTitle } from '@qitu/contracts';
 import type { ParentGrowthEntry } from '../types';
 import { formatGrowthDate, parentArtifactHref, parentStageLabel } from './format';
 
 /**
  * 家长端成长时间线。
  *
- * 每行只渲染家长投影字段：日期、标题、`summaryParent`、项目名与阶段（若有）、
- * 作品链接（若有 `artifactRef`）。不渲染 icon / 分数 / 排名 / 风险标签。
+ * 现代化时间轴卡片设计，展示明确的节点连线、日期胶囊、成长阶段与关联作品链接。
  */
 export function ParentTimelineCard({
   items,
@@ -24,33 +24,47 @@ export function ParentTimelineCard({
       {items.length === 0 ? (
         <p className="qitu-parent-timeline-empty">还没有记录，下一步就会出现在这里。</p>
       ) : (
-        <ol className="qitu-parent-timeline">
-          {items.map((item) => (
-            <li key={item.id} className="qitu-parent-timeline-item">
-              <time className="qitu-parent-timeline-date">{formatGrowthDate(item.occurredAt)}</time>
-              <div className="qitu-parent-timeline-body">
-                <h3 className="qitu-parent-timeline-title">{item.title}</h3>
-                <p className="qitu-parent-timeline-summary">{item.summaryParent}</p>
-                {item.projectTitle || item.stage ? (
-                  <div className="qitu-parent-timeline-meta">
-                    {item.projectTitle ? <Badge tone="primary">{item.projectTitle}</Badge> : null}
-                    {item.stage ? (
-                      <Badge tone="neutral">{parentStageLabel(item.stage)}</Badge>
-                    ) : null}
+        <div className="qitu-parent-timeline-wrapper">
+          <ul className="qitu-parent-timeline">
+            {items.map((item) => {
+              const isProjectComplete = item.title.includes('完成') || item.stage === 'completed';
+              return (
+                <li key={item.id} className={`qitu-parent-timeline-item ${isProjectComplete ? 'is-complete' : ''}`}>
+                  <div className="qitu-parent-timeline-node" aria-hidden="true">
+                    <span className="qitu-parent-timeline-dot" />
                   </div>
-                ) : null}
-                {item.artifactRef ? (
-                  <a
-                    className="qitu-parent-artifact-link"
-                    href={parentArtifactHref(item.artifactRef)}
-                  >
-                    查看作品
-                  </a>
-                ) : null}
-              </div>
-            </li>
-          ))}
-        </ol>
+                  <div className="qitu-parent-timeline-content">
+                    <div className="qitu-parent-timeline-header">
+                      <time className="qitu-parent-timeline-date">{formatGrowthDate(item.occurredAt)}</time>
+                      {item.stage ? (
+                        <span className="qitu-parent-stage-pill">{parentStageLabel(item.stage)}</span>
+                      ) : null}
+                    </div>
+                    <div className="qitu-parent-timeline-body">
+                      <h3 className="qitu-parent-timeline-title">{item.title}</h3>
+                      <p className="qitu-parent-timeline-summary">{item.summaryParent}</p>
+                      <div className="qitu-parent-timeline-footer">
+                        {item.projectTitle ? (
+                          <span className="qitu-parent-project-tag">
+                            {normalizeProjectTitle(item.projectTitle)}
+                          </span>
+                        ) : null}
+                        {item.artifactRef ? (
+                          <a
+                            className="qitu-parent-artifact-link"
+                            href={parentArtifactHref(item.artifactRef)}
+                          >
+                            查看成果作品 →
+                          </a>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       )}
       {hasNext && onLoadMore ? (
         <div className="qitu-parent-timeline-more">

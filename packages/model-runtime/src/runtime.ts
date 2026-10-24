@@ -180,6 +180,7 @@ async function* runWithPi(resolver: ModelRuntimeResolver, input: ModelRuntimeReq
   const usage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
   let toolCount = 0;
   let finalizing = false;
+  let retriedEmptyNarration = false;
   for (;;) {
     let message: AssistantMessage | undefined;
     try {
@@ -197,6 +198,14 @@ async function* runWithPi(resolver: ModelRuntimeResolver, input: ModelRuntimeReq
     const calls = message.content.filter(part => part.type === 'toolCall');
     if (!calls.length) {
       const text = contentText(message.content).trim();
+      if (!text && toolCount > 0 && !retriedEmptyNarration) {
+        retriedEmptyNarration = true;
+        finalizing = true;
+        context.tools = [];
+        context.messages.push(message);
+        context.messages.push({ role: 'user', content: 'Your last response contained no text. Give a brief final response using the existing tool receipts and the required output format. Do not call tools again, invent results or claim failed actions succeeded.', timestamp: Date.now() });
+        continue;
+      }
       if (!text) throw new ModelRuntimeError('MODEL_EMPTY_RESPONSE', 'Model returned empty text');
       yield { type: 'done', result: { ...toResult(target, message, text), usage } };
       return;

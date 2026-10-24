@@ -40,9 +40,9 @@ export function buildActivityBoard(candidate: Record<string, unknown>, boardId: 
       const edges = step.edges.map((rawEdge) => {
         const edge = record(rawEdge); exact(edge, ['from', 'to']);
         if (!nodes.some((node) => node.id === edge.from) || !nodes.some((node) => node.id === edge.to)) invalid();
-        return `${edge.from} --> ${edge.to}`;
+        return `qitu_${edge.from} --> qitu_${edge.to}`;
       });
-      mermaid = ['flowchart LR', ...nodes.map((node) => `${node.id}["${node.label}"]`), ...edges].join('\n');
+      mermaid = ['flowchart LR', ...nodes.map((node) => `qitu_${node.id}["${node.label}"]`), ...edges].join('\n');
     }
     if (step.tex !== undefined) {
       tex = text(step.tex, 500, `/steps/${index}/tex`);

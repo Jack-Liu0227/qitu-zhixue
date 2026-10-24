@@ -1,7 +1,8 @@
+import Link from 'next/link';
 'use client';
 import { ResizablePanels } from '@qitu/ui';
 
-import { projectStageLabel } from '@qitu/contracts';
+import { projectStageLabel, normalizeProjectTitle } from '@qitu/contracts';
 
 import { Avatar, RobotMascot } from '@qitu/ui';
 
@@ -210,7 +211,7 @@ function StudentDetailPanel({ studentId }: { studentId: string }) {
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span className="qtx-muted">当前项目</span>
-            <strong>{student.currentProjectTitle ?? '—'}</strong>
+            <strong>{student.currentProjectTitle ? normalizeProjectTitle(student.currentProjectTitle) : '—'}</strong>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span className="qtx-muted">项目阶段</span>

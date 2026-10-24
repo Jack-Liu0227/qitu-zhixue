@@ -39,34 +39,101 @@
 
 /* 列表屏：项目卡网格在左，下一步卡在右；1180px 以下收成单列。 */
 .qitu-projects-layout {
+  display: grid;
   grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+}
+
+.qitu-projects-layout.is-full-width {
+  display: block;
+  width: 100%;
 }
 
 @media (min-width: 1180px) {
-  .qitu-projects-layout {
+  .qitu-projects-layout:not(.is-full-width) {
     grid-template-columns: minmax(0, 1fr) 320px;
     align-items: start;
+    gap: 20px;
   }
 }
 
-/* 项目卡网格：按可用宽度自动排 2~4 列，避免固定列数在窄屏挤成一条。 */
+/* 项目卡网格：现代横向卡片自适应多列网格，充分利用屏幕宽度，彻底消除右侧空白 */
 .qitu-project-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(460px, 1fr));
+  gap: 18px;
+  width: 100%;
 }
 
-.qitu-projects-main { min-width: 0; }
-.qitu-project-entry { display: flex; flex-direction: column; height: 100%; }
-.qitu-project-entry > .qitu-project-card { flex: 1; }
-.qitu-projects-list-screen { gap: 12px; max-width: 1680px; width: 100%; margin-inline: auto; }
+.qitu-projects-main {
+  min-width: 0;
+  width: 100%;
+}
+
+/* 统一卡片容器：将卡片主体与操作栏整合为高颜值横向卡片 */
+.qitu-project-entry {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #ffffff;
+  border: 1px solid var(--qitu-border, #e2e8f0);
+  border-radius: var(--qitu-radius-lg, 16px);
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.qitu-project-entry:hover {
+  border-color: var(--qitu-primary-border, #bfdbfe);
+  box-shadow: 0 12px 28px rgba(37, 99, 235, 0.09);
+  transform: translateY(-2px);
+}
+
+.qitu-project-entry > .qitu-project-card {
+  flex: 1;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  transform: none;
+}
+
+.qitu-projects-list-screen {
+  gap: 16px;
+  max-width: 1680px;
+  width: 100%;
+  margin-inline: auto;
+}
+
 .qitu-projects-list-screen > p { margin: 4px 0; }
-.qitu-project-actions { display: flex; gap: 6px; flex-wrap: wrap; padding: 8px 0; }
-.qitu-project-actions > button { min-height: 30px; padding: 4px 8px; font-size: 12px; }
-.qitu-project-history-hint, .qitu-project-created { color: var(--qitu-muted); }
-.qitu-project-pagination { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 20px 0; }
-@media (max-width: 1500px) { .qitu-project-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 640px) { .qitu-project-grid { grid-template-columns: minmax(0, 1fr); } }
+
+.qitu-project-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  padding: 8px 14px;
+  background: #f8fafc;
+  border-top: 1px solid #f1f5f9;
+}
+
+.qitu-project-actions > button,
+.qitu-project-actions > label {
+  min-height: 28px;
+  padding: 3px 10px;
+  font-size: 12px;
+  border-radius: 6px;
+}
+
+.qitu-project-history-hint, .qitu-project-created { color: var(--qitu-muted, #64748b); font-size: 0.8rem; }
+.qitu-project-pagination { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 24px 0; }
+@media (max-width: 640px) {
+  .qitu-project-grid {
+    grid-template-columns: 1fr;
+  }
+}
 
 /* ---------- 分组标签 ---------- */
 

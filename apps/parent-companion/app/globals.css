@@ -1157,3 +1157,179 @@ body {
   .ticket-table > div > :nth-child(2) { font-weight: 600; font-size: 14px; line-height: 1.6; }
   .ticket-table > div > :nth-child(3) { color: var(--qitu-muted); font-size: 12px; }
 }
+
+
+/* ---- 家长端成长时间线 (Modern Timeline) ---- */
+.qitu-parent-timeline-wrapper {
+  padding: 12px 6px;
+}
+
+.qitu-parent-timeline {
+  list-style: none !important;
+  margin: 0;
+  padding: 0 0 0 28px !important;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* 垂直时间轴轨道 */
+.qitu-parent-timeline::before {
+  content: '';
+  position: absolute;
+  left: 9px;
+  top: 14px;
+  bottom: 14px;
+  width: 2px;
+  background: linear-gradient(180deg, #3b82f6 0%, #cbd5e1 95%, transparent 100%);
+}
+
+.qitu-parent-timeline-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 时间轴节点 */
+.qitu-parent-timeline-node {
+  position: absolute;
+  left: -28px;
+  top: 14px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  border: 2px solid #2563eb;
+  z-index: 2;
+  transition: all 0.2s ease;
+}
+
+.qitu-parent-timeline-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2563eb;
+}
+
+.qitu-parent-timeline-item.is-complete .qitu-parent-timeline-node {
+  border-color: #059669;
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.18);
+}
+.qitu-parent-timeline-item.is-complete .qitu-parent-timeline-dot {
+  background: #059669;
+}
+
+.qitu-parent-timeline-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.qitu-parent-timeline-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.qitu-parent-timeline-date {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #475569;
+  letter-spacing: -0.01em;
+}
+
+.qitu-parent-stage-pill {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #2563eb;
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+  padding: 1px 8px;
+  border-radius: 999px;
+}
+
+/* 卡片主体 */
+.qitu-parent-timeline-body {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px 20px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.qitu-parent-timeline-body:hover {
+  border-color: #93c5fd;
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.07);
+  transform: translateX(3px);
+}
+
+.qitu-parent-timeline-title {
+  margin: 0 0 6px;
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1.4;
+}
+
+.qitu-parent-timeline-summary {
+  margin: 0 0 12px;
+  font-size: 0.88rem;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.qitu-parent-timeline-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.qitu-parent-project-tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #1e40af;
+  background: #f0f7ff;
+  padding: 3px 10px;
+  border-radius: 6px;
+  border: 1px solid #dbeafe;
+}
+
+.qitu-parent-artifact-link {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #2563eb;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.qitu-parent-artifact-link:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+.qitu-parent-timeline-empty {
+  text-align: center;
+  padding: 32px 0;
+  color: #94a3b8;
+  font-size: 0.9rem;
+}
+
+.qitu-parent-timeline-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}

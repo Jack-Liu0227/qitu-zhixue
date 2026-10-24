@@ -253,7 +253,7 @@ export function AuthGuard({
         if (!response.ok) {
           // 401/403 说明服务端会话已失效或无权限，清缓存并回登录页。
           if (response.status === 401 || response.status === 403) {
-            leave('forbidden');
+            leave(response.status === 403 ? 'forbidden' : 'expired');
             return;
           }
           // 其他非 2xx 一律当作服务端抖动：保留缓存继续渲染。
@@ -301,20 +301,12 @@ export function AuthGuard({
     }
 
     if (cached !== null && !cachedRoleOk) {
-      // 缓存里的角色不是这个应用要的，缓存没有任何参考价值。
+      // 其他标签页可能已换成有效的新会话；旧缓存不能替代服务端判定。
       clearCachedSession();
-      leave('forbidden');
-      return () => {
-        active = false;
-      };
     }
 
     if (cached && !isSessionValid(cached)) {
       clearCachedSession();
-      leave('expired');
-      return () => {
-        active = false;
-      };
     }
 
     // 无缓存：全屏验证。
@@ -322,7 +314,7 @@ export function AuthGuard({
     fetchAuthMe()
       .then(async (response) => {
         if (response.status === 401 || response.status === 403) {
-          leave(response.status === 403 ? 'forbidden' : 'anonymous');
+          leave(response.status === 403 ? 'forbidden' : cached ? 'expired' : 'anonymous');
           return null;
         }
         if (!response.ok) throw new Error('unavailable');

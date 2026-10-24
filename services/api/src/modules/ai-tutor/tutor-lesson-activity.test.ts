@@ -82,7 +82,7 @@ test('a pending assessment cannot leak its solution through a board or be replac
 
 test('board construction uses a closed graph/TeX shape and rejects executable or external content', () => {
   const block = buildActivityBoard(board, 'stable-board');
-  assert.match(block.steps[0]!.mermaid!, /slit --> band/);
+  assert.match(block.steps[0]!.mermaid!, /qitu_slit --> qitu_band/);
   for (const bad of [
     { ...board, html: '<script>run()</script>' },
     { ...board, steps: [{ caption: 'bad', tex: '\\href{https://example.invalid}{link}' }] },

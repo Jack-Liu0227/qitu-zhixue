@@ -2,6 +2,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildActivityBoard } from './board-content';
 
+test('model node identifiers cannot become Mermaid keywords', () => {
+  const board = buildActivityBoard({ kind: 'board', title: 'Game loop', steps: [{ caption: 'Start and end',
+    nodes: [{ id: 'start', label: 'Start' }, { id: 'end', label: 'End' }], edges: [{ from: 'start', to: 'end' }],
+  }] }, 'fixture');
+  assert.equal(board.steps[0]?.mermaid, 'flowchart LR\nqitu_start["Start"]\nqitu_end["End"]\nqitu_start --> qitu_end');
+});
+
 test('boards accept optical and programming comparisons while keeping graph labels escaped', () => {
   const board = buildActivityBoard({ kind: 'board', title: '比较与边界', steps: [
     { caption: '当 x < 0 或 x > 480 时，飞船碰到边界。', tex: '0 < x < 480' },

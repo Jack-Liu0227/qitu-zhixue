@@ -41,6 +41,8 @@ export function TutorPage({ projectId }: { projectId?: string }) {
   const composer = useComposer();
   const [leftOpen, setLeftOpen] = useState(false);
   const [rightOpen, setRightOpen] = useState(false);
+  const [lessonWorkOpen, setLessonWorkOpen] = useState(false);
+  useEffect(() => { setLessonWorkOpen(false); }, [projectId, session.project?.lesson?.learningSessionId]);
   useEffect(() => {
     const query = window.matchMedia('(max-width: 1600px)');
     const syncPanels = () => {
@@ -256,6 +258,10 @@ export function TutorPage({ projectId }: { projectId?: string }) {
           learningActivity={projectSummary && session.project?.lesson ? <LessonTeachingWorkspace
             projectId={projectSummary.id} lesson={session.project.lesson} refreshKey={session.project}
             disabled={!ready || busy || confirming || session.offline} onChanged={session.refreshProjectContext}
+            onOpenRecords={() => {
+              if (window.matchMedia('(max-width: 768px)').matches) setLeftOpen(false);
+              setRightOpen(true); setRightSidebarTab('progress'); setLessonWorkOpen(true);
+            }}
             onExplain={message => { void composer.submit(message, session.submitText); }} /> : null}
           isConfirmingProject={confirming}
           composer={
@@ -303,6 +309,8 @@ export function TutorPage({ projectId }: { projectId?: string }) {
                 disabled={!ready || busy || confirming || session.offline} />
               {session.project.lesson ? (
                 <LessonLearningDock
+                  open={lessonWorkOpen}
+                  onOpenChange={setLessonWorkOpen}
                   projectId={projectSummary.id}
                   lesson={session.project.lesson}
                   refreshKey={session.project}

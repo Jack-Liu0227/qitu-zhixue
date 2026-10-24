@@ -67,7 +67,9 @@ export function LessonCollaborationCard({ projectId, lesson, disabled, onChanged
     {error ? <p role="alert">{error}</p> : null}
     {!view && !error ? <p role="status">正在读取本课协作状态…</p> : null}
     {view?.status === 'queued' || view?.status === 'running' ? <p role="status">协作导师正在准备建议。你可以继续阅读或整理本课证据。</p> : null}
-    {view?.status === 'unavailable' ? <p role="status">请先完成当前问题，再继续本课探究。</p> : null}
+    {view?.status === 'unavailable' ? <p role="status">{lesson.collaborationAvailable === false
+      ? '本活动暂未开放协作导师，请跟随当前主讲导师完成学习任务。'
+      : '本课协作暂不可用，请查看当前活动和待答题状态，完成后刷新。'}</p> : null}
     {view?.blocks.map((block, index) => block.kind === 'aside' ? <AsideAdvisorCard key={`${block.proposalRef ?? block.evidenceRef}:${index}`} {...block} /> : null)}
     {view?.status === 'ready' && !view.blocks.length ? <p role="status">协作建议已在对话中展示。</p> : null}
     {view && ['idle', 'failed'].includes(view.status) ? <button type="button" className="qitu-button qitu-button-ghost" disabled={disabled || busy}

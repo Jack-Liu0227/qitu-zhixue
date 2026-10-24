@@ -1,3 +1,5 @@
+import { normalizeBoardDiagram } from './normalizeBoardDiagram';
+
 type MermaidRuntime = typeof import('mermaid')['default'];
 
 let runtime: Promise<MermaidRuntime> | undefined;
@@ -23,7 +25,7 @@ export function renderMermaid(id: string, source: string): Promise<string> {
       throw error;
     });
     const mermaid = await runtime;
-    const { svg } = await mermaid.render(id, source);
+    const { svg } = await mermaid.render(id, normalizeBoardDiagram(source));
     return svg;
   });
   queue = job.catch(() => undefined);

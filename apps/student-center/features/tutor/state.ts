@@ -66,6 +66,7 @@ export function isTutorReplyBlock(value: unknown): value is TutorReplyBlock {
     case 'board': {
       const board = value as { boardId?: unknown; steps?: unknown; provenance?: { origin?: unknown; sources?: unknown } };
       return typeof board.boardId === 'string' && Array.isArray(board.steps) && board.steps.every(isBoardStep)
+        && board.steps.some(step => Boolean(step.mermaid || step.tex || step.svg))
         && (board.provenance === undefined || (board.provenance !== null
           && ['generated', 'adapted'].includes(String(board.provenance.origin)) && isLearningSources(board.provenance.sources)));
     }
@@ -135,11 +136,11 @@ export function isTutorToolCall(value: unknown): value is TutorToolCall {
   return call.result === undefined || typeof call.result === 'string';
 }
 
-function isBoardStep(value: unknown): boolean {
-  if (typeof value !== 'object' || value === null) return false;
+function isBoardStep(value: unknown): value is { caption: string; mermaid?: string; tex?: string; svg?: string } {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
   const step = value as { caption?: unknown; mermaid?: unknown; tex?: unknown; svg?: unknown };
   const representations = [step.mermaid, step.tex, step.svg].filter((item) => item !== undefined);
-  return typeof step.caption === 'string' && representations.length === 1 && representations.every((item) => typeof item === 'string');
+  return typeof step.caption === 'string' && representations.every((item) => typeof item === 'string' && item.trim().length > 0);
 }
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === 'string');

@@ -32,6 +32,7 @@ export function LessonCoursewareCard({ projectId, lesson, refreshKey, disabled, 
     return () => { controller.abort(); action.current?.abort(); generation.current++; };
   }, [base, lesson.planId, lesson.planRevision, lesson.learningSessionId, refreshKey, reload]);
   const instance = view?.instances.find(v => v.id === selected);
+  const currentInstances = view?.instances.filter(v => v.activityId === view.activityId) ?? [];
   const delivered = new Set(view?.instances.filter(v => v.activityId === view.activityId && v.acknowledgedAt).flatMap(v => v.objectiveRefs));
   const remainingConcepts = view?.teaching.concepts.filter(concept => !delivered.has(concept.objectiveId)) ?? [];
   const save = async (current: CoursewareInstance, position: number, continueLearning: boolean, feedback?: CoursewareFeedbackKind) => {
@@ -58,8 +59,8 @@ export function LessonCoursewareCard({ projectId, lesson, refreshKey, disabled, 
   };
   if (!loading && !error && !view) return null;
   const step = instance?.content.steps[instance.position];
-  const diagram = step?.nodes ? ['flowchart LR', ...step.nodes.map(node => `${node.id}["${node.label.replace(/["\[\]{}|;`\\]/gu, ' ').replace(/&/gu, '&amp;').replace(/</gu, '&lt;').replace(/>/gu, '&gt;')}"]`),
-    ...(step.edges ?? []).map(edge => `${edge.from} --> ${edge.to}`)].join('\n') : null;
+  const diagram = step?.nodes ? ['flowchart LR', ...step.nodes.map(node => `qitu_${node.id}["${node.label.replace(/["\[\]{}|;`\\]/gu, ' ').replace(/&/gu, '&amp;').replace(/</gu, '&lt;').replace(/>/gu, '&gt;')}"]`),
+    ...(step.edges ?? []).map(edge => `qitu_${edge.from} --> qitu_${edge.to}`)].join('\n') : null;
   return <section ref={card} className={`qitu-lesson-assessment-card ${presentation.fullscreen}`} aria-label="本课课件">
     <div className={presentation.header}><strong className={presentation.eyebrow}>先学一学 · 本课课件</strong>
       {instance ? <button type="button" className="qitu-button qitu-button-ghost" onClick={() => {
@@ -69,7 +70,11 @@ export function LessonCoursewareCard({ projectId, lesson, refreshKey, disabled, 
     {loading ? <p role="status">正在恢复课件并核验来源…</p> : null}
     {error ? <p role="alert">{error} <button onClick={() => setReload(v => v + 1)} disabled={disabled || busy}>重新读取</button></p> : null}
     {view?.blockedReason ? <p role="status">{view.blockedReason}</p> : null}
-    {view && !loading && !view.instances.length && !view.blockedReason ? <p>本课还没有课件。AI搭档会先读取资料，再带你逐步观察和理解。</p> : null}
+    {view && !loading && !error && view.canContinue && !currentInstances.length ? <div role="status">
+      <p>{view.instances.length ? '已进入新的学习活动。下面可回看之前的课件，请先准备本活动的课件。' : '本活动还没有课件，请让 AI搭档读取资料并准备讲解。'}</p>
+      {onExplain ? <button type="button" className="qitu-button qitu-button-primary" disabled={disabled || busy}
+        onClick={() => onExplain('请依据当前课时和当前活动，读取授权资料，准备本活动尚未展示的课件，并带我从基础开始理解。')}>准备本活动课件</button> : null}
+    </div> : null}
     {view && view.instances.length > 1 ? <label>课件 <select value={selected} disabled={busy} onChange={e => setSelected(e.target.value)}>
       {view.instances.map(v => <option key={v.id} value={v.id}>{v.content.title}{v.acknowledgedAt ? ' · 已看完' : ''}</option>)}
     </select></label> : null}

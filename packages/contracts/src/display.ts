@@ -49,6 +49,8 @@ const CANONICAL_ARTIFACT_TITLES: Record<string, string> = {
   'Optics Physical Inquiry Formal Portfolio': '光学物理探究成果集：干涉与衍射探究',
   'Double-slit Interference and Single-slit Diffraction Research Report': '双缝干涉与单缝衍射实验研究报告',
   'Isolated interference and diffraction portfolio': '干涉与衍射独立探究成果集',
+  'Wave Optics Interference & Diffraction Final Portfolio': '波动光学干涉与衍射结项成果集',
+  'Optics Physical Inquiry Capstone Scientific Report': '光学物理探究结项科学报告',
 };
 
 /**
@@ -60,7 +62,7 @@ export function normalizeProjectTitle(title: string | null | undefined): string 
   if (CANONICAL_PROJECT_TITLES[trimmed]) return CANONICAL_PROJECT_TITLES[trimmed];
 
   const lower = trimmed.toLowerCase();
-  if (lower.includes('optics') || lower.includes('double-slit') || lower.includes('diffraction') || lower.includes('interference')) {
+  if (lower.includes('optics') || lower.includes('double-slit') || lower.includes('diffraction') || lower.includes('interference') || lower.includes('wave')) {
     return '光为什么会出现明暗条纹？干涉与衍射探究 · 从基础开始';
   }
   if (lower.includes('thunder') || lower.includes('fighter')) {
@@ -84,13 +86,19 @@ export function normalizeArtifactTitle(title: string | null | undefined): string
   if (CANONICAL_ARTIFACT_TITLES[trimmed]) return CANONICAL_ARTIFACT_TITLES[trimmed];
 
   const lower = trimmed.toLowerCase();
+  if (lower.includes('capstone') && (lower.includes('report') || lower.includes('optics'))) {
+    return '光学物理探究结项科学报告';
+  }
+  if (lower.includes('wave optics') || (lower.includes('interference') && lower.includes('diffraction') && lower.includes('final'))) {
+    return '波动光学干涉与衍射结项成果集';
+  }
   if (lower.includes('portfolio') || lower.includes('optics')) {
     return '光学物理探究成果集：干涉与衍射探究';
   }
   if (lower.includes('research report') || lower.includes('double-slit')) {
     return '双缝干涉与单缝衍射实验研究报告';
   }
-  if (lower.includes('game.py') || lower.includes('playable game')) {
+  if (lower.includes('game.py') || lower.includes('playable game') || lower.includes('thunder')) {
     return '雷霆战机可玩小游戏交付成果';
   }
   return trimmed;

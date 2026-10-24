@@ -114,36 +114,71 @@ export function ProjectListScreen({
         emptyTitle="还没有项目"
         emptyDescription="去灵感空间找一找，想做的事会变成正式项目。"
         emptyAction={<CreateProjectEntry />}
-        render={(result, offline) => (
-          <ResizablePanels storageKey="student-project-list" initialSizes={[74, 26]} minWidths={[420, 260]} className="qitu-projects-layout">
+        render={(result, offline) => {
+          const hasAside = !explorations && (nextStep.state.status === 'ready' || nextStep.state.status === 'offline') && Boolean(nextStep.state.data);
+          const mainContent = (
             <div className="qitu-projects-main">
-            {projectsDataSource.deleteHistory && result.items.length ? <div className="qitu-project-actions" style={{ marginBottom: 12 }}>
-              <button className="qitu-button qitu-button-ghost" disabled={offline || saving} onClick={() => setSelected(result.items.map(entryKey))}>全选本页</button>
-              {selected.length > 0 && <><button className="qitu-button qitu-button-ghost" disabled={offline || saving} onClick={() => setSelected([])}>取消选择</button>
-              <button className="qitu-button qitu-button-ghost qitu-project-delete" disabled={offline || saving}
-                onClick={() => void removeEntries(result.items.filter(item => selected.includes(entryKey(item))))}>删除所选（{selected.length}）</button></>}
-            </div> : null}
-            <ProjectList projects={result.items} readOnly={offline} renderActions={item => <div className="qitu-project-actions">
-              {projectsDataSource.deleteHistory ? <label><input type="checkbox" aria-label={`选择清理：${item.title}`} checked={selected.includes(entryKey(item))} disabled={offline || saving}
-                onChange={event => setSelected(values => event.target.checked ? [...values, entryKey(item)] : values.filter(value => value !== entryKey(item)))} />选择</label> : null}
-              {item.kind === 'project' && projectsDataSource.changeProjectDisplay ? <>
-                {!item.collectedAt && !['completed','published','exploration'].includes(item.status) ? <button className="qitu-button qitu-button-ghost" disabled={offline || saving || item.isCurrent} onClick={() => void change(null,{ currentProjectId:item.id })}>{item.isCurrent ? '当前继续学习项目' : '设为继续学习项目'}</button> : null}
-                <button className="qitu-button qitu-button-ghost" disabled={offline || saving} onClick={() => void change(item.id,{ collected:!item.collectedAt,...(item.isCurrent && !item.collectedAt ? { currentProjectId:null } : {}) })}>{item.collectedAt ? '恢复显示' : item.isCurrent ? '收纳并清空当前选择' : '收纳'}</button>
-              </> : null}
-              {projectsDataSource.deleteHistory ? <button className="qitu-button qitu-button-ghost" disabled={offline || saving} aria-label={`永久删除：${item.title}`} onClick={() => void removeEntries([item])}>永久删除</button> : null}
-            </div>} />
-            {result.items.length === 0 ? <p>暂无匹配记录</p> : null}
-            <nav className="qitu-project-pagination" aria-label="项目分页">
-              <button className="qitu-button qitu-button-ghost" disabled={offline || saving || cursors.length < 2} onClick={() => { setSelected([]); setCursors(values => values.slice(0,-1)); }}>上一页</button>
-              <span>第 {cursors.length} 页</span>
-              <button className="qitu-button qitu-button-ghost" disabled={offline || saving || !result.nextCursor} onClick={() => { setSelected([]); setCursors(values => [...values,result.nextCursor ?? undefined]); }}>下一页</button>
-            </nav>
+              {projectsDataSource.deleteHistory && result.items.length ? (
+                <div className="qitu-project-actions" style={{ marginBottom: 14 }}>
+                  <button className="qitu-button qitu-button-ghost" disabled={offline || saving} onClick={() => setSelected(result.items.map(entryKey))}>全选本页</button>
+                  {selected.length > 0 && (
+                    <>
+                      <button className="qitu-button qitu-button-ghost" disabled={offline || saving} onClick={() => setSelected([])}>取消选择</button>
+                      <button className="qitu-button qitu-button-ghost qitu-project-delete" disabled={offline || saving}
+                        onClick={() => void removeEntries(result.items.filter(item => selected.includes(entryKey(item))))}>删除所选（{selected.length}）</button>
+                    </>
+                  )}
+                </div>
+              ) : null}
+              <ProjectList projects={result.items} readOnly={offline} renderActions={item => (
+                <div className="qitu-project-actions">
+                  {projectsDataSource.deleteHistory ? (
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+                      <input type="checkbox" aria-label={`选择清理：${item.title}`} checked={selected.includes(entryKey(item))} disabled={offline || saving}
+                        onChange={event => setSelected(values => event.target.checked ? [...values, entryKey(item)] : values.filter(value => value !== entryKey(item)))} />选择
+                    </label>
+                  ) : null}
+                  {item.kind === 'project' && projectsDataSource.changeProjectDisplay ? (
+                    <>
+                      {!item.collectedAt && !['completed','published','exploration'].includes(item.status) ? (
+                        <button className="qitu-button qitu-button-ghost" disabled={offline || saving || item.isCurrent} onClick={() => void change(null,{ currentProjectId:item.id })}>
+                          {item.isCurrent ? '当前继续学习项目' : '设为继续学习项目'}
+                        </button>
+                      ) : null}
+                      <button className="qitu-button qitu-button-ghost" disabled={offline || saving} onClick={() => void change(item.id,{ collected:!item.collectedAt,...(item.isCurrent && !item.collectedAt ? { currentProjectId:null } : {}) })}>
+                        {item.collectedAt ? '恢复显示' : item.isCurrent ? '收纳并清空当前选择' : '收纳'}
+                      </button>
+                    </>
+                  ) : null}
+                  {projectsDataSource.deleteHistory ? (
+                    <button className="qitu-button qitu-button-ghost" disabled={offline || saving} aria-label={`永久删除：${item.title}`} onClick={() => void removeEntries([item])}>永久删除</button>
+                  ) : null}
+                </div>
+              )} />
+              {result.items.length === 0 ? <p style={{ padding: '24px 0', textAlign: 'center', color: 'var(--qitu-muted)' }}>暂无匹配记录</p> : null}
+              <nav className="qitu-project-pagination" aria-label="项目分页">
+                <button className="qitu-button qitu-button-ghost" disabled={offline || saving || cursors.length < 2} onClick={() => { setSelected([]); setCursors(values => values.slice(0,-1)); }}>上一页</button>
+                <span>第 {cursors.length} 页</span>
+                <button className="qitu-button qitu-button-ghost" disabled={offline || saving || !result.nextCursor} onClick={() => { setSelected([]); setCursors(values => [...values,result.nextCursor ?? undefined]); }}>下一页</button>
+              </nav>
             </div>
-            {!explorations && (nextStep.state.status === 'ready' || nextStep.state.status === 'offline') && nextStep.state.data ? (
-              <aside><NextStepCard nextStep={nextStep.state.data} disabled={offline} /></aside>
-            ) : null}
-          </ResizablePanels>
-        )}
+          );
+
+          if (!hasAside) {
+            return (
+              <div className="qitu-projects-layout is-full-width">
+                {mainContent}
+              </div>
+            );
+          }
+
+          return (
+            <ResizablePanels storageKey="student-project-list" initialSizes={[74, 26]} minWidths={[420, 260]} className="qitu-projects-layout">
+              {mainContent}
+              <aside><NextStepCard nextStep={nextStep.state.data!} disabled={offline} /></aside>
+            </ResizablePanels>
+          );
+        }}
       />
     </div>
   );

@@ -27,6 +27,9 @@
     "features/inspiration/data/inspiration-api-data-source.test.ts",
     "features/projects/data/api-projects-data-source.test.ts",
     "features/tutor/data/tutor-confirmation.test.ts",
+    "features/tutor/data/board-delivery.test.ts",
+    "features/tutor/lib/normalizeBoardDiagram.test.ts",
+    "features/tutor/components/LessonNextStep.test.tsx",
     "features/tutor/data/lessonWorkspaceApi.test.ts"
   ]
 }

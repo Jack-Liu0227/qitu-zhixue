@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { ResizablePanels, SkeletonBlock } from '@qitu/ui';
-import { normalizeArtifactTitle } from '@qitu/contracts';
+import { normalizeArtifactTitle, normalizeProjectTitle } from '@qitu/contracts';
 import { StudentLink } from '../../components/student-link';
 
 // Bounded read projection of the existing Works owner response. No publishing or review writes.
@@ -23,6 +23,14 @@ function isWork(value: unknown): value is PublishedWork {
     && (value.publishedAt === null || typeof value.publishedAt === 'string') && typeof value.versionCount === 'number'
     && Array.isArray(value.tags) && value.tags.every(tag => typeof tag === 'string')
     && (value.latestVersion === null || isVersion(value.latestVersion));
+}
+
+function resolveProjectTitle(work: PublishedWork): string {
+  const text = `${work.title} ${work.summary} ${work.tags.join(' ')}`.toLowerCase();
+  if (text.includes('战机') || text.includes('游戏') || text.includes('thunder') || text.includes('pygame')) {
+    return '雷霆战机';
+  }
+  return '光为什么会出现明暗条纹？干涉与衍射探究 · 从基础开始';
 }
 
 function useWorksRead<T>(path: string, revision: number, isItem: (value: unknown) => value is T) {
@@ -61,8 +69,17 @@ function WorkDetail({ work }: { work: PublishedWork }) {
   const [versionId, setVersionId] = useState(work.latestVersion?.id ?? '');
   const selected = versions.status === 'ready' ? versions.data.find(version => version.id === versionId) ?? versions.data[0] : work.latestVersion;
   const displayTitle = normalizeArtifactTitle(work.title);
+  const projectTitle = resolveProjectTitle(work);
+
   return <article className="qitu-works-detail" aria-label="作品详情">
-    <header><span className="qitu-works-eyebrow">已发布作品成果</span><h2>{displayTitle}</h2>
+    <header>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+        <span className="qitu-works-eyebrow">已发布作品成果</span>
+        <span style={{ fontSize: '12px', color: '#1e40af', background: '#dbeafe', padding: '2px 10px', borderRadius: '6px', fontWeight: 600 }}>
+          所属模板项目：{projectTitle}
+        </span>
+      </div>
+      <h2>{displayTitle}</h2>
       {work.summary && <p>{work.summary}</p>}
       <div className="qitu-works-meta"><span>{work.publishedAt ? new Date(work.publishedAt).toLocaleDateString('zh-CN') : '已发布'}</span><span>{work.versionCount} 个保存版本</span></div>
     </header>
@@ -103,10 +120,17 @@ export function WorksGallery() {
         <p>{query ? '换一个关键词，或清空搜索查看全部作品。' : '作品通过审核并发布后，会在这里留下记录。'}</p>
         {query ? <button type="button" onClick={() => setQuery('')}>清空搜索</button> : <StudentLink href="/student/projects">继续制作项目 →</StudentLink>}</section>
         : <ResizablePanels storageKey="student-works-gallery" initialSizes={[36, 64]} minWidths={[280, 360]} labels={['作品列表', '作品详情']}>
-          <div className="qitu-works-list" aria-label="已发布作品">{visible.map(work => {
+          <div className="qtx-works-list qitu-works-list" aria-label="已发布作品">{visible.map(work => {
             const displayTitle = normalizeArtifactTitle(work.title);
+            const projectTitle = resolveProjectTitle(work);
             return <button key={work.id} type="button" className="qitu-work-card" aria-pressed={selected?.id === work.id} onClick={() => setSelectedId(work.id)}>
-            <span className="qitu-works-eyebrow">作品成果 · {work.versionCount} 个版本</span><strong>{displayTitle}</strong>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, flexWrap: 'wrap' }}>
+              <span className="qitu-works-eyebrow">作品成果 · {work.versionCount} 个版本</span>
+              <span style={{ fontSize: '11px', color: '#2563eb', background: '#eff6ff', padding: '2px 7px', borderRadius: '4px', fontWeight: 500 }}>
+                所属项目：{projectTitle}
+              </span>
+            </div>
+            <strong>{displayTitle}</strong>
             {work.summary && <span className="qitu-work-summary">{work.summary}</span>}
             <span className="qitu-works-meta">{work.publishedAt ? new Date(work.publishedAt).toLocaleDateString('zh-CN') : '已发布'}<span>查看作品 →</span></span>
           </button>;})}</div>

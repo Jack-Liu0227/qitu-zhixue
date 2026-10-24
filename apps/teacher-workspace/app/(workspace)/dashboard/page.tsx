@@ -3,6 +3,7 @@ import { ResizablePanels } from '@qitu/ui';
 
 import { Avatar, NavigationArtwork, VisualAsset } from '@qitu/ui';
 import type { TeacherFeedbackListPageData } from '@qitu/contracts';
+import { normalizeProjectTitle } from '@qitu/contracts';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';

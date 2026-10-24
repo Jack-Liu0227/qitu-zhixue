@@ -93,24 +93,76 @@ function FeedbackDetail({ ticketId, refresh }: { ticketId: string; refresh: () =
 
 export function TeacherFeedbackPanel({ state, refresh }: ReturnType<typeof useTeacherFeedback>) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'processing' | 'replied' | 'resolved'>('all');
   const items = state.status === 'ready' ? state.data.items : [];
-  const selected = items.find(item => item.ticketId === selectedId) ?? items[0];
+
+  const filteredItems = items.filter(item => {
+    if (statusFilter === 'all') return true;
+    if (statusFilter === 'processing') return item.status === 'processing' || item.status === 'reopened';
+    if (statusFilter === 'replied') return item.status === 'replied';
+    if (statusFilter === 'resolved') return item.status === 'resolved';
+    return true;
+  });
+
+  const selected = filteredItems.find(item => item.ticketId === selectedId) ?? filteredItems[0];
+
   return <section id="family-feedback" className="qtx-card qtx-panel" aria-label="家长反馈沟通">
-    <div className="qtx-panel-header"><h2 className="qtx-panel-title">家长反馈</h2><button type="button" className="qtx-btn" onClick={() => { void refresh(); }}>刷新</button></div>
+    <div className="qtx-panel-header">
+      <h2 className="qtx-panel-title">家长反馈</h2>
+      <button type="button" className="qtx-btn" onClick={() => { void refresh(); }}>刷新</button>
+    </div>
     {state.status === 'loading' ? <p role="status">正在读取家长反馈…</p>
       : state.status === 'error' ? <p role="alert">{state.message}</p>
       : !items.length ? <p className="qtx-muted">当前没有家长反馈，新的沟通请求会显示在这里。</p> : <>
-        <div className="qtx-feedback-counts"><span>待回复 <strong>{state.data.totals.processing}</strong></span><span>已回复 <strong>{state.data.totals.replied}</strong></span><span>已解决 <strong>{state.data.totals.resolved}</strong></span></div>
-        <ResizablePanels storageKey="teacher-family-feedback" initialSizes={[30, 70]} minWidths={[260, 360]} labels={['反馈列表', '沟通详情']}>
-          <nav className="qtx-feedback-list" aria-label="选择家长反馈">
-            {items.map(item => <button type="button" key={item.ticketId} aria-pressed={selected?.ticketId === item.ticketId}
-              className="qtx-feedback-item" onClick={() => setSelectedId(item.ticketId)}>
-              <span className="qtx-feedback-item-title"><strong>{item.studentDisplayName}</strong><span className={`qtx-feedback-status is-${item.status}`}>{feedbackStatusLabels[item.status]}</span></span>
-              <span className="qtx-feedback-preview">{item.problem}</span>
-            </button>)}
-          </nav>
-          {selected && <FeedbackDetail key={selected.ticketId} ticketId={selected.ticketId} refresh={refresh} />}
-        </ResizablePanels>
+        <div className="qtx-feedback-filters" style={{ display: 'flex', gap: 8, margin: '12px 0 16px', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className={`qtx-btn ${statusFilter === 'all' ? 'qtx-btn-primary' : 'qtx-btn-ghost-blue'}`}
+            onClick={() => setStatusFilter('all')}
+            style={{ borderRadius: 20, padding: '4px 14px', fontSize: 13 }}
+          >
+            全部 ({items.length})
+          </button>
+          <button
+            type="button"
+            className={`qtx-btn ${statusFilter === 'processing' ? 'qtx-btn-primary' : 'qtx-btn-ghost-blue'}`}
+            onClick={() => setStatusFilter('processing')}
+            style={{ borderRadius: 20, padding: '4px 14px', fontSize: 13 }}
+          >
+            待回复 ({state.data.totals.processing})
+          </button>
+          <button
+            type="button"
+            className={`qtx-btn ${statusFilter === 'replied' ? 'qtx-btn-primary' : 'qtx-btn-ghost-blue'}`}
+            onClick={() => setStatusFilter('replied')}
+            style={{ borderRadius: 20, padding: '4px 14px', fontSize: 13 }}
+          >
+            已回复 ({state.data.totals.replied})
+          </button>
+          <button
+            type="button"
+            className={`qtx-btn ${statusFilter === 'resolved' ? 'qtx-btn-primary' : 'qtx-btn-ghost-blue'}`}
+            onClick={() => setStatusFilter('resolved')}
+            style={{ borderRadius: 20, padding: '4px 14px', fontSize: 13 }}
+          >
+            已解决 ({state.data.totals.resolved})
+          </button>
+        </div>
+
+        {filteredItems.length === 0 ? (
+          <p className="qtx-muted" style={{ padding: '24px 0', textAlign: 'center' }}>当前分类暂无家长反馈记录</p>
+        ) : (
+          <ResizablePanels storageKey="teacher-family-feedback" initialSizes={[30, 70]} minWidths={[260, 360]} labels={['反馈列表', '沟通详情']}>
+            <nav className="qtx-feedback-list" aria-label="选择家长反馈">
+              {filteredItems.map(item => <button type="button" key={item.ticketId} aria-pressed={selected?.ticketId === item.ticketId}
+                className="qtx-feedback-item" onClick={() => setSelectedId(item.ticketId)}>
+                <span className="qtx-feedback-item-title"><strong>{item.studentDisplayName}</strong><span className={`qtx-feedback-status is-${item.status}`}>{feedbackStatusLabels[item.status]}</span></span>
+                <span className="qtx-feedback-preview">{item.problem}</span>
+              </button>)}
+            </nav>
+            {selected && <FeedbackDetail key={selected.ticketId} ticketId={selected.ticketId} refresh={refresh} />}
+          </ResizablePanels>
+        )}
       </>}
   </section>;
 }

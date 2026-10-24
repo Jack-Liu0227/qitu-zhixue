@@ -45,6 +45,10 @@ async function teach(page,client,projectId,message,attempt=0,trigger){
  }
  if(!text.includes('model.gateway.complete')){fs.writeFileSync(DIR+'/failed-stream.txt',text);throw Error('Live model gateway was not invoked');}
  if(process.env.QITU_E2E_STRICT_TOOLS==='1'&&turn.tools.some(e=>e.status==='error'))throw Error('TOOL_RETEST_REQUIRED: '+JSON.stringify(turn.tools.filter(e=>e.status==='error')));
+ for(const frame of events.filter(e=>e.type==='block'&&e.block?.kind==='board')){
+  const title=frame.block.title;
+  await (title?page.locator('.qitu-board-card').filter({hasText:title}):page.locator('.qitu-board-card')).last().waitFor({state:'attached',timeout:15000});
+ }
  return api(client,'/tutor/session?projectId='+projectId);
 }
 

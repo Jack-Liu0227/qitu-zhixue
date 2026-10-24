@@ -2,6 +2,18 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { InspirationApiDataSource } from './inspiration-api-data-source';
 
+test('the published server catalogue is authoritative, including an empty catalogue', async () => {
+  const original = globalThis.fetch;
+  let templates = [{ id: 'wave', title: 'Wave inquiry' }, { id: 'thunder', title: 'Thunder game' }];
+  globalThis.fetch = async url => Response.json({ data: String(url).endsWith('/api/v1/project-templates') ? templates : { stages: [] } });
+  try {
+    const source = new InspirationApiDataSource();
+    assert.deepEqual((await source.listTemplates()).map(item => item.id), ['wave', 'thunder']);
+    templates = [];
+    assert.deepEqual(await source.listTemplates(), [], 'Demo fixtures must never be appended to the live catalogue');
+  } finally { globalThis.fetch = original; }
+});
+
 test('template lesson duration follows server schedule metadata and stays unknown without it', async () => {
   const original = globalThis.fetch;
   let scheduling: Record<string, unknown> = { lessonCount: 8, lessonMinutes: 60 };

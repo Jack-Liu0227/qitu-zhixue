@@ -11,7 +11,7 @@ export interface ProjectCardProps {
 }
 
 /**
- * 项目卡只呈现项目身份信息；学习进度以冻结课时安排为主轴。
+ * 项目卡只呈现项目身份信息；横向卡片设计，左侧缩略图，右侧信息及进阶动作。
  */
 export function ProjectCard({ project, readOnly = false }: ProjectCardProps) {
   const body = (
@@ -25,12 +25,23 @@ export function ProjectCard({ project, readOnly = false }: ProjectCardProps) {
         )}
       </div>
       <div className="qitu-project-card-body">
-        {project.isCurrent ? <span className="qitu-badge qitu-badge-primary">当前项目</span> : null}
-        <h3 className="qitu-project-card-title" title={normalizeProjectTitle(project.title)}>{normalizeProjectTitle(project.title)}</h3>
-        <p className="qitu-project-card-subtitle">{project.subtitle}</p>
-        <TagChips tags={project.tags} />
-        {project.createdAt && Number.isFinite(Date.parse(project.createdAt)) ? <small className="qitu-project-created">创建于 {new Date(project.createdAt).toLocaleDateString('zh-CN')}</small> : null}
-        <span className="qitu-project-card-action">{readOnly ? '离线 · 只读' : project.kind === 'plan' ? '未确认计划 · 只读' : project.kind === 'exploration' ? '继续探索 →' : '查看项目 →'}</span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            {project.isCurrent ? <span className="qitu-badge qitu-badge-primary">当前项目</span> : null}
+            {project.kind === 'exploration' ? <span className="qitu-badge qitu-badge-secondary">兴趣探索</span> : null}
+          </div>
+          <h3 className="qitu-project-card-title" title={normalizeProjectTitle(project.title)}>{normalizeProjectTitle(project.title)}</h3>
+          {project.subtitle ? <p className="qitu-project-card-subtitle">{project.subtitle}</p> : null}
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+          <TagChips tags={project.tags} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 4 }}>
+            {project.createdAt && Number.isFinite(Date.parse(project.createdAt)) ? (
+              <small className="qitu-project-created">创建于 {new Date(project.createdAt).toLocaleDateString('zh-CN')}</small>
+            ) : <span />}
+            <span className="qitu-project-card-action">{readOnly ? '离线 · 只读' : project.kind === 'plan' ? '未确认计划 · 只读' : project.kind === 'exploration' ? '继续探索 →' : '进入项目 →'}</span>
+          </div>
+        </div>
       </div>
     </>
   );

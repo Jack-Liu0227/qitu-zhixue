@@ -38,13 +38,34 @@ const ids=['zero8','thunder'].map(name=>fs.readFileSync(root+'/'+(process.env.QI
   report.mobileGeometry=await card.evaluate(el=>{const rows=[];for(let node=el;node;node=node.parentElement){const s=getComputedStyle(node);rows.push({tag:node.tagName,cls:node.className,width:node.getBoundingClientRect().width,scroll:node.scrollWidth,minWidth:s.minWidth,display:s.display,flex:s.flex,overflow:s.overflow});}return rows;});
   assert.ok((await card.boundingBox()).width<=390);assert.ok(await card.evaluate(el=>el.scrollWidth<=el.clientWidth+2));report.mobileFits=true;
   await page.setViewportSize({width:1440,height:1100});
+  report.boards=[];
   for(const id of ids){
-   await page.goto(base+'/student/tutor/'+id,{waitUntil:'domcontentloaded'});const board=page.locator('.qitu-board-card').first();await board.waitFor({state:'attached',timeout:120000});
-   const details=board.locator('xpath=ancestor::details[1]');if(await details.count()&&!await details.evaluate(el=>el.open))await details.locator('summary').first().click();
-   const first=await board.locator('.qitu-board-caption').innerText();await board.getByRole('button',{name:'下一页图示',exact:true}).click();await board.getByRole('button',{name:'从头再看',exact:true}).click();
-   assert.equal(await board.locator('.qitu-board-caption').innerText(),first);assert.equal(await board.locator('[aria-current="step"]').count(),1);
-   await board.screenshot({path:dir+'/'+id+'-board.png'});
+   const session=await api('/tutor/session?projectId='+id);
+   const expected=session.turns.flatMap(turn=>turn.blocks).filter(block=>block.kind==='board');
+   assert.ok(expected.length,'The completed project must retain its generated boards');
+   await page.goto(base+'/student/tutor/'+id,{waitUntil:'domcontentloaded'});
+   await page.waitForFunction(count=>document.querySelectorAll('.qitu-board-card').length===count,expected.length,{timeout:60000});
+   for(let index=0;index<expected.length;index++){
+    const board=page.locator('.qitu-board-card').nth(index);
+    const details=board.locator('xpath=ancestor::details[1]');if(await details.count()&&!await details.evaluate(el=>el.open))await details.locator('summary').first().click();
+    const first=await board.locator('.qitu-board-caption').innerText();assert.equal(first,expected[index].steps[0].caption);
+    for(let stepIndex=0;stepIndex<expected[index].steps.length;stepIndex++){
+     const step=expected[index].steps[stepIndex];report.currentStep={projectId:id,board:index,step:stepIndex};
+     if(stepIndex)await board.getByRole('button',{name:'下一页图示',exact:true}).click();
+     assert.equal(await board.locator('.qitu-board-caption').innerText(),step.caption);
+     if(step.mermaid)await board.locator('.qitu-mermaid-diagram-card svg').waitFor({state:'visible',timeout:30000});
+     if(step.tex){assert.equal(await board.locator('.katex').count(),1);assert.equal(await board.locator('.katex-error').count(),0);}
+     if(step.svg)await board.locator('.qitu-board-svg').waitFor();
+     assert.equal(await board.locator('.qitu-mermaid-fallback-container,[role="alert"]').count(),0);
+    }
+    if(expected[index].steps.length>1)await board.getByRole('button',{name:'从头再看',exact:true}).click();
+    assert.equal(await board.locator('.qitu-board-caption').innerText(),first);assert.equal(await board.locator('[aria-current="step"]').count(),1);
+    if(expected[index].steps[0].mermaid)await board.locator('.qitu-mermaid-diagram-card svg').waitFor({state:'visible'});
+    if(index===0)await board.screenshot({path:dir+'/'+id+'-board.png',animations:'disabled'});
+   }
+   report.boards.push({projectId:id,persisted:expected.length,rendered:await page.locator('.qitu-board-card').count(),allReplayed:true});
   }
+  delete report.currentStep;report.allStepVisualsRendered=true;
   report.stepNavigation=true;assert.deepEqual(report.errors,[]);assert.deepEqual(report.writes,[]);report.noEvidenceWrites=true;
   await context.storageState({path:dir+'/browser-state.json'});report.passed=true;
  }catch(e){report.failure=e.message;console.error(e);await page.screenshot({path:dir+'/failure.png',fullPage:true});process.exitCode=1;}
