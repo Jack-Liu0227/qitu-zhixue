@@ -28,14 +28,7 @@ test('guided course resumes exact activity from reviewed receipts; viewing, subm
     const saved = await h.learningEvidence.submitResponse(STUDENT, h.planId, lesson.id, request, `respond-${kind}`);
     refs.push(saved.proof.ref);
     assert.equal(saved.proof.activityId, activity.activityId);
-    assert.equal((await currentActivity())?.kind, kind, 'unreviewed content is not completion');
-    await assert.rejects(h.progress.complete(STUDENT, h.planId, lesson.id, scope, `premature-${kind}`));
-    const evidence = await h.learningEvidence.getLessonProofs(STUDENT, h.planId, lesson.id, revision);
-    const proof = evidence.submissions.find(proof => proof.ref === saved.proof.ref); assert.ok(proof?.quality);
-    await h.learningEvidence.reviewLessonQuality(TEACHER, h.planId, lesson.id, { planRevision: revision,
-      evidenceRef: saved.proof.ref, subjectDigest: proof.quality.subjectDigest,
-      criteria: evidence.qualityCriteria!.map(criterion => ({ criterionId: criterion.id, meets: true, feedback: 'Accepted in isolated owner test.' })),
-    }, `review-${kind}`);
+    assert.equal(saved.proof.quality?.status, 'accepted');
     assert.equal((await h.learningEvidence.submitResponse(STUDENT, h.planId, lesson.id, request, `respond-${kind}`)).replayed, true);
   }
   assert.equal(await currentActivity(), undefined);
@@ -109,24 +102,12 @@ test('v5 follows all sixteen lessons and activity receipts through grading, regi
       } else if (activity.evidence === 'submitted_artifact') {
         const report = await h.learningEvidence.submitArtifact(STUDENT, h.planId, session.id,
           { ...submission, title: 'V5 optics report', requestReview: true }, key);
-        const item = (await h.teacher.listStudentReviews(TEACHER, STUDENT.id)).items.find(item => item.artifactId === report.artifact.id); assert.ok(item);
-        await h.teacher.decideReview(TEACHER, item.reviewId, { decision: 'approved', comment: 'Accepted only in the isolated owner behavior fixture.' });
-        await h.works.publishArtifact(STUDENT.id, report.artifact.id, `${key}-publish`);
+        assert.equal(report.artifact.status, 'published');
       } else if (session.lessonIndex === 16 && activity.kind === 'reflect') {
         const reflection = await h.learningEvidence.submitReflection(STUDENT, h.planId, session.id, submission, key);
         assert.equal(reflection.proof.sourceKind, 'reflection');
       } else {
         await h.learningEvidence.submitResponse(STUDENT, h.planId, session.id, submission, key);
-      }
-      if (activity.evidence !== 'mastery') {
-        const queue = await h.learningEvidence.listStudentLessonQuality(TEACHER, STUDENT.id);
-        for (const item of queue.items) {
-          assert.equal(item.learningSessionId, session.id);
-          await h.learningEvidence.reviewLessonQuality(TEACHER, h.planId, session.id, {
-            planRevision: revision, evidenceRef: item.proof.ref, subjectDigest: item.proof.quality!.subjectDigest,
-            criteria: item.criteria.map(criterion => ({ criterionId: criterion.id, meets: true, feedback: 'Isolated teacher fixture acceptance.' })),
-          }, `${key}-quality-${item.proof.ref}`);
-        }
       }
       assert.equal((await h.progress.readProgress(STUDENT, h.planId)).completedCount, session.lessonIndex - 1);
     }

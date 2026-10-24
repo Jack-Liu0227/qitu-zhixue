@@ -18,7 +18,7 @@ export interface SimulatorPanelProps {
  *
  * 每轮「试聊」由 `useSimulatorRun` 调 `POST /projects/:id/simulator-runs` 持久化；
  * 运行记录**不进入项目证据**。「重置对话」只清客户端 run id，不新增端点。
- * 转写仅存在内存，绝不写入离线草稿缓冲。
+ * 转写仅存在内存，绝不写入离线未提交内容缓冲。
  */
 export function SimulatorPanel({
   scenario,
@@ -42,7 +42,7 @@ export function SimulatorPanel({
     <div className="qitu-simulator-panel" data-empty={transcript.length === 0 ? 'true' : 'false'}>
       <div className="qitu-simulator-scenario">
         <span className="qitu-simulator-bot">{scenario.botName || '机器人'}</span>
-        <p>{scenario.openingMessage || '（尚未设置开场白，去「模拟器」草稿里写一句吧）'}</p>
+        <p>{scenario.openingMessage || '（尚未设置开场白，去「模拟器」未提交内容里写一句吧）'}</p>
       </div>
       <div className="qitu-simulator-transcript" aria-live="polite">
         {transcript.length === 0 ? (

@@ -44,6 +44,10 @@ export function LessonWorkPanel({ scope, lesson, refreshKey, disabled, onSaved, 
   const activity = lesson.activities?.find(entry => entry.status === 'current');
   const stableScope = { projectId, planId, planRevision, learningSessionId };
   useEffect(() => {
+    setContent(''); setTitle(''); setPreview(null); setNotice(null);
+    previewGeneration.current += 1;
+  }, [activity?.activityId]);
+  useEffect(() => {
     alive.current = true;
     return () => { alive.current = false; generation.current += 1; previewGeneration.current += 1; };
   }, []);
@@ -55,8 +59,9 @@ export function LessonWorkPanel({ scope, lesson, refreshKey, disabled, onSaved, 
       const result = await source.getLessonEvidence({ projectId, planId, planRevision, learningSessionId });
       if (!alive.current || request !== generation.current) return;
       setEvidence(result);
-      setKind((old) => activity?.kind === 'reflect' && result.allowedActions.includes('reflect') ? 'reflections'
-        : activity?.evidence === 'submitted_artifact' ? 'artifacts'
+      setKind((old) => activity?.evidence === 'submitted_artifact' ? 'artifacts'
+        : activity?.kind === 'reflect' && result.allowedActions.includes('reflect') && result.approvedArtifacts.length > 0 ? 'reflections'
+          : activity?.evidence === 'session_response' ? 'responses'
           : old === 'reflections' && !result.allowedActions.includes('reflect') ? 'responses' : old);
       setObjectiveId((old) => result.scope.objectiveIds.includes(old) ? old : result.scope.objectiveIds[0] ?? '');
       const known = new Set([...result.submissions, ...result.observations, ...result.approvedArtifacts, ...result.reflections].map((proof) => proof.ref));
@@ -101,12 +106,15 @@ export function LessonWorkPanel({ scope, lesson, refreshKey, disabled, onSaved, 
       setPreview(receipt.artifact);
       setSelected((old) => [...new Set([...old, receipt.proof.ref])]);
       setContent('');
-      setNotice(kind === 'artifacts' ? '作品已保存并申请审核，审核通过前仍不能作为通过证据。' : '学习内容已保存，后续评价以服务端审核为准。');
+      setNotice(receipt.evaluationError ?? (receipt.proof.quality?.status === 'needs_revision' ? '记录已保存，请根据自动评价补充后重新提交。' : '记录已保存并完成自动评价，可继续查看当前活动。'));
       await reload();
       if (alive.current) await onSaved(key, kind !== 'responses');
     });
   };
   const proofs = evidence ? [...evidence.submissions, ...evidence.observations, ...evidence.approvedArtifacts, ...evidence.reflections] : [];
+  const previewProof = preview ? proofs.find(proof => proof.artifactId === preview.id
+    && proof.artifactVersionId === preview.latestVersion?.id) : undefined;
+  const previewIsArtifact = previewProof?.kind === 'submitted_artifact' || previewProof?.kind === 'approved_artifact';
   const blocked = disabled || pending || loading || evidence === null;
   const canReflect = evidence?.allowedActions.includes('reflect') === true && evidence.approvedArtifacts.length > 0;
   const actionAllowed = evidence?.allowedActions.includes(kind === 'artifacts' ? 'submit_artifact' : kind === 'reflections' ? 'reflect' : 'respond') === true;
@@ -124,14 +132,14 @@ export function LessonWorkPanel({ scope, lesson, refreshKey, disabled, onSaved, 
       <button type="button" disabled={pending || disabled} onClick={() => { setError(null); void reload(); }}>刷新学习记录</button>
       {evidence && activity?.evidence !== 'teaching_delivery' ? <>
         {evidence.qualityCriteria?.length ? <div role="note">
-          <strong>本课产物需经班主任按质量标准评价</strong>
+          <strong>本课产物由系统按质量标准自动评价</strong>
           <ul>{evidence.qualityCriteria.map(criterion => <li key={criterion.id}>{criterion.description}</li>)}</ul>
-          <p>保存后先等待评价。需要修改时请依据反馈提交新内容，质量达标后再申请完成本课。</p>
+          <p>保存后自动评价，无需等待老师。未达标时依据反馈补充；评价服务故障时可重试，已保存内容不会丢失。</p>
         </div> : null}
         <label>记录类型
           <select value={kind} disabled={blocked} onChange={(event) => setKind(event.target.value as LessonSubmissionKind)}>
             <option value="responses" disabled={!evidence.allowedActions.includes('respond')}>本课时回答与探究表达</option>
-            <option value="artifacts" disabled={!evidence.allowedActions.includes('submit_artifact')}>作品报告并申请审核</option>
+            <option value="artifacts" disabled={!evidence.allowedActions.includes('submit_artifact')}>作品报告并自动评价</option>
             {canReflect ? <option value="reflections">作品完成后的反思</option> : null}
           </select>
         </label>
@@ -146,13 +154,20 @@ export function LessonWorkPanel({ scope, lesson, refreshKey, disabled, onSaved, 
             disabled={blocked} onChange={(event) => setContent(event.target.value)} />
         </label>
         <p>请使用自己的表达。保存记录不会自动判定掌握，也不会自动完成课时。</p>
-        {evidence.allowedActions.includes('reflect') && !canReflect ? <p>最终反思需要先发布已通过班主任审核的作品。</p> : null}
+        {evidence.allowedActions.includes('reflect') && !canReflect ? <p>最终反思需要先发布已通过自动评价的作品。</p> : null}
         {proofs.length ? <fieldset disabled={blocked}><legend>选择用于本课时的已保存证据</legend>
           {proofs.map((proof, index) => <div key={proof.ref}>
             {proof.quality ? <div role="status">
-              {({ pending: '已保存，等待班主任评价', accepted: '本版本质量已达标', needs_revision: '需要修改后重新提交', stale: '产物版本已变化，请重新提交' })[proof.quality.status]}
+              {({ pending: '已保存，自动评价未完成', accepted: '本版本质量已达标', needs_revision: '需要修改后重新提交', stale: '产物版本已变化，请重新提交' })[proof.quality.status]}
               {proof.quality.feedback.filter(item => !item.meets).map(item => <p key={item.criterionId}>{item.feedback}</p>)}
             </div> : null}
+            {proof.quality?.status === 'pending' && source.evaluateLessonEvidence ? <button type="button" onClick={() => {
+              void run(JSON.stringify(['evaluate', proof.ref]), async key => {
+                await source.evaluateLessonEvidence!(stableScope, proof.ref, key);
+                await reload();
+                if (alive.current) await onSaved(key, false);
+              });
+            }}>重试自动评价</button> : null}
             <label><input type="checkbox" checked={selected.includes(proof.ref)} onChange={(event) => setSelected((old) =>
               event.target.checked ? [...old, proof.ref] : old.filter((ref) => ref !== proof.ref))} />
               {proof.sourceKind === 'reflection' ? '学习反思' : labels[proof.kind]} {index + 1}
@@ -179,11 +194,15 @@ export function LessonWorkPanel({ scope, lesson, refreshKey, disabled, onSaved, 
       </> : null}
       {preview ? <details open>
         <summary>{preview.title}</summary>
-        <p>作品状态：{({ draft: '草稿', submitted: '已送审', in_review: '审核中', published: '已发布', changes_requested: '需要修改', archived: '已归档' })[preview.status]}</p>
-        <p>老师审核：{({ requested: '已申请', in_review: '审核中', approved: '已通过', changes_requested: '需要修改', rejected: '未通过', none: '尚未申请' })[preview.reviewStatus]}</p>
+        {previewIsArtifact ? <>
+          <p>作品状态：{({ draft: '未提交', submitted: '已送审', in_review: '审核中', published: '已发布', changes_requested: '需要修改', archived: '已归档' })[preview.status]}</p>
+          <p>作品评价：{({ requested: '已申请', in_review: '审核中', approved: '已通过', changes_requested: '需要修改', rejected: '未通过', none: '尚未申请' })[preview.reviewStatus]}</p>
+        </> : <p>学习记录已保存。{previewProof?.quality
+          ? ({ pending: '自动评价尚未完成，请在上方重试。', accepted: '本版本质量已达标。', needs_revision: '请根据上方反馈修改。', stale: '版本已变化，请重新评价。' })[previewProof.quality.status]
+          : '评价结果以本课记录中的回执为准。'}</p>}
         <pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{preview.latestVersion?.inlineText ?? '该版本暂无内联正文。'}</pre>
         {preview.latestVersion?.inlineText ? <ArtifactExportButtons artifactId={preview.id} versionId={preview.latestVersion.id} title={preview.title} /> : null}
-        {preview.reviewStatus === 'approved' && preview.status !== 'published' ? <button type="button" disabled={blocked}
+        {previewIsArtifact && preview.reviewStatus === 'approved' && preview.status !== 'published' ? <button type="button" disabled={blocked}
           onClick={() => { void run(JSON.stringify(['publish', preview.id, preview.latestVersion?.id]), async (key) => {
             if (!source.publishLearningArtifact) throw new Error('作品发布服务暂不可用。');
             const result = await source.publishLearningArtifact(projectId, preview.id, key);
@@ -193,7 +212,7 @@ export function LessonWorkPanel({ scope, lesson, refreshKey, disabled, onSaved, 
             setNotice(result.status === 'published' ? '作品已由服务端确认发布。' : '发布申请已提交，请刷新核对状态。');
             await reload();
             if (alive.current) await onSaved(key, true);
-          }); }}>发布已审核的作品</button> : null}
+          }); }}>发布已评价的作品</button> : null}
       </details> : null}
     </div>
   );

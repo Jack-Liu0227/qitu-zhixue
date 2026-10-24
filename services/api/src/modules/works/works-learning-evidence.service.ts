@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, Optional, ServiceUnavailableException 
 import { LessonQualityEvaluator } from './lesson-quality-evaluator';
 import { createHash } from 'node:crypto';
 import type { CurrentUser, TutorExperimentActionResponse, LessonQualityDecision } from '@qitu/contracts';
-import { WorksLessonQuality } from './works-lesson-quality';
+import { WorksLessonQuality, lessonQualityCriteria } from './works-lesson-quality';
 import { AuditWriter } from '../../common/audit/audit.service';
 import { IdempotencyStore } from '../../common/idempotency/idempotency.service';
 import { hashIdempotentInput } from '../../common/idempotency/idempotency.hash';
@@ -57,7 +57,7 @@ export class WorksLearningEvidenceService {
     @Optional() private readonly courseware?: CoursewareStore,
     @Optional() evaluator?: LessonQualityEvaluator,
   ) {
-    this.quality = new WorksLessonQuality({ plans, bindings, directory, artifacts, facts, evidence, idempotency, audit, evaluator,
+    this.quality = new WorksLessonQuality({ plans, bindings, directory, artifacts, facts, evidence, idempotency, audit, evaluator, mastery, courseware,
       readProofs: (actor, scope, refs) => this.readLessonProofs(actor, scope, refs) });
   }
 
@@ -85,12 +85,11 @@ export class WorksLearningEvidenceService {
     const allowedActions = actor.role === 'student' && context.bundle.plan.status === 'active'
       ? ['respond', 'submit_artifact', ...(context.lesson.checkpoint?.requiredGate === 'review_completed_and_archived' ? ['reflect'] : [])] : [];
     const proofs = await this.readLessonProofs(actor, context.scope);
-    const completion = context.lesson.completionSpec;
-    if (completion?.version === 'learning-session-completion.v2') {
-      for (const proof of [...proofs.submissions, ...proofs.observations, ...proofs.reflections]) proof.quality = await this.quality.read(context, proof);
+    for (const proof of [...proofs.submissions, ...proofs.observations, ...proofs.reflections]) {
+      proof.quality = await this.quality.read(context, proof);
     }
     return { ...proofs, scope: context.scope, sessionType: context.lesson.sessionType, allowedActions,
-      ...(completion?.version === 'learning-session-completion.v2' ? { qualityCriteria: completion.qualityReview.criteria } : {}) };
+      qualityCriteria: lessonQualityCriteria(context) };
   }
 
   async readLessonProofs(actor: CurrentUser, scope: LearningEvidenceScope, refs?: readonly string[]): Promise<LessonEvidenceProofs> {
@@ -257,7 +256,7 @@ export class WorksLearningEvidenceService {
       let quality = result.body.proof.quality;
       let evaluationError: string | undefined;
       let artifact = result.body.artifact;
-      if (initial.lesson.completionSpec?.version === 'learning-session-completion.v2') {
+      if (initial.lesson) {
         try {
           quality = await this.quality.evaluate(actor, await this.context(actor, inputScope), result.body.proof);
           if (kind === 'submitted_artifact' && body.requestReview && quality.status === 'accepted') {
@@ -312,8 +311,11 @@ function observationProof(row: ProjectEvidenceRecord, scope: LearningEvidenceSco
       || receipt.learningSessionId !== scope.learningSessionId || !scope.objectiveIds.includes(data.objectiveId)
       || receipt.provenance !== 'simulated_observation' || receipt.observationId !== row.sourceId
       || receipt.evidenceRef !== `experiment_observation:${row.sourceId}` || !receipt.runActionId
-      || !/^[a-f0-9]{64}$/u.test(receipt.parameterDigest) || !Number.isFinite(Date.parse(receipt.savedAt))) return null;
+      || !/^[a-f0-9]{64}$/u.test(receipt.parameterDigest) || !Number.isFinite(Date.parse(receipt.savedAt))
+      || receipt.activityId !== undefined && (typeof receipt.activityId !== 'string'
+        || !receipt.activityId.startsWith(`${scope.learningSessionId}:activity:`))) return null;
     return { kind: 'experiment_observation', ref: receipt.evidenceRef, scope, objectiveId: data.objectiveId,
-      sourceKind: 'experiment_observation', parameterDigest: receipt.parameterDigest };
+      sourceKind: 'experiment_observation', parameterDigest: receipt.parameterDigest,
+      ...(receipt.activityId ? { activityId: receipt.activityId } : {}) };
   } catch { return null; }
 }

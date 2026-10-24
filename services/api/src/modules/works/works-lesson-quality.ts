@@ -13,20 +13,83 @@ import type { ProjectEvidenceMaterializer } from './project-evidence.service';
 import { decodeInlineVersion } from './works-inline-content';
 import { conflict, resolveLearningEvidenceContext } from './works-learning-context';
 import type { WorksLearningEvidenceService } from './works-learning-evidence.service';
+import type { MasteryDomainService } from '../mastery/mastery-domain.service';
+import type { CoursewareStore } from '../knowledge/courseware.store';
 import { LEARNING_REVIEW_POLICY, type LessonQualityEvaluator } from './lesson-quality-evaluator';
 
 type Context = Awaited<ReturnType<typeof resolveLearningEvidenceContext>>;
+export function lessonQualityCriteria(context: Context, kind?: LearningEvidenceProof['kind']) {
+  const spec = context.lesson.completionSpec;
+  if (spec?.version === 'learning-session-completion.v2' && kind === 'submitted_artifact' && spec.qualityReview.artifactCriteria) {
+    return spec.qualityReview.artifactCriteria;
+  }
+  return spec?.version === 'learning-session-completion.v2' ? spec.qualityReview.criteria : [
+    { id: 'frozen-lesson-goal', description: context.lesson.learningGoal ?? context.lesson.title },
+    ...(context.lesson.evidenceRequirements ?? []).slice(0, 7).map((description, index) => ({ id: `frozen-evidence-${index}`, description })),
+  ];
+}
 interface Ports {
   plans: LearningPlanStore; bindings: TemplateBindingService; directory: WorksDirectory; artifacts: WorksStore;
   facts: ProjectEvidenceStore; evidence: ProjectEvidenceMaterializer; audit: AuditWriter; idempotency: IdempotencyStore;
   readProofs?: WorksLearningEvidenceService['readLessonProofs'];
   evaluator?: LessonQualityEvaluator;
+  mastery?: MasteryDomainService; courseware?: CoursewareStore;
 }
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 
 /** Server-owned, version-bound evaluation in the existing Works evidence store. */
 export class WorksLessonQuality {
   constructor(private readonly ports: Ports) {}
+
+  private async supportingEvidence(actor: CurrentUser, context: Context, subject: LearningEvidenceProof) {
+    const evidence: { ref: string; content: string }[] = [];
+    const ids = context.lesson.completionSpec?.requiredMasteryObjectiveIds ?? [];
+    if (this.ports.mastery && ids.length) {
+      const objectives = await Promise.all(ids.map(async id => ({ objectiveId: id,
+        accepted: await this.ports.mastery!.checkRequiredObjectives(actor, context.project.studentId, context.scope.planId,
+          [`${context.scope.planId}:${id}`], this.ports.plans) })));
+      evidence.push({ ref: `server-mastery:${context.scope.learningSessionId}`, content: JSON.stringify({
+        source: 'MasteryDomainService', note: 'Current owner-verified objective status; not a new answer attempt.', objectives }) });
+    }
+    if (this.ports.courseware) {
+      const instances = await this.ports.courseware.instances(context.project.id, context.scope.planId,
+        context.scope.planRevision, context.scope.learningSessionId);
+      for (const instance of instances.filter(item => item.acknowledgedAt).slice(-6)) evidence.push({
+        ref: `courseware:${instance.id}`, content: JSON.stringify({ source: 'CoursewareStore',
+          note: 'Viewed teaching material, not proof of understanding.', title: instance.content.title,
+          objectiveRefs: instance.objectiveRefs, acknowledgedAt: instance.acknowledgedAt, steps: instance.content.steps }) });
+    }
+    if (this.ports.readProofs) {
+      const sessions = context.bundle.sessions.filter(item => item.index <= context.session.index)
+        .sort((a, b) => a.index - b.index).slice(-8);
+      const seen = new Set<string>();
+      for (const session of sessions) {
+        const relatedContext = session.id === context.session.id ? context : await resolveLearningEvidenceContext(
+          this.ports.plans, this.ports.bindings, this.ports.directory, actor,
+          { planId: context.scope.planId, planRevision: context.scope.planRevision, learningSessionId: session.id });
+        const related = await this.ports.readProofs(actor, relatedContext.scope);
+        const currentPractice = session.id === context.session.id
+          && (subject.activityId === `${session.id}:activity:reflect` || subject.kind === 'submitted_artifact')
+          ? related.submissions.filter(item => item.kind === 'session_response'
+            && item.activityId === `${session.id}:activity:practice`) : [];
+        const proofs = [...related.observations, ...related.approvedArtifacts, ...currentPractice]
+          .filter(item => item.scope.learningSessionId === session.id && item.scope.planId === context.scope.planId
+            && item.scope.planRevision === context.scope.planRevision && item.ref !== subject.ref && !seen.has(item.ref));
+        const accepted: LearningEvidenceProof[] = [];
+        for (const proof of proofs) {
+          if (proof.kind === 'approved_artifact' || (await this.read(relatedContext, proof)).status === 'accepted') accepted.push(proof);
+        }
+        for (const proof of accepted.slice(-2)) {
+          try {
+            evidence.push({ ref: proof.ref, content: `Owner-verified saved evidence from lesson ${session.lessonIndex}; ref=${proof.ref}.\n`
+              + (await this.subject(relatedContext, proof)).content.slice(0, 6000) });
+            seen.add(proof.ref);
+          } catch (error) { if (!(error instanceof ConflictException)) throw error; }
+        }
+      }
+    }
+    return evidence;
+  }
 
   async subject(context: Context, proof: LearningEvidenceProof) {
     if (proof.artifactVersionId) {
@@ -63,8 +126,7 @@ export class WorksLessonQuality {
       && entry.studentUserId === context.project.studentId && entry.sourceKind === 'task_submission');
     if (row?.detail) {
       const receipt = JSON.parse(row.detail) as { schema?: string; policyVersion?: string; quality?: LessonQualityStatus };
-      const spec = context.lesson.completionSpec;
-      const criteria = spec?.version === 'learning-session-completion.v2' ? spec.qualityReview.criteria : [];
+      const criteria = lessonQualityCriteria(context, proof.kind);
       if (receipt.schema === 'qitu.lesson-quality.v2' && receipt.policyVersion === LEARNING_REVIEW_POLICY
         && receipt.quality?.subjectDigest === subjectDigest && Array.isArray(receipt.quality.feedback)
         && receipt.quality.feedback.length === criteria.length
@@ -82,20 +144,23 @@ export class WorksLessonQuality {
     if (actor.role !== 'student' || actor.id !== context.project.studentId) {
       throw new ForbiddenException({ code: 'LEARNING_EVIDENCE_FORBIDDEN', message: '仅学生本人可触发自动评价' });
     }
-    const spec = context.lesson.completionSpec;
-    if (spec?.version !== 'learning-session-completion.v2') conflict('LESSON_QUALITY_NOT_REQUIRED', '该课程没有冻结质量标准');
+    const requiredCriteria = lessonQualityCriteria(context, proof.kind);
     const subject = await this.subject(context, proof);
     const prior = await this.read(context, proof);
     if (prior.status === 'accepted' || prior.status === 'needs_revision') return prior;
     if (!this.ports.evaluator) throw new ServiceUnavailableException({ code: 'LESSON_EVALUATION_UNAVAILABLE', message: '自动评价暂不可用，请稍后重试。' });
     const sourceId = this.identity(context, proof, subject.subjectDigest);
     const result = await this.ports.idempotency.execute('lesson.automatic-evaluation', sourceId, digest([context.scope, proof.ref, subject.subjectDigest]), async () => {
+      const activity = context.lesson.activityRequirements?.find(item =>
+        proof.activityId === `${context.scope.learningSessionId}:activity:${item.activity}`);
+      const supporting = await this.supportingEvidence(actor, context, proof);
       const candidate = await this.ports.evaluator!.evaluate({ lesson: context.lesson, activityId: proof.activityId,
-        kind: proof.kind, content: subject.content, criteria: spec.qualityReview.criteria, evidence: [] });
+        activity, kind: proof.kind, content: subject.content, criteria: requiredCriteria,
+        evidence: [{ ref: proof.ref, content: subject.content }, ...supporting] });
       const criteria = [...candidate.criteria].sort((a, b) => a.criterionId.localeCompare(b.criterionId));
-      if (!candidate.providerId || !candidate.modelId || criteria.length !== spec.qualityReview.criteria.length
+      if (!candidate.providerId || !candidate.modelId || criteria.length !== requiredCriteria.length
         || criteria.some(entry => typeof entry.meets !== 'boolean' || !entry.feedback?.trim() || entry.feedback.length > 500)
-        || spec.qualityReview.criteria.some(item => criteria.filter(entry => entry.criterionId === item.id).length !== 1)) {
+        || requiredCriteria.some(item => criteria.filter(entry => entry.criterionId === item.id).length !== 1)) {
         throw new ServiceUnavailableException({ code: 'LESSON_EVALUATION_INVALID', message: '自动评价结果不完整，请重试。' });
       }
       // A model cannot authorize a stale project, revision or edited submission.
@@ -142,14 +207,12 @@ export class WorksLessonQuality {
       for (const session of [...bundle.sessions].sort((a, b) => a.index - b.index)) {
       const context = await resolveLearningEvidenceContext(this.ports.plans, this.ports.bindings, this.ports.directory,
         actor, { planId: plan.id, learningSessionId: session.id, planRevision: plan.version });
-      const spec = context.lesson.completionSpec;
-      if (spec?.version !== 'learning-session-completion.v2') continue;
       const proofs = await this.ports.readProofs!(actor, context.scope);
       for (const proof of [...proofs.submissions, ...proofs.observations, ...proofs.reflections].slice(-20)) {
         const quality = await this.read(context, proof);
         const subject = await this.subject(context, proof);
         items.push({ planId: plan.id, learningSessionId: session.id, planRevision: plan.version, projectId: context.project.id,
-          lessonTitle: context.lesson.title, proof: { ...proof, quality }, criteria: spec.qualityReview.criteria, content: subject.content });
+          lessonTitle: context.lesson.title, proof: { ...proof, quality }, criteria: lessonQualityCriteria(context, proof.kind), content: subject.content });
       }
       }
       } catch (error) {

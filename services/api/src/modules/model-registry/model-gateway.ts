@@ -44,6 +44,7 @@ export class ModelGateway {
         throw new ModelGatewayError(error.code as ModelGatewayErrorCode, error.message, {
           retryable: error.retryable,
           upstreamStatus: error.upstreamStatus,
+          responseDiagnostic: error.responseDiagnostic,
         });
       }
       throw error;

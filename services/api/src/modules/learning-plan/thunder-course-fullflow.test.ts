@@ -1,11 +1,14 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { fullflowHarness, STUDENT, TEACHER } from './optics-fullflow.test-fixture';
+import { fullflowHarness, STUDENT } from './optics-fullflow.test-fixture';
 
-test('a novice finishes all eight Thunder lessons through owners, including a wrong answer and retry', async () => {
+test('a novice finishes all eight Thunder lessons without any teacher through owners and a controlled evaluator, including a wrong answer and retry', async () => {
   const h = await fullflowHarness(true, true, false, false, true);
   assert.equal(h.plan.sessions.length, 8);
+  h.directory.currentMentorId = null;
   let answers = 0, recovered = false;
+  let practiceRef: string | undefined;
+  let rejectedPracticeRef: string | undefined;
   for (const session of h.plan.sessions) {
     const scope = { planId: h.planId, planRevision: h.plan.plan.version, learningSessionId: session.id };
     for (let step = 0; ; step++) {
@@ -48,19 +51,28 @@ test('a novice finishes all eight Thunder lessons through owners, including a wr
         if (activity.evidence === 'submitted_artifact') {
           const submitted = await h.learningEvidence.submitArtifact(STUDENT, h.planId, session.id,
             { ...submission, title: 'Isolated playable-game test portfolio', requestReview: true }, key);
-          const review = (await h.teacher.listStudentReviews(TEACHER, STUDENT.id)).items.find(item => item.artifactId === submitted.artifact.id); assert.ok(review);
-          await h.teacher.decideReview(TEACHER, review.reviewId, { decision: 'approved', comment: 'Synthetic owner-flow verification only.' });
-          await h.works.publishArtifact(STUDENT.id, submitted.artifact.id, `${key}-publish`);
+          assert.equal(submitted.artifact.status, 'published');
+          assert.equal((await h.artifacts.listReviewsForArtifact(submitted.artifact.id)).length, 0);
         } else if (session.lessonIndex === 8 && activity.kind === 'reflect') {
           await h.learningEvidence.submitReflection(STUDENT, h.planId, session.id, submission, key);
-        } else await h.learningEvidence.submitResponse(STUDENT, h.planId, session.id, submission, key);
-        for (const review of (await h.learningEvidence.listStudentLessonQuality(TEACHER, STUDENT.id)).items) {
-          assert.equal(review.learningSessionId, session.id);
-          await h.learningEvidence.reviewLessonQuality(TEACHER, h.planId, session.id, {
-            planRevision: scope.planRevision, evidenceRef: review.proof.ref, subjectDigest: review.proof.quality!.subjectDigest,
-            criteria: review.criteria.map(criterion => ({ criterionId: criterion.id, meets: true, feedback: 'Disposable fixture evidence.' })),
-          }, `${key}-quality-${review.proof.ref}`);
+        } else {
+          if (session.lessonIndex === 4 && activity.kind === 'practice') {
+            h.evaluation.accepts = false;
+            const rejected = await h.learningEvidence.submitResponse(STUDENT, h.planId, session.id,
+              { ...submission, content: 'Disposable incomplete practice.' }, `${key}-rejected`);
+            rejectedPracticeRef = rejected.proof.ref;
+            assert.equal(rejected.proof.quality?.status, 'needs_revision');
+            h.evaluation.accepts = true;
+          }
+          const saved = await h.learningEvidence.submitResponse(STUDENT, h.planId, session.id, submission, key);
+          if (session.lessonIndex === 4 && activity.kind === 'practice') practiceRef = saved.proof.ref;
+          if (session.lessonIndex === 4 && activity.kind === 'reflect') {
+            const evidence = h.evaluation.inputs.at(-1)!.evidence;
+            assert.ok(practiceRef && evidence.some(item => item.ref === practiceRef), 'reflection reuses current owner-accepted practice');
+            assert.ok(rejectedPracticeRef && !evidence.some(item => item.ref === rejectedPracticeRef), 'a rejected practice is not supporting evidence');
+          }
         }
+
       }
     }
     const completed = await h.lifecycle.completeLesson(STUDENT, h.planId, session.id,

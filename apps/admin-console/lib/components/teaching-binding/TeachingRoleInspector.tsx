@@ -4,9 +4,19 @@ import { publishedMemberName, togglePublishedSkill, togglePublishedTool } from '
 import styles from './TeachingBinding.module.css';
 import Link from 'next/link';
 
-export function TeachingRoleInspector({ member, team, draft, catalog, editable, onDraft }: {
+const METHOD_LABELS: Readonly<Record<string, string>> = {
+  'tutor-guided-learning': '启发式引导', 'pbl-artifact-revision': '作品修订', 'pbl-cer-coach': '主张与证据',
+  'pbl-concept-probe': '概念检查', 'pbl-data-literacy': '数据解读', 'pbl-experiment-design': '比较与实验设计',
+  'pbl-hypothesis-coach': '提出假设', 'pbl-source-literacy': '来源核验', 'pbl-reflection-coach': '学习反思',
+  'pbl-peer-critique': '同伴反馈', 'pbl-defense-coach': '作品答辩', 'pbl-ai-output-audit': '核对 AI 建议',
+  'pbl-understanding-coach': '理解与解释', 'pbl-independent-transfer': '迁移应用', 'pbl-driving-question': '提出探究问题',
+  'pbl-team-facilitation': '团队协作', 'pbl-visual-explainer': '图示讲解', 'pbl-courseware-guidance': '课件引导',
+};
+
+export function TeachingRoleInspector({ member, team, draft, catalog, editable, onDraft, compact = false }: {
   member?: PublishedTeamMember; team?: AdminTeamConfig; draft: TeachingBundleDraft | null; catalog: AdminRuntimeSnapshot | null;
   editable: boolean; onDraft: (draft: TeachingBundleDraft) => void;
+  compact?: boolean;
 }) {
   const snapshot = member?.runtimeSnapshot;
   const roles = draft?.roleMap.filter((role) => role.memberId === member?.slotId) ?? [];
@@ -42,7 +52,7 @@ export function TeachingRoleInspector({ member, team, draft, catalog, editable, 
           }}
           title="在新窗口打开该导师的助手配置，可编辑模型底座、系统提示词与技能矩阵"
         >
-          ✏️ 编辑导师助手能力 (模型/Prompt/技能) ↗
+          编辑助手 ↗
         </Link>
       </div>
       <section className={styles.inspectorSection}><h4>教学模型</h4>
@@ -50,7 +60,7 @@ export function TeachingRoleInspector({ member, team, draft, catalog, editable, 
           {catalog && !modelLabel?.available && <p className={styles.issue}>此教学模型当前不可用，请检查模型目录。</p>}
           <small>模型在助手管理中维护，更改后重新保存教学安排。</small></> : <p className={styles.issue}>请先保存教学安排以读取模型配置。</p>}
       </section>
-      <section className={styles.inspectorSection}><h4>教学方法 Skills</h4>
+      <section className={styles.inspectorSection}><h4>教学方法</h4>
         {!snapshot ? <p className={styles.issue}>请先保存教学安排以读取技能配置。</p> : !snapshot.skills.length ? <p className={styles.muted}>尚未配置教学技能</p> :
           (roles.length ? roles : [null]).map((role) => <fieldset key={role?.roleSlotId ?? 'preview'} className={styles.capabilityList} disabled={!editable || !role || !catalog}>
             {roles.length > 1 && <legend>角色 {role?.roleSlotId}</legend>}
@@ -63,15 +73,16 @@ export function TeachingRoleInspector({ member, team, draft, catalog, editable, 
               return <label key={pin.canonicalId} title={`${pin.canonicalId} · ${pin.version}`}>
                 <input type="checkbox" checked={!!selected} disabled={!!catalog && !available}
                   onChange={(event) => { if (draft && role) onDraft(togglePublishedSkill(draft, role.roleSlotId, member, pin.canonicalId, event.target.checked)); }} />
-                <span>{current?.label ?? pin.canonicalId}<small>v{pin.version}{catalog && !available ? ' · 当前目录不可用' : ''}</small>
-                  {current?.description?.trim() && <small className={styles.skillDescription}>{current.description.replace(/\s+/gu, ' ').trim().slice(0, 120)}</small>}
+                <span>{METHOD_LABELS[pin.canonicalId] ?? current?.label ?? pin.canonicalId}<small>{!compact ? `v${pin.version}` : ''}{catalog && !available ? ' · 当前目录不可用' : ''}</small>
+                  {!compact && current?.description?.trim() && <small className={styles.skillDescription}>{current.description.replace(/\s+/gu, ' ').trim().slice(0, 120)}</small>}
                 </span>
               </label>;
             })}
           </fieldset>)}
         {draft && !roles.length && <small>此导师尚未分配教学角色，当前展示已保存的教学能力。</small>}
       </section>
-      <section className={styles.inspectorSection}><h4>工具与 MCP</h4>
+      <details className={styles.inspectorSection} open={compact ? undefined : true}><summary>工具与资料授权</summary>
+      <section><h4>工具与 MCP</h4>
         <p className={styles.muted}>缺少工具时，先到 <Link href="/settings/tools">工具授权</Link> 为该助手开启，再重新保存教学安排以读取新配置。</p>
         {!snapshot ? <p className={styles.issue}>请先保存教学安排以读取工具配置。</p> : !snapshot.tools.length && !snapshot.mcpPermissions.length
           ? <p className={styles.muted}>尚未配置工具权限</p> : (roles.length ? roles : [null]).map((role) => <fieldset
@@ -91,7 +102,7 @@ export function TeachingRoleInspector({ member, team, draft, catalog, editable, 
             onClick={() => onDraft({ ...draft, knowledgeBaseIds: draft.knowledgeBaseIds.filter((entry) => entry !== id) })}>移除</button>}</li>)}
         </ul>}
         <small>范围适用于当前教学绑定，运行时仍须校验授权。新增范围可在高级配置中设置已有授权 ID。</small>
-      </section>
+      </section></details>
     </>}
   </aside>;
 }

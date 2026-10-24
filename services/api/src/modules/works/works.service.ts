@@ -156,8 +156,8 @@ export interface PresignUploadRequest {
  * - **版本不可变**：编辑只追加 `artifact_versions`，`(artifact_id, ordinal)` 唯一；
  * - **发布由服务端推进**：`draft → submitted → published`，客户端不能写 `status` /
  *   `publishedAt`；
- * - **发布授权**：学生本人 + 班主任复核通过（`mentor_reviews.status='approved'`）；
- *   无复核记录时进入待审核并创建复核记录，绝不直接发布；
+ * - **发布授权**：学生本人 + 确切作品版本的服务端自动评价回执；
+ *   缺少回执或评价故障时允许学生补充或重试，不创建教师审批任务；
  * - **项目阶段权威**：只读 `projects`，不写 `ProjectStatus` / 进度字段；
  * - **证据只读**：项目证据通过服务端 `ProjectEvidenceMaterializer` 物化，客户端
  *   没有任何写路径；
@@ -386,9 +386,12 @@ export class WorksService {
       if (result.body.status === 'published') {
         const current = await this.requireArtifact(artifactId);
         const latest = (await this.store.listVersions(artifactId)).find(version => version.ordinal === current.currentVersionIndex);
-        if (current.status !== 'published' || !latest || await this.automaticReview?.status(current, latest) !== 'accepted') {
+        if (!this.automaticReview || current.status !== 'published' || !latest || await this.automaticReview.status(current, latest) !== 'accepted') {
           throw new ConflictException({ code: 'ARTIFACT_APPROVAL_STALE', message: '作品版本或自动评价已变化，请重新提交。' });
         }
+        const practiceGate = await this.automaticReview.practiceGate(current, latest);
+        if (practiceGate) await this.teamRuntime.recordGateForStudent({ studentUserId: studentId, projectId: current.projectId,
+          gate: practiceGate, evidenceRef: `artifact_version:${latest.id}`, source: 'works.publish-approved' });
         await this.recordReviewCompletedGate(studentId, artifactId, current.projectId);
       }
       return result.body;

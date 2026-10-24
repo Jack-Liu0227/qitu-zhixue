@@ -1,5 +1,7 @@
 # 学生管理
 
+2026-10-24 产品修订：教师只读学生学习记录、自动评价和问题。学生提交后由服务端自动评价、按反馈修订并推进，不再等待教师逐活动评价、作品批准或人工恢复。旧审批入口退役。策略与验证见 [自主学习评价](../issues/20261024-autonomous-learning.md)。
+
 > Teacher 第 2 项（`/teacher/students`，详情 `/teacher/students/[id]`）。
 > 实现入口：`apps/teacher-workspace/app/(workspace)/students/**`、
 > `services/api/src/modules/teacher`、`services/api/src/modules/directory`。
@@ -36,10 +38,10 @@ POST /api/v1/teacher/feedback/:ticketId/replies  工单回复（幂等）
 | 可做 | 不可做 |
 |---|---|
 | 查看授权学习摘要 | 推进项目阶段 |
-| 处理卡顿 / 升级提醒 | 写 `TheoryMastered` / 掌握度 |
-| 添加人工指导或复核意见 | 改学生画像事实 |
+| 查看卡顿 / 升级记录 | 写 `TheoryMastered` / 掌握度 |
+| 查看自动评价和问题记录 | 添加审批意见或改学生画像事实 |
 | 创建 / 回复反馈工单 | 发布知识库 / 模板 / 模型配置 |
-| 记录干预动作（经 owner + 审计） | 执行数据库迁移 |
+| 查看问题诊断与时间线 | 记录教学干预动作或执行数据库迁移 |
 
 ## 5. 页面状态
 

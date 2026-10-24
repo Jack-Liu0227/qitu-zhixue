@@ -48,6 +48,7 @@ export type ModelGatewayErrorCode =
   | 'MODEL_STREAM_NOT_IMPLEMENTED';
 
 export interface ModelGatewayErrorOptions {
+  responseDiagnostic?: { finishReason: string; outputTokens: number };
   /** 上游 HTTP 状态码；非 HTTP 失败时为 `null`。 */
   upstreamStatus?: number | null;
   /** 调用方是否可以在稍后重试（超时、网络错误、429、5xx）。 */
@@ -65,6 +66,7 @@ export class ModelGatewayError extends Error {
   readonly code: ModelGatewayErrorCode;
   readonly upstreamStatus: number | null;
   readonly retryable: boolean;
+  readonly responseDiagnostic?: { finishReason: string; outputTokens: number };
 
   constructor(
     code: ModelGatewayErrorCode,
@@ -76,6 +78,7 @@ export class ModelGatewayError extends Error {
     this.code = code;
     this.upstreamStatus = options.upstreamStatus ?? null;
     this.retryable = options.retryable ?? false;
+    this.responseDiagnostic = options.responseDiagnostic;
   }
 }
 

@@ -84,5 +84,7 @@ export interface TutorCoursewareView {
   teaching: LessonTeachingSpec;
   instances: readonly CoursewareInstance[];
   canContinue: boolean;
+  /** Preparing a replacement does not confirm delivery or bypass source verification. */
+  canPrepare?: boolean;
   blockedReason: string | null;
 }

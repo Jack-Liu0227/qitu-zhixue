@@ -15,7 +15,7 @@ import type { ProjectTemplateRecord, TemplateStatus } from './templates.types';
 
 const FORBIDDEN_MESSAGE = '无权访问该资源';
 
-/** 允许的状态迁移。`published` / `piloting` 是学生可见态；`archived` 不可再迁出。 */
+/** 版本状态迁移。归档版本保持冻结；模板父资源仅通过 restore owner 恢复，并创建新的编辑版本。 */
 const STATUS_TRANSITIONS: Record<TemplateStatus, readonly TemplateStatus[]> = {
   draft: ['review', 'piloting', 'published', 'archived'],
   review: ['draft', 'published', 'archived'],

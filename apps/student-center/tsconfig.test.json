@@ -29,6 +29,9 @@
     "features/tutor/data/tutor-confirmation.test.ts",
     "features/tutor/data/board-delivery.test.ts",
     "features/tutor/lib/normalizeBoardDiagram.test.ts",
+    "features/tutor/lib/coursewareVisual.test.ts",
+    "features/tutor/lib/timelinePresentation.test.ts",
+    "features/tutor/lib/threadScroll.test.ts",
     "features/tutor/components/LessonNextStep.test.tsx",
     "features/tutor/data/lessonWorkspaceApi.test.ts"
   ]

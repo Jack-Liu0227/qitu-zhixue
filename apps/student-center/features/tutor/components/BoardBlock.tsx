@@ -3,6 +3,7 @@
 import { createElement, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { MarkdownMathView } from './MarkdownMathView';
 import { MermaidView } from './MermaidView';
+import { coursewareVisual } from '../lib/coursewareVisual';
 import presentation from './CoursewarePresentation.module.css';
 
 type BoardStep = { caption: string; mermaid?: string; tex?: string; svg?: string };
@@ -11,6 +12,7 @@ export function BoardBlock({ title, steps }: { title?: string; steps: BoardStep[
   const [stepIndex, setStepIndex] = useState(0);
   const boundedIndex = Math.min(stepIndex, Math.max(0, steps.length - 1));
   const step = steps[boundedIndex];
+  const visual = coursewareVisual(steps, boundedIndex);
   if (!step) return <p className="qitu-interaction-empty" role="status">白板暂无步骤。</p>;
   return (
     <section className="qitu-board-card" aria-label={title ?? '分步白板'}>
@@ -20,10 +22,11 @@ export function BoardBlock({ title, steps }: { title?: string; steps: BoardStep[
           onClick={() => setStepIndex(index)}>{String(index + 1).padStart(2, '0')}</button>
       </li>)}</ol>
       <p className={`qitu-board-caption ${presentation.caption}`}>{step.caption}</p>
-      {step.tex || step.mermaid || step.svg ? <div key={boundedIndex} className={`qitu-board-canvas ${presentation.stage}`}>
-        {step.tex ? <div className={presentation.formula}><MarkdownMathView content={`$$${step.tex}$$`} /></div> : null}
-        {step.mermaid ? <MermaidView code={step.mermaid} /> : null}
-        {step.svg ? <SafeSvg source={step.svg} /> : null}
+      {visual && visual.index !== boundedIndex ? <p className={presentation.source}>结合第 {visual.index + 1} 步图示思考</p> : null}
+      {visual ? <div key={visual.index} className={`qitu-board-canvas ${presentation.stage}`}>
+        {visual.step.tex ? <div className={presentation.formula}><MarkdownMathView content={`$$${visual.step.tex}$$`} /></div> : null}
+        {visual.step.mermaid ? <MermaidView code={visual.step.mermaid} /> : null}
+        {visual.step.svg ? <SafeSvg source={visual.step.svg} /> : null}
       </div> : null}
       <footer className="qitu-board-footer">
         <button type="button" className="qitu-button qitu-button-ghost qitu-button-sm" disabled={boundedIndex === 0} onClick={() => setStepIndex(boundedIndex - 1)}>上一页图示</button>

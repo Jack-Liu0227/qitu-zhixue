@@ -27,6 +27,21 @@ export interface TemplateListFilter {
 /** Server-owned audit callback runs before the deletion transaction commits. */
 export type TemplateDeleteCommit = (tx?: AuditTransaction) => Promise<void>;
 
+export interface RestoreTemplateInput {
+  expectedUpdatedAt: Date;
+  createdBy: string;
+  versionId: string;
+  now: Date;
+}
+
+export interface RestoredTemplateRecord {
+  template: ProjectTemplateRecord;
+  version: ProjectTemplateVersionRecord | null;
+  sourceVersionId: string | null;
+}
+
+export type TemplateRestoreCommit = (result: RestoredTemplateRecord, tx?: AuditTransaction) => Promise<void>;
+
 export interface CreateTemplateRecordInput extends CreateTemplateInput {
   id: string;
   createdBy: string;
@@ -47,6 +62,29 @@ export class TemplateStoreConflictError extends Error {
     super(message);
     this.name = 'TemplateStoreConflictError';
   }
+}
+
+export class TemplateRestoreConflictError extends TemplateStoreConflictError {}
+
+/** Restore the parent for editing; historical version states and content remain frozen. */
+export function prepareTemplateRestoration(template: ProjectTemplateRecord, versions: ProjectTemplateVersionRecord[], input: RestoreTemplateInput): RestoredTemplateRecord {
+  if (template.status !== 'archived' || template.updatedAt.getTime() !== input.expectedUpdatedAt.getTime()) {
+    throw new TemplateRestoreConflictError('课程状态已变化，请重新加载后再恢复。');
+  }
+  const source = versions.slice().sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()
+    || parseVersionLabel(b.version) - parseVersionLabel(a.version))[0];
+  const content = structuredClone(source?.content ?? {});
+  delete content.bootstrapKey;
+  return {
+    template: { ...template, status: 'draft', verifiedBy: null, verifiedAt: null, updatedAt: input.now },
+    sourceVersionId: source?.id ?? null,
+    version: source ? {
+      id: input.versionId, templateId: template.id,
+      version: `v${Math.max(0, ...versions.map(entry => parseVersionLabel(entry.version))) + 1}`,
+      stages: structuredClone(source.stages), content, rubric: structuredClone(source.rubric),
+      status: 'draft', createdBy: input.createdBy, createdAt: input.now, publishedAt: null,
+    } : null,
+  };
 }
 
 export abstract class TemplateStore {
@@ -72,6 +110,7 @@ export abstract class TemplateStore {
 
   abstract listVersions(templateId: string): Promise<ProjectTemplateVersionRecord[]>;
   abstract deleteTemplate(id: string, beforeCommit?: TemplateDeleteCommit): Promise<boolean>;
+  abstract restoreTemplate(id: string, input: RestoreTemplateInput, beforeCommit: TemplateRestoreCommit): Promise<RestoredTemplateRecord>;
   abstract findVersion(versionId: string): Promise<ProjectTemplateVersionRecord | null>;
   abstract nextVersionLabel(templateId: string): Promise<string>;
   abstract createVersion(input: CreateVersionRecordInput): Promise<ProjectTemplateVersionRecord>;
@@ -109,6 +148,7 @@ function cloneVersion(record: ProjectTemplateVersionRecord): ProjectTemplateVers
  * `PostgresTemplateStore`，未配置数据库时由存储工厂按数据模式决定。
  */
 export class InMemoryTemplateStore extends TemplateStore {
+  private readonly restoreLocks = new Set<string>();
   private readonly templates = new Map<string, ProjectTemplateRecord>();
   private readonly versions = new Map<string, ProjectTemplateVersionRecord>();
 
@@ -209,6 +249,20 @@ export class InMemoryTemplateStore extends TemplateStore {
       if (v.templateId === id) this.versions.delete(vId);
     }
     return true;
+  }
+
+  async restoreTemplate(id: string, input: RestoreTemplateInput, beforeCommit: TemplateRestoreCommit): Promise<RestoredTemplateRecord> {
+    if (this.restoreLocks.has(id)) throw new TemplateRestoreConflictError('课程正在恢复，请重新加载。');
+    this.restoreLocks.add(id);
+    try {
+      const template = this.templates.get(id);
+      if (!template) throw new TemplateRestoreConflictError('课程不存在或状态已变化，请重新加载。');
+      const result = prepareTemplateRestoration(template, await this.listVersions(id), input);
+      await beforeCommit(result);
+      this.templates.set(id, cloneTemplate(result.template));
+      if (result.version) this.versions.set(result.version.id, cloneVersion(result.version));
+      return structuredClone(result);
+    } finally { this.restoreLocks.delete(id); }
   }
 
   async listVersions(templateId: string): Promise<ProjectTemplateVersionRecord[]> {

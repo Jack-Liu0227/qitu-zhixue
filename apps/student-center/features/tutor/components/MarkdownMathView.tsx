@@ -31,7 +31,7 @@ function renderKaTeX(latex: string, displayMode: boolean): string | null {
  * - Code blocks: ```language ... ```
  * - Block math: $$ ... $$ and \[ ... \]
  * - Inline math: $ ... $ and \( ... \)
- * - Rich markdown: bold, inline code, ordered/unordered lists, paragraphs
+ * - Rich markdown: tables, bold, inline code, ordered/unordered lists, paragraphs
  */
 export function MarkdownMathView({ content }: { content: string }) {
   if (!content) return null;
@@ -136,10 +136,39 @@ export function MarkdownMathView({ content }: { content: string }) {
 
 function MarkdownParagraph({ text }: { text: string }) {
   const lines = text.split('\n');
+  let nextLine = 0;
 
   return (
     <>
       {lines.map((line, lIdx) => {
+        if (lIdx < nextLine) return null;
+        const table = readMarkdownTable(lines, lIdx);
+        if (table) {
+          nextLine = table.nextLine;
+          const cellStyle: React.CSSProperties = {
+            padding: '8px 10px', border: '1px solid var(--qitu-border, #dbe3ef)',
+            verticalAlign: 'top', minWidth: '90px', overflowWrap: 'anywhere',
+          };
+          return (
+            <div key={lIdx} role="region" aria-label="教学表格" tabIndex={0}
+              style={{ maxWidth: '100%', overflowX: 'auto', margin: '12px 0' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'inherit' }}>
+                <thead><tr>{table.headers.map((header, index) => (
+                  <th key={index} scope="col" style={{ ...cellStyle, textAlign: table.alignments[index] }}>
+                    <InlineRichText text={header} />
+                  </th>
+                ))}</tr></thead>
+                <tbody>{table.rows.map((row, rowIndex) => (
+                  <tr key={rowIndex}>{row.map((cell, index) => (
+                    <td key={index} style={{ ...cellStyle, textAlign: table.alignments[index] }}>
+                      <InlineRichText text={cell} />
+                    </td>
+                  ))}</tr>
+                ))}</tbody>
+              </table>
+            </div>
+          );
+        }
         const trimmed = line.trim();
         if (!trimmed) {
           return <div key={lIdx} style={{ height: '8px' }} />;
@@ -178,6 +207,45 @@ function MarkdownParagraph({ text }: { text: string }) {
       })}
     </>
   );
+}
+
+function tableCells(line: string): string[] | null {
+  let text = line.trim();
+  if (!text.includes('|')) return null;
+  if (text.startsWith('|')) text = text.slice(1);
+  if (text.endsWith('|') && !text.endsWith('\\|')) text = text.slice(0, -1);
+  const cells: string[] = [];
+  let cell = '';
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    if (char === '\\' && text[index + 1] === '|') {
+      cell += '|'; index += 1;
+    } else if (char === '|') {
+      cells.push(cell.trim()); cell = '';
+    } else {
+      cell += char;
+    }
+  }
+  cells.push(cell.trim());
+  return cells;
+}
+
+function readMarkdownTable(lines: string[], start: number) {
+  const headers = tableCells(lines[start] ?? '');
+  const separators = tableCells(lines[start + 1] ?? '');
+  if (!headers || !separators || headers.length !== separators.length
+    || !separators.every((cell) => /^:?-{3,}:?$/.test(cell))) return null;
+  const alignments = separators.map((cell): 'left' | 'center' | 'right' =>
+    cell.endsWith(':') ? (cell.startsWith(':') ? 'center' : 'right') : 'left');
+  const rows: string[][] = [];
+  let nextLine = start + 2;
+  while (nextLine < lines.length) {
+    const row = tableCells(lines[nextLine] ?? '');
+    // Leave malformed rows visible as prose instead of silently dropping cells.
+    if (!row || row.length !== headers.length) break;
+    rows.push(row); nextLine += 1;
+  }
+  return { headers, alignments, rows, nextLine };
 }
 
 function InlineRichText({ text }: { text: string }) {

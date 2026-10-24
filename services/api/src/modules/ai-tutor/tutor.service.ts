@@ -7,6 +7,7 @@ import { CoursewareService } from '../knowledge/courseware.service';
 import { frozenTeachingSpec } from './tutor-courseware-activity';
 import { projectTutorLessonProgram } from './tutor-lesson-program';
 import { restoreQuestionResults } from './tutor-question-results';
+import { recentTutorDialogue } from './tutor-dialogue-context';
 import { TutorExperimentService } from './tutor-experiment.service';
 import { QituSDKFactory } from '../qitu-sdk/qitu-sdk.service';
 import {
@@ -1098,7 +1099,7 @@ export class TutorService {
   }
 
   /**
-   * 教师端线下介入回流：重置熔断与提示阶梯，插入协同鼓励回合。
+   * 保留历史调用签名并拒绝写入；教师只能读取学习记录与问题。
    */
   async applyTeacherIntervention(
     sessionId: string,
@@ -1110,106 +1111,7 @@ export class TutorService {
     teacherRole: 'teacher' | 'admin' = 'teacher',
     idempotencyKey?: string,
   ): Promise<{ success: boolean; resumedAt: string }> {
-    const execute = async (): Promise<{ success: boolean; resumedAt: string }> =>
-      this.applyTeacherInterventionOnce(sessionId, teacherId, dto, teacherRole, idempotencyKey);
-    if (idempotencyKey === undefined) {
-      if (this.durable) throw new ForbiddenException('教师介入必须携带 Idempotency-Key');
-      return execute();
-    }
-    if (this.idempotencyStore === undefined) {
-      if (this.durable) throw new ServiceUnavailableException('幂等存储不可用');
-      return execute();
-    }
-    const result = await this.idempotencyStore.execute(
-      `tutor.teacher-intervention:${sessionId}`,
-      idempotencyKey,
-      hashRequest({ sessionId, teacherId, teacherRole, dto }),
-      async () => ({ body: await execute() }),
-    );
-    return result.body;
-  }
-
-  private async applyTeacherInterventionOnce(
-    sessionId: string,
-    teacherId: string,
-    dto: { actionType: '线下点拨' | '降低难度' | '定向放行'; teacherNotes?: string },
-    teacherRole: 'teacher' | 'admin',
-    idempotencyKey?: string,
-  ): Promise<{ success: boolean; resumedAt: string }> {
-    const releaseTurnLock = await this.acquireTurnLock(sessionId);
-    try {
-      const snapshot = this.durable ? await this.store.findById(sessionId) : this.sessions.get(sessionId);
-      if (!snapshot) throw new NotFoundException('会话不存在');
-      const session = 'lastHintLevel' in snapshot
-        ? snapshot as TutorSessionRecord
-        : this.hydrate(snapshot);
-      if (teacherRole === 'teacher') {
-        if (this.teacherService === undefined) throw new ForbiddenException('教师对象权限服务不可用');
-        await this.teacherService.assertTeacherCanAccessStudent(teacherId, session.ownerId);
-      }
-
-      const nextHintLevel: TutorHintLevel = dto.actionType === '降低难度' ? 4 : 1;
-      const resumeBlocks: TutorReplyBlock[] = [
-        {
-          kind: 'text',
-          text: `老师已完成**${dto.actionType}**。${dto.teacherNotes ? `寄语：“${dto.teacherNotes}”` : '理清思路后，我们继续推进！'}`,
-        },
-      ];
-
-      const seq = session.lastSeq + 1;
-      const resumeTurn: TutorTurnRecord = {
-        turnId: `${sessionId}:assistant:${seq}`,
-        role: 'assistant',
-        seq,
-        createdAt: new Date().toISOString(),
-        stageBefore: session.turns[session.turns.length - 1]?.stageAfter
-          ?? session.turns[session.turns.length - 1]?.stageBefore
-          ?? null,
-        stageAfter: session.turns[session.turns.length - 1]?.stageAfter
-          ?? session.turns[session.turns.length - 1]?.stageBefore
-          ?? null,
-        pedagogicMove: 'scaffold',
-        hintLevel: nextHintLevel,
-        expectedEvidence: dto.actionType === '定向放行' ? '进入下一阶段探究' : '完成降维引导或重新作答',
-        promptVersion: 'tutor.intervention.v1',
-        evidenceRef: `audit:teacher_intervention:${teacherId}`,
-        modality: 'text',
-        author: {
-          id: 'coach-intervention',
-          name: '班主任介入协同',
-          role: 'coach',
-        },
-        blocks: resumeBlocks,
-      };
-
-      if (this.durable) {
-        await this.store.appendTurns({
-          sessionId,
-          expectedLastSeq: session.lastSeq,
-          newLastSeq: seq,
-          turns: [resumeTurn],
-        });
-      }
-
-      session.lastSeq = seq;
-      session.lastHintLevel = nextHintLevel;
-      session.stallCount = 0;
-      session.escalated = false;
-
-      await this.commitAudit({
-        sessionId,
-        projectId: session.projectId,
-        actorId: teacherId,
-        action: 'tutor.teacher_intervention',
-        actorRole: teacherRole,
-        idempotencyKey,
-        detail: `教师介入：${dto.actionType}，重置提示阶梯为 ${nextHintLevel}`,
-      });
-
-      return { success: true, resumedAt: resumeTurn.createdAt };
-    } finally {
-      releaseTurnLock();
-    }
+    throw new ForbiddenException({ code: 'TEACHER_LEARNING_READ_ONLY', message: '教师只读学习记录与问题，学生自主学习不接受人工放行或改写教学进度。' });
   }
 
   get auditEntries(): readonly AuditEntry[] {
@@ -1687,16 +1589,7 @@ export class TutorService {
       currentGoal: currentTaskTitle,
       query: request.content ?? request.optionLabel ?? '当前学习任务',
       recentActivity: record.turns.slice(-6).map((turn) => `${turn.role}:${turn.blocks.length}个内容块`),
-      recentMessages: record.turns.slice(-6).flatMap((turn) => {
-        const content = turn.blocks
-          .filter((block): block is { kind: 'text'; text: string } => block.kind === 'text')
-          .map((block) => block.text)
-          .join(' ')
-          .trim();
-        return content.length > 0 && (turn.role === 'student' || turn.role === 'assistant')
-          ? [{ role: turn.role === 'student' ? 'user' as const : 'assistant' as const, content }]
-          : [];
-      }),
+      recentMessages: recentTutorDialogue(record.turns),
     });
     contextPacket.partner = partner;
     if (teaching) contextPacket.lessonProgram = projectTutorLessonProgram(teaching);
@@ -2103,7 +1996,7 @@ export class TutorService {
         projectId: record.projectId,
         actorId: 'system',
         action: 'tutor.escalate',
-        detail: `连续 ${record.stallCount} 轮卡顿，建议班主任介入`,
+        detail: `连续 ${record.stallCount} 轮卡顿，记录为教师只读问题，学习继续自动补救`,
       });
     }
     return events;

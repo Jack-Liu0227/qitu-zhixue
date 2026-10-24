@@ -23,6 +23,10 @@ export function RecommendedTemplates({
 
   return (
     <div className="qitu-inspiration-recommended">
+      <div className="qitu-inspiration-catalog-toolbar">
+        <span>{templates.length ? `${templates.length} 个可探索的项目` : '探索你的下一个项目'}</span>
+        <button type="button" onClick={retry} disabled={retrying || offline}>{retrying ? '更新中…' : '刷新项目'}</button>
+      </div>
       {offline ? <OfflineBanner readOnly onRetry={retry} /> : null}
 
       {state === 'loading' ? (
@@ -65,7 +69,7 @@ export function RecommendedTemplates({
         />
       ) : null}
 
-      {(state === 'ready' || state === 'offline') && templates.length > 0 ? (
+      {(state === 'ready' || state === 'offline' || state === 'error') && templates.length > 0 ? (
         <div className="qitu-inspiration-grid">
           {templates.map((template) => (
             <TemplateCard key={template.id} template={template} readOnly={offline} dataSource={dataSource} />

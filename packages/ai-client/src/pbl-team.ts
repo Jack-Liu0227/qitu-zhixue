@@ -210,6 +210,7 @@ export const PBL_GATE_ERROR_CODES: Record<string, string> = {
   deliverable_review: 'PBL_GATE_REVIEW_NOT_ARCHIVED',
   /** 新增：报告/实验类练习阶段的证据未通过校验。 */
   experiment_report_validated: 'PBL_GATE_REPORT_NOT_VALIDATED',
+  rubric_artifact_validated: 'PBL_GATE_ARTIFACT_NOT_VALIDATED',
 };
 
 /**
@@ -224,6 +225,7 @@ export const PBL_GATE_ERROR_CODE_BY_GATE: Record<string, string> = {
       .filter((entry): entry is readonly [GateConditionCore, string] => typeof entry[1] === 'string'),
   ),
   experiment_report_validated: 'PBL_GATE_REPORT_NOT_VALIDATED',
+  rubric_artifact_validated: 'PBL_GATE_ARTIFACT_NOT_VALIDATED',
 };
 
 /** 某个门禁未达成时的稳定错误码；未知门禁回落到阶段序最后一项的错误码。 */

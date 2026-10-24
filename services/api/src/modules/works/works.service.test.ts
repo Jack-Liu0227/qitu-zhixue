@@ -1,3 +1,4 @@
+import type { WorksPublicationReview } from './works-publication-review';
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { describe, it, beforeEach } from 'node:test';
@@ -108,6 +109,7 @@ class FakeWorksDirectory extends WorksDirectory {
 }
 
 interface Harness {
+  review: { accepts: boolean };
   gates: FakeTeamRuntimeGates;
   service: WorksService;
   store: InMemoryWorksStore;
@@ -133,6 +135,14 @@ function makeHarness(): Harness {
     new EmptyProjectEvidenceSource(),
   );
   const presigner = new InMemoryObjectStoragePresigner();
+  const review = { accepts: true };
+  const results = new Map<string, 'accepted' | 'needs_revision'>();
+  const automaticReview = { evaluate: async (artifact: { id: string }, version: { id: string }) => {
+    const status = review.accepts ? 'accepted' as const : 'needs_revision' as const;
+    results.set(`${artifact.id}:${version.id}`, status);
+    return { status, subjectDigest: 'a'.repeat(64), feedback: [] };
+  }, status: async (artifact: { id: string }, version: { id: string }) => results.get(`${artifact.id}:${version.id}`) ?? null,
+  practiceGate: async () => null } as unknown as WorksPublicationReview;
   const service = new WorksService(
     store,
     directory,
@@ -142,8 +152,9 @@ function makeHarness(): Harness {
     idempotency as unknown as IdempotencyStore,
     audit as unknown as AuditWriter,
     gates as unknown as TeamRuntimeService,
+    automaticReview,
   );
-  return { service, store, idempotency, audit, gates, directory, projects, evidenceStore, evidence, presigner };
+  return { review, service, store, idempotency, audit, gates, directory, projects, evidenceStore, evidence, presigner };
 }
 
 const STUDENT: CurrentUser = {
@@ -179,6 +190,14 @@ describe('WorksService — 作品与版本', () => {
   let h: Harness;
   beforeEach(() => {
     h = makeHarness();
+  });
+
+  it('a version change prevents a stale publication transition even when the status is unchanged', async () => {
+    const created = await h.service.createArtifact(STUDENT.id, { title: 'Version one' }, 'one');
+    await h.service.updateArtifact(STUDENT.id, created.id, { title: 'Version two' }, 'two', '1');
+    await assert.rejects(h.store.transitionArtifact({ artifactId: created.id, expectedStatuses: ['draft'],
+      expectedVersionIndex: 1, status: 'published', publishedAt: new Date(), now: new Date() }));
+    assert.equal((await h.store.findArtifact(created.id))?.status, 'draft');
   });
 
   it('创建作品：默认 draft + class 可见性，且第 1 版立即存在', async () => {
@@ -260,21 +279,18 @@ describe('WorksService — 发布授权与幂等', () => {
     h = makeHarness();
   });
 
-  it('无班主任复核 → 进入 submitted，并创建一条复核记录（不直接发布）', async () => {
-    h.directory.mentors.set(STUDENT.id, MENTOR.id);
-    const created = await h.service.createArtifact(STUDENT.id, { title: '作品' }, 'k1');
+  it('automatic revision feedback keeps work editable without creating a teacher request', async () => {
+    h.review.accepts = false;
+    const created = await h.service.createArtifact(STUDENT.id, { title: 'Fixture' }, 'k1');
     const view = await h.service.publishArtifact(STUDENT.id, created.id, 'k-pub');
-    assert.equal(view.status, 'submitted');
-    assert.equal(view.publishedAt, null);
-    assert.equal(view.reviewStatus, 'requested');
-    const reviews = await h.store.listReviewsForArtifact(created.id);
-    assert.equal(reviews.length, 1);
-    assert.equal(reviews[0]!.mentorUserId, MENTOR.id);
+    assert.equal(view.status, 'changes_requested'); assert.equal(view.publishedAt, null);
+    assert.equal((await h.store.listReviewsForArtifact(created.id)).length, 0);
+    assert.equal(h.gates.calls.length, 0);
   });
 
   /* ---------------- T17：复核通过并发布 → review_completed_and_archived 门禁 ---------------- */
 
-  it('T17 有 approved 复核并发布成功 → 恰写一条 review_completed_and_archived 门禁', async () => {
+  it('T17 自动评价已达标并发布成功 → 恰写一条 review_completed_and_archived 门禁', async () => {
     h.directory.mentors.set(STUDENT.id, MENTOR.id);
     const created = await h.service.createArtifact(STUDENT.id, { title: '雷霆战机' }, 'k1');
     h.store.seedApprovedReview(created.id, MENTOR.id);
@@ -292,13 +308,14 @@ describe('WorksService — 发布授权与幂等', () => {
     });
   });
 
-  it('T17 无复核（仅进待审核）→ 绝不写门禁', async () => {
+  it('T17 自动评价未达标 → 绝不写门禁', async () => {
+    h.review.accepts = false;
     h.directory.mentors.set(STUDENT.id, MENTOR.id);
     const created = await h.service.createArtifact(STUDENT.id, { title: '作品' }, 'k1');
 
     const view = await h.service.publishArtifact(STUDENT.id, created.id, 'k-pub');
-    assert.equal(view.status, 'submitted');
-    assert.equal(h.gates.calls.length, 0, '未经班主任 approved 不得产生该门禁（防伪通过）');
+    assert.equal(view.status, 'changes_requested');
+    assert.equal(h.gates.calls.length, 0, '自动评价未达标 不得产生该门禁（防伪通过）');
   });
 
   it('T17 撑回 archived → 不写门禁（撑回不算复核完成）', async () => {
@@ -337,25 +354,21 @@ describe('WorksService — 发布授权与幂等', () => {
     assert.equal(h.gates.calls.length, 1, '尝试必须发生（不能静默跳过）');
   });
 
-  it('同幂等键重复发布 → 仍只有一条复核记录', async () => {
+  it('同幂等键重复发布 → 不产生教师复核记录', async () => {
     h.directory.mentors.set(STUDENT.id, MENTOR.id);
     const created = await h.service.createArtifact(STUDENT.id, { title: '作品' }, 'k1');
     await h.service.publishArtifact(STUDENT.id, created.id, 'k-pub');
     await h.service.publishArtifact(STUDENT.id, created.id, 'k-pub');
     const reviews = await h.store.listReviewsForArtifact(created.id);
-    assert.equal(reviews.length, 1);
+    assert.equal(reviews.length, 0);
   });
 
-  it('无在任班主任 → 409 ARTIFACT_MENTOR_REQUIRED', async () => {
-    const created = await h.service.createArtifact(STUDENT.id, { title: '作品' }, 'k1');
-    await assertHttpError(
-      () => h.service.publishArtifact(STUDENT.id, created.id, 'k-pub'),
-      409,
-      'ARTIFACT_MENTOR_REQUIRED',
-    );
+  it('publication proceeds with accepted automatic evaluation and no assigned teacher', async () => {
+    const created = await h.service.createArtifact(STUDENT.id, { title: 'Fixture' }, 'k1');
+    assert.equal((await h.service.publishArtifact(STUDENT.id, created.id, 'k-pub')).status, 'published');
   });
 
-  it('有班主任批准 → 直接发布、写入 publishedAt，并物化 independent 证据', async () => {
+  it('自动评价通过 → 直接发布、写入 publishedAt，并物化 independent 证据', async () => {
     h.directory.mentors.set(STUDENT.id, MENTOR.id);
     // 项目存在且归属该学生（用于证据归属与授权）。
     h.projects.seed({
@@ -504,7 +517,14 @@ describe('WorksService — 对象存储签名', () => {
 
   it('live 未配置对象存储 → 503（不返回假地址）', async () => {
     const store = new InMemoryWorksStore();
-    const service = new WorksService(
+    const review = { accepts: true };
+  const results = new Map<string, 'accepted' | 'needs_revision'>();
+  const automaticReview = { evaluate: async (artifact: { id: string }, version: { id: string }) => {
+    const status = review.accepts ? 'accepted' as const : 'needs_revision' as const;
+    results.set(`${artifact.id}:${version.id}`, status);
+    return { status, subjectDigest: 'a'.repeat(64), feedback: [] };
+  }, status: async (artifact: { id: string }, version: { id: string }) => results.get(`${artifact.id}:${version.id}`) ?? null } as unknown as WorksPublicationReview;
+  const service = new WorksService(
       store,
       new FakeWorksDirectory(),
       new InMemoryWorksProjectReader(),

@@ -1,5 +1,5 @@
 /** One executable catalog supplies API discovery, plan validation and the model operation guide. */
-export const ADMIN_COPILOT_CONTRACT_VERSION = '1.4.0';
+export const ADMIN_COPILOT_CONTRACT_VERSION = '1.4.1';
 export const ADMIN_COPILOT_SCOPES = ['global', 'selected_template'] as const;
 export type AdminCopilotScope = typeof ADMIN_COPILOT_SCOPES[number];
 export const ADMIN_COPILOT_OPERATIONS = [
@@ -56,7 +56,7 @@ export const ADMIN_COPILOT_OPERATIONS = [
     ],
     "targetResource": "team",
     "createsResource": false,
-    "inputGuide": "{id:<team ID>,expectedUpdatedAt:<current catalog timestamp>,pblSpec:{projectId,projectName,targetDomain,theoryMasteredGate:true,allowAutonomousAdvance:false,phases:[{phase:\"exploration\"|\"concept_mastery\"|\"guided_practice\"|\"deliverable_review\",title,assignedAssistantId,learningObjectives?:string[],deliverableType?,evidenceProfile?:\"runnable_code\"|\"experiment_report\"}]}}. Use existing phases when editing; omit gateCondition to let owner derive hard gates."
+    "inputGuide": "{id:<team ID>,expectedUpdatedAt:<current catalog timestamp>,pblSpec:{projectId,projectName,targetDomain,theoryMasteredGate:true,allowAutonomousAdvance:false,phases:[{phase:\"exploration\"|\"concept_mastery\"|\"guided_practice\"|\"deliverable_review\",title,assignedAssistantId,learningObjectives?:string[],deliverableType?,evidenceProfile?:\"runnable_code\"|\"experiment_report\"|\"rubric_artifact\"}]}}. Use existing phases when editing; omit gateCondition to let owner derive hard gates."
   },
   {
     "kind": "template.create",

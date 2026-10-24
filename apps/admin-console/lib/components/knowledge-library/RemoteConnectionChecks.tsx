@@ -187,7 +187,7 @@ export function RemoteConnectionChecks({
             {authFailed} 项，待核验 {uncertain.length} 项。
           </p>
           <p className={styles.hint}>
-            认证/授权被拒绝不一定是过期，也可能是权限被撤销。未完成项不代表远端认证失效。检测会更新库修订号，未保存的绑定草稿仍保留。
+            认证/授权被拒绝不一定是过期，也可能是权限被撤销。未完成项不代表远端认证失效。检测会更新库修订号，未保存的绑定修改仍保留。
           </p>
           <ul className={styles.results}>
             {checks.map((check) => {

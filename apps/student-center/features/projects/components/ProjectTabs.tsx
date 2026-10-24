@@ -8,7 +8,7 @@ export interface ProjectTabsProps {
   onChange: (tab: ProjectTab) => void;
 }
 
-/** 进行中 / 草稿 / 已完成。切换只改请求 query，不改导航（验收 3）。 */
+/** 进行中 / 未提交内容 / 已完成。切换只改请求 query，不改导航（验收 3）。 */
 export function ProjectTabs({ active, onChange }: ProjectTabsProps) {
   return (
     <div className="qitu-project-tabs" role="tablist" aria-label="项目分组">

@@ -25,7 +25,7 @@ export type {
   ProblemDetails,
 } from '@qitu/contracts';
 
-/** 列表标签（图片「进行中 / 草稿 / 已完成」）。 */
+/** 列表标签（图片「进行中 / 未提交内容 / 已完成」）。 */
 export type ProjectTab = 'active' | 'draft' | 'done';
 
 /** C1/C3 列表与详情共用的项目摘要字段。 */

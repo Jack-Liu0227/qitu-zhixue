@@ -68,7 +68,7 @@ export function serializeTutorContext(packet: TutorContextPacket): string {
   if (packet.recentMessages && packet.recentMessages.length > 0) {
     lines.push('近期对话摘要：');
     for (const message of packet.recentMessages.slice(-6)) {
-      lines.push(`- ${message.role === 'user' ? '学生' : '搭档'}：${bounded(message.content)}`);
+      lines.push(`- ${message.role === 'user' ? '学生' : '搭档'}：${bounded(message.content, 1200)}`);
     }
   }
   if (packet.recentActivity.length > 0) {
@@ -81,7 +81,7 @@ function boundedDefinition(value: string): string {
   const normalized = value.replace(/\s+/g, ' ').trim();
   return normalized.length > 1500 ? `${normalized.slice(0, 1500)}…` : normalized;
 }
-function bounded(value: string): string {
+function bounded(value: string, limit = 360): string {
   const normalized = value.replace(/\s+/g, ' ').trim();
-  return normalized.length > 360 ? `${normalized.slice(0, 360)}…` : normalized;
+  return normalized.length > limit ? `${normalized.slice(0, limit)}…` : normalized;
 }

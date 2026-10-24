@@ -44,6 +44,7 @@ export function ChatBubble({
   onFeedback,
   projectId,
   coursewareSnapshots = false,
+  experimentTurns,
   projectContext,
   disabled = false,
   streaming = false,
@@ -59,6 +60,7 @@ export function ChatBubble({
   onFeedback?: (turnId: string, kind: import('@qitu/contracts').TutorFeedbackKind, idempotencyKey: string) => Promise<void>;
   projectId?: string | null;
   coursewareSnapshots?: boolean;
+  experimentTurns?: ReadonlyMap<string, string>;
   projectContext?: import('@qitu/contracts').TutorProjectContext;
   disabled?: boolean;
   streaming?: boolean;
@@ -298,6 +300,9 @@ export function ChatBubble({
               onExperimentAction={onExperimentAction}
               projectId={projectId}
               coursewareSnapshot={coursewareSnapshots}
+              experimentRepeated={segment.raw.kind === 'optics_experiment'
+                && experimentTurns?.get(segment.raw.experimentId) !== undefined
+                && experimentTurns.get(segment.raw.experimentId) !== turn.turnId}
               projectContext={projectContext}
               disabled={disabled}
             />

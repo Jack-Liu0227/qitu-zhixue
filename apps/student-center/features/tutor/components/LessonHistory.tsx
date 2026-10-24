@@ -11,7 +11,7 @@ type HistoryState = { kind: 'loading' } | { kind: 'error'; message: string }
 const activityLabels = { review: '回顾与观察', theory: '概念与示例', check: '检查与补救', practice: '探究任务', reflect: '表达与反思' };
 const proofLabels = { session_response: '学习回应', experiment_observation: '模拟观察回执', submitted_artifact: '课时作品', approved_artifact: '已审核作品' };
 
-export function LessonHistory({ scope, lesson }: { scope: LessonScope; lesson: LearningSessionProgressItem }) {
+export function LessonHistory({ scope, lesson, refreshKey }: { scope: LessonScope; lesson: LearningSessionProgressItem; refreshKey?: unknown }) {
   const source = useTutorDataSource();
   const [state, setState] = useState<HistoryState>({ kind: 'loading' });
   const [revision, setRevision] = useState(0);
@@ -34,7 +34,7 @@ export function LessonHistory({ scope, lesson }: { scope: LessonScope; lesson: L
     };
     void load();
     return () => { current = false; };
-  }, [source, projectId, planId, planRevision, learningSessionId, revision]);
+  }, [source, projectId, planId, planRevision, learningSessionId, revision, refreshKey]);
 
   return <section aria-label={`第${lesson.lessonIndex}课学习记录`}>
     <h4>第 {lesson.lessonIndex} 课 · {lesson.title}</h4>
@@ -62,7 +62,7 @@ function SavedRecords({ evidence, artifacts }: { evidence: LessonEvidenceView; a
   return <ul>{unique.map((proof, index) => <li key={proof.ref}>
     <strong>{proof.sourceKind === 'reflection' ? '学习反思' : proofLabels[proof.kind]} {index + 1}</strong>
     <RecordContent proof={proof} artifact={artifacts.find(artifact => artifact.id === proof.artifactId)} />
-    {proof.quality ? <div><p>{({ pending: '等待班主任评价', accepted: '本版本质量已达标', needs_revision: '需要修改', stale: '版本已变化，需重新评价' })[proof.quality.status]}</p>
+    {proof.quality ? <div><p>{({ pending: '自动评价尚未完成', accepted: '本版本质量已达标', needs_revision: '需要修改', stale: '版本已变化，需重新评价' })[proof.quality.status]}</p>
       {proof.quality.feedback.map(item => <p key={item.criterionId}>{item.feedback}</p>)}
     </div> : null}
     <details><summary>查看保存回执</summary>{proofs.filter(entry => proof.artifactVersionId ? entry.artifactVersionId === proof.artifactVersionId : entry.ref === proof.ref)

@@ -15,11 +15,16 @@ import type {
 import {
   TemplateStore,
   TemplateStoreConflictError,
+  TemplateRestoreConflictError,
+  prepareTemplateRestoration,
   parseVersionLabel,
   type CreateTemplateRecordInput,
   type CreateVersionRecordInput,
   type TemplateListFilter,
   type TemplateDeleteCommit,
+  type RestoreTemplateInput,
+  type RestoredTemplateRecord,
+  type TemplateRestoreCommit,
 } from './templates.store';
 
 const PG_UNIQUE_VIOLATION = '23505';
@@ -180,6 +185,31 @@ export class PostgresTemplateStore extends TemplateStore {
       .returning();
     if (row === undefined) throw new Error(`template not found: ${id}`);
     return mapTemplate(row);
+  }
+
+  async restoreTemplate(id: string, input: RestoreTemplateInput, beforeCommit: TemplateRestoreCommit): Promise<RestoredTemplateRecord> {
+    return withTransaction(this.db, async tx => {
+      const [row] = await tx.select().from(projectTemplates).where(eq(projectTemplates.id, id)).for('update');
+      if (!row) throw new TemplateRestoreConflictError('课程不存在或状态已变化，请重新加载。');
+      const versions = await tx.select().from(projectTemplateVersions).where(eq(projectTemplateVersions.templateId, id)).for('update');
+      const restored = prepareTemplateRestoration(mapTemplate(row), versions.map(mapVersion), input);
+      if (restored.version) {
+        const version = restored.version;
+        const [created] = await tx.insert(projectTemplateVersions).values({
+          id: version.id, templateId: id, version: version.version, stages: version.stages,
+          content: version.content, rubric: version.rubric, status: 'draft', createdBy: version.createdBy, createdAt: version.createdAt,
+        }).returning();
+        if (!created) throw new Error('恢复课程未返回新版本');
+        restored.version = mapVersion(created);
+      }
+      const [updated] = await tx.update(projectTemplates).set({
+        status: 'draft', verifiedBy: null, verifiedAt: null, updatedAt: input.now,
+      }).where(eq(projectTemplates.id, id)).returning();
+      if (!updated) throw new Error('恢复课程未返回课程状态');
+      restored.template = mapTemplate(updated);
+      await beforeCommit(restored, tx);
+      return restored;
+    });
   }
 
   async deleteTemplate(id: string, beforeCommit?: TemplateDeleteCommit): Promise<boolean> {

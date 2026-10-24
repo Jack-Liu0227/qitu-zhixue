@@ -1,6 +1,6 @@
 {
-  "contractVersion": "1.4.0",
-  "operationsDigest": "9f97744b2246409fcdd93063b33bc38d1490ecd1991a1210b4bb6116c3d97303",
+  "contractVersion": "1.4.1",
+  "operationsDigest": "f1f038731c14e42609d66eb38fc3d832211b06055e751153a74ccc56b969ab0b",
   "resources": [
     {
       "resource": "references/protocol.md",

@@ -19,6 +19,13 @@ const DOMAIN_LABELS: Record<string, string> = {
   science: '科学探究',
   mathematics: '数学',
   engineering: '工程设计',
+  life_science: '生命科学',
+  sustainability: '环境与可持续',
+  service_design: '公共服务设计',
+  history_culture: '历史与文化',
+  language_arts: '语文与叙事',
+  media_literacy: '媒介与信息素养',
+  economics: '经济与创业启蒙',
 };
 
 /** 服务端难度枚举 → 展示词。支持中英文及各种级别别名。未知值返回 null。 */
@@ -31,43 +38,19 @@ function toDifficulty(value: unknown): InspirationDifficulty | null {
 
 export class InspirationApiDataSource implements InspirationDataSource {
   async listTemplates(): Promise<InspirationTemplate[]> {
-    // 学生端模板库只读接口优先；其余端点仅作兼容探测。
-    const endpoints = ['/api/v1/project-templates', '/api/v1/admin/project-templates', '/api/v1/tutor/templates'];
-
-    let lastError: ApiError | null = null;
-    for (const endpoint of endpoints) {
-      let response: Response;
-      try {
-        response = await fetch(endpoint, {
-          credentials: 'same-origin',
-          headers: { accept: 'application/json' },
-        });
-      } catch {
-        // 网络不可达：status 0 会被 useInspirationData 映射为 offline 状态。
-        lastError = new ApiError('网络不可用', 0, 'NETWORK_OFFLINE');
-        continue;
-      }
-      if (!response.ok) {
-        lastError = new ApiError(`模板服务响应 ${response.status}`, response.status);
-        continue;
-      }
-      const payload: unknown = await response.json().catch(() => null);
-      const data = isRecord(payload) && 'data' in payload ? payload.data : payload;
-      const list = Array.isArray(data)
-        ? data
-        : isRecord(data) && Array.isArray(data.templates)
-          ? data.templates
-          : null;
-      if (!list) {
-        lastError = new ApiError('模板服务响应格式异常', response.status, 'BAD_PAYLOAD');
-        continue;
-      }
-      // 端点应答成功即为权威结果：空列表就是空列表（页面渲染空态），不再回退。
-      return this.toTemplates(list, endpoint);
-    }
-
-    // 所有端点都失败：按数据源错误约定抛出，由页面呈现 offline / permission / error 状态。
-    throw lastError ?? new ApiError('模板服务不可用', 0, 'NETWORK_OFFLINE');
+    const endpoint = '/api/v1/project-templates';
+    let response: Response;
+    try {
+      response = await fetch(endpoint, { credentials: 'same-origin', cache: 'no-store',
+        headers: { accept: 'application/json' } });
+    } catch { throw new ApiError('网络不可达', 0, 'NETWORK_OFFLINE'); }
+    if (!response.ok) throw new ApiError(`项目目录加载失败（${response.status}）`, response.status,
+      response.status === 401 ? 'UNAUTHENTICATED' : response.status === 403 ? 'FORBIDDEN' : `HTTP_${response.status}`);
+    const payload: unknown = await response.json().catch(() => null);
+    const data = isRecord(payload) && 'data' in payload ? payload.data : payload;
+    const list = Array.isArray(data) ? data : isRecord(data) && Array.isArray(data.templates) ? data.templates : null;
+    if (!list) throw new ApiError('项目目录响应格式异常', 502, 'BAD_PAYLOAD');
+    return this.toTemplates(list, endpoint);
   }
 
   async createRecommendedExploration(
@@ -146,7 +129,7 @@ export class InspirationApiDataSource implements InspirationDataSource {
         const payload: unknown = await patchRes.json().catch(() => null);
         const detail = isRecord(payload) && typeof payload.message === 'string'
           ? payload.message
-          : `学习意图草稿保存失败（${patchRes.status}）`;
+          : `学习意图保存失败（${patchRes.status}）`;
         throw new ApiError(detail, patchRes.status);
       }
     } catch (cause) {

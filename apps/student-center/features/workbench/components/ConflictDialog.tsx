@@ -25,12 +25,12 @@ function summarize(content: WorkbenchContent): string {
  */
 export function ConflictDialog({ conflict, resolving, onResolve }: ConflictDialogProps) {
   return (
-    <div className="qitu-conflict-dialog" role="dialog" aria-modal="true" aria-label="草稿冲突">
+    <div className="qitu-conflict-dialog" role="dialog" aria-modal="true" aria-label="编辑冲突">
       <div className="qitu-conflict-card">
-        <h2>草稿有冲突</h2>
+        <h2>编辑内容有冲突</h2>
         <p className="qitu-conflict-lead">
-          服务器上的草稿已经更新（当前 revision <strong>{conflict.serverRevision}</strong>），
-          你本地也有一份未同步的修改。请选择怎么处理，草稿不会被自动覆盖或丢弃。
+          服务器上的未提交内容已经更新（当前 revision <strong>{conflict.serverRevision}</strong>），
+          你本地也有一份未同步的修改。请选择怎么处理，未提交内容不会被自动覆盖或丢弃。
         </p>
         <div className="qitu-conflict-columns">
           <section>

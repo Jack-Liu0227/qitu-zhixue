@@ -910,7 +910,8 @@ export type GateEvidenceType = string;
  * 证据档案：把「交付物」翻译成「这个阶段需要哪种证据、因此该由哪个门禁收口」。
  * 用于让 guided_practice 的门禁**由交付物推导**，而不是由阶段名硬编码。
  */
-export type EvidenceProfile = 'runnable_code' | 'experiment_report';
+export const EVIDENCE_PROFILES = ['runnable_code', 'experiment_report', 'rubric_artifact'] as const;
+export type EvidenceProfile = (typeof EVIDENCE_PROFILES)[number];
 
 /**
  * 门禁注册条目：门禁 id 的权威定义。
@@ -921,6 +922,7 @@ export type EvidenceProfile = 'runnable_code' | 'experiment_report';
 export interface GateConditionRegistration {
   /** 门禁条件 id。 */
   gateId: GateConditionId;
+  phase: PblPhase;
   /** 达成该门禁所需的证据类型。 */
   requiredEvidenceType: GateEvidenceType;
   /** 允许写入门禁达成的写入方身份（与 PBL_GATE_SOURCE_WHITELIST 同源）。 */
@@ -941,30 +943,42 @@ export interface GateConditionRegistration {
 export const GATE_CONDITION_REGISTRY: Readonly<Record<string, GateConditionRegistration>> = Object.freeze({
   student_confirmed_intent: {
     gateId: 'student_confirmed_intent',
+    phase: 'exploration',
     requiredEvidenceType: 'intent_confirmation',
     allowedSources: ['projects.confirm-intent', 'mentor_review', 'server_backfill'],
     producerId: 'projects.confirm-intent',
   },
   TheoryMastered: {
     gateId: 'TheoryMastered',
+    phase: 'concept_mastery',
     requiredEvidenceType: 'mastery_attempt',
     allowedSources: ['learning-plan.theory-mastered', 'mentor_review', 'server_backfill'],
     producerId: 'learning-plan.theory-mastered',
   },
   code_playable_run_verified: {
     gateId: 'code_playable_run_verified',
+    phase: 'guided_practice',
     requiredEvidenceType: 'code_run_log',
     allowedSources: ['mentor_review', 'runner', 'server_backfill'],
     producerId: 'runner',
   },
   experiment_report_validated: {
     gateId: 'experiment_report_validated',
+    phase: 'guided_practice',
     requiredEvidenceType: 'document',
     allowedSources: ['works.publish-approved', 'mentor_review', 'server_backfill'],
     producerId: 'works.document-structure-validator',
   },
+  rubric_artifact_validated: {
+    gateId: 'rubric_artifact_validated',
+    phase: 'guided_practice',
+    requiredEvidenceType: 'document',
+    allowedSources: ['works.publish-approved'],
+    producerId: 'works.publish-approved',
+  },
   review_completed_and_archived: {
     gateId: 'review_completed_and_archived',
+    phase: 'deliverable_review',
     requiredEvidenceType: 'growth_archive',
     allowedSources: ['works.publish-approved', 'mentor_review', 'server_backfill'],
     producerId: 'works.publish-approved',
@@ -1032,6 +1046,7 @@ export function derivePracticeGateFromDeliverable(
 ): GateConditionId | null {
   if (evidenceProfile === 'runnable_code') return 'code_playable_run_verified';
   if (evidenceProfile === 'experiment_report') return 'experiment_report_validated';
+  if (evidenceProfile === 'rubric_artifact') return 'rubric_artifact_validated';
   if (!deliverableType) return null;
   const normalized = deliverableType.trim().toLowerCase();
   if (normalized === 'runnable_python_game' || normalized === 'runnable_code') return 'code_playable_run_verified';

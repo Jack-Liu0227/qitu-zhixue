@@ -267,7 +267,7 @@ export function createTutorContextReader(ports: TutorContextReadPorts, partner =
           matchedTerms,
         })),
         recentActivity: input.recentActivity.slice(-6),
-        recentMessages: input.recentMessages?.slice(-6).map((message) => ({ ...message, content: message.content.slice(0, 360) })),
+        recentMessages: input.recentMessages?.slice(-6).map((message) => ({ ...message, content: message.content.slice(0, 1200) })),
       };
     },
   };

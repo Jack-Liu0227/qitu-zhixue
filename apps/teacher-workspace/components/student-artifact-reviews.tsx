@@ -1,12 +1,10 @@
 'use client';
-import { createIdempotencyKey } from '@qitu/api-client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
   TeacherArtifactReviewItem,
   TeacherArtifactReviewPage,
   TeacherArtifactVersionView,
-  TeacherReviewDecision,
 } from '@qitu/contracts';
 import { Button, SkeletonBlock } from '@qitu/ui';
 import { teacherApi, TeacherOfflineError, TeacherPermissionError } from '../lib/teacherApi';
@@ -30,7 +28,7 @@ const statusToneMap: Record<string, string> = {
 };
 
 function errorMessage(error: unknown) {
-  if (error instanceof TeacherPermissionError) return '当前账号无权查看或审核该学生的作品，请确认班主任分配。';
+  if (error instanceof TeacherPermissionError) return '当前账号无权查看该学生的作品，请确认班主任分配。';
   if (error instanceof TeacherOfflineError) return '网络不可用，请恢复连接后重试。';
   return error instanceof Error ? error.message : '作品审核服务暂不可用。';
 }
@@ -97,7 +95,7 @@ function StudentReviewList({ studentId }: { studentId: string }) {
             作品审核
           </div>
           <p className="qtx-muted" style={{ margin: '4px 0 0', fontSize: 12 }}>
-            先阅读送审版本正文，再提交审核结论与修改反馈。
+            只读查看历史作品记录；学生作品由服务端自动评价，无需教师审批。
           </p>
         </div>
         <Button
@@ -198,184 +196,27 @@ function StudentReviewList({ studentId }: { studentId: string }) {
   );
 }
 
-function ReviewDetail({ review, studentId, disabled, onSaved }: {
-  review: TeacherArtifactReviewItem;
-  studentId: string;
-  disabled: boolean;
-  onSaved: () => Promise<void>;
+function ReviewDetail({ review }: {
+  review: TeacherArtifactReviewItem; studentId: string; disabled: boolean; onSaved: () => Promise<void>;
 }) {
   const [version, setVersion] = useState<TeacherArtifactVersionView | null>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [decision, setDecision] = useState<TeacherReviewDecision>('changes_requested');
-  const [comment, setComment] = useState('');
-  const [read, setRead] = useState(false);
-  const [pending, setPending] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [reload, setReload] = useState(0);
-  const inFlight = useRef(false);
-  const keyRef = useRef<{ fingerprint: string; key: string } | null>(null);
-  const alive = useRef(true);
-
-  useEffect(() => {
-    alive.current = true;
-    return () => { alive.current = false; };
-  }, []);
-
   useEffect(() => {
     let active = true;
-    setVersion(null);
-    setRead(false);
-    setLoading(true);
-    setError(null);
-    if (!review.versionAvailable || !review.artifactVersionId) {
-      setError('该审核记录无法定位原始送审版本，请学生重新送审。');
-      setLoading(false);
-      return;
-    }
+    setLoading(true); setError(null); setVersion(null);
     void teacherApi.artifactVersions(review.artifactId).then(({ data }) => {
-      if (!active) return;
-      setVersion(reviewVersion(review, data));
-    }).catch((cause) => {
-      if (active) setError(errorMessage(cause));
-    }).finally(() => {
-      if (active) setLoading(false);
-    });
+      if (active) setVersion(reviewVersion(review, data));
+    }).catch(cause => { if (active) setError(errorMessage(cause)); })
+      .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [review.artifactId, review.artifactVersionId, review.artifactVersionOrdinal, review.versionAvailable, reload]);
-
-  const submit = async () => {
-    if (inFlight.current || !version || !read) return;
-    inFlight.current = true;
-    setPending(true);
-    setError(null);
-    const body = { decision, comment: comment.trim() };
-    const fingerprint = JSON.stringify([review.reviewId, version.id, body]);
-    if (keyRef.current?.fingerprint !== fingerprint) {
-      keyRef.current = { fingerprint, key: `review-${createIdempotencyKey()}` };
-    }
-    try {
-      const { data } = await teacherApi.decideArtifactReview(review.reviewId, body, keyRef.current.key);
-      if (!alive.current) return;
-      if (data.reviewId !== review.reviewId || data.studentUserId !== studentId || data.status !== decision) {
-        throw new Error('审核回执不一致，请刷新确认结果。');
-      }
-      setSaved(true);
-      await onSaved();
-    } catch (cause) {
-      if (alive.current) setError(errorMessage(cause));
-    } finally {
-      inFlight.current = false;
-      if (alive.current) setPending(false);
-    }
-  };
-
-  const decidable = ['requested', 'in_review', 'changes_requested'].includes(review.status);
-
-  return (
-    <div style={{ display: 'grid', gap: 12, padding: 16, marginTop: 14, background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <strong style={{ fontSize: 14, color: '#1e293b' }}>{review.artifactTitle}</strong>
-        {version ? (
-          <span className="qtx-badge qtx-badge-blue">版本 {version.ordinal}</span>
-        ) : null}
-      </div>
-
-      {loading ? <p className="qtx-muted" style={{ fontSize: 13 }}>正在读取送审版本…</p> : null}
-
-      {error ? (
-        <div style={{ padding: '8px 12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, color: '#991b1b', fontSize: 12 }}>
-          <p style={{ margin: '0 0 6px' }}>{error}</p>
-          <Button variant="ghost" size="sm" disabled={pending} onClick={() => setReload((old) => old + 1)}>
-            重新读取版本
-          </Button>
-        </div>
-      ) : null}
-
-      {saved ? (
-        <div style={{ padding: '8px 12px', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 8, color: '#065f46', fontSize: 12 }}>
-          ✓ 审核结论已由服务端安全保存。
-        </div>
-      ) : null}
-
-      {version ? (
-        <>
-          <div style={{ maxHeight: 320, overflow: 'auto', padding: 12, background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: 8 }}>
-            <pre style={{ margin: 0, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontSize: 12, lineHeight: 1.6, color: '#334155' }}>
-              {version.inlineText}
-            </pre>
-          </div>
-
-          {decidable && !saved ? (
-            <div style={{ display: 'grid', gap: 10 }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 500, color: '#334155', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={read}
-                  disabled={pending || disabled}
-                  onChange={(event) => setRead(event.target.checked)}
-                />
-                我已完整阅读上述送审版本正文
-              </label>
-
-              <div style={{ display: 'grid', gap: 4 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>审核结论</label>
-                <select
-                  value={decision}
-                  disabled={pending || disabled}
-                  onChange={(event) => setDecision(event.target.value as TeacherReviewDecision)}
-                  style={{
-                    padding: '8px 12px',
-                    borderRadius: 8,
-                    border: '1px solid #cbd5e1',
-                    background: '#fff',
-                    fontSize: 13,
-                    color: '#1e293b',
-                  }}
-                >
-                  <option value="changes_requested">需要修改 (退回继续完善)</option>
-                  <option value="approved">审核通过 (批准发布)</option>
-                  <option value="rejected">未通过 (不符合标准)</option>
-                </select>
-              </div>
-
-              <div style={{ display: 'grid', gap: 4 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>给学生的反馈建议</label>
-                <textarea
-                  rows={3}
-                  maxLength={2000}
-                  placeholder="在此输入指导反馈与论证修正建议..."
-                  value={comment}
-                  disabled={pending || disabled}
-                  onChange={(event) => setComment(event.target.value)}
-                  style={{
-                    padding: '8px 12px',
-                    borderRadius: 8,
-                    border: '1px solid #cbd5e1',
-                    background: '#fff',
-                    fontSize: 13,
-                    lineHeight: 1.5,
-                  }}
-                />
-              </div>
-
-              <Button
-                variant="primary"
-                size="md"
-                disabled={pending || disabled || loading || !read || error !== null}
-                onClick={() => { void submit(); }}
-                loading={pending}
-              >
-                提交审核结论
-              </Button>
-            </div>
-          ) : (
-            <p className="qtx-muted" style={{ fontSize: 12, margin: 0 }}>
-              该审核记录已处于终态，结论：<strong>{statusLabels[review.status]}</strong>
-            </p>
-          )}
-        </>
-      ) : null}
-    </div>
-  );
+  }, [review, reload]);
+  return <section className="qtx-card" style={{ padding: 16 }}>
+    <strong>{review.artifactTitle}</strong>
+    <p>历史作品记录（只读）。当前学习进度由服务端自动评价，不等待教师审批。</p>
+    {loading ? <p role="status">正在读取版本…</p> : null}
+    {error ? <p role="alert">{error} <button onClick={() => setReload(value => value + 1)}>重新读取</button></p> : null}
+    {version ? <pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{version.inlineText ?? '该版本没有可显示的正文。'}</pre> : null}
+  </section>;
 }

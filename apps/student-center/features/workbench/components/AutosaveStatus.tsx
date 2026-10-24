@@ -25,7 +25,7 @@ export function AutosaveStatus({ status, savedAt, bufferedAt, onRetry }: Autosav
     const time = formatHhMm(bufferedAt ?? null);
     return (
       <span className="qitu-autosave is-offline">
-        {time ? `离线中 · 已缓存到本机 ${time}` : '离线中 · 草稿已缓存到本机'}
+        {time ? `离线中 · 已缓存到本机 ${time}` : '离线中 · 未提交内容已缓存到本机'}
       </span>
     );
   }

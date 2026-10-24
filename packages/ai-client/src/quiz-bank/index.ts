@@ -1,5 +1,6 @@
 import type { GradeValue, LearningErrorType, TutorReplyBlock } from '@qitu/contracts';
 import { THUNDER_QUIZ_BANK } from './thunder-fighter.js';
+import { INSPIRATION_QUIZ_BANK } from './inspiration.js';
 
 export * from './optics/index.js';
 
@@ -46,6 +47,7 @@ export type QuizBlockProjection = Extract<TutorReplyBlock, { kind: 'quiz' }>;
 /** 光学概念题库：反射 / 折射 / 全反射 / 透镜（F5 光学 PBL 绑定域）。 */
 export const QUIZ_BANK: readonly QuizBankEntry[] = [
   ...THUNDER_QUIZ_BANK,
+  ...INSPIRATION_QUIZ_BANK,
   {
     questionId: 'optics.reflection.q1',
     conceptId: 'optics.reflection',

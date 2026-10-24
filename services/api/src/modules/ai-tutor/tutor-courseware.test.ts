@@ -45,7 +45,8 @@ async function fixture() {
   const plans = { findAwaitingQuestion: async () => pending ? { id: 'pending' } : null,
     withSessionProgressTransaction: async (_student: string, _plan: string, work: (store: unknown) => Promise<unknown>) => work(plans) } as unknown as LearningPlanStore;
   const service = new TutorCoursewareService(tutor, store, content, knowledge, plans);
-  return { student, scope, instance, store, service, reads: () => reads, revoke: () => { allowed = false; }, change: () => { changedSource = true; }, pending: () => { pending = true; } };
+  return { student, scope, instance, store, service, content, source, teaching,
+    reads: () => reads, revoke: () => { allowed = false; }, change: () => { changedSource = true; }, pending: () => { pending = true; } };
 }
 test('restoration revalidates sources; positions survive reload; completion requires the last step and current scope', async () => {
   const h = await fixture(); const view = await h.service.read(h.student, h.scope.projectId);
@@ -66,6 +67,7 @@ test('revoked knowledge and changed content cannot disclose restored boards or a
     const h = await fixture(); h[reason]();
     const view = await h.service.read(h.student, h.scope.projectId);
     assert.deepEqual(view?.instances, []); assert.equal(view?.canContinue, false); assert.ok(view?.blockedReason);
+    assert.equal(view?.canPrepare, true, 'The learner can request a freshly verified replacement, without confirming the invalid one');
     await assert.rejects(h.service.position(h.student, h.scope.projectId, { planId: h.scope.planId, planRevision: h.scope.planRevision,
       learningSessionId: h.scope.learningSessionId, instanceId: h.instance.id, position: 1, continueLearning: true }, reason));
     assert.equal((await h.store.instance(h.instance.id))?.value.acknowledgedAt, null);
@@ -77,6 +79,7 @@ test('a pending answer allows reviewing verified courseware without advancing te
   const view = await h.service.read(h.student, h.scope.projectId);
   assert.equal(view?.instances.length, 1);
   assert.equal(view?.canContinue, false);
+  assert.equal(view?.canPrepare, false);
   const request = { planId: h.scope.planId, planRevision: h.scope.planRevision, learningSessionId: h.scope.learningSessionId,
     instanceId: h.instance.id, position: 1, continueLearning: false };
   const reviewed = await h.service.position(h.student, h.scope.projectId, request, 'review-during-question');
@@ -86,4 +89,21 @@ test('a pending answer allows reviewing verified courseware without advancing te
   const restored = await h.service.read(h.student, h.scope.projectId);
   assert.equal(restored?.instances[0]?.position, 1);
   assert.equal(restored?.canContinue, false);
+});
+
+test('an unavailable old courseware instance does not block a verified current replacement', async () => {
+  const h = await fixture();
+  h.change();
+  const current = await h.content.capture({ actor: h.student, scope: h.scope,
+    curriculumHash: teachingValueDigest(h.teaching.bundle.template), content: h.instance.content,
+    sources: [{ ...h.source, documentRefHash: 'b'.repeat(64) }], objectiveRefs: ['objective-1'], key: 'verified-replacement' });
+  const view = await h.service.read(h.student, h.scope.projectId);
+  assert.deepEqual(view?.instances.map(instance => instance.id), [current.id]);
+  assert.equal(view?.canContinue, true);
+  assert.ok(view?.blockedReason, 'Keep the warning about unavailable previous content');
+  const request = { planId: h.scope.planId, planRevision: h.scope.planRevision,
+    learningSessionId: h.scope.learningSessionId, position: 1, continueLearning: true };
+  await assert.rejects(h.service.position(h.student, h.scope.projectId, { ...request, instanceId: h.instance.id }, 'invalid-old'));
+  const accepted = await h.service.position(h.student, h.scope.projectId, { ...request, instanceId: current.id }, 'valid-replacement');
+  assert.ok(accepted.acknowledgedAt);
 });

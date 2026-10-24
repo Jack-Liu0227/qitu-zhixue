@@ -52,11 +52,13 @@ export function createCoursewareActivityPort(input: {
     if (verified.some(source => !source.sourceRef.startsWith('knowledge-read:') && !source.sourceRef.startsWith('ima-read:'))) fail('COURSEWARE_READ_REQUIRED');
     const sources = coursewareSources(verified);
     let content: CoursewareContent, refs: string[];
+    let use: CoursewareUse = candidate.kind === 'board' && candidate.use ? candidate.use as CoursewareUse : 'explain';
     let assetVersionId: string | undefined;
     if (candidate.kind === 'reuse_courseware') {
       if (typeof candidate.assetVersionId !== 'string' || candidate.parentVersionId !== undefined || candidate.steps !== undefined) fail();
       const asset = await input.service.reuse(candidate.assetVersionId, objectives, sources, curriculumHash);
       content = asset.content; refs = [...asset.objectiveRefs]; assetVersionId = asset.versionId;
+      use = asset.use;
     } else {
       if (candidate.kind !== 'board' || candidate.assetVersionId !== undefined
         || !Array.isArray(candidate.objectiveRefs) || !candidate.objectiveRefs.length
@@ -65,11 +67,11 @@ export function createCoursewareActivityPort(input: {
       content = { title: candidate.title as string, steps: candidate.steps as CoursewareContent['steps'] };
       refs = candidate.objectiveRefs as string[];
     }
-    if (remainingConcepts.length && refs.every(ref => delivered.has(ref))) return { text: JSON.stringify({ remainingConcepts,
+    if (use !== 'remediate' && remainingConcepts.length && refs.every(ref => delivered.has(ref))) return { text: JSON.stringify({ remainingConcepts,
       instruction: 'This board repeats only concepts already delivered in this activity. Nothing new was saved. Teach a remaining concept with verified sources before continuing.' }) };
     const instance = await input.service.capture({ actor: { id: input.studentId, role: 'student', email: '', displayName: '' },
       scope: { projectId: input.scope.projectId, planId: input.scope.planId, planRevision: input.scope.planRevision,
-        learningSessionId: input.scope.learningSessionId, activityId: input.scope.activityId }, content, objectiveRefs: refs, sources,
+        learningSessionId: input.scope.learningSessionId, activityId: input.scope.activityId }, content, objectiveRefs: refs, sources, use,
       curriculumHash, generation: { policyVersion: 'courseware.v1', rendererVersion: 'board.v1',
         modelProviderId: input.teaching.role.modelByPurpose.dialogue?.modelProviderId ?? null,
         modelId: input.teaching.role.modelByPurpose.dialogue?.modelId ?? null,

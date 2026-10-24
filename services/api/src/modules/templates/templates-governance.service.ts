@@ -1,12 +1,15 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   Inject,
   Logger,
   Optional,
 } from '@nestjs/common';
 import { VisualAssetsService } from '../visual-assets/visual-assets.service';
+import { TemplateBindingStore } from './templates-binding.store';
+import { templateSchedule } from './templates.presentation';
 import { resolveVisualBinding } from '../visual-assets/visual-assets.policy';
 import type { CurrentUser } from '@qitu/contracts';
 import { assertTemplateTeachingContent } from './templates.content-validator';
@@ -33,6 +36,7 @@ import {
 import {
   TemplateStore,
   TemplateStoreConflictError,
+  TemplateRestoreConflictError,
   newTemplateId,
   newTemplateVersionId,
 } from './templates.store';
@@ -61,6 +65,10 @@ import type {
 export interface TemplateMutationResult {
   template: TemplateView;
   replayed: boolean;
+}
+
+export interface TemplateRestoreResult extends TemplateMutationResult {
+  version: TemplateVersionGovernanceView | null;
 }
 
 export interface VersionMutationResult {
@@ -114,6 +122,7 @@ export class TemplateGovernanceService {
     private readonly idempotency: IdempotencyStore,
     private readonly audit: AuditWriter,
     @Optional() private readonly visuals?: VisualAssetsService,
+    @Optional() private readonly bindings?: TemplateBindingStore,
   ) {}
 
   /* ============================ 列表与详情 ============================ */
@@ -247,6 +256,32 @@ export class TemplateGovernanceService {
       return { status: 200, body: { template: await this.project(archived), replayed: false } };
     });
 
+    return result.replayed ? { ...result.body, replayed: true } : result.body;
+  }
+
+  async restoreTemplate(actor: CurrentUser, templateId: string, expectedUpdatedAt: string, idempotencyKey: string, reason: string | null): Promise<TemplateRestoreResult> {
+    if (actor.role !== 'admin') throw new ForbiddenException('仅管理员可恢复归档课程');
+    await this.requireGovernableTemplate(actor, templateId);
+    const expected = new Date(expectedUpdatedAt);
+    if (typeof expectedUpdatedAt !== 'string' || !Number.isFinite(expected.getTime())) {
+      throw new BadRequestException({ code: 'TEMPLATE_INPUT_INVALID', message: '请提供有效的课程修订时间' });
+    }
+    const scope = `template.restore:${actor.id}:${templateId}`;
+    const requestHash = hashIdempotentInput(scope, { templateId }, { expectedUpdatedAt: expected.toISOString(), reason });
+    const result = await this.executeIdempotent(scope, idempotencyKey, requestHash, async () => {
+      const restored = await this.store.restoreTemplate(templateId, {
+        expectedUpdatedAt: expected, createdBy: actor.id, versionId: newTemplateVersionId(), now: new Date(),
+      }, async (saved, tx) => {
+        await this.audit.write({
+          actorId: actor.id, actorRole: actor.role, action: 'template.restore', targetType: 'project_template', targetId: templateId,
+          idempotencyKey: `${scope}:${idempotencyKey}`, reason,
+          detail: { from: 'archived', to: 'draft', sourceVersionId: saved.sourceVersionId, newVersionId: saved.version?.id ?? null },
+        }, tx);
+      });
+      this.logger.log(`恢复归档课程 id=${templateId} version=${restored.version?.id ?? 'none'}`);
+      return { status: 200, body: { template: await this.project(restored.template),
+        version: restored.version ? toTemplateVersionGovernanceView(restored.version) : null, replayed: false } };
+    });
     return result.replayed ? { ...result.body, replayed: true } : result.body;
   }
 
@@ -675,6 +710,7 @@ export class TemplateGovernanceService {
   private async project(record: ProjectTemplateRecord): Promise<TemplateView> {
     const versions = await this.store.listVersions(record.id);
     const view = toTemplateView(record, latestPublishedVersionId(versions));
+    Object.assign(view, await templateSchedule(view.latestPublishedVersionId, this.bindings));
     if (this.visuals) {
       const bindings = await this.visuals.presentationSnapshot();
       view.iconAssetId = resolveVisualBinding({ kind: 'template', id: record.id }, 'icon', bindings).effectiveAssetId;
@@ -694,7 +730,7 @@ export class TemplateGovernanceService {
     } catch (error) {
       if (error instanceof TemplateStoreConflictError) {
         throw new ConflictException({
-          code: 'TEMPLATE_CONFLICT',
+          code: error instanceof TemplateRestoreConflictError ? 'TEMPLATE_RESTORE_CONFLICT' : 'TEMPLATE_CONFLICT',
           message: error.message,
         });
       }

@@ -1,7 +1,7 @@
 import { COURSEWARE_ACTIVITY_SCHEMA } from '../../common/tutor-runtime/courseware-activity.schema';
 import { BOARD_STEPS_SCHEMA } from '../../common/tutor-runtime/activity-tool-schema';
 
-export const COURSEWARE_TOOL_INSTRUCTIONS = 'This lesson requires source-grounded courseware, including newly generated boards. First search and read an authorized source with knowledge_read or ima_read_document in this turn. Every board MUST include sourceRefs copied from the actual verified read evidence_ref and objectiveRefs selected from the schema enum. Never use plan-prefixed objective IDs. find_courseware accepts ONLY kind,use. reuse_courseware accepts ONLY kind,assetVersionId,sourceRefs. board accepts ONLY kind,title,steps,objectiveRefs,sourceRefs and optional origin,parentVersionId; OMIT use,summary,mode,parameters,nulls and unused fields. Each step has caption and either nodes with edges (use [] if no edges) or nonempty tex. Save one coherent board per turn, then wait for the learner. A newly generated board still requires verified sources; do not apply the source-free board rule from other courses. ';
+export const COURSEWARE_TOOL_INSTRUCTIONS = 'This lesson requires source-grounded courseware, including newly generated boards. First search and read an authorized source with knowledge_read or ima_read_document in this turn. Every board MUST include sourceRefs copied from the actual verified read evidence_ref and objectiveRefs selected from the schema enum. Never use plan-prefixed objective IDs. find_courseware accepts ONLY kind,use. reuse_courseware accepts ONLY kind,assetVersionId,sourceRefs. board accepts ONLY kind,title,steps,objectiveRefs,sourceRefs and optional origin,parentVersionId,use. Set use=remediate when the learner explicitly asks to revisit or re-explain an already delivered concept; other uses do not bypass ordinary delivery deduplication. OMIT summary,mode,parameters,nulls and unused fields. Each step has caption and either nodes with edges (use [] if no edges) or nonempty tex. Save one coherent board per turn, then wait for the learner. A newly generated board still requires verified sources; do not apply the source-free board rule from other courses. ';
 
 /** Narrows the model-facing proposal format; the frozen capability and owner validation stay unchanged. */
 export function coursewareToolSchema(objectiveIds: readonly string[], practiceMode: 'diffraction' | 'interference' | null = null): Record<string, unknown> {
@@ -9,7 +9,7 @@ export function coursewareToolSchema(objectiveIds: readonly string[], practiceMo
   const variants = [
     { kind: 'find_courseware', required: ['use'], optional: [] },
     { kind: 'reuse_courseware', required: ['assetVersionId', 'sourceRefs'], optional: [] },
-    { kind: 'board', required: ['title', 'steps', 'objectiveRefs', 'sourceRefs'], optional: ['origin', 'parentVersionId'] },
+    { kind: 'board', required: ['title', 'steps', 'objectiveRefs', 'sourceRefs'], optional: ['origin', 'parentVersionId', 'use'] },
     { kind: 'wave_preview', required: ['title'], optional: ['summary'] },
     { kind: 'recommendation', required: ['title', 'summary', 'sourceRefs'], optional: [] },
     { kind: 'optics', required: ['title', 'summary', 'mode', 'parameters'], optional: [] },

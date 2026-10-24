@@ -31,9 +31,9 @@ import {
  * 约束（继承 AGENTS.md 与产品文档）：
  *  - 不做家长 AI 对话、不接 Provider / API Key、不新建一套客服系统；
  *  - 反馈必须绑定到一个**有效孩子**，可选关联一个项目；
- *  - 提交中禁用表单，成功后展示工单编号，网络失败保留本机草稿（复用同一幂等键），
- *    退出登录时清空草稿；
- *  - 附件经服务端确认保存后才加入草稿，失败或上传中阻止提交。
+ *  - 提交中禁用表单，成功后展示工单编号，网络失败保留本机未提交内容（复用同一幂等键），
+ *    退出登录时清空未提交内容；
+ *  - 附件经服务端确认保存后才加入未提交内容，失败或上传中阻止提交。
  */
 
 type PanelState = 'loading' | 'ready' | 'empty' | 'error' | 'offline' | 'permission';
@@ -63,7 +63,7 @@ export function ParentFeedbackWidget() {
   const loadedRef = useRef(false);
   const hadUserRef = useRef(false);
 
-  /* ---------- 草稿水合与暂存 ---------- */
+  /* ---------- 未提交内容水合与暂存 ---------- */
 
   useEffect(() => {
     if (!parentId || hydrated) return;
@@ -74,13 +74,13 @@ export function ParentFeedbackWidget() {
 
   useEffect(() => {
     if (!parentId || !hydrated) return;
-    // 提交成功后已经显式清空草稿，不要在这里把它写回去。
+    // 提交成功后已经显式清空未提交内容，不要在这里把它写回去。
     if (submitState === 'success') return;
     saveFeedbackDraft(parentId, draft);
   }, [parentId, hydrated, draft, submitState]);
 
-  // 退出登录（或会话失效）时清空本机全部草稿：既避免残留未成年人内容，
-  // 也避免下一个账号在同一浏览器里读到上一个账号的草稿。
+  // 退出登录（或会话失效）时清空本机全部未提交内容：既避免残留未成年人内容，
+  // 也避免下一个账号在同一浏览器里读到上一个账号的未提交内容。
   useEffect(() => {
     if (user) {
       hadUserRef.current = true;
@@ -225,7 +225,7 @@ export function ParentFeedbackWidget() {
         childId: draft.childId,
         messageId: null,
         projectId: draft.type === 'project' ? draft.projectId : null,
-        // 重试复用草稿里的幂等键，避免响应丢失时重复建单。
+        // 重试复用未提交内容里的幂等键，避免响应丢失时重复建单。
         idempotencyKey: draft.idempotencyKey,
         attachmentRefs: draft.attachments?.map(file => file.id),
       });
@@ -246,7 +246,7 @@ export function ParentFeedbackWidget() {
           : new FeedbackSubmitError('反馈没能提交，请稍后重试。', 'error');
       setSubmitState(failure.kind);
       setValidationMessage(failure.kind === 'validation' ? failure.message : null);
-      // offline / error：草稿与幂等键都留在本机，恢复网络后重试。
+      // offline / error：未提交内容与幂等键都留在本机，恢复网络后重试。
     }
   };
 
@@ -398,7 +398,7 @@ export function ParentFeedbackWidget() {
         ) : null}
         {submitState === 'offline' ? (
           <p className="parent-feedback-error" role="alert">
-            网络不可用，反馈尚未提交。草稿已暂存在本机，恢复网络后可重试。
+            网络不可用，反馈尚未提交。未提交内容已暂存在本机，恢复网络后可重试。
           </p>
         ) : null}
         {submitState === 'permission' ? (
@@ -408,7 +408,7 @@ export function ParentFeedbackWidget() {
         ) : null}
         {submitState === 'error' ? (
           <p className="parent-feedback-error" role="alert">
-            反馈没能提交，请稍后重试。草稿已暂存在本机。
+            反馈没能提交，请稍后重试。未提交内容已暂存在本机。
           </p>
         ) : null}
       </form>

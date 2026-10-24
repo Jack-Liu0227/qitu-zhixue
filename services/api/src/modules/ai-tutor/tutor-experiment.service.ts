@@ -1,4 +1,6 @@
-import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { WorksLearningEvidenceService } from '../works/works-learning-evidence.service';
+import type { CurrentUser } from '@qitu/contracts';
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException, Optional, ServiceUnavailableException } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
 import { auditLogs, type Database } from '@qitu/database';
 import type { GetTutorSessionResponse, ProjectStage, TutorExperimentActionRequest, TutorExperimentActionResponse, TutorReplyBlock, SavedWaveExperiment } from '@qitu/contracts';
@@ -38,6 +40,7 @@ export class TutorExperimentService {
     @Optional() private readonly registry?: PlatformRegistryService,
     @Optional() private readonly lessonProgress?: LearningSessionProgressService,
     @Optional() private readonly lifecycle?: ProjectLearningLifecycleService,
+    @Optional() private readonly learningEvidence?: WorksLearningEvidenceService,
   ) {}
 
   async propose(actorId: string, scope: LessonActivityScope, candidate: OpticsCandidate, key: string): Promise<ExperimentBlock> {
@@ -191,6 +194,15 @@ export class TutorExperimentService {
       };
       return { status: 201, body: response };
     });
+    if (result.body.observationReceipt && this.learningEvidence && block.scope) {
+      try {
+        await this.learningEvidence.evaluateLessonQuality({ id: actorId, role: 'student' } as CurrentUser,
+          block.scope.planId, block.scope.learningSessionId, block.scope.planRevision, result.body.observationReceipt.evidenceRef);
+      } catch (error) {
+        // The saved observation remains available for a student-triggered evaluation retry.
+        if (!(error instanceof ServiceUnavailableException)) throw error;
+      }
+    }
     return result.body;
   }
 

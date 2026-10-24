@@ -3,24 +3,24 @@ import type { AdminTeamConfig, ProjectTemplateSpec, TeachingSessionSelection } f
 import styles from './TeachingBinding.module.css';
 type Profile = NonNullable<ProjectTemplateSpec['curriculum']>['profiles'][number];
 
-export function SessionBindingEditor({ profile, teams, primaryTeamId, selections, editable, onChange }: {
+export function SessionBindingEditor({ profile, teams, primaryTeamId, selections, editable, onChange, sessionIndex }: {
   profile?: Profile; teams: readonly AdminTeamConfig[]; primaryTeamId: string;
   selections: readonly TeachingSessionSelection[]; editable: boolean;
   onChange(value: readonly TeachingSessionSelection[]): void;
+  sessionIndex?: number;
 }) {
   function assign(value: TeachingSessionSelection) {
     onChange([...selections.filter(entry => entry.sessionIndex !== value.sessionIndex), value].sort((a, b) => a.sessionIndex - b.sessionIndex));
   }
   const primary = teams.find(team => team.id === primaryTeamId && team.enabled);
   return <section className={styles.routing} aria-label="逐课助手与团队绑定">
-    <header className={styles.columnHeader}><h3>逐课教学安排</h3><span>{profile?.sessions.length ?? 0} 课时</span></header>
-    <p className={styles.muted}>直接使用团队管理中已有的团队和助手。每课可指定一位助手，或由团队负责人主讲并按本课安排协作。</p>
+    {sessionIndex === undefined && <header className={styles.columnHeader}><h3>逐课教学安排</h3><span>{profile?.sessions.length ?? 0} 课时</span></header>}
     {!teams.some(team => team.enabled) && <p className={styles.empty}>暂无可用团队，请先在团队管理中建立团队。</p>}
     {!profile ? <p className={styles.empty}>此课程尚无课时排期，请先补充课程的课时安排。</p> : <>
-      <button type="button" disabled={!editable || !primary} onClick={() => {
+      {sessionIndex === undefined && <button type="button" disabled={!editable || !primary} onClick={() => {
         if (primary) onChange(profile.sessions.map(session => ({ sessionIndex: session.sessionIndex, teamId: primary.id, kind: 'team' })));
-      }}>全部课时使用上方团队</button>
-      {profile.sessions.slice().sort((a, b) => a.sessionIndex - b.sessionIndex).map(session => {
+      }}>全部课时使用上方团队</button>}
+      {profile.sessions.filter(session => sessionIndex === undefined || session.sessionIndex === sessionIndex).slice().sort((a, b) => a.sessionIndex - b.sessionIndex).map(session => {
         const selected = selections.find(entry => entry.sessionIndex === session.sessionIndex);
         const team = teams.find(entry => entry.id === selected?.teamId && entry.enabled);
         const members = team?.members.filter(member => member.assistantId !== 'qitu-intake-assistant') ?? [];
@@ -43,7 +43,7 @@ export function SessionBindingEditor({ profile, teams, primaryTeamId, selections
               {members.map(member => <option key={member.slotId} value={`assistant:${member.assistantId}`}>助手 · {member.assistantName}</option>)}
             </select></label>
           </div>
-          {session.learningGoal && <p className={styles.muted}>{session.learningGoal}</p>}
+          {sessionIndex === undefined && session.learningGoal && <p className={styles.muted}>{session.learningGoal}</p>}
         </div>;
       })}
     </>}

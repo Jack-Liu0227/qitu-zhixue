@@ -10,6 +10,12 @@ import type { TemplateBindingStore } from './templates-binding.store';
 import { teachingValueDigest } from './teaching-bundle.canonical';
 import { teachingContextFixture } from '../ai-tutor/tutor-teaching-context.test-fixture';
 import { WAVE_OPTICS_TEMPLATE_SPEC } from '@qitu/ai-client/quiz-bank';
+import { TemplateGovernanceService } from './templates-governance.service';
+import { InMemoryTemplateEvidenceSource } from './template-evidence.store';
+import { InMemoryTemplateVerificationStore } from './template-verification.store';
+import { FakeIdempotencyStore, FakeAuditWriter } from './templates.test-support';
+import type { IdempotencyStore } from '../../common/idempotency/idempotency.service';
+import type { AuditWriter } from '../../common/audit/audit.service';
 
 const NOW = new Date('2026-02-01T00:00:00.000Z');
 
@@ -64,6 +70,26 @@ describe('TemplatesService（学生只读作用域）', () => {
     valid = false;
     const unavailable = await service.getPublishedTemplate(actor('student', 'student-a'), 'wave');
     assert.equal(unavailable.lessonCount, null); assert.equal(unavailable.lessonMinutes, null);
+  });
+
+  it('Admin and student catalogues return the same validated schedule and reject a changed bundle', async () => {
+    const { store, directory } = harness;
+    const { versionId } = await seedTemplate(store, { id: 'course', slug: 'course-without-count-in-title', schoolId: null, status: 'published' });
+    const { teaching } = teachingContextFixture();
+    teaching.templateVersionId = versionId; teaching.template = WAVE_OPTICS_TEMPLATE_SPEC;
+    teaching.scheduleProfileId = 'wave-optics-8x60-v1';
+    const binding = { status: 'active', validation: { valid: true }, bundlePayload: teaching, bundleDigest: teachingValueDigest(teaching) };
+    const bindings = { findActiveBinding: async () => binding } as unknown as TemplateBindingStore;
+    const admin = new TemplateGovernanceService(store, new InMemoryTemplateEvidenceSource(), new InMemoryTemplateVerificationStore(),
+      directory, new FakeIdempotencyStore() as unknown as IdempotencyStore, new FakeAuditWriter() as unknown as AuditWriter, undefined, bindings);
+    const student = new TemplatesService(store, directory, undefined, bindings);
+    const [managed] = await admin.listGovernedTemplates(actor('admin', 'admin-1'));
+    const [visible] = await student.listPublishedTemplates(actor('student', 'student-a'));
+    assert.ok(managed && visible);
+    assert.equal(managed?.lessonCount, 8); assert.equal(managed.lessonMinutes, 60);
+    assert.equal(visible?.lessonCount, managed.lessonCount); assert.equal(visible.lessonMinutes, managed.lessonMinutes);
+    binding.bundleDigest = 'invalid';
+    assert.equal((await admin.listGovernedTemplates(actor('admin', 'admin-1')))[0]?.lessonCount, null);
   });
 
   it('列表 = 平台 ∪ 本校已发布，不含他校 / 未发布', async () => {

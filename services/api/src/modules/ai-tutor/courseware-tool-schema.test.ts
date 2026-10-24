@@ -7,14 +7,14 @@ import { coursewareToolSchema, COURSEWARE_TOOL_INSTRUCTIONS } from './courseware
 test('model-facing courseware schema rejects mixed fields, plan IDs and caption-only steps before owner execution', async () => {
   const board = { kind: 'board', title: '示意波', objectiveRefs: ['stable-objective'], sourceRefs: ['knowledge-read:fixture'],
     steps: [{ caption: '同方向叠加', tex: '1+1=2' }] };
-  const invalid = [{ ...board, use: 'explain' }, { ...board, summary: 'extra' }, { ...board, objectiveRefs: ['plan:stable-objective'] },
+  const invalid = [{ ...board, use: 'skip_mastery' }, { ...board, summary: 'extra' }, { ...board, objectiveRefs: ['plan:stable-objective'] },
     { ...board, steps: [{ caption: 'missing diagram' }] }, { kind: 'find_courseware', use: 'explain', steps: board.steps }];
   let requests = 0, executed = 0;
   const failures: string[] = [];
   const server = createServer(async (request, response) => {
     for await (const _chunk of request) { /* Drain request body. */ }
     const first = requests++ === 0;
-    const delta = first ? { tool_calls: [...invalid, board, { ...board, steps: [...board.steps, { caption: 'Now predict the result.' }] }, { kind: 'find_courseware', use: 'explain' }].map((args, index) => ({ index,
+    const delta = first ? { tool_calls: [...invalid, { ...board, use: 'remediate' }, { ...board, steps: [...board.steps, { caption: 'Now predict the result.' }] }, { kind: 'find_courseware', use: 'explain' }].map((args, index) => ({ index,
       id: `schema-${index}`, type: 'function', function: { name: 'lesson', arguments: JSON.stringify(args) } })) } : { content: 'Accepted valid proposals.' };
     response.writeHead(200, { 'content-type': 'text/event-stream' });
     response.end(['data: ' + JSON.stringify({ id: 'fixture', object: 'chat.completion.chunk', choices: [{ index: 0, delta, finish_reason: null }] }),

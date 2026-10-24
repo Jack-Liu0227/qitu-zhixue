@@ -164,7 +164,7 @@
   background: #ffffff;
   border: 1.5px solid #e2e8f0;
   border-radius: 16px;
-  min-height: 460px;
+  min-height: 290px;
   position: relative;
   box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
   transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
@@ -446,3 +446,17 @@
     flex-direction: column;
   }
 }
+
+/* A concise catalogue; goals and evidence details live in the project page. */
+.qitu-inspiration-catalog-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; color: #64748b; font-size: 13px; }
+.qitu-inspiration-catalog-toolbar button { border: 0; background: transparent; color: #31669d; padding: 8px; cursor: pointer; }
+.qitu-inspiration-catalog-toolbar button:disabled { opacity: .5; cursor: default; }
+.qitu-inspiration-template-category { font-size: 12px; color: #64748b; margin-bottom: 7px; }
+.qitu-inspiration-template-card { box-shadow: none; border-width: 1px; padding: 24px; }
+.qitu-inspiration-template-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px #23476f12; border-color: #b8cde3; }
+.qitu-inspiration-template-cover { background: #f4f7fa; box-shadow: none; border: 0; }
+.qitu-inspiration-template-card > .qitu-inspiration-template-summary { -webkit-line-clamp: 2; margin: 3px 0 18px; }
+.qitu-inspiration-template-card > .qitu-inspiration-template-meta { margin-top: auto; gap: 12px; font-size: 12px; color: #64748b; }
+.qitu-inspiration-template-card .qitu-inspiration-template-footer { margin-top: 18px; padding-top: 16px; }
+.qitu-inspiration-catalog-toolbar button:focus-visible { outline: 2px solid #417fbd; outline-offset: 2px; border-radius: 4px; }
+@media (prefers-reduced-motion: reduce) { .qitu-inspiration-template-card { transition: none; } }

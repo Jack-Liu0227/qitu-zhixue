@@ -64,11 +64,14 @@ export class TutorCoursewareService {
       } catch { blockedReason = '课件或来源暂不可用，请重试或联系教师。'; }
     }
     const pending = await this.plans.findAwaitingQuestion(actor.id, teaching.planId);
-    if (pending && !blockedReason) blockedReason = '当前有一道待答题。可以回看课件帮助理解，作答后再继续下一学习活动。';
+    if (pending) blockedReason = '当前有一道待答题。可以回看课件帮助理解，作答后再继续下一学习活动。';
     const activity = teaching.lesson.currentActivity;
+    const canPrepare = !pending && ['review', 'theory'].includes(activity?.kind ?? '');
+    const validCurrent = visible.some(instance => instance.activityId === activity?.activityId);
+    const hadCurrent = instances.some(instance => instance.activityId === activity?.activityId);
     return { enabled: true, planId: teaching.planId, planRevision: teaching.planRevision, learningSessionId: teaching.session.id,
       activityId: activity?.activityId ?? null, teaching: teachingSpec, instances: visible,
-      canContinue: !pending && !blockedReason && ['review', 'theory'].includes(activity?.kind ?? ''), blockedReason };
+      canContinue: canPrepare && (validCurrent || !hadCurrent), canPrepare, blockedReason };
   }
 
   async position(actor: CurrentUser, projectId: string, raw: unknown, key: string) {

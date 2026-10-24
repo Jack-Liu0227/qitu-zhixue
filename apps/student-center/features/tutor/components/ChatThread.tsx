@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, type ReactNode } from 'react';
 import type { TutorProjectContext, TutorTurn } from '@qitu/contracts';
 import { EmptyState, ErrorState, OfflineBanner, SkeletonBlock } from '@qitu/ui';
 import type { TutorLoadStatus, TutorViewError } from '../types';
@@ -10,6 +10,9 @@ import { TypingIndicator } from './TypingIndicator';
 import { ProjectConversationHistory } from './ProjectConversationHistory';
 import { ProjectTeachingPlanRecovery } from './ProjectTeachingPlanRecovery';
 import { ExplorationWelcome } from './ExplorationWelcome';
+import { firstExperimentTurns, savedExperimentLinks } from '../lib/timelinePresentation';
+import { ProjectLearningHistory } from './ProjectLearningHistory';
+import { nextThreadScroll, type ThreadScrollState } from '../lib/threadScroll';
 
 /** Center conversation column. The composer remains inside this flex column. */
 export function ChatThread({
@@ -25,6 +28,7 @@ export function ChatThread({
   onNewExploration,
   onReconnect,
   onSelectOption,
+  onPrepareDraft,
   onSubmitQuestionAnswer,
   onOneClickCreateProject,
   onRequestQuizExplanation,
@@ -53,6 +57,7 @@ export function ChatThread({
   onNewExploration?: () => void;
   onReconnect: () => void;
   onSelectOption: (label: string, text?: string) => void;
+  onPrepareDraft?: (text?: string) => void;
   onSubmitQuestionAnswer?: (answer: string) => void;
   onOneClickCreateProject?: (goal: string, interest: string, templateVersionId: string) => void;
   onRequestQuizExplanation?: (quizId: string) => Promise<void>;
@@ -74,7 +79,7 @@ export function ChatThread({
     || error?.code === 'PROJECT_TEACHING_BUNDLE_UNAVAILABLE' || error?.code === 'PROJECT_TEAM_UNAVAILABLE';
   const newestAssistant = lastAssistantTurn(turns);
   const newestTurn = turns.at(-1);
-  const openingOnly = !projectId && Boolean(explorationContext?.exploration) && turns.length === 1
+  const openingOnly = idle && !hasTurns || !projectId && Boolean(explorationContext?.exploration) && turns.length === 1
     && newestTurn?.seq === 1 && newestTurn.role === 'assistant';
   const streamingTurnId = streaming && newestAssistant !== null ? newestAssistant.turnId : null;
   const showIndicator =
@@ -83,28 +88,30 @@ export function ChatThread({
     (newestTurn?.role !== 'assistant' || newestAssistant === null || newestAssistant.blocks.length === 0);
   const runningToolLabel = findRunningToolLabel(turns);
   const threadScrollRef = useRef<HTMLDivElement | null>(null);
-  const nearBottomRef = useRef(true);
+  const turnElements = useRef(new Map<string, HTMLDivElement>());
+  const scrollState = useRef<ThreadScrollState>({ sessionId: null, following: true });
+  const experimentTurns = firstExperimentTurns(turns);
 
   useLayoutEffect(() => {
     const element = threadScrollRef.current;
     if (!element) return;
-    element.scrollTo({ top: openingOnly ? 0 : element.scrollHeight, left: 0, behavior: 'auto' });
-    nearBottomRef.current = true;
-  }, [sessionId, openingOnly]);
-
-  useEffect(() => {
-    const element = threadScrollRef.current;
-    if (!element || sessionId === null || status === 'loading') return;
-    if (!openingOnly && !nearBottomRef.current && newestTurn?.role !== 'student') return;
-    element.scrollTo({ top: openingOnly ? 0 : element.scrollHeight, left: 0, behavior: 'auto' });
-  }, [sessionId, status, streaming, turns, openingOnly, newestTurn?.role]);
+    const { state, target } = nextThreadScroll(scrollState.current, {
+      sessionId, ready: status !== 'loading', openingOnly, turn: newestTurn,
+    });
+    scrollState.current = state;
+    if (!target) return;
+    const anchor = target.kind === 'turn' ? turnElements.current.get(target.turnId) : null;
+    const top = anchor ? element.scrollTop + anchor.getBoundingClientRect().top
+      - element.getBoundingClientRect().top - 20 : 0;
+    element.scrollTo({ top: Math.max(0, top), left: 0, behavior: 'auto' });
+  }, [sessionId, status, turns, openingOnly, newestTurn]);
 
   return (
     <div className="qitu-tutor-col qitu-tutor-col-center">
       {offline ? <OfflineBanner readOnly onRetry={onReconnect} /> : null}
       {escalated ? (
         <p className="qitu-tutor-escalation" role="status">
-          已经把你的情况告诉班主任啦，他/她会来看看怎么帮你。
+          你的困难已记录。AI搭档会继续提供提示与补救，无需等待老师处理。
         </p>
       ) : null}
 
@@ -114,7 +121,9 @@ export function ChatThread({
         aria-live="polite"
         onScroll={(event) => {
           const element = event.currentTarget;
-          nearBottomRef.current = element.scrollHeight - element.scrollTop - element.clientHeight < 160;
+          const latest = newestTurn && turnElements.current.get(newestTurn.turnId);
+          if (latest) scrollState.current.following = latest.getBoundingClientRect().top
+            < element.getBoundingClientRect().bottom - 24;
         }}
       >
         {status === 'loading' && !hasTurns ? (
@@ -142,21 +151,17 @@ export function ChatThread({
         ) : null}
 
         {status === 'empty' && !hasTurns ? (
+          idle ? <ExplorationWelcome preview onSelectOption={(_, text) => onPrepareDraft?.(text)}
+            disabled={disabled || offline || !onPrepareDraft} /> :
           <div className="qitu-tutor-empty-thread">
-            <h3>{idle ? '会话已清理，下一次探索由你开启' : '从你的好奇心开始'}</h3>
-            <p>{idle ? '可以从左侧继续已有对话，或开始一次新的探索。' : '告诉我你想研究的现象、感兴趣的主题，或想亲手做出的作品。启途智学助手会在对话中整理可确认的项目想法。'}</p>
-            <button
-              type="button"
-              className="qitu-button qitu-button-ghost"
-              onClick={() => idle ? onNewExploration?.() : onSelectOption('开始探索', '我想从自己的兴趣开始探索一个项目')}
-              disabled={offline || (idle ? !onNewExploration : disabled)}
-            >
-              开始自由探索
-            </button>
+            <h3>从你的好奇心开始</h3>
+            <p>告诉我你想研究的现象、感兴趣的主题，或想亲手做出的作品。</p>
           </div>
         ) : null}
 
-        {turns.map((turn) => !projectId && explorationContext?.exploration && turn.seq === 1 && turn.role === 'assistant'
+        {turns.map((turn) => <div key={turn.turnId} data-tutor-turn={turn.turnId} style={{ display: 'grid', minWidth: 0 }} ref={(node) => {
+          if (node) turnElements.current.set(turn.turnId, node); else turnElements.current.delete(turn.turnId);
+        }}>{!projectId && explorationContext?.exploration && turn.seq === 1 && turn.role === 'assistant'
           && turn.blocks.every(isTutorReplyBlock)
           && turn.blocks.some(block => block.kind === 'options') ? (
           <ExplorationWelcome key={turn.turnId} context={explorationContext} blocks={turn.blocks}
@@ -175,12 +180,17 @@ export function ChatThread({
             onFeedback={onFeedback}
             projectId={projectId}
             coursewareSnapshots={coursewareSnapshots}
+            experimentTurns={experimentTurns}
             projectContext={projectContext}
             disabled={disabled || offline}
             streaming={turn.turnId === streamingTurnId}
           />
-        ))}
+        )}</div>)}
 
+        {projectId && projectContext?.lesson ? <ProjectLearningHistory
+          key={`${projectId}:${projectContext.lesson.planId}:${projectContext.lesson.planRevision}`}
+          projectId={projectId} lesson={projectContext.lesson} refreshKey={projectContext}
+          experiments={savedExperimentLinks(turns)} /> : null}
         {learningActivity}
         {showIndicator ? <TypingIndicator label={runningToolLabel ?? 'AI搭档正在思考'} /> : null}
 
@@ -194,7 +204,7 @@ export function ChatThread({
         ) : null}
       </div>
       {isConfirmingProject ? <span className="qitu-sr-only" role="status">正在创建项目</span> : null}
-      {idle ? null : composer}
+      {composer}
     </div>
   );
 }

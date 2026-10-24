@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { BadRequestException } from '@nestjs/common';
 import type { EffectiveAgentRuntime } from '../platform-registry/platform-registry.service';
 import { buildActivityBoard, createLessonActivityChannel, LESSON_ACTIVITY_FUNCTION, LESSON_ACTIVITY_TOOL } from './tutor-lesson-activity';
 import { teachingContextFixture } from './tutor-teaching-context.test-fixture';
@@ -57,6 +58,35 @@ test('activity tool requires reviewed skill plus canonical pinned tool; revoked 
   assert.equal(h.questionWrites(), 0);
   h.runtime.tools = [];
   assert.equal(createLessonActivityChannel(h.input).tools.length, 0);
+});
+
+test('a lesson without source-verification authority does not advertise a generated choice quiz', async () => {
+  const h = await fixture();
+  h.teaching.session.theoryObjectiveIds = [h.teaching.objective!.id];
+  const channel = await prepareTutorLessonActivities({ teaching: h.teaching, runtime: h.runtime,
+    projectId: 'synthetic-project', studentId: 'synthetic-owner', tutorSessionId: 'synthetic-chat', idempotencyKey: 'no-question-sources',
+    knowledgeAccess: {}, registry: { getAssistantRuntime: async () => h.runtime, isModelAvailable: () => true },
+    questions: { readPendingQuestionCandidate: async () => null,
+      acceptQuestionCandidate: async () => { throw Error('a question must not be accepted without source authority'); } },
+    resolve: async () => h.teaching, hasQuestion: () => false });
+  assert.ok(channel?.tools.length);
+  assert.doesNotMatch(JSON.stringify(channel.tools[0]!.inputSchema), /choice_question/);
+  assert.match(JSON.stringify(channel.tools[0]!.inputSchema), /board/);
+  assert.match(channel.tools[0]!.description, /saved choice question is unavailable/);
+});
+
+test('a rejected choice candidate returns a safe actionable error without losing the turn or exposing private contents', async () => {
+  const h = await fixture();
+  const channel = createLessonActivityChannel({ ...h.input, acceptQuestion: async () => {
+    throw new BadRequestException({ code: 'QUESTION_SOURCE_UNVERIFIED', message: 'PRIVATE_EXPECTED_ANSWER_AND_RAW_CONTENT' });
+  } });
+  const result = await channel.tools[0]!.execute({ kind: 'choice_question', question: {} });
+  assert.equal(result.isError, true);
+  assert.match(result.text, /CHOICE_QUESTION_CANDIDATE_REJECTED: QUESTION_SOURCE_UNVERIFIED/);
+  assert.doesNotMatch(result.text, /PRIVATE_EXPECTED/);
+  assert.equal(channel.blocks().length, 0);
+  assert.equal(channel.suppressNarration(), false);
+  assert.equal((await channel.tools[0]!.execute(board)).isError, undefined);
 });
 
 test('model activity tool receives frozen guidance, activity minutes and required evidence', async () => {

@@ -29,7 +29,7 @@ interface SkillItem {
   files: SkillFile[];
   runtime?: AdminRuntimeSkill['runtime'];
   available?: boolean;
-  /** 本地登记的草稿。运行时目录中的技能为只读来源（服务端暂不支持写入技能内容）。 */
+  /** 本地登记的未保存内容。运行时目录中的技能为只读来源（服务端暂不支持写入技能内容）。 */
   local?: boolean;
 }
 
@@ -47,7 +47,7 @@ function canBindSkill(skill: SkillItem): boolean {
 
 function bindingNotice(skill: SkillItem): string {
   if (skill.runtime === 'admin') return 'Admin 专用技能由管家按需加载，不绑定普通助手。';
-  if (skill.local) return '本地草稿尚未注册到运行时，不能绑定到助手。';
+  if (skill.local) return '本地配置尚未注册到运行时，不能绑定到助手。';
   return '技能不可用或运行范围未知，请检查服务端配置。';
 }
 
@@ -269,7 +269,7 @@ export default function SkillsSettingsPage() {
     });
   }, [reloadBindings]);
 
-  // 当切换 editingSkill 或 selectedFileName 时同步草稿
+  // 当切换 editingSkill 或 selectedFileName 时同步未保存内容
   useEffect(() => {
     if (!editingSkill) return;
     const file = editingSkill.files.find((f) => f.name === selectedFileName) || editingSkill.files[0];
@@ -367,15 +367,15 @@ export default function SkillsSettingsPage() {
     );
   };
 
-  // 新建 Skill（本地草稿：服务端暂未提供技能内容写入接口）
+  // 新建 Skill（本地配置：服务端暂未提供技能内容写入接口）
   const handleCreateSkill = () => {
     const newSkill: SkillItem = {
       id: `local-skill-${Date.now()}`,
       name: `custom-skill-${skills.length + 1}`,
       description: '',
-      tags: ['本地草稿'],
+      tags: ['本地配置'],
       filesCount: 1,
-      addedBy: '本地草稿（未保存到服务端）',
+      addedBy: '本地配置（未保存到服务端）',
       updatedAtText: '刚刚',
       boundAssistantIds: [],
       local: true,
@@ -469,14 +469,14 @@ export default function SkillsSettingsPage() {
     }
   };
 
-  // 删除 Skill（仅限本地草稿；运行时目录由服务端管理）
+  // 删除 Skill（仅限本地配置；运行时目录由服务端管理）
   const handleDeleteSkill = (id: string, name: string) => {
     const target = skills.find((s) => s.id === id);
     if (target && !target.local) {
       alert(`技能「${name}」来自 AI 运行时目录，不能在前端删除；请在服务端调整。`);
       return;
     }
-    if (!window.confirm(`确定要移除本地技能草稿「${name}」吗？`)) return;
+    if (!window.confirm(`确定要移除本地技能配置「${name}」吗？`)) return;
     setSkills((prev) => prev.filter((s) => s.id !== id));
     if (editingSkill?.id === id) {
       setEditingSkill(null);
@@ -508,7 +508,7 @@ export default function SkillsSettingsPage() {
     if (saved) setSelectedSkills(new Set());
   };
 
-  // 批量移除技能（仅限本地草稿）
+  // 批量移除技能（仅限本地配置）
   const handleBulkDeleteSkills = () => {
     if (selectedSkills.size === 0) return;
     const targetIds = Array.from(selectedSkills);
@@ -519,11 +519,11 @@ export default function SkillsSettingsPage() {
       setSelectedSkills(new Set());
       return;
     }
-    if (!window.confirm(`确定要移除选中的 ${deletable.length} 个本地技能草稿吗？运行时目录技能将被跳过。`)) return;
+    if (!window.confirm(`确定要移除选中的 ${deletable.length} 个本地技能配置吗？运行时目录技能将被跳过。`)) return;
     const deletableIds = new Set(deletable.map((s) => s.id));
     setSkills((prev) => prev.filter((s) => !deletableIds.has(s.id)));
     setSelectedSkills(new Set());
-    setSaveNotice(`已移除 ${deletable.length} 个本地技能草稿 ✔`);
+    setSaveNotice(`已移除 ${deletable.length} 个本地技能配置 ✔`);
     setTimeout(() => setSaveNotice(''), 3000);
   };
 
@@ -602,7 +602,7 @@ export default function SkillsSettingsPage() {
             <h1 className="admin-skill-main-title">{editingSkill.name}</h1>
           </div>
           <div className="admin-skill-meta-tags">
-            <span className="admin-skill-meta-pill">{editingSkill.local ? '✎ 本地草稿' : `📦 ${editingSkill.addedBy}`}</span>
+            <span className="admin-skill-meta-pill">{editingSkill.local ? '✎ 本地配置' : `📦 ${editingSkill.addedBy}`}</span>
             <span className="admin-skill-meta-pill">📄 {editingSkill.filesCount} 个文件</span>
             <span className="admin-skill-meta-pill">{editingSkill.runtime === 'admin' ? 'Admin 管家专用' : `👥 ${editingSkill.boundAssistantIds.length} 个智能体在用`}</span>
             {!editingSkill.local && editingSkill.updatedAtText !== '—' ? (
@@ -1304,7 +1304,7 @@ export default function SkillsSettingsPage() {
                   className="settings-action-btn is-danger"
                   style={{ padding: '4px 12px', fontSize: '12px', color: '#dc2626', borderColor: '#fecaca', background: '#fef2f2' }}
                   onClick={handleBulkDeleteSkills}
-                  title="批量移除选中的本地技能草稿（运行时目录技能不可前端删除）"
+                  title="批量移除选中的本地技能配置（运行时目录技能不可前端删除）"
                 >
                   批量删除 ({selectedSkills.size})
                 </button>
@@ -1343,7 +1343,7 @@ export default function SkillsSettingsPage() {
             ) : filteredSkills.length === 0 ? (
               <tr>
                 <td colSpan={6} style={{ padding: '28px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
-                  {searchQuery ? '没有找到符合条件的技能' : 'AI 运行时暂未提供技能目录；可点击右上角「+ 新建技能」登记本地草稿。'}
+                  {searchQuery ? '没有找到符合条件的技能' : 'AI 运行时暂未提供技能目录；可点击右上角「+ 新建技能」登记本地配置。'}
                 </td>
               </tr>
             ) : null}
@@ -1425,7 +1425,7 @@ export default function SkillsSettingsPage() {
                         className="admin-skill-dot-btn"
                         style={{ color: '#ef4444' }}
                         onClick={() => handleDeleteSkill(skill.id, skill.name)}
-                        title="删除（仅限本地草稿；运行时目录技能需在服务端调整）"
+                        title="删除（仅限本地配置；运行时目录技能需在服务端调整）"
                       >
                         🗑️
                       </button>

@@ -184,7 +184,7 @@ export function KnowledgeBindingMatrix({
       pending.current = null;
       setUncertain(false);
       setNotice(
-        `已回读确认 ${confirmed.length} 项绑定${failures.length ? '，其余修改保留在草稿中' : ''}。`,
+        `已回读确认 ${confirmed.length} 项绑定${failures.length ? '，其余修改保留在未保存内容中' : ''}。`,
       );
       setError(failures.join('；'));
     } catch (e) {
@@ -290,7 +290,7 @@ export function KnowledgeBindingMatrix({
           disabled={!online || saving || uncertain}
           onClick={() =>
             void read(true)
-              .then(() => setNotice('已读取最新配置，草稿已保留，请核对后保存。'))
+              .then(() => setNotice('已读取最新配置，未保存内容已保留，请核对后保存。'))
               .catch(() => {})
           }
         >
@@ -307,7 +307,7 @@ export function KnowledgeBindingMatrix({
           {notice}
         </p>
       )}
-      {!online && <p className={styles.error}>当前离线，已保留本次会话草稿。</p>}
+      {!online && <p className={styles.error}>当前离线，已保留本次会话未保存内容。</p>}
       {data && !data.complete && (
         <p className={styles.error}>目录未完整读取，绑定编辑已暂停，请缩小配置范围后重试。</p>
       )}
@@ -453,10 +453,10 @@ export function KnowledgeBindingMatrix({
           disabled={!dirty.length || saving || uncertain}
           onClick={() => {
             setDrafts({});
-            setNotice('草稿已放弃');
+            setNotice('未保存内容已放弃');
           }}
         >
-          放弃草稿
+          放弃修改
         </button>
         <button
           className={styles.primary}

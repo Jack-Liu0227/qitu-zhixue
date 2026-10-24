@@ -27,6 +27,8 @@ members 为 `{assistantId,role,slotId?,roleLabel?,pblPhase?}`。role 为 leader/
 
 通常不提交 gateCondition，由 owner 根据阶段及 evidenceProfile 推导；提交时必须与既有注册门禁一致。不能关闭 theoryMasteredGate、允许自主推进或把课时检查点当作完成事实。修改 pblSpec 要保留用户未要求修改且属于可写合同的阶段和目标；只读扩展字段不能送回写入。先核对 supplied operation guide 与 owner 校验字段。
 
+跨领域作品可显式使用 `evidenceProfile:"rubric_artifact"`，由既有 owner 推导 `rubric_artifact_validated`。只有 Works 对确切作品版本的服务端评价与发布回执可写该门禁，不能把写作、设计或历史作品套作代码运行/实验报告；理论门禁保留。课程可以设置独立 `artifactCriteria`，课堂回应与最终作品按各自冻结标准评价。使用前须确认当前服务端合同已经包含这些字段。
+
 创建团队后可用 `$ref:"team.id"` 更新工作流，并用回读的 updatedAt 作为下一步 revision。模板的课时安排通过 binding.prepare 提交实际 teamId、assistantId、完整 sessions 与 teams 修订。服务端检查成员启用状态、模型和已发布教学技能，自动捕获配置并存入该教学绑定。客户端不得提供快照或 hash，也不需要手工发布团队。
 
 | owner HTTP API | body / 回读 |

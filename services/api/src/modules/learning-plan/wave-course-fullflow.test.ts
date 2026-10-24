@@ -1,11 +1,12 @@
 import { teachingValueDigest } from '../templates/teaching-bundle.canonical';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { fullflowHarness, STUDENT, TEACHER } from './optics-fullflow.test-fixture';
+import { fullflowHarness, STUDENT } from './optics-fullflow.test-fixture';
 import type { TutorSessionRecord } from '../ai-tutor/tutor.service';
 
 for (const zeroBase of [false, true]) test(`eight wave lessons close through owners in an isolated fixture (zero-base=${zeroBase})`, async () => {
   const h = await fullflowHarness(true, true, true, zeroBase);
+  h.directory.currentMentorId = null;
   const revision = h.plan.plan.version;
   const profile = h.teaching.template.curriculum!.profiles[0]!;
   assert.equal(h.plan.sessions.length, 8);
@@ -85,26 +86,22 @@ for (const zeroBase of [false, true]) test(`eight wave lessons close through own
             { action: 'record_observation', payload: { mode, parameters: varied, runActionId: run.actionId,
               observation: 'This simulated comparison retains aperture geometry and screen distance while varying wavelength.' }, idempotencyKey: `${key}-observe-${sample}` });
           assert.ok(observed.observationReceipt); observations++;
+          assert.equal(h.evaluation.inputs.at(-1)?.activity?.activity, 'practice',
+            'observation quality must retain its owner-issued activity, not lose scope and grade the final artifact early');
         }
       } else if (activity.evidence === 'submitted_artifact') {
         const report = await h.learningEvidence.submitArtifact(STUDENT, h.planId, session.id,
           { ...submission, title: 'Isolated interference and diffraction portfolio', requestReview: true }, key);
-        const item = (await h.teacher.listStudentReviews(TEACHER, STUDENT.id)).items.find(item => item.artifactId === report.artifact.id); assert.ok(item);
-        await h.teacher.decideReview(TEACHER, item.reviewId, { decision: 'approved', comment: 'Accepted only in disposable owner behavior verification.' });
-        await h.works.publishArtifact(STUDENT.id, report.artifact.id, `${key}-publish`);
+        assert.equal(report.artifact.status, 'published');
       } else if (session.lessonIndex === 8 && activity.kind === 'reflect') {
         const result = await h.learningEvidence.submitReflection(STUDENT, h.planId, session.id, submission, key);
         assert.equal(result.proof.sourceKind, 'reflection'); reflections++;
       } else {
         await h.learningEvidence.submitResponse(STUDENT, h.planId, session.id, submission, key);
-      }
-      if (activity.evidence !== 'mastery' && activity.evidence !== 'teaching_delivery') {
-        for (const item of (await h.learningEvidence.listStudentLessonQuality(TEACHER, STUDENT.id)).items) {
-          assert.equal(item.learningSessionId, session.id);
-          await h.learningEvidence.reviewLessonQuality(TEACHER, h.planId, session.id, {
-            planRevision: revision, evidenceRef: item.proof.ref, subjectDigest: item.proof.quality!.subjectDigest,
-            criteria: item.criteria.map(criterion => ({ criterionId: criterion.id, meets: true, feedback: 'Synthetic teacher decision in isolated fixture.' })),
-          }, `${key}-quality-${item.proof.ref}`);
+        if (activity.kind === 'check' && frozen.phase === 'guided_practice') {
+          assert.equal(h.evaluation.inputs.at(-1)?.activity?.activity, 'check');
+          await assert.rejects(h.progress.complete(STUDENT, h.planId, session.id,
+            { projectId: h.projectId, planRevision: revision, evidenceRefs: [] }, `${key}-cannot-skip-practice`));
         }
       }
       assert.equal((await h.progress.readProgress(STUDENT, h.planId)).completedCount, session.lessonIndex - 1);
@@ -128,4 +125,20 @@ for (const zeroBase of [false, true]) test(`eight wave lessons close through own
   assert.ok(answers >= 3); assert.equal(observations, 7); assert.equal(reflections, 1);
   assert.equal((await h.progress.readProgress(STUDENT, h.planId)).completedCount, 8);
   assert.equal((await h.store.findProject(h.projectId))?.status, 'completed');
+  const reflection = h.evaluation.inputs.find(input => input.activityId === `${h.plan.sessions[1]!.id}:activity:reflect`)!;
+  assert.ok(reflection, 'the theory reflection must be evaluated');
+  const readiness = reflection.evidence.find(item => item.ref.startsWith('server-mastery:'))!;
+  assert.ok(JSON.parse(readiness.content).objectives.every((item: { accepted: boolean }) => item.accepted),
+    'evaluation must receive the same verified readiness facts as lesson progress');
+  if (zeroBase) assert.ok(reflection.evidence.some(item => item.ref.startsWith('courseware:')),
+    'viewed diagrams must remain available as context without becoming mastery facts');
+  const comparison = h.evaluation.inputs.find(input => input.activityId === `${h.plan.sessions[6]!.id}:activity:check`)!;
+  assert.ok(comparison.evidence.some(item => item.ref.startsWith('experiment_observation:')),
+    'the synthesis lesson must receive accepted observations from earlier lessons in the same frozen plan');
+  assert.ok(!reflection.evidence.some(item => item.ref.startsWith('experiment_observation:')),
+    'future lesson observations must not appear in the initial theory reflection');
+  const finalReflection = h.evaluation.inputs.find(input => input.activityId === `${h.plan.sessions[7]!.id}:activity:reflect`)!;
+  assert.ok(finalReflection.evidence.filter(item => item.ref.startsWith('artifact:'))
+    .every(item => item.content.startsWith('Owner-verified saved evidence from lesson 7;')),
+    'a project-wide published artifact must retain its actual lesson attribution');
 });

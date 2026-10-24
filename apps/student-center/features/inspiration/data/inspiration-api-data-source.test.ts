@@ -2,6 +2,19 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { InspirationApiDataSource } from './inspiration-api-data-source';
 
+test('release reads bypass browser cache and failures never fall back to privileged catalogues', async () => {
+  const original = globalThis.fetch;
+  const calls: string[] = [];
+  globalThis.fetch = async (url, init) => {
+    calls.push(String(url)); assert.equal(init?.cache, 'no-store');
+    return Response.json({ message: 'Denied' }, { status: 403 });
+  };
+  try {
+    await assert.rejects(new InspirationApiDataSource().listTemplates(), { status: 403, code: 'FORBIDDEN' });
+    assert.deepEqual(calls, ['/api/v1/project-templates']);
+  } finally { globalThis.fetch = original; }
+});
+
 test('the published server catalogue is authoritative, including an empty catalogue', async () => {
   const original = globalThis.fetch;
   let templates = [{ id: 'wave', title: 'Wave inquiry' }, { id: 'thunder', title: 'Thunder game' }];

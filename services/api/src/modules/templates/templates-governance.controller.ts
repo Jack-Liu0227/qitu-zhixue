@@ -18,6 +18,7 @@ import {
   TemplateGovernanceService,
   type PublishVersionResult,
   type TemplateMutationResult,
+  type TemplateRestoreResult,
   type VerifyVersionResult,
   type VersionMutationResult,
 } from './templates-governance.service';
@@ -42,6 +43,7 @@ import type {
  * POST   /api/v1/admin/project-templates/:id/versions/:versionId/publish
  * POST   /api/v1/admin/project-templates/:id/versions/:versionId/pilot
  * POST   /api/v1/admin/project-templates/:id/archive
+ * POST   /api/v1/admin/project-templates/:id/restore
  * POST   /api/v1/admin/project-templates/:id/rollback
  * ```
  *
@@ -248,6 +250,23 @@ export class TemplateGovernanceController {
         normalizeReason(request.reason),
       ),
     };
+  }
+
+  @Post(':id/restore')
+  @HttpCode(200)
+  async restore(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ): Promise<{ data: TemplateRestoreResult }> {
+    const actor = this.requireGovernanceActor(cookieHeader);
+    const request = pickFields<{ expectedUpdatedAt?: unknown; reason?: unknown }>(body, ['expectedUpdatedAt', 'reason']);
+    if (typeof request.expectedUpdatedAt !== 'string') {
+      throw new BadRequestException({ code: 'TEMPLATE_INPUT_INVALID', message: '课程修订时间必填' });
+    }
+    return { data: await this.governance.restoreTemplate(actor, id, request.expectedUpdatedAt,
+      requireIdempotencyKey(idempotencyKey), normalizeReason(request.reason)) };
   }
 
   @Delete(':id')

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { AdminRuntimeSnapshot, AdminTeamConfig, ProjectTemplateSpec, TeachingBundleDraft, TeachingSessionSelection } from '@qitu/contracts';
 import { Button, VisualAsset, ResizablePanels } from '@qitu/ui';
 import Link from 'next/link';
@@ -10,14 +10,14 @@ import { AdminApiError, AdminOfflineError, AdminPermissionError, newIdempotencyK
 import { fetchAdminTeamConfigs } from '../api/teams';
 import { fetchRuntimeSnapshot } from '../api/runtime';
 import { ProjectBindingRecovery } from './ProjectBindingRecovery';
-import { TeachingBindingGuide } from './TeachingBindingGuide';
+import { TeachingWorkspace } from './teaching-binding/TeachingWorkspace';
 import { SessionBindingEditor } from './teaching-binding/SessionBindingEditor';
 import { TeachingRoleInspector } from './teaching-binding/TeachingRoleInspector';
 import { initialSessionAssignments, parseDraftPreview, publishedMemberName, sessionSelectionsFromSnapshots } from './teaching-binding/model';
 import { canonicalCourseJson } from './teaching-binding/lesson-draft';
 import styles from './teaching-binding/TeachingBinding.module.css';
 
-const LABELS = { draft: '草稿，尚未启用', validated: '已校验，待启用', active: '已生效', retired: '已停用' };
+const LABELS = { draft: '待启用', validated: '已校验，待启用', active: '已生效', retired: '已停用' };
 type Action = 'bundle' | 'prepare' | 'validate' | 'activate';
 type Failure = { kind: 'error' | 'offline' | 'permission' | 'stale'; message: string };
 const failureView = (error: unknown): Failure => error instanceof AdminPermissionError ? { kind: 'permission', message: error.message }
@@ -25,11 +25,14 @@ const failureView = (error: unknown): Failure => error instanceof AdminPermissio
     : error instanceof AdminApiError && error.status === 409 ? { kind: 'stale', message: error.message }
       : { kind: 'error', message: error instanceof Error ? error.message : '操作未确认，请重试。' };
 
-export function TemplateTeamBindingPanel({ templateId, versionId, teams: initialTeams, versionStatus, profiles, phases, requiresBundle }: {
+export function TemplateTeamBindingPanel({ templateId, versionId, teams: initialTeams, versionStatus, profiles, phases, requiresBundle,
+  courseSpec, courseDirty = false, courseDisabled = false, onCourseChange, versionControls }: {
   lessonPolicy?: ProjectTemplateSpec['lessonPolicy'];
   templateId: string; versionId: string | null; teams: AdminTeamConfig[]; versionStatus: string;
   profiles: NonNullable<ProjectTemplateSpec['curriculum']>['profiles'];
   requiresBundle: boolean; phases: ProjectTemplateSpec['phases'];
+  courseSpec?: ProjectTemplateSpec; courseDirty?: boolean; courseDisabled?: boolean;
+  onCourseChange?(spec: ProjectTemplateSpec): void; versionControls?: ReactNode;
 }) {
   const [records, setRecords] = useState<TemplateTeamBinding[]>([]);
   const [teams, setTeams] = useState(initialTeams);
@@ -64,7 +67,7 @@ export function TemplateTeamBindingPanel({ templateId, versionId, teams: initial
   const activeBlockers = active ? [
     !active.binding.validation.valid ? '服务端绑定校验未通过' : null,
     active.team?.runtimeSnapshotStatus !== 'published' ? '旧教学安排尚未记录完整团队配置，请重新保存' : null,
-    !active.binding.bundleDraft ? '缺少教学配置草稿' : null,
+    !active.binding.bundleDraft ? '缺少教学配置方案' : null,
     !active.binding.bundleDigest ? '缺少服务端编译后的教学包 digest' : null,
     requiresBundle && active.teachingReadiness?.lessonCompletionReady === false ? '缺少逐课完成规则，需创建新的课程版本' : null,
   ].filter((item): item is string => item !== null) : [];
@@ -79,7 +82,7 @@ export function TemplateTeamBindingPanel({ templateId, versionId, teams: initial
     initialSessionAssignments(profile, phases, selectedVersion?.members ?? [], teamVersionId, draft), versions);
   const assignmentsReady = versionsReady && !!profile && profile.sessions.every(session => lessonAssignments.some(entry => entry.sessionIndex === session.sessionIndex));
   const routingDirty = sessionAssignments !== null;
-  const disabled = !!busy || loading || versionsLoading || !catalogReady || !versionsReady || !online || failure?.kind === 'permission';
+  const disabled = !!busy || loading || versionsLoading || !catalogReady || !versionsReady || !online || courseDirty || courseDisabled || failure?.kind === 'permission';
   const editable = !disabled && !!team?.enabled && !staleDraft && preview.kind !== 'invalid';
   const dirty = !!current && edits.current.has(current.binding.id);
 
@@ -224,15 +227,14 @@ export function TemplateTeamBindingPanel({ templateId, versionId, teams: initial
   }
 
   const selectedMember = members.find((member) => member.slotId === selectedMemberId) ?? members[0];
-  const label = current ? LABELS[current.binding.status] : '尚未保存团队绑定';
-  return <section className={styles.panel} aria-label="模板团队绑定" aria-busy={!!busy || loading}>
-    <header className={styles.header}><div><div className={styles.eyebrow}>教学配置</div><h2><VisualAsset assetId="team-optics-v1" size={28} />教学编排台</h2>
-      <p>安排每个课时的导师，核对教学方法与资料，检查后启用。</p></div>
-      <span className={styles.status} data-active={current?.binding.status === 'active'}>{dirty || routingDirty ? '有未保存的编辑' : label}</span>
+  const label = current ? LABELS[current.binding.status] : '待配置';
+  return <section className={styles.panel} aria-label="教学编排台" aria-busy={!!busy || loading}>
+    <header className={styles.header}><div><h2>教学编排台</h2>
+      <p>{courseSpec?.theme?.drivingQuestion ?? '选择课时，安排内容、导师和教学方法。'}</p></div>
+      <span className={styles.status} data-active={current?.binding.status === 'active'}>{courseDirty || dirty || routingDirty ? '有未保存的修改' : label}</span>
     </header>
-    {!versionId ? <div className={styles.empty}>请先保存模板草稿版本，再配置导师团队。</div> : <>
-      {requiresBundle && <TeachingBindingGuide selected={!!team?.enabled} draft={draft}
-        ready={activeReady && current?.binding.id === active?.binding.id} canActivate={canActivate} />}
+    {!versionId ? <div className={styles.empty}>请先保存模板版本，再配置导师团队。</div> : <>
+      {courseDirty && <p className={styles.issue} role="status">课时内容已修改，请先保存课程配置，再启用新版本的教学安排。</p>}
       <div className={styles.controls}>
         <label>默认导师团队<select aria-label="绑定导师团队" value={teamId} disabled={loading || !!busy || !catalogReady || !online || failure?.kind === 'permission'}
           onChange={(event) => { setFailure(null); setNotice(''); setSessionAssignments(null); setTeamId(event.target.value); }}>
@@ -244,7 +246,11 @@ export function TemplateTeamBindingPanel({ templateId, versionId, teams: initial
         </select></label>}
       </div>
       {!teams.some((item) => item.enabled) && !loading && <p className={styles.empty}>暂无可用团队，请先在团队配置中建立导师团队。</p>}
-      {loading || versionsLoading ? <div className={styles.loading} role="status">正在读取教学安排…</div> : <ResizablePanels storageKey="admin-teaching-arrangement"
+      {loading || versionsLoading ? <div className={styles.loading} role="status">正在读取教学安排…</div> : courseSpec && onCourseChange ? <TeachingWorkspace
+        spec={courseSpec} profile={profile} teams={teams} primaryTeamId={teamId} selections={lessonAssignments} versions={versions}
+        draft={draft} runtime={runtime} editable={editable} roleEditable={editable && current?.binding.status === 'draft'}
+        courseDisabled={courseDisabled || !online || failure?.kind === 'permission'} onCourseChange={onCourseChange}
+        onSelections={setSessionAssignments} onDraft={editDraft} onTeamSaved={saved => setTeams(previous => previous.map(entry => entry.id === saved.id ? saved : entry))} /> : <ResizablePanels storageKey="admin-teaching-arrangement"
         className={styles.workspace} initialSizes={[22, 47, 31]} minWidths={[180, 300, 240]} labels={['默认团队', '逐课安排', '导师能力']}>
         <aside className={styles.memberRail} aria-label="教学团队成员">
           <header className={styles.columnHeader}>
@@ -291,8 +297,8 @@ export function TemplateTeamBindingPanel({ templateId, versionId, teams: initial
       {runtimeError && <p className={styles.issue} role="status">能力目录读取失败：{runtimeError} 当前仅显示已保存的教学配置，能力选择暂不可用。</p>}
       {preview.kind === 'invalid' && <p className={styles.issue} role="alert">{preview.message}</p>}
       {staleDraft && <p className={styles.issue} role="alert">服务器配置已更新，本地编辑已保留。请核对高级配置，或舍弃编辑后重新加载。</p>}
-      {(current?.binding.status === 'active' || current?.binding.status === 'validated') && <p className={styles.muted}>修改后保存会生成新的教学安排草稿，已有学生项目保持原安排。</p>}
-      {!canActivate && <p className={styles.muted}>当前课程版本可以保存配置，进入试点或发布后可启用。</p>}
+      {(current?.binding.status === 'active' || current?.binding.status === 'validated') && <p className={styles.muted}>修改后保存会生成新的教学安排，已有学生项目保持原安排。</p>}
+      {!canActivate && <p className={styles.muted}>当前课程版本尚未上架，请在高级设置中上架后启用。</p>}
       {!!current?.binding.validation.errors.length && <div className={styles.validation} role="alert"><strong>待处理的检查项</strong><ul>{current.binding.validation.errors.map((item, index) => <li key={`${index}:${item}`}>{item}</li>)}</ul></div>}
       {!!current?.binding.validation.warnings.length && <div className={styles.validation}><strong>检查提醒</strong><ul>{current.binding.validation.warnings.map((item, index) => <li key={`${index}:${item}`}>{item}</li>)}</ul></div>}
       <footer className={styles.actions}><span>{busy ? '正在保存并核对服务器结果…' : current?.binding.validation.checkedAt ? `最近校验：${new Date(current.binding.validation.checkedAt).toLocaleString('zh-CN')}` : '保存后可运行配置检查'}</span>
@@ -303,10 +309,11 @@ export function TemplateTeamBindingPanel({ templateId, versionId, teams: initial
           <Button variant="secondary" size="sm" type="button" disabled={disabled || !current || current.binding.status !== 'draft' || dirty || routingDirty || staleDraft || requiresBundle && !draft}
             onClick={() => void act('validate')}>检查配置</Button>
           <Button size="sm" type="button" disabled={disabled || !canActivate || !current || current.binding.status === 'active' || dirty || routingDirty || staleDraft || requiresBundle && !draft}
-            onClick={() => void act('activate')}>校验并启用绑定</Button>
+            onClick={() => void act('activate')}>启用教学安排</Button>
         </div>
       </footer>
-      <details className={styles.advanced}><summary>高级配置与历史项目恢复</summary>
+      <details className={styles.advanced}><summary>高级设置与历史记录</summary>
+        {versionControls}
         <p>这里保留完整教学合同。团队与助手调整后重新保存教学安排即可，资料范围为空表示不授权。</p>
         {active && !activeReady && <div className={styles.issue} role="alert">
           <p>当前历史绑定缺少完整教学配置，学生项目暂时无法使用。未就绪项：{activeBlockers.join('；') || '服务端未返回具体原因'}。</p>
@@ -314,7 +321,7 @@ export function TemplateTeamBindingPanel({ templateId, versionId, teams: initial
           <p>旧项目需要单独确认恢复。</p>
         </div>}
         <details><summary>查看或编辑教学配置 JSON</summary>
-          <textarea aria-label="教学配置草稿" className={styles.json} value={bundleText} disabled={!!busy || current?.binding.status !== 'draft' || !online || failure?.kind === 'permission'}
+          <textarea aria-label="教学配置方案" className={styles.json} value={bundleText} disabled={!!busy || current?.binding.status !== 'draft' || !online || failure?.kind === 'permission'}
             onChange={(event) => editText(event.target.value)} spellCheck={false} />
           <div className={styles.jsonActions}><Button variant="secondary" size="sm" type="button" disabled={disabled || !current || current.binding.status !== 'draft' || !draft || staleDraft}
             onClick={() => void act('bundle')}>保存教学配置</Button>

@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import type { CurrentUser, EvidenceRequirement, PblRubric, ProjectReviewCandidate } from '@qitu/contracts';
+import type { CurrentUser, EvidenceProfile, EvidenceRequirement, PblRubric, ProjectReviewCandidate } from '@qitu/contracts';
 import { AuditWriter } from '../../common/audit/audit.service';
 import { TeamRuntimeService } from '../team-runtime/team-runtime.service';
 import {
@@ -72,7 +72,7 @@ export interface RecordAiCandidateInput {
   criteria: ProjectReviewCandidate['criteria'];
   missingEvidenceIds?: readonly string[];
   /** 交付物档案：决定该验收对应哪个门禁。 */
-  evidenceProfile?: 'runnable_code' | 'experiment_report' | null;
+  evidenceProfile?: EvidenceProfile | null;
   deliverableType?: string | null;
   minimumCriterionLevel?: 0 | 1 | 2 | 3 | 4 | null;
   /** 触发器名称，进审计行（例如 'works.publish-approved'）。 */

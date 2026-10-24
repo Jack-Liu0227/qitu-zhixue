@@ -12,6 +12,8 @@
 
 ## 必须遵守
 
+- 2026-10-24 产品修订：学习全过程由学生与 AI 自主完成。教师对学习记录、评价和问题只读，不得人工放行活动、批准作品或阻塞课时；服务端按 `autonomous-learning.v1` 自动评价真实证据，保留理论门禁与质量要求。历史 `current_teacher` 执行角色由该显式平台策略替代，冻结内容、标准与已有完成记录不改写。见 `docs/issues/20261024-autonomous-learning.md`。
+
 - 不改变已经冻结的产品导航和 UI 信息架构，除非先更新产品文档并通过评审。
 - 后台控制权全在 Admin：所有模型底座与提供商（Model Providers / Model Gateway）、运行时技能、项目与课程模板、知识库范围和全局教学策略均由 Admin 后台统一控制，客户端不得自行路由或越权覆盖。
 - 前端权限只负责显示；所有对象级权限必须在后端再次校验。
@@ -44,7 +46,7 @@
 - 项目式学习继续采用模块化单体：`projects`、`learning-plan`、`mastery`、`ai-tutor`、`team-runtime`、`works/feedback` 共同维护项目、计划、掌握度、团队候选和作品证据；不要另建第二套 PBL 状态机或 mastery 数据库。
 - 模板版本、教学绑定及绑定内的冻结团队配置是历史项目的语义边界。独立历史团队版本资源已移除；正式项目确认时冻结 `templateVersionId`、`bindingId`、内部配置标识和 hash（历史 v1 的 `teamVersionId` 字段仅用于摘要兼容）；运行时不得按团队名称、标题或客户端传入的 `teamId` 猜测绑定。
 - Tutor 输出使用闭合集合 `TutorReplyBlock` 和 SSE。模型只能产生候选教学动作/文案；项目阶段、`TheoryMastered`、作品通过、成长记录、审计和计划 revision 必须由对应服务端 owner 写入。
-- 动态交互采用“回答/操作产生证据，策略选择下一教学动作”的双循环。允许追问、提示、例子、检查题、同目标补救和教师介入；禁止客户端或 Agent 直接 `advance_stage`、`mark_mastered`、`approve_artifact` 或放行实践。
+- 动态交互采用“回答/操作产生证据，策略选择下一教学动作”的双循环。允许追问、提示、例子、检查题、同目标补救和教师只读问题记录；禁止客户端或 Agent 直接 `advance_stage`、`mark_mastered`、`approve_artifact` 或放行实践。
 
 ## 光学 PBL 规则
 

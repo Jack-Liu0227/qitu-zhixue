@@ -12,7 +12,7 @@ import type { FeedbackDraft, FeedbackFailureKind, FeedbackType, FeedbackTypeOpti
  *
  * 设计要点：
  *  - 右下角浮窗、消息页、首页三处**只走这一个入口**，服务端只有一条工单链路；
- *  - 幂等键由调用方传入（通常取自草稿），网络失败重试时复用，避免重复工单；
+ *  - 幂等键由调用方传入（通常取自未提交内容），网络失败重试时复用，避免重复工单；
  *  - `childId` 会按契约提交；一般使用问题可以为空，服务端会将其放入受限待分配队列；
  *    关联孩子的反馈仍必须由服务端再次校验家长与孩子的绑定关系。
  */
@@ -38,7 +38,7 @@ export function feedbackTypeLabel(type: FeedbackType): string {
   return FEEDBACK_TYPES.find((option) => option.value === type)?.label ?? type;
 }
 
-/** 已分类的反馈提交错误。`kind` 驱动界面提示与「是否保留草稿」。 */
+/** 已分类的反馈提交错误。`kind` 驱动界面提示与「是否保留未提交内容」。 */
 export class FeedbackSubmitError extends Error {
   constructor(
     message: string,
@@ -96,7 +96,7 @@ function classifySubmitError(error: unknown): FeedbackSubmitError {
  * 提交一条家长反馈，返回服务端工单信息。
  *
  * 所有失败都会抛出 `FeedbackSubmitError`，调用方据此决定提示文案与
- * 是否保留草稿（`offline` / `error` 一律保留）。
+ * 是否保留未提交内容（`offline` / `error` 一律保留）。
  */
 export async function submitParentFeedback(
   input: SubmitFeedbackInput,
@@ -137,7 +137,7 @@ export async function submitParentFeedback(
 }
 
 /* ------------------------------------------------------------------ *
- * 草稿暂存（sessionStorage）
+ * 未提交内容暂存（sessionStorage）
  *
  * 只存反馈所需的字段，不含任何 token／个人信息；用 sessionStorage 保证
  * 关闭标签页即失效，避免未成年人相关内容长期驻留在共享设备上。
@@ -175,7 +175,7 @@ export function createEmptyFeedbackDraft(childId = ''): FeedbackDraft {
   };
 }
 
-/** 读取并校验本机草稿；结构不合法时丢弃，避免脏数据把界面打崩。 */
+/** 读取并校验本机未提交内容；结构不合法时丢弃，避免脏数据把界面打崩。 */
 export function readFeedbackDraft(parentId: string): FeedbackDraft | null {
   const storage = draftStorage();
   if (!storage || !parentId) return null;
@@ -226,10 +226,10 @@ export function clearFeedbackDraft(parentId: string): void {
 }
 
 /**
- * 清空本机全部反馈草稿。
+ * 清空本机全部反馈未提交内容。
  *
  * 由「退出登录」触发：此时继续保留未成年人相关的内容已无必要，
- * 也避免下一个使用同一浏览器的账号读到上一个账号的草稿。
+ * 也避免下一个使用同一浏览器的账号读到上一个账号的未提交内容。
  */
 export function clearAllFeedbackDrafts(): void {
   const storage = draftStorage();

@@ -35,7 +35,13 @@ test('comparison practice remains current until distinct reviewed observations m
     proofs: [...['review', 'theory', 'check', 'reflect'].map(activity => proof(activity)), observation] };
   const current = (proofs: LearningEvidenceProof[]) => projectLessonActivities({ ...input, proofs }).find(activity => activity.status === 'current')?.kind;
   assert.equal(current(input.proofs), 'practice');
+  const practice = (proofs: LearningEvidenceProof[]) => projectLessonActivities({ ...input, proofs }).find(activity => activity.kind === 'practice')!;
+  assert.match(practice(input.proofs).guidance, /需保存 2 条.*当前 1 \/ 2 条/);
+  assert.match(practice([...input.proofs, observation]).guidance, /当前 1 \/ 2 条/);
+  assert.match(practice([...input.proofs, { ...observation, ref: 'experiment_observation:pending', quality: { ...observation.quality!, status: 'pending' } }]).guidance, /当前 1 \/ 2 条/);
+  assert.match(practice([...input.proofs, { ...observation, ref: 'experiment_observation:foreign', scope: { ...scope, learningSessionId: 'other' } }]).guidance, /当前 1 \/ 2 条/);
   assert.equal(current([...input.proofs, observation]), 'practice');
   assert.equal(current([...input.proofs, { ...observation, ref: 'experiment_observation:second', quality: { ...observation.quality!, status: 'pending' } }]), 'practice');
   assert.equal(current([...input.proofs, { ...observation, ref: 'experiment_observation:second' }]), undefined);
+  assert.match(practice([...input.proofs, { ...observation, ref: 'experiment_observation:second' }]).guidance, /当前 2 \/ 2 条。观察数量已达标/);
 });

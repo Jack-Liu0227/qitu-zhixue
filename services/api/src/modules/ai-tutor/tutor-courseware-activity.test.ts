@@ -93,10 +93,16 @@ test('courseware continuation selects concepts without an acknowledged delivery 
   await service.acknowledge(actor, first!, 0, true, 'continue-first');
   assert.deepEqual((await find()).map((concept: { objectiveId: string }) => concept.objectiveId), ['objective-2']);
   assert.equal((await port.execute(board, 'duplicate')).block, undefined);
+  const remedial = await port.execute({ ...board, title: 'Another explanation of displacement', use: 'remediate' }, 'reexplain-first');
+  assert.equal(remedial.block?.kind, 'board');
+  assert.deepEqual((await find()).map((concept: { objectiveId: string }) => concept.objectiveId), ['objective-2'], 'Remediation cannot complete the other objective');
+  const remedialInstance = (await store.instances(scope.projectId, scope.planId, scope.planRevision, scope.learningSessionId)).find(instance => instance.id !== first!.id)!;
+  assert.equal(remedialInstance.acknowledgedAt, null);
+  assert.equal((await store.version(remedialInstance.candidateVersionId!))?.use, 'remediate');
   await port.execute({ ...board, objectiveRefs: ['objective-2'] }, 'second');
   const instances = await store.instances(scope.projectId, scope.planId, scope.planRevision, scope.learningSessionId);
-  assert.equal(instances.length, 2);
-  await service.acknowledge(actor, instances[1]!, 0, true, 'continue-second');
+  assert.equal(instances.length, 3);
+  await service.acknowledge(actor, instances.find(instance => instance.objectiveRefs.includes('objective-2'))!, 0, true, 'continue-second');
   assert.deepEqual(await find(), []);
   const nextActivity = createCoursewareActivityPort({ ...input, scope: { ...scope, activityId: 'session:activity:theory' } });
   assert.equal(JSON.parse((await nextActivity.execute({ kind: 'find_courseware', use: 'explain' }, 'next')).text).remainingConcepts.length, 2);

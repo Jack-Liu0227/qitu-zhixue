@@ -169,7 +169,7 @@ export function WorkbenchPage({
       return (
         <PermissionDenied
           title="无法访问这个工作台"
-          description="你没有查看或编辑该项目草稿的权限。"
+          description="你没有查看或编辑该项目未提交内容的权限。"
           onBack={() => {
             if (typeof window !== 'undefined') window.location.assign('/student/projects');
           }}

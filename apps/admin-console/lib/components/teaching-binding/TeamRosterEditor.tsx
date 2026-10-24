@@ -72,7 +72,7 @@ export function TeamRosterEditor({ team, spec, disabled, onSaved }: {
         <button type="button" disabled={!available.some(assistant => assistant.id === selected)} onClick={() => {
           const assistant = available.find(entry => entry.id === selected); if (!assistant) return;
           setMembers(previous => [...previous, { assistantId: assistant.id, role: 'coach', roleLabel: assistant.role }]); setSelected('');
-        }}>添加到团队草稿</button></div>
+        }}>添加到团队配置</button></div>
       <button type="button" onClick={() => void save()}>{busy ? '正在保存并回读…' : '保存团队成员'}</button>
     </fieldset><p><a href="/settings/assistants">创建新助手或管理模型与技能 →</a></p>
     {notice ? <p role="status">{notice}</p> : null}

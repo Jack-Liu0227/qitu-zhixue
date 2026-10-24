@@ -932,13 +932,13 @@ function buildParams(
 				basetenParams.reasoning_effort = effort;
 			}
 		}
-	} else if (compat.thinkingFormat === "deepseek" && model.reasoning) {
-		if (options?.reasoningEffort) {
+	} else if (compat.thinkingFormat === "deepseek") {
+		if (model.reasoning && options?.reasoningEffort) {
 			(params as any).thinking = { type: "enabled" };
 		} else if (model.thinkingLevelMap?.off !== null) {
 			(params as any).thinking = { type: "disabled" };
 		}
-		if (options?.reasoningEffort && compat.supportsReasoningEffort) {
+		if (model.reasoning && options?.reasoningEffort && compat.supportsReasoningEffort) {
 			(params as any).reasoning_effort =
 				model.thinkingLevelMap?.[options.reasoningEffort] ?? options.reasoningEffort;
 		}

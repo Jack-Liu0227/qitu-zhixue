@@ -115,7 +115,7 @@ export class LearningSessionProgressService {
       planRevision: plan.version, learningSessionId: selected.session.id, objectiveIds: selected.objectiveIds }, refs);
     const responseProofs = selected.frozen.checkpoint?.requiredGate === 'review_completed_and_archived'
       ? proof.reflections : [...proof.reflections, ...proof.submissions.filter((entry) => entry.kind === 'session_response')];
-    const artifactSessionIds = new Set(context.sessions.filter((entry) => ['experiment_report_validated', 'code_playable_run_verified', 'practice_artifact_approved'].includes(entry.frozen.checkpoint?.requiredGate ?? ''))
+    const artifactSessionIds = new Set(context.sessions.filter((entry) => ['experiment_report_validated', 'code_playable_run_verified', 'practice_artifact_approved', 'rubric_artifact_validated'].includes(entry.frozen.checkpoint?.requiredGate ?? ''))
       .map((entry) => entry.session.id));
     const approvedReports = selected.frozen.checkpoint?.requiredGate === 'review_completed_and_archived'
       ? proof.approvedArtifacts.filter((entry) => artifactSessionIds.has(entry.scope.learningSessionId)) : proof.approvedArtifacts;
@@ -143,7 +143,7 @@ export class LearningSessionProgressService {
       for (const ref of distinct.slice(0, requirement.minimumCount)) acceptedRefs.add(ref);
     }
     // Every artifact checkpoint needs approval of the exact version submitted in this lesson.
-    if (['experiment_report_validated', 'code_playable_run_verified', 'practice_artifact_approved'].includes(selected.frozen.checkpoint?.requiredGate ?? '')
+    if (['experiment_report_validated', 'code_playable_run_verified', 'practice_artifact_approved', 'rubric_artifact_validated'].includes(selected.frozen.checkpoint?.requiredGate ?? '')
       && !proof.submissions.some((submission) => submission.kind === 'submitted_artifact' && proof.approvedArtifacts.some((approved) =>
         !!submission.artifactId && !!submission.artifactVersionId && approved.artifactId === submission.artifactId && approved.artifactVersionId === submission.artifactVersionId))) blockers.push('SUBMITTED_REPORT_APPROVAL_REQUIRED');
     const activities = selected.frozen.activityRequirements ? await this.activities(actor, context, selected, store) : undefined;

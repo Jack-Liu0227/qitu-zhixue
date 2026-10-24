@@ -1,9 +1,8 @@
 'use client';
 
-import { VisualAsset } from '@qitu/ui';
+import { TemplateLibraryCard } from '../../../../lib/components/template-library/TemplateLibraryCard';
+import libraryStyles from '../../../../lib/components/template-library/TemplateLibrary.module.css';
 import { TemplateTeamBindingPanel } from '../../../../lib/components/TemplateTeamBindingPanel';
-import { LessonDraftEditor } from '../../../../lib/components/teaching-binding/LessonDraftEditor';
-import { TeamRosterEditor } from '../../../../lib/components/teaching-binding/TeamRosterEditor';
 import { CourseVersionActions } from '../../../../lib/components/teaching-binding/CourseVersionActions';
 import { canonicalCourseJson } from '../../../../lib/components/teaching-binding/lesson-draft';
 import { parseProjectTemplateSpec } from '@qitu/contracts';
@@ -19,12 +18,12 @@ import {
   fetchAdminTemplateVersions,
   fetchAdminTemplates,
   updateAdminTemplate,
+  restoreAdminTemplate,
 } from '../../../../lib/api/content';
 import { fetchAdminTeamConfigs } from '../../../../lib/api/teams';
 import type {
   AdminTeamConfig,
   ProjectTemplateSpec,
-  PblTemplateSession,
 } from '@qitu/contracts';
 import { AdminStateViews } from '../../../../lib/components/AdminStateViews';
 
@@ -67,7 +66,8 @@ interface TemplateEditorState {
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  draft: '草稿',
+  draft: '编辑中',
+  piloting: '已上架',
   review: '审核中',
   published: '已发布',
   archived: '已归档',
@@ -113,50 +113,6 @@ const PHASE_META: Record<
     mentor: '评审导师 (Reviewer)',
     defaultGate: 'review_completed_and_archived (素养成长归档)',
   },
-};
-
-const GATE_DESCRIPTIONS: Record<
-  string,
-  { title: string; desc: string; badge: string; color: string; bg: string; border: string }
-> = {
-  TheoryMastered: {
-    title: '【TheoryMastered 核心门禁】',
-    desc: '四大物理定律（光的直线传播、反射定律、折射定律、全反射/透镜规律）评测全达标，解锁光具座搭建与实践操作权限',
-    badge: '🛡️ 核心理论门禁',
-    color: '#dc2626',
-    bg: '#fef2f2',
-    border: '#fecaca',
-  },
-  student_confirmed_intent: {
-    title: '【意图确认门禁】',
-    desc: '学生显式确认探究意向书草稿并立项，未确认前禁止创建正式项目',
-    badge: '🚩 意向立项门禁',
-    color: '#d97706',
-    bg: '#fffbeb',
-    border: '#fde68a',
-  },
-  practice_artifact_approved: {
-    title: '【实践成果门禁】',
-    desc: '实验探究报告与 CER（主张-证据-推理）科学论证提交，需经导师审核通过',
-    badge: '📝 成果评审门禁',
-    color: '#16a34a',
-    bg: '#f0fdf4',
-    border: '#bbf7d0',
-  },
-  review_completed_and_archived: {
-    title: '【结项归档门禁】',
-    desc: '学科素养成长反思与量规自评由服务端 owner 正式完成归档',
-    badge: '🎓 素养成长归档',
-    color: '#9333ea',
-    bg: '#faf5ff',
-    border: '#e9d5ff',
-  },
-};
-
-const SESSION_TYPE_META: Record<string, { label: string; icon: string; color: string; bg: string }> = {
-  theory: { label: '理论探究', icon: 'activity-concept-v1', color: '#1d4ed8', bg: '#dbeafe' },
-  practice: { label: '实验操作', icon: 'activity-experiment-v1', color: '#15803d', bg: '#dcfce7' },
-  review: { label: '答辩归档', icon: 'activity-reflection-v1', color: '#7e22ce', bg: '#f3e8ff' },
 };
 
 function asText(value: unknown): string {
@@ -222,11 +178,14 @@ export default function AdminTemplatesPage() {
   const [saveError, setSaveError] = useState('');
   const [saving, setSaving] = useState(false);
   const courseSaveAttempt = useRef<{ signature: string; key: string; version: string } | null>(null);
+  const restoreAttempt = useRef<{ signature: string; key: string } | null>(null);
+  const restoreInFlight = useRef(false);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
 
   const [filterArchived, setFilterArchived] = useState<'active' | 'all'>('active');
   const displayedTemplates = useMemo(() => {
     if (filterArchived === 'active') {
-      return templates.filter((t) => t.status !== 'archived');
+      return templates.filter((t) => t.status === 'published' || t.status === 'piloting');
     }
     return templates;
   }, [templates, filterArchived]);
@@ -325,6 +284,25 @@ export default function AdminTemplatesPage() {
     const template = templates.find((item) => item.id === params.get('templateId'));
     if (template) openEditor(template, params.get('versionId') ?? undefined);
   }, [loading, error, templates, editingTemplate, openEditor]);
+
+  const handleRestoreTemplate = async (template: AdminProjectTemplate) => {
+    if (restoreInFlight.current || saving) return;
+    if (!navigator.onLine) { setSaveError('网络已断开，联网后可恢复课程。'); return; }
+    const signature = `${template.id}:${template.updatedAt}`;
+    if (restoreAttempt.current?.signature !== signature) restoreAttempt.current = { signature, key: newIdempotencyKey() };
+    const request = versionRequest.current;
+    restoreInFlight.current = true; setRestoringId(template.id); setSaving(true); setSaveError(''); setSaveNotice('');
+    try {
+      const result = await restoreAdminTemplate(template, restoreAttempt.current.key);
+      setTemplates(previous => previous.map(entry => entry.id === result.template.id ? result.template : entry));
+      restoreAttempt.current = null;
+      if (request === versionRequest.current) {
+        openEditor(result.template, result.version?.id);
+        setSaveNotice('课程已恢复，可继续编辑。上架前请完成教学安排。');
+      }
+    } catch (cause) { setSaveError(cause instanceof Error ? cause.message : '课程恢复未确认，请重新加载核对。'); }
+    finally { restoreInFlight.current = false; setRestoringId(null); setSaving(false); }
+  };
 
   const closeEditor = () => {
     versionRequest.current++;
@@ -441,7 +419,7 @@ export default function AdminTemplatesPage() {
 
     let courseSpec: ProjectTemplateSpec | null = null;
     try { courseSpec = editingTemplate.pblSpec ? parseProjectTemplateSpec(editingTemplate.pblSpec) : null; }
-    catch (failure) { setSaveError(failure instanceof Error ? failure.message : '课程草稿校验失败'); return; }
+    catch (failure) { setSaveError(failure instanceof Error ? failure.message : '课程配置校验失败'); return; }
     const courseChanged = courseSpec !== null && canonicalCourseJson(courseSpec) !== canonicalCourseJson(editingTemplate.sourceContent.pbl);
     const versionChanged = courseChanged || !courseSpec && phases.length > 0
       && (!editingTemplate.sourceVersionId || JSON.stringify(phases) !== JSON.stringify(editingTemplate.sourcePhases));
@@ -495,7 +473,7 @@ export default function AdminTemplatesPage() {
         );
         const readback = (await fetchAdminTemplateVersions(editingTemplate.id)).find((version) => version.id === result.version.id);
         if (!readback || (nextCourseSpec ? canonicalCourseJson(parseProjectTemplateSpec(readback.content.pbl)) !== canonicalCourseJson(nextCourseSpec)
-          : JSON.stringify(parsePhasesFromVersion(readback)) !== JSON.stringify(phases))) throw new Error('课程草稿保存后的回读不一致，请重新加载核对。');
+          : JSON.stringify(parsePhasesFromVersion(readback)) !== JSON.stringify(phases))) throw new Error('课程配置保存后的回读不一致，请重新加载核对。');
         setTemplateVersions((previous) => [...previous.filter((item) => item.id !== readback.id), readback]);
         const params = new URLSearchParams(window.location.search);
         params.set('versionId', readback.id);
@@ -507,7 +485,7 @@ export default function AdminTemplatesPage() {
               sourceVersion: readback.version, sourceVersionId: readback.id, sourceContent: readback.content, sourceStages: readback.stages, sourceRubric: readback.rubric },
         );
         courseSaveAttempt.current = null;
-        notice = `课程草稿已保存为新版本 ${result.version.version}，发布并启用后供新项目使用。`;
+        notice = `课程配置已保存为新版本 ${result.version.version}，上架并启用教学安排后供新项目使用。`;
       } else if (phases.length === 0) {
         notice = `${notice ? `${notice}；` : ''}尚未添加任何阶段，未生成新版本`;
       }
@@ -522,20 +500,76 @@ export default function AdminTemplatesPage() {
   };
 
   const state = AdminStateViews({ loading, error, onRetry: load });
-  if (state && templates.length === 0) return <div className="admin-settings-page">{state}</div>;
+  if (state && templates.length === 0) return <div className={`admin-settings-page ${libraryStyles.page}`}>{state}</div>;
 
   // 模板与 PBL 流程编辑器
   if (editingTemplate) {
+    const restoreTarget = templates.find(entry => entry.id === editingTemplate.id);
     const selectedVersion = templateVersions.find((version) => version.id === editingTemplate.sourceVersionId);
     const courseDirty = !!editingTemplate.pblSpec && canonicalCourseJson(editingTemplate.pblSpec) !== canonicalCourseJson(editingTemplate.sourceContent.pbl);
-    const courseTeam = teams.find(team => team.id === editingTemplate.pblSpec?.teamId) ?? teams[0];
     const lessonProfile = editingTemplate.pblSpec?.curriculum?.profiles?.[0];
     const lessonSessions = lessonProfile?.sessions ?? [];
     const lessonCount = lessonProfile?.schedule.lessonCount ?? lessonSessions.length;
-    const lessonMinutes = lessonProfile?.schedule.lessonMinutes ?? lessonSessions[0]?.durationMinutes ?? 60;
+
+    const basicFields = (
+          <div className="admin-template-basic-container">
+            {editingTemplate.status === 'published' ? (
+              <div className="admin-template-workflow-intro">
+                <span>
+                  该模板已发布：基础信息不可再修改，保存只会把阶段设计写入新版本。
+                </span>
+              </div>
+            ) : null}
+            <section className="admin-editor-card">
+              <div className="admin-editor-card-header">
+                <span className="admin-editor-section-title">基本属性</span>
+              </div>
+              <div className="admin-identity-fields" style={{ padding: '16px 20px' }}>
+                <div className="admin-form-row">
+                  <label className="admin-form-label">模板标题</label>
+                  <input
+                    className="admin-input-text"
+                    value={editingTemplate.title}
+                    disabled={!canEditMeta(editingTemplate.status)}
+                    onChange={(e) =>
+                      setEditingTemplate({ ...editingTemplate, title: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="admin-form-row">
+                  <label className="admin-form-label">模板摘要</label>
+                  <textarea
+                    className="team-textarea"
+                    value={editingTemplate.summary}
+                    disabled={!canEditMeta(editingTemplate.status)}
+                    onChange={(e) =>
+                      setEditingTemplate({ ...editingTemplate, summary: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="admin-form-row">
+                  <label className="admin-form-label">预计时长 (分钟)</label>
+                  <input
+                    type="number"
+                    className="admin-input-text"
+                    value={editingTemplate.estimatedDurationMinutes ?? ''}
+                    disabled={!canEditMeta(editingTemplate.status)}
+                    onChange={(e) =>
+                      setEditingTemplate({
+                        ...editingTemplate,
+                        estimatedDurationMinutes:
+                          e.target.value === '' ? null : Number(e.target.value) || null,
+                      })
+                    }
+                  />
+                </div>
+              </div>
+            </section>
+          </div>
+    );
 
     return (
-      <div className="admin-template-editor-view">
+      <div className={`admin-template-editor-view ${libraryStyles.editorPage}`}>
         <div className="admin-template-editor-topbar">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <button
@@ -546,7 +580,7 @@ export default function AdminTemplatesPage() {
               ← 返回模板列表
             </button>
             <h1 style={{ fontSize: '18px', margin: 0, fontWeight: 700, color: '#1d2129' }}>
-              编辑模板：{editingTemplate.title || '(未命名)'}
+              课程：{editingTemplate.title || '(未命名)'}
             </h1>
           </div>
 
@@ -557,73 +591,48 @@ export default function AdminTemplatesPage() {
                 {saveError}
               </span>
             ) : null}
-            {editingTemplate.pblSpec ? (
-              <span
-                style={{
-                  backgroundColor: '#e8f3ff',
-                  color: '#165dff',
-                  border: '1px solid #bedaff',
-                  padding: '4px 10px',
-                  borderRadius: '6px',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                }}
-                title="该模板由 ProjectTemplateSpec 治理，需通过版本发布流程更新"
-              >
-                课程合同受保护 · 团队配置可编辑
-              </span>
-            ) : null}
-            <button
+            {editingTemplate.status === 'archived' ? <button type="button" className="settings-action-btn is-primary"
+              disabled={saving || !restoreTarget} onClick={() => { if (restoreTarget) void handleRestoreTemplate(restoreTarget); }}>
+              {restoringId === editingTemplate.id ? '正在恢复并核对…' : '恢复并编辑'}
+            </button> : <button
               type="button"
               className="settings-action-btn is-primary"
               onClick={handleSaveTemplate}
-              disabled={saving || versionsLoading || !!versionsError || editingTemplate.status === 'archived'}
-              title={editingTemplate.pblSpec ? '采用 ProjectTemplateSpec 治理，需通过版本发布流程更新' : undefined}
+              disabled={saving || versionsLoading || !!versionsError}
+              title={editingTemplate.pblSpec ? '采用 ProjectTemplateSpec 治理，保存内容会创建新的课程版本' : undefined}
             >
-              {saving ? '正在保存并回读…' : editingTemplate.pblSpec ? '保存课程草稿' : '保存模板与阶段设计'}
-            </button>
-            <button
-              type="button"
-              className="settings-action-btn is-danger"
-              onClick={() => handleDeleteTemplate(editingTemplate.id, editingTemplate.title)}
-            >
-              🗑️ 删除模板
-            </button>
-            <button
-              type="button"
-              className="settings-action-btn"
-              onClick={closeEditor}
-            >
-              取消
-            </button>
+              {saving ? '正在保存并回读…' : editingTemplate.pblSpec ? '保存课程配置' : '保存模板与阶段设计'}
+            </button>}
           </div>
         </div>
 
-        {/* 选项卡：课时教学主线 vs 基础配置 */}
-        <label>课程版本 <select className="admin-select" aria-label="课程版本" value={editingTemplate.sourceVersionId ?? ''} disabled={versionsLoading || saving}
-          onChange={(event) => { setSaveNotice(''); setSaveError(''); void loadVersions(editingTemplate.id, event.target.value); }}>
-          {!selectedVersion && <option value="">尚无版本</option>}
-          {templateVersions.map((version) => <option key={version.id} value={version.id}>{version.version} · {STATUS_LABELS[version.status] ?? version.status}</option>)}
-        </select></label>
-        {selectedVersion && editingTemplate.pblSpec ? <CourseVersionActions key={selectedVersion.id}
-          templateId={editingTemplate.id} versionId={selectedVersion.id} status={selectedVersion.status}
-          disabled={saving || courseDirty || editingTemplate.status === 'archived'} onChanged={() => void loadVersions(editingTemplate.id, selectedVersion.id)} /> : null}
-        {courseDirty ? <p role="status" className="admin-template-workflow-intro">课时设计有未保存的修改。请先保存课程草稿，再为新版本配置导师团队与资料。</p> : (
-<TemplateTeamBindingPanel key={editingTemplate.sourceVersionId} templateId={editingTemplate.id} versionId={versionsLoading || versionsError ? null : editingTemplate.sourceVersionId}
-          lessonPolicy={editingTemplate.pblSpec?.lessonPolicy}
-          versionStatus={selectedVersion?.status ?? 'draft'} profiles={editingTemplate.pblSpec?.curriculum?.profiles ?? []} phases={editingTemplate.pblSpec?.phases ?? []} requiresBundle={editingTemplate.pblSpec !== null} teams={teams} />
-        )}
-        <div className="team-editor-top-tabs">
+        {editingTemplate.status === 'archived' && <p role="status" className="admin-template-workflow-intro">课程已归档，点击“恢复并编辑”后继续配置。恢复会保留历史版本与已有项目，生成新的可编辑版本，不自动上架。</p>}
+        <TemplateTeamBindingPanel key={editingTemplate.sourceVersionId} templateId={editingTemplate.id}
+          versionId={versionsLoading || versionsError ? null : editingTemplate.sourceVersionId}
+          versionStatus={selectedVersion?.status ?? 'draft'} profiles={editingTemplate.pblSpec?.curriculum?.profiles ?? []}
+          phases={editingTemplate.pblSpec?.phases ?? []} requiresBundle={editingTemplate.pblSpec !== null} teams={teams}
+          courseSpec={editingTemplate.pblSpec ?? undefined} courseDirty={courseDirty}
+          courseDisabled={saving || editingTemplate.status === 'archived'}
+          onCourseChange={spec => setEditingTemplate(previous => previous ? { ...previous, pblSpec: spec } : previous)}
+          versionControls={<>
+            <details><summary>课程基本信息</summary>{basicFields}</details>
+            <label>课程版本 <select className="admin-select" aria-label="课程版本" value={editingTemplate.sourceVersionId ?? ''} disabled={versionsLoading || saving}
+              onChange={event => { setSaveNotice(''); setSaveError(''); void loadVersions(editingTemplate.id, event.target.value); }}>
+              {!selectedVersion && <option value="">尚无版本</option>}
+              {templateVersions.map(version => <option key={version.id} value={version.id}>{version.version} · {STATUS_LABELS[version.status] ?? version.status}</option>)}
+            </select></label>
+            {selectedVersion && editingTemplate.pblSpec ? <CourseVersionActions key={selectedVersion.id}
+              templateId={editingTemplate.id} versionId={selectedVersion.id} status={selectedVersion.status}
+              disabled={saving || courseDirty || editingTemplate.status === 'archived'} onChanged={() => void loadVersions(editingTemplate.id, selectedVersion.id)} /> : null}
+          </>} />
+        {!editingTemplate.pblSpec && <div className="team-editor-top-tabs">
           {editingTemplate.pblSpec ? (
             <button
               type="button"
               className={`team-editor-tab-item${editorTab === 'sessions' ? ' is-active' : ''}`}
               onClick={() => setEditorTab('sessions')}
             >
-              📅 课时教学主线（{lessonCount} 课时）
+              教学安排
             </button>
           ) : (
             <button
@@ -641,280 +650,10 @@ export default function AdminTemplatesPage() {
           >
             基础信息
           </button>
-        </div>
+        </div>}
 
-        
-        {editorTab === 'sessions' && editingTemplate.pblSpec ? (
-          <div className="admin-template-workflow-container">
-            <LessonDraftEditor spec={editingTemplate.pblSpec} teams={teams} disabled={saving || editingTemplate.status === 'archived'}
-              onChange={spec => setEditingTemplate(previous => previous ? { ...previous, pblSpec: spec } : previous)} />
-            {courseTeam ? <TeamRosterEditor key={courseTeam.id} team={courseTeam} spec={editingTemplate.pblSpec}
-              disabled={saving || editingTemplate.status === 'archived'} onSaved={saved => setTeams(previous => previous.map(team => team.id === saved.id ? saved : team))} /> : null}
-            <details style={{ marginTop: '20px' }}>
-              <summary style={{ cursor: 'pointer', padding: '10px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', fontWeight: 600, color: '#334155' }}>
-                📋 查看课时宏观概览、门禁卡片与时间分配（参考视图） ▾
-              </summary>
-              <div style={{ marginTop: '12px' }}>
-                <div
-              className="admin-template-workflow-intro admin-template-sessions-intro"
-              style={{
-                borderLeft: '4px solid #165dff',
-                padding: '16px 20px',
-                borderRadius: '12px',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <strong style={{ fontSize: '15px', color: '#0f172a' }}>
-                    🛡️ {lessonCount} 课时教学主线（ProjectTemplateSpec 治理版 · {editingTemplate.pblSpec.version || editingTemplate.sourceVersion || 'v2'}）
-                  </strong>
-                  <span
-                    style={{
-                      fontSize: '12px',
-                      background: '#e8f3ff',
-                      color: '#165dff',
-                      padding: '2px 8px',
-                      borderRadius: '4px',
-                      fontWeight: 600,
-                    }}
-                  >
-                    治理策略解耦架构 · standard-stem-pbl:v1
-                  </span>
-                </div>
-                <span style={{ fontSize: '12px', color: '#64748b' }}>
-                  共 {lessonCount} 课时（每课时 {lessonMinutes} 分钟）
-                </span>
-              </div>
-              <p style={{ margin: '8px 0 4px', color: '#334155', fontSize: '13px', lineHeight: 1.6 }}>
-                <strong>驱动性问题：</strong> {editingTemplate.pblSpec.theme?.drivingQuestion || editingTemplate.pblSpec.description}
-              </p>
-              {editingTemplate.pblSpec.safetyRequirements && editingTemplate.pblSpec.safetyRequirements.length > 0 ? (
-                <div className="admin-template-safety-box" style={{ marginTop: '8px', fontSize: '12px', padding: '8px 12px', borderRadius: '6px' }}>
-                  <strong>⚠️ 安全与实践要求：</strong> {editingTemplate.pblSpec.safetyRequirements.join('；')}
-                </div>
-              ) : null}
-            </div>
 
-            {/* A lesson card is the schedule unit; phase is shown only as governance metadata. */}
-            <div className="admin-template-phases-list">
-              {lessonSessions.map((session: PblTemplateSession) => {
-                const phaseMeta = PHASE_META[session.phase] ?? {
-                  label: session.phase,
-                  tag: session.phase,
-                  color: '#4e5969',
-                  bg: '#f2f3f5',
-                  border: '#e5e6eb',
-                  mentor: '导师',
-                  defaultGate: '无',
-                };
-                const typeMeta = SESSION_TYPE_META[session.sessionType] ?? {
-                  label: session.sessionType,
-                  icon: '📌',
-                  color: '#4e5969',
-                  bg: '#f2f3f5',
-                };
-                const gateId = session.checkpoint?.requiredGate;
-                const gateInfo = gateId ? GATE_DESCRIPTIONS[gateId] : null;
-
-                return (
-                  <div
-                    key={session.id || `session-${session.sessionIndex}`}
-                    className="admin-template-phase-card"
-                    style={{ borderLeft: `5px solid ${phaseMeta.color}` }}
-                  >
-                    {/* 头部标题与标签 */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                        <span
-                          style={{
-                            width: '28px',
-                            height: '28px',
-                            borderRadius: '50%',
-                            background: phaseMeta.color,
-                            color: '#ffffff',
-                            fontSize: '13px',
-                            fontWeight: 700,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
-                        >
-                          {session.sessionIndex}
-                        </span>
-                        <strong style={{ fontSize: '16px', color: '#1d2129' }}>
-                          第 {session.sessionIndex} 课时：{session.title}
-                        </strong>
-                        <span
-                          style={{
-                            fontSize: '12px',
-                            color: typeMeta.color,
-                            background: typeMeta.bg,
-                            padding: '2px 8px',
-                            borderRadius: '4px',
-                            fontWeight: 500,
-                          }}
-                        >
-                          <VisualAsset assetId={typeMeta.icon} size={20} /> {typeMeta.label}
-                        </span>
-                      </div>
-                      <span style={{ fontSize: '12px', color: '#4e5969', fontWeight: 600 }}>
-                        ⏱️ {session.durationMinutes} 分钟
-                      </span>
-                    </div>
-
-                    {/* 门禁卡片 */}
-                    {gateInfo ? (
-                      <div
-                        className="admin-session-gate-box"
-                        style={{
-                          display: 'flex',
-                          alignItems: 'flex-start',
-                          gap: '10px',
-                          padding: '10px 14px',
-                          borderRadius: '8px',
-                        }}
-                      >
-                        <span style={{ fontSize: '16px' }}>🚩</span>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                            <strong className="admin-session-gate-title" style={{ fontSize: '13px' }}>{gateInfo.title}</strong>
-                            <span className="admin-session-gate-badge" style={{ fontSize: '11px', padding: '1px 6px', borderRadius: '4px', fontWeight: 700 }}>
-                              {gateInfo.badge}
-                            </span>
-                          </div>
-                          <p className="admin-session-gate-desc" style={{ margin: '4px 0 0', fontSize: '12.5px', lineHeight: 1.5 }}>
-                            {gateInfo.desc}
-                          </p>
-                        </div>
-                      </div>
-                    ) : null}
-
-                    {/* 微观仿真挂载 */}
-                    {session.interactiveSpec?.enabled ? (
-                      <div
-                        className="admin-session-simulation-box"
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          padding: '8px 12px',
-                          borderRadius: '6px',
-                          fontSize: '12.5px',
-                        }}
-                      >
-                        <span><VisualAsset assetId="activity-experiment-v1" size={24} /></span>
-                        <span>
-                          <strong>挂载微观仿真原型：</strong>
-                          <code className="admin-session-simulation-code" style={{ padding: '2px 6px', borderRadius: '4px', margin: '0 4px', fontFamily: 'monospace' }}>
-                            {session.interactiveSpec.domainTopic}
-                          </code>
-                          （{session.interactiveSpec.allowHypothesisPrediction ? '支持' : '限制'}假设预测对比；区分模型计算、模拟观察与真实测量）
-                        </span>
-                      </div>
-                    ) : null}
-
-                    {/* 课时目标 */}
-                    {session.learningGoal ? (
-                      <div className="admin-session-goal-box" style={{ fontSize: '13px', lineHeight: 1.6, padding: '10px 14px', borderRadius: '8px' }}>
-                        <strong>🎯 本节学习目标：</strong>
-                        <span>{session.learningGoal}</span>
-                      </div>
-                    ) : null}
-
-                    {/* 5 步教学活动时间分配 */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', color: '#86909c' }}>
-                        <span>⏳ 课堂教学活动时间分配：</span>
-                        <span>
-                          回顾 {session.blocks.review}m · 理论 {session.blocks.theory}m · 测验 {session.blocks.check}m · 实践 {session.blocks.practice}m · 反思 {session.blocks.reflect}m
-                        </span>
-                      </div>
-                      <div className="admin-session-time-track" style={{ display: 'flex', height: '10px', borderRadius: '5px', overflow: 'hidden' }}>
-                        {session.blocks.review > 0 ? (
-                          <div style={{ width: `${(session.blocks.review / session.durationMinutes) * 100}%`, background: '#f59e0b' }} title={`回顾: ${session.blocks.review}分钟`} />
-                        ) : null}
-                        {session.blocks.theory > 0 ? (
-                          <div style={{ width: `${(session.blocks.theory / session.durationMinutes) * 100}%`, background: '#3b82f6' }} title={`理论探究: ${session.blocks.theory}分钟`} />
-                        ) : null}
-                        {session.blocks.check > 0 ? (
-                          <div style={{ width: `${(session.blocks.check / session.durationMinutes) * 100}%`, background: '#ef4444' }} title={`检查测验: ${session.blocks.check}分钟`} />
-                        ) : null}
-                        {session.blocks.practice > 0 ? (
-                          <div style={{ width: `${(session.blocks.practice / session.durationMinutes) * 100}%`, background: '#10b981' }} title={`实践模拟: ${session.blocks.practice}分钟`} />
-                        ) : null}
-                        {session.blocks.reflect > 0 ? (
-                          <div style={{ width: `${(session.blocks.reflect / session.durationMinutes) * 100}%`, background: '#8b5cf6' }} title={`总结反思: ${session.blocks.reflect}分钟`} />
-                        ) : null}
-                      </div>
-                    </div>
-
-                    {/* 证据链要求 */}
-                    {session.evidenceRequirements && session.evidenceRequirements.length > 0 ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <span style={{ fontSize: '12px', fontWeight: 600, color: '#4e5969' }}>
-                          📋 课堂证据链要求（收口凭据）：
-                        </span>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                          {session.evidenceRequirements.map((ev, i) => (
-                            <span
-                              key={i}
-                              className="admin-session-evidence-pill"
-                              style={{
-                                fontSize: '12px',
-                                padding: '3px 8px',
-                                borderRadius: '6px',
-                              }}
-                            >
-                              ✓ {ev}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
-
-                    {/* 教学活动指导 */}
-                    {session.activityGuidance ? (
-                      <details style={{ fontSize: '12px', color: '#4e5969', borderTop: '1px dashed #e5e6eb', paddingTop: '8px' }}>
-                        <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#165dff' }}>
-                          展开查看 5 步教学活动指导建议 ▾
-                        </summary>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', marginTop: '8px' }}>
-                          {session.activityGuidance.review ? (
-                            <div className="admin-session-guidance-item is-review" style={{ padding: '6px 8px', borderRadius: '4px' }}>
-                              <strong>[回顾]</strong> {session.activityGuidance.review}
-                            </div>
-                          ) : null}
-                          {session.activityGuidance.theory ? (
-                            <div className="admin-session-guidance-item is-theory" style={{ padding: '6px 8px', borderRadius: '4px' }}>
-                              <strong>[理论]</strong> {session.activityGuidance.theory}
-                            </div>
-                          ) : null}
-                          {session.activityGuidance.check ? (
-                            <div className="admin-session-guidance-item is-check" style={{ padding: '6px 8px', borderRadius: '4px' }}>
-                              <strong>[检查]</strong> {session.activityGuidance.check}
-                            </div>
-                          ) : null}
-                          {session.activityGuidance.practice ? (
-                            <div className="admin-session-guidance-item is-practice" style={{ padding: '6px 8px', borderRadius: '4px' }}>
-                              <strong>[实践]</strong> {session.activityGuidance.practice}
-                            </div>
-                          ) : null}
-                          {session.activityGuidance.reflect ? (
-                            <div className="admin-session-guidance-item is-reflect" style={{ padding: '6px 8px', borderRadius: '4px' }}>
-                              <strong>[反思]</strong> {session.activityGuidance.reflect}
-                            </div>
-                          ) : null}
-                        </div>
-                      </details>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-              </div>
-            </details>
-          </div>
-        ) : editorTab === 'workflow' ? (
+        {editingTemplate.pblSpec ? null : editorTab === 'workflow' ? (
           <div className="admin-template-workflow-container">
             <div className="admin-template-workflow-intro" style={{ borderLeft: editingTemplate.pblSpec ? '4px solid #165dff' : undefined }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
@@ -1049,21 +788,36 @@ export default function AdminTemplatesPage() {
                                     placeholder="阶段名称（必填）"
                                     onChange={(e) => updatePhase(phase.id, { name: e.target.value })}
                                   />
-                                  <select
-                                    className="admin-select"
-                                    style={{ maxWidth: '200px', fontSize: '12px' }}
-                                    value={phase.mentorRole}
-                                    onChange={(e) => updatePhase(phase.id, { mentorRole: e.target.value })}
-                                  >
-                                    <option value="">未指定导师角色</option>
-                                    {phase.mentorRole && !teams.some(t => t.members.some(m => m.assistantName === phase.mentorRole || m.role === phase.mentorRole)) ? (
-                                      <option value={phase.mentorRole}>{phase.mentorRole}（当前设定）</option>
-                                    ) : null}
-                                    {teams.flatMap(t => t.members.map(m => (
-                                      <option key={`${t.id}-${m.assistantId}`} value={m.assistantName}>
-                                        {m.assistantName}（{m.roleLabel || m.role} · {t.name}）
-                                      </option>
-                                    )))}
+                                  <select
+
+                                    className="admin-select"
+
+                                    style={{ maxWidth: '200px', fontSize: '12px' }}
+
+                                    value={phase.mentorRole}
+
+                                    onChange={(e) => updatePhase(phase.id, { mentorRole: e.target.value })}
+
+                                  >
+
+                                    <option value="">未指定导师角色</option>
+
+                                    {phase.mentorRole && !teams.some(t => t.members.some(m => m.assistantName === phase.mentorRole || m.role === phase.mentorRole)) ? (
+
+                                      <option value={phase.mentorRole}>{phase.mentorRole}（当前设定）</option>
+
+                                    ) : null}
+
+                                    {teams.flatMap(t => t.members.map(m => (
+
+                                      <option key={`${t.id}-${m.assistantId}`} value={m.assistantName}>
+
+                                        {m.assistantName}（{m.roleLabel || m.role} · {t.name}）
+
+                                      </option>
+
+                                    )))}
+
                                   </select>
                                 </>
                               )}
@@ -1159,72 +913,19 @@ export default function AdminTemplatesPage() {
             )}
           </div>
         ) : (
-          <div className="admin-template-basic-container">
-            {editingTemplate.status === 'published' ? (
-              <div className="admin-template-workflow-intro">
-                <span>
-                  该模板已发布：基础信息不可再修改，保存只会把阶段设计写入新版本。
-                </span>
-              </div>
-            ) : null}
-            <section className="admin-editor-card">
-              <div className="admin-editor-card-header">
-                <span className="admin-editor-section-title">基本属性</span>
-              </div>
-              <div className="admin-identity-fields" style={{ padding: '16px 20px' }}>
-                <div className="admin-form-row">
-                  <label className="admin-form-label">模板标题</label>
-                  <input
-                    className="admin-input-text"
-                    value={editingTemplate.title}
-                    disabled={!canEditMeta(editingTemplate.status)}
-                    onChange={(e) =>
-                      setEditingTemplate({ ...editingTemplate, title: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="admin-form-row">
-                  <label className="admin-form-label">模板摘要</label>
-                  <textarea
-                    className="team-textarea"
-                    value={editingTemplate.summary}
-                    disabled={!canEditMeta(editingTemplate.status)}
-                    onChange={(e) =>
-                      setEditingTemplate({ ...editingTemplate, summary: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="admin-form-row">
-                  <label className="admin-form-label">预计时长 (分钟)</label>
-                  <input
-                    type="number"
-                    className="admin-input-text"
-                    value={editingTemplate.estimatedDurationMinutes ?? ''}
-                    disabled={!canEditMeta(editingTemplate.status)}
-                    onChange={(e) =>
-                      setEditingTemplate({
-                        ...editingTemplate,
-                        estimatedDurationMinutes:
-                          e.target.value === '' ? null : Number(e.target.value) || null,
-                      })
-                    }
-                  />
-                </div>
-              </div>
-            </section>
-          </div>
+          basicFields
         )}
       </div>
     );
   }
 
   return (
-    <div className="admin-settings-page">
+    <div className={`admin-settings-page ${libraryStyles.page}`}>
       <div className="settings-pagehead">
         <div className="settings-titlebox">
           <h1>项目模板库</h1>
           <div className="settings-desc">
-            Admin 统一维护项目式学习（PBL）模板。全面以课时为基本教学单元进行编排与交付收口。
+            管理可以开展的项目课程，查看每节课的任务与学习成果。
           </div>
         </div>
         <div className="settings-page-actions">
@@ -1234,7 +935,7 @@ export default function AdminTemplatesPage() {
             onClick={handleCreateTemplate}
             disabled={saving}
           >
-            + 新建项目模板
+            + 新建课程
           </button>
         </div>
       </div>
@@ -1260,185 +961,25 @@ export default function AdminTemplatesPage() {
               className={`settings-action-btn ${filterArchived === 'active' ? 'is-primary' : ''}`}
               onClick={() => setFilterArchived('active')}
             >
-              有效项目模板 ({templates.filter((t) => t.status !== 'archived').length})
+              已上架 ({templates.filter((t) => t.status === 'published' || t.status === 'piloting').length})
             </button>
             <button
               type="button"
               className={`settings-action-btn ${filterArchived === 'all' ? 'is-primary' : ''}`}
               onClick={() => setFilterArchived('all')}
             >
-              全部模板（含已归档） ({templates.length})
+              全部课程 ({templates.length})
             </button>
           </div>
 
-          <div className="admin-templates-cards-grid">
-            {displayedTemplates.map((template) => {
-              const is16Sessions =
-                template.slug.includes('16s') || template.title.includes('16');
-              const is8Sessions =
-                template.slug.includes('8s') || template.title.includes('8') || template.slug.includes('wave');
-
-              const tagLabel = is16Sessions
-                ? '📅 16 课时项目教学编排'
-                : is8Sessions
-                ? '📅 8 课时项目教学编排'
-                : '📚 课时计划教学编排';
-
-              const scheduleLabel = is16Sessions
-                ? '16 课时（60 分钟/课时）'
-                : is8Sessions
-                ? '8 课时（45 分钟/课时）'
-                : '按课时自主规划（标准课时轨道）';
-
-              const policyLabel = is16Sessions
-                ? '🛡️ standard-stem-pbl:v1'
-                : is8Sessions
-                ? '🛡️ wave-optics-pbl:v1'
-                : '🛡️ standard-curriculum-pbl:v1';
-
-              const gateLabel = is16Sessions || is8Sessions
-                ? '理论核验通过后开放实践'
-                : '逐课循序推进与作品审批';
-
-              const buttonLabel = is16Sessions
-                ? '查看 16 课时教学编排 →'
-                : is8Sessions
-                ? '查看 8 课时教学编排 →'
-                : '配置项目与团队绑定 →';
-
-              return (
-                <div
-                  key={template.id}
-                  className="admin-template-item-card"
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    height: '100%',
-                    opacity: template.status === 'archived' ? 0.75 : 1,
-                  }}
-                >
-                  <div className="admin-template-item-head">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <VisualAsset assetId={template.iconAssetId ?? 'subject-interdisciplinary-v1'} size={40} />
-                      <strong className="admin-template-item-title">{template.title}</strong>
-                    </div>
-                    <span
-                      className="admin-template-status-pill"
-                      style={{
-                        backgroundColor:
-                          template.status === 'published'
-                            ? '#e6f8ea'
-                            : template.status === 'archived'
-                              ? '#f2f3f5'
-                              : '#e8f3ff',
-                        color:
-                          template.status === 'published'
-                            ? '#00b42a'
-                            : template.status === 'archived'
-                              ? '#86909c'
-                              : '#165dff',
-                      }}
-                    >
-                      {STATUS_LABELS[template.status] ?? template.status}
-                    </span>
-                  </div>
-
-                  <div
-                    className="admin-template-16session-tag"
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      backgroundColor: is16Sessions ? '#eff6ff' : is8Sessions ? '#f0fdf4' : '#f8fafc',
-                      color: is16Sessions ? '#1d4ed8' : is8Sessions ? '#15803d' : '#475569',
-                      border: `1px solid ${is16Sessions ? '#bfdbfe' : is8Sessions ? '#bbf7d0' : '#e2e8f0'}`,
-                      borderRadius: '6px',
-                      padding: '4px 8px',
-                      fontSize: '12px',
-                      fontWeight: 600,
-                      marginTop: '6px',
-                      marginBottom: '8px',
-                      width: 'fit-content',
-                    }}
-                  >
-                    <span>{tagLabel}</span>
-                  </div>
-
-                  <p className="admin-template-item-desc">{template.summary || '暂无描述'}</p>
-                  <div style={{ display: 'flex', gap: 8, margin: '10px 0', flexWrap: 'wrap' }}>
-                    <VisualSelector owner={{ kind: 'template', id: template.id }} usage="icon" label="选择主题图标" onSaved={() => void load()} />
-                    <VisualSelector owner={{ kind: 'template', id: template.id }} usage="cover" label="选择主题封面" onSaved={() => void load()} />
-                    {template.latestPublishedVersionId && <VisualSelector owner={{ kind: 'template-version', id: template.latestPublishedVersionId }} usage="icon" label="版本图标" onSaved={() => void load()} />}
-                  </div>
-
-                  <div className="admin-template-info-list" style={{ marginTop: 'auto' }}>
-                    <div className="admin-template-info-row">
-                      <span className="admin-template-info-label">适用领域:</span>
-                      <span className="admin-template-info-val">{template.domain || '自然科学 / 物理'}</span>
-                    </div>
-                    <div className="admin-template-info-row">
-                      <span className="admin-template-info-label">课时规划:</span>
-                      <span
-                        className="admin-template-info-val"
-                        style={{
-                          fontWeight: 600,
-                          color: '#165dff',
-                        }}
-                      >
-                        {scheduleLabel}
-                      </span>
-                    </div>
-                    <div className="admin-template-info-row">
-                      <span className="admin-template-info-label">治理策略:</span>
-                      <span
-                        className="admin-template-info-val"
-                        style={{ color: '#0f766e', fontWeight: 600 }}
-                        title={`解耦治理：${policyLabel}`}
-                      >
-                        {policyLabel}
-                      </span>
-                    </div>
-                    <div className="admin-template-info-row">
-                      <span className="admin-template-info-label">核心门禁:</span>
-                      <span
-                        className="admin-template-info-val"
-                        style={{ color: '#dc2626', fontWeight: 600 }}
-                      >
-                        {gateLabel}
-                      </span>
-                    </div>
-                    <div className="admin-template-info-row">
-                      <span className="admin-template-info-label">发布版本:</span>
-                      <span className="admin-template-info-val">
-                        {template.latestPublishedVersionId ? '已有发布版本' : '尚无发布版本'}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div
-                    className="admin-template-card-footer"
-                    style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: 'auto', paddingTop: '14px' }}
-                  >
-                    <button
-                      type="button"
-                      className="settings-action-btn is-primary"
-                      style={{ flex: 1 }}
-                      onClick={() => openEditor(template)}
-                    >
-                      {buttonLabel}
-                    </button>
-                    <button
-                      type="button"
-                      className="settings-action-btn is-danger"
-                      onClick={() => handleDeleteTemplate(template.id, template.title)}
-                      title="删除项目模板"
-                    >
-                      🗑️ 删除
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+          <div className={libraryStyles.grid}>
+            {displayedTemplates.map(template => (
+              <TemplateLibraryCard key={template.id} template={template}
+                onOpen={() => openEditor(template)}
+                onDelete={() => void handleDeleteTemplate(template.id, template.title)}
+                onSaved={() => void load()}
+                onRestore={() => void handleRestoreTemplate(template)} restoring={restoringId === template.id} restoreDisabled={saving} />
+            ))}
           </div>
         </>
       )}

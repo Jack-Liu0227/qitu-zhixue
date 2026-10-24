@@ -27,6 +27,8 @@ export interface AdminKnowledgeDocument {
 }
 
 export interface AdminProjectTemplate {
+  lessonCount?: number | null;
+  lessonMinutes?: number | null;
   iconAssetId?: string | null;
   coverAssetId?: string | null;
   id: string;
@@ -179,4 +181,21 @@ export function archiveAdminTemplate(id: string): Promise<AdminTemplateMutation>
     body: { reason: 'Archived from admin template editor' },
     idempotencyKey: newIdempotencyKey(),
   });
+}
+
+export async function restoreAdminTemplate(template: AdminProjectTemplate, idempotencyKey: string): Promise<AdminTemplateMutation & { version: AdminTemplateVersionDetail | null }> {
+  const result = await adminEnvelopeRequest<AdminTemplateMutation & { version: AdminTemplateVersionDetail | null }>({
+    path: `/api/v1/admin/project-templates/${encodeURIComponent(template.id)}/restore`, method: 'POST',
+    body: { expectedUpdatedAt: template.updatedAt, reason: '恢复归档课程并继续编辑' }, idempotencyKey,
+  });
+  const saved = (await fetchAdminTemplates()).find(entry => entry.id === template.id);
+  if (!saved || saved.status !== 'draft' || saved.updatedAt !== result.template.updatedAt) {
+    throw new Error('恢复后的课程状态未能回读确认，请重新加载核对。');
+  }
+  if (!result.version) return { ...result, template: saved };
+  const version = (await fetchAdminTemplateVersions(template.id)).find(entry => entry.id === result.version?.id);
+  if (!version || version.templateId !== template.id || version.status !== 'draft' || version.createdAt !== result.version.createdAt) {
+    throw new Error('恢复后的可编辑版本未能回读确认，请重新加载核对。');
+  }
+  return { ...result, template: saved, version };
 }

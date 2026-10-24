@@ -14,6 +14,7 @@
 - Provider/model selection and credentials are supplied by the Qitu server runtime.
 - Production does not use Pi's CLI, TUI, `auth.json`, OAuth login flow, or ambient credential store.
 - Qitu-specific adapters are implemented outside the upstream source tree.
+- The vendored OpenAI adapter explicitly sends DeepSeek `thinking: { type: "disabled" }` when reasoning is disabled. DeepSeek's default enabled mode otherwise exhausts the response budget before producing text. Keep the explicit `off: null` compatibility opt-out and cover the outgoing HTTP payload in `deepseek-thinking.test.ts`.
 
 ## Sync policy
 

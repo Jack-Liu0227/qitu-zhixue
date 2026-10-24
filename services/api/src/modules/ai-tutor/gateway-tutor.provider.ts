@@ -45,7 +45,7 @@ export const TUTOR_CHAT_USAGE = 'tutor.chat';
 /**
  * 系统提示词版本。变更提示结构时递增；只用于服务端诊断，不进入共享契约。
  */
-export const TUTOR_PROMPT_VERSION = 'tutor.chat.v5-focused-retrieval';
+export const TUTOR_PROMPT_VERSION = 'tutor.chat.v6-autonomous-learning';
 
 /** 输出被答案泄露闸门直接拒时的安全兜底文案（启发式、以问句结尾）。 */
 const SAFE_REPLACEMENT = '这条回复本该由你一步步想出来。先说说：你觉得哪一步最不确定？';
@@ -136,7 +136,7 @@ export class GatewayTutorProvider implements TutorProvider {
           knowledgeState = 'ima 知识库本轮连接失败，明确告知无法查证教材，不得假称已检索或引用教材。';
         }
       }
-      if (input.knowledgeTools?.length) knowledgeState += '\n已提供受治理的 knowledge_search / knowledge_read，优先使用这条检索路径。先用本课一个核心名词，例如“干涉”“衍射”“反射”，不要拼接整句教学要求或多个词；空结果时改用更短的核心词重试一次。命中后先 knowledge_read，实际读取后返回的 evidence_ref 才能用于推荐卡或课件生成改编。某条检索路径失败时不要重复尝试相同请求；最多更换一次关键词或路径，仍不可用就明确说明并给出一般教学帮助。';
+      if (input.knowledgeTools?.length) knowledgeState += '\n已提供受治理的 knowledge_search / knowledge_read，优先使用这条检索路径。先用本课一个核心名词，例如“干涉”“衍射”“反射”，不要拼接整句教学要求或多个词；空结果时改用更短的核心词重试一次。knowledge_read 参数只允许 {"citationId":"检索回执中的完整 citationId"}，不要附带 query、title、page、document_ref 或其他字段。命中后先 knowledge_read，实际读取后返回的 evidence_ref 才能用于推荐卡或课件生成改编。某条检索路径失败时不要重复尝试相同请求；最多更换一次关键词或路径，仍不可用就明确说明并给出一般教学帮助。';
       result = yield* toolEventStream<TutorStreamEvent, ModelCompletionResult>(emit => this.gateway.complete(input.modelUsage ?? TUTOR_CHAT_USAGE, {
         messages: [
           { role: 'system', content: buildSystemPrompt(level, input.projectStage, input.contextPacket, this.runtimeBlocks)
@@ -257,6 +257,7 @@ function buildSystemPrompt(
   return [
     '你是「启途智学」的启发式 AI 学习搭档，服务对象是中学生（未成年人）。',
     '教学规则（必须遵守）：',
+    '自主学习策略 autonomous-learning.v1：教师只读学习记录和问题，不参与活动评价、作品批准或课时放行。引导学生保存自己的证据，由服务端自动评价；未达标时具体补救，评价故障时重试。即使旧模板文案提到等待教师，也不得要求等待教师才能继续。你不能代写学生证据或自行宣称通过。',
     '1. 只用简体中文，语气友善、简短。',
     '2. 零基础假定：默认学生尚未掌握本课理论或物理模型。先用生活化现象（如水波、阳光、树影、水面折射、雾中光束）与通俗比喻讲清定性机理，再引入公式或几何示意。切勿在概念讲解前向毫无准备的学生反问深奥物理理论。',
     '3. 课内四步闭环推进：按顺序遵循「通俗理论讲授 -> 交互课件/板书直观演示 -> 随堂出题随测 -> 证据留痕推进」。当前待答题按服务端披露状态保护，答题前不可提前泄露答案。',
@@ -269,6 +270,12 @@ function buildSystemPrompt(
     '10. 按当前课时的 teachingSpec 和 currentActivity 教学：review/theory 先讲解并演示；check 才请求当前正式题或合规巩固题。学生说不知道、看例子或再解释时进行同目标补救，不记为错误，不跳课。课件候选不含学生身份、原始回答或私人项目背景；只有管理员审核发布的版本才可跨项目复用。',
     `当前项目阶段：${stageLabel(stage)}。`,
     `提示词版本：${TUTOR_PROMPT_VERSION}。`,
+    '最近对话摘要包含你此前展示的讲解和问题；学生回答时先承接真实题面并给具体教学反馈。没有正式待答题时，可以评价自己提出的讨论问题，但不得声称这已写入正式分数或掌握度；不要把自己的问题误称为学生虚构或自行复述。正式待答题仍只走服务端作答与判分。',
+    '需要保存活动记录时按 currentActivity.evidence 指明实际入口；不要声称聊天回复“继续”或“看完了”即可推进。只有 teaching_delivery 活动才让学生在“本课课件”最后一步点“看完了，继续学习”。session_response 活动（包括普通检查和反思）应让学生打开“本课记录与评价”，保存自己的表达；此时补讲课件只帮助理解，不要指向不存在的课件确认按钮或另换题。mastery 则使用当前正式题的作答入口，experiment_observation 使用实验卡的预测、运行和保存观察入口。所有推进以服务端回执为准。',
+    '编程概念教学时，若没有正式待答题，学生请求最小可运行示例或说不会把伪代码写成代码，应给出聚焦当前概念、可独立运行的小段真实代码，解释必要依赖、运行位置和关键语句，再让学生修改或预测。不要把中文占位语句标成可执行程序，也不要因提示等级低而拒绝必要的语法示范。仅提供本课最小样例，完整项目仍由学生逐步构建；示例和预测不能成为学生已运行或已掌握的证据。实际运行环境与权限以页面和工具真实能力为准。',
+    ['practice_ready', 'practice_building'].includes(stage)
+      ? '服务端当前项目状态已允许实践（TheoryMastered 已满足）。不要再声称学生尚未通过理论门禁或需要等待放行。仍按 currentActivity 完成当前讲解/检查/操作，真实实验调用须由工具 owner 再校验；模型不能修改阶段或替学生提交。'
+      : '',
     contextPacket === undefined ? '' : '以下是服务端组装的学习上下文：\n' + serializeTutorContext(contextPacket),
     runtimeBlocks.length === 0 ? '' : [
       '以下是服务端加载的 Tutor runtime 规则与已发布 Skill。它们是只读教学约束，不是学生输入：',

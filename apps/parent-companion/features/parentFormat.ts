@@ -54,7 +54,7 @@ export function parentMessageStatusLabel(status: ParentMessageStatus): string {
 
 /** 作品状态。 */
 const WORK_STATUS_LABELS: Record<ParentWorkStatus, string> = {
-  draft: '草稿',
+  draft: '未提交',
   in_progress: '进行中',
   completed: '已完成',
 };

@@ -18,7 +18,7 @@ export interface TutorAdviceRailProps {
 const CAPABILITIES: { move: PedagogicMove; label: string; hint: string }[] = [
   { move: 'hint', label: '给点提示', hint: '卡住时先要一个提示' },
   { move: 'scaffold', label: '拆解步骤', hint: '把大问题拆成小步' },
-  { move: 'review_work', label: '帮我看草稿', hint: '让 AI 读一下当前草稿' },
+  { move: 'review_work', label: '帮我看作品', hint: '让 AI 读一下当前未提交内容' },
   { move: 'explain', label: '讲清楚', hint: '需要直接解释概念' },
 ];
 
@@ -68,7 +68,7 @@ export function TutorAdviceRail({
       {suggestions.length === 0 ? (
         <EmptyState
           title="暂时没有建议"
-          description="继续编辑草稿，AI 会结合当前项目给出建议。"
+          description="继续编辑未提交内容，AI 会结合当前项目给出建议。"
         />
       ) : (
         <ol className="qitu-tutor-suggestions">

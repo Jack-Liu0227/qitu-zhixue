@@ -14,7 +14,9 @@ const ids=['zero8','thunder'].map(name=>fs.readFileSync(root+'/'+(process.env.QI
   const accounts=await api('/auth/test-accounts');await api('/auth/login',{...accounts.accounts.find(a=>a.role==='student'),deviceId:'courseware-display-student'});
   await context.storageState({path:dir+'/browser-state.json'});
   await page.goto(base+'/student/tutor/'+ids[0],{waitUntil:'domcontentloaded'});
-  const card=page.locator('section[aria-label="双缝干涉探究"]').first();await card.waitFor({timeout:120000});
+  const card=page.locator('section[aria-label="双缝干涉探究"]').first();await card.waitFor({state:'attached',timeout:120000});
+  const experimentHistory=card.locator('xpath=ancestor::details[1]');
+  assert.equal(await experimentHistory.evaluate(el=>el.open),true,'Historical dynamic experiments must be open on first load');
   const scene=card.getByRole('figure',{name:'波的传播与屏上条纹'});await scene.waitFor();
   assert.equal(await scene.getAttribute('data-motion'),'paused');report.reducedMotion=true;
   assert.equal(await scene.getByRole('button',{name:'已减少动态效果'}).isDisabled(),true);
@@ -56,6 +58,19 @@ const ids=['zero8','thunder'].map(name=>fs.readFileSync(root+'/'+(process.env.QI
      if(step.mermaid)await board.locator('.qitu-mermaid-diagram-card svg').waitFor({state:'visible',timeout:30000});
      if(step.tex){assert.equal(await board.locator('.katex').count(),1);assert.equal(await board.locator('.katex-error').count(),0);}
      if(step.svg)await board.locator('.qitu-board-svg').waitFor();
+     if(!step.tex&&!step.mermaid&&!step.svg){
+      const priorVisual=expected[index].steps.slice(0,stepIndex).some(item=>item.tex||item.mermaid||item.svg);
+      if(priorVisual){
+       await board.getByText(/结合第 \d+ 步图示思考/).waitFor({state:'visible'});
+       await board.locator('.qitu-mermaid-diagram-card svg,.katex,.qitu-board-svg').first().waitFor({state:'visible'});
+       report.retainedVisualSteps=(report.retainedVisualSteps||0)+1;
+       if(report.retainedVisualSteps===1)await board.screenshot({path:dir+'/thinking-step-retained-visual.png',animations:'disabled'});
+      }else{
+       assert.ok(step.caption.trim(),'Introductory text must be visible before the first visual');
+       assert.equal(await board.locator('.qitu-mermaid-diagram-card svg,.katex,.qitu-board-svg').count(),0,'Do not fabricate or reveal a future step as prior context');
+       report.introductoryTextSteps=(report.introductoryTextSteps||0)+1;
+      }
+     }
      assert.equal(await board.locator('.qitu-mermaid-fallback-container,[role="alert"]').count(),0);
     }
     if(expected[index].steps.length>1)await board.getByRole('button',{name:'从头再看',exact:true}).click();

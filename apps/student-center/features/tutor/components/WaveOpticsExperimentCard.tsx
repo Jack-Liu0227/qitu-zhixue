@@ -42,10 +42,25 @@ function WaveOpticsLab({ block, disabled = false, readOnly = false, onAction, in
   const [receipt, setReceipt] = useState(block.savedObservation);
   const [pending, setPending] = useState<TutorExperimentAction | null>(null);
   const [error, setError] = useState('');
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const alive = useRef(true);
   const keys = useRef(new Map<string, string>());
   const card = useRef<HTMLElement>(null);
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
+  useEffect(() => {
+    const syncFullscreen = () => setIsFullscreen(document.fullscreenElement === card.current);
+    document.addEventListener('fullscreenchange', syncFullscreen);
+    return () => document.removeEventListener('fullscreenchange', syncFullscreen);
+  }, []);
+  const toggleFullscreen = async () => {
+    try {
+      if (document.fullscreenElement === card.current) await document.exitFullscreen();
+      else if (card.current?.requestFullscreen) await card.current.requestFullscreen();
+      else setError('此设备暂不支持全屏，可继续在这里探究。');
+    } catch {
+      setError('未能切换全屏，可继续在这里探究。');
+    }
+  };
   const parsed = useMemo(() => readParameters(parameters.mode, parametersWithoutMode(parameters)), [parameters]);
   const evidenceReadOnly = readOnly || !block.allowedActions.length;
   // Replay is available only after an owner-accepted run. It never submits evidence.
@@ -107,9 +122,8 @@ function WaveOpticsLab({ block, disabled = false, readOnly = false, onAction, in
   return <section ref={card} className={styles.card} aria-label={isDouble ? '双缝干涉探究' : '单缝衍射探究'} aria-busy={pending !== null}>
     <header className={styles.header}><div><span className={styles.eyebrow}>波动探究 · 模拟实验</span>
       <h3>{block.title}</h3></div><button type="button" className="qitu-button qitu-button-ghost" onClick={() => {
-        if (document.fullscreenElement) void document.exitFullscreen();
-        else void card.current?.requestFullscreen().catch(() => setError('此设备暂不支持全屏，可继续在这里探究。'));
-      }}>全屏探究</button></header>
+        void toggleFullscreen();
+      }} aria-pressed={isFullscreen}>{isFullscreen ? '退出全屏' : '全屏探究'}</button></header>
     <p className={styles.intro}>{isDouble ? '分清缝宽 a 与中心间距 d。一次改变一个变量，比较条纹与整体包络。'
       : '先标出中央亮带和两侧条纹，再用一组受控比较检验你的预测。'}</p>
     {replay ? <p className={styles.confirmed}>复习演示：可以反复调节参数、重新演示，不会新增或覆盖已保存的学习记录。</p>

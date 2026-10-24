@@ -1,7 +1,7 @@
 ---
 name: qitu-project-configurator
 description: 启途智学全局配置管家，在 Admin 管家中统一配置助手、团队、模板、工作流、技能、MCP、知识库、模型及画像成长用途。
-version: 1.4.0
+version: 1.4.1
 runtime: admin
 status: published
 ---
@@ -72,7 +72,7 @@ For end-to-end skill adaptation or curriculum work, read `references/lifecycle.m
 
 ## 服务端能力合同
 
-<!-- qitu-copilot-contract: {"version":"1.4.0","operationsDigest":"9f97744b2246409fcdd93063b33bc38d1490ecd1991a1210b4bb6116c3d97303"} -->
+<!-- qitu-copilot-contract: {"version":"1.4.1","operationsDigest":"f1f038731c14e42609d66eb38fc3d832211b06055e751153a74ccc56b969ab0b"} -->
 
 - 能力唯一来源为 `packages/contracts/src/admin-copilot.ts` 的 `ADMIN_COPILOT_OPERATIONS`；通过 `/admin/copilot/capabilities` 获取目录，运行时校验上面的版本和摘要。缺失或漂移必须停止配置，不自行补全操作。
 - `global` 管理全局资源，无需选择项目；修改已有资源必须用目录中的明确 ID。`selected_template` 只管理所选模板及服务端证明关联的资源，平台级操作切换到 global 后才执行。客户端选择的团队本身不构成关联证明。

@@ -1,4 +1,5 @@
 import type { EvidenceProfile, GateConditionId, PblPhase } from './team-runtime.js';
+import { EVIDENCE_PROFILES } from './team-runtime.js';
 import { isGateConditionId } from './team-runtime.js';
 import type { KnowledgeType } from './learning-plan.js';
 import type { LessonTeachingSpec } from './courseware.js';
@@ -158,6 +159,16 @@ export function matchesPolicyGate(actualGate: string, policyGate: string): boole
 export const GLOBAL_GOVERNANCE_POLICIES: readonly PblGovernancePolicy[] = [
   STANDARD_STEM_PBL_POLICY,
   {
+    id: 'rubric-pbl:v1', name: '跨领域作品探究', version: 'v1',
+    description: '保留理论掌握门禁，以冻结标准和确切作品版本的服务端评价完成实践。',
+    phases: STANDARD_STEM_PBL_POLICY.phases.map(phase => ({
+      ...phase,
+      ...(phase.phase === 'guided_practice' ? { requiredCheckpoint: 'rubric_artifact_validated', leadAssistantRole: 'Artifact Coach' } : {}),
+      allowedToolTypesBeforeGate: ['concept_probe', 'driving_question', 'visual_explanation'],
+      allowedToolTypesAfterGate: ['concept_probe', 'visual_explanation', 'artifact_revision', 'reflection'],
+    })),
+  },
+  {
     ...STANDARD_STEM_PBL_POLICY,
     id: 'wave-optics-pbl:v1', name: '干涉与衍射项目式探究', version: 'v1',
     description: '以冻结的波动准备目标核验 TheoryMastered，实践仅调用注册的单缝与双缝模型。',
@@ -256,8 +267,9 @@ interface LearningSessionCompletionRequirements {
 
 export interface LessonQualityReviewSpec {
   version: 'lesson-quality.v1';
-  reviewer: 'current_teacher';
+  reviewer: 'current_teacher' | 'autonomous-learning.v1';
   criteria: readonly { id: string; description: string }[];
+  artifactCriteria?: readonly { id: string; description: string }[];
 }
 
 export type LearningSessionCompletionSpec = LearningSessionCompletionRequirements & (
@@ -604,7 +616,7 @@ export function validateProjectTemplateSpec(input: unknown): ProjectTemplateVali
     if (value.deliverableType !== null && !templateText(value.deliverableType)) issue(`${path}.deliverableType`, 'deliverableType must be text or null');
     if (value.assignedAssistantId !== null && !templateText(value.assignedAssistantId)) issue(`${path}.assignedAssistantId`, 'assignedAssistantId must be text or null');
     if (value.evidenceProfile !== undefined && value.evidenceProfile !== null
-      && !templateEnum(value.evidenceProfile, ['runnable_code', 'experiment_report'])) issue(`${path}.evidenceProfile`, 'invalid evidence profile');
+      && !templateEnum(value.evidenceProfile, EVIDENCE_PROFILES)) issue(`${path}.evidenceProfile`, 'invalid evidence profile');
   }
   const schedules: PblTemplateSchedule[] = [];
   if (!Array.isArray(input.schedules) || input.schedules.length === 0) issue('schedules', 'schedules are required');
@@ -793,10 +805,10 @@ function validateTemplateProfile(
           const review = spec.qualityReview;
           if (!templateRecord(review)) issue(`${specPath}.qualityReview`, 'quality review is required');
           else {
-            templateKeys(review, ['version', 'reviewer', 'criteria'], `${specPath}.qualityReview`, issue);
-            if (review.version !== 'lesson-quality.v1' || review.reviewer !== 'current_teacher'
+            templateKeys(review, ['version', 'reviewer', 'criteria', 'artifactCriteria'], `${specPath}.qualityReview`, issue);
+            if (review.version !== 'lesson-quality.v1' || !['current_teacher', 'autonomous-learning.v1'].includes(String(review.reviewer))
               || !Array.isArray(review.criteria) || review.criteria.length < 1 || review.criteria.length > 8) {
-              issue(`${specPath}.qualityReview`, 'one to eight current-teacher quality criteria are required');
+              issue(`${specPath}.qualityReview`, 'one to eight quality criteria and a supported reviewer policy are required');
             } else {
               const ids = new Set<string>();
               for (const criterion of review.criteria) {
@@ -805,6 +817,20 @@ function validateTemplateProfile(
                 if (!templateText(criterion.id) || !templateText(criterion.description) || criterion.description.length > 600
                   || ids.has(String(criterion.id))) issue(`${specPath}.qualityReview.criteria`, 'invalid or duplicate quality criterion');
                 ids.add(String(criterion.id));
+              }
+            }
+            if (review.artifactCriteria !== undefined) {
+              if (!Array.isArray(review.artifactCriteria) || review.artifactCriteria.length < 1 || review.artifactCriteria.length > 8) {
+                issue(`${specPath}.qualityReview.artifactCriteria`, 'one to eight artifact criteria are required');
+              } else {
+                const ids = new Set<string>();
+                for (const criterion of review.artifactCriteria) {
+                  if (!templateRecord(criterion)) { issue(specPath, 'invalid artifact criterion'); continue; }
+                  templateKeys(criterion, ['id', 'description'], `${specPath}.qualityReview.artifactCriteria`, issue);
+                  if (!templateText(criterion.id) || !templateText(criterion.description) || criterion.description.length > 600
+                    || ids.has(String(criterion.id))) issue(`${specPath}.qualityReview.artifactCriteria`, 'invalid or duplicate artifact criterion');
+                  ids.add(String(criterion.id));
+                }
               }
             }
           }

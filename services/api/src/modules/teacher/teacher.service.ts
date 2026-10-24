@@ -463,8 +463,7 @@ export class TeacherService {
     action: TeacherInterventionAction,
     note: string | null = null,
   ): Promise<TeacherInterventionActionResponse> {
-    if (!this.interventions) throw new ServiceUnavailableException('学习支持服务暂不可用');
-    return this.interventions.act(teacherUserId, interventionId, action, note);
+    throw new ForbiddenException({ code: 'TEACHER_LEARNING_READ_ONLY', message: '教师只读学生学习记录和问题，不参与学习阶段的处理或放行。' });
   }
 
   /**

@@ -77,7 +77,7 @@ export class ProjectLearningLifecycleService {
         let target: ProjectStage = 'intent_confirmed';
         if (frozen.phase === 'concept_mastery') target = frozen.checkpoint?.requiredGate === 'TheoryMastered' ? 'theory_check' : 'theory_learning';
         if (frozen.phase === 'guided_practice') {
-          target = ['experiment_report_validated', 'code_playable_run_verified', 'practice_artifact_approved'].includes(frozen.checkpoint?.requiredGate ?? '') && proofs.submissions.some(proof => proof.kind === 'submitted_artifact')
+          target = ['experiment_report_validated', 'code_playable_run_verified', 'practice_artifact_approved', 'rubric_artifact_validated'].includes(frozen.checkpoint?.requiredGate ?? '') && proofs.submissions.some(proof => proof.kind === 'submitted_artifact')
             ? 'artifact_review' : 'practice_building';
         }
         if (frozen.phase === 'deliverable_review') {

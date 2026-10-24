@@ -293,7 +293,7 @@ export function useWorkbenchDraft(args: {
   // The route seeds the initial kind from a server-side read model, and
   // `loadedRef` is pre-seeded so that kind is never refetched. But a buffered
   // offline edit must still win on mount — otherwise the user's unsaved work
-  // is silently replaced (spec §5「绝不丢草稿」).
+  // is silently replaced (spec §5「绝不丢未提交内容」).
   useEffect(() => {
     const kind = initialDraft.kind;
     const buffer = readWorkbenchBuffer(projectId, kind);

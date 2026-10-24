@@ -1,5 +1,6 @@
 import type { TutorReplyBlock } from '@qitu/contracts';
 import { experimentReadOnlyReason } from '../lib/experimentAvailability';
+import { experimentAnchor, revealExperiment } from '../lib/timelinePresentation';
 import { EvidenceChip } from './EvidenceChip';
 import { HintLevelIndicator } from './HintLevelIndicator';
 import { NumberedQuestionList } from './NumberedQuestionList';
@@ -51,6 +52,7 @@ export function TutorReplyBlockView({
   onExperimentAction,
   projectId,
   coursewareSnapshot = false,
+  experimentRepeated = false,
   projectContext,
   disabled = false,
 }: {
@@ -63,6 +65,7 @@ export function TutorReplyBlockView({
   onExperimentAction?: (experimentId: string, action: 'submit_prediction' | 'run' | 'record_observation', payload: unknown, idempotencyKey: string) => void | Promise<boolean | import('@qitu/contracts').TutorExperimentActionResponse>;
   projectId?: string | null;
   coursewareSnapshot?: boolean;
+  experimentRepeated?: boolean;
   projectContext?: import('@qitu/contracts').TutorProjectContext;
   disabled?: boolean;
 }) {
@@ -149,7 +152,7 @@ export function TutorReplyBlockView({
       const board = <><BoardBlock title={block.title} steps={block.steps} />{block.provenance ? <div className="qitu-learning-attribution">
         <span>{block.provenance.origin === 'adapted' ? '根据已核验资料改编' : '导师按本课目标生成'} · 翻页用于查看图示</span>
         {block.provenance.sources.length ? <LearningSources sources={block.provenance.sources} /> : null}</div> : null}</>;
-      return coursewareSnapshot ? <details><summary>查看板书快照 · {block.title}</summary>{board}</details> : board;
+      return coursewareSnapshot ? <details open data-saved-courseware={block.boardId}><summary>已保存课件 · {block.title}</summary>{board}</details> : board;
     }
     case 'milestone':
       return <MilestoneBlock phaseId={block.phaseId} title={block.title} deliverables={block.deliverables} gate={block.gate} projectId={projectId} />;
@@ -179,12 +182,16 @@ export function TutorReplyBlockView({
         />
       );
     case 'optics_experiment': {
+      if (experimentRepeated) return <p>已在本对话中展示此实验。<button type="button" className="qitu-button qitu-button-ghost"
+        onClick={() => revealExperiment(block.experimentId)}>回到已有实验</button></p>;
       const readOnlyReason = experimentReadOnlyReason(block, projectContext);
-      if (block.specVersion === '2.0.0') return <>
+      if (block.specVersion === '2.0.0') return <details id={experimentAnchor(block.experimentId)}
+        data-saved-experiment={block.experimentId} open>
+        <summary>第 {block.sessionIndex} 课 · {block.title} · {readOnlyReason ? '已保存，可重新演示' : '当前探究'}</summary>
         {readOnlyReason ? <p role="note">{readOnlyReason}</p> : null}
         <WaveOpticsExperimentCard key={block.experimentId} block={block} disabled={disabled} readOnly={!!readOnlyReason}
           onAction={(action, payload, key) => onExperimentAction?.(block.experimentId, action, payload, key)} />
-      </>;
+      </details>;
       if (block.initialMode === 'interference' || block.allowedModels?.some(mode => mode === 'interference')) return <SafeReplyFallback />;
       if (block.allowedActions.length === 0 && !block.savedObservation) return <section className="qitu-tutor-hint" role="note">
         <strong>这条历史预览不需要提交预测</strong>

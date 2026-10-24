@@ -15,6 +15,7 @@
   overflow: hidden;
 }
 .panel * { box-sizing: border-box; }
+.lessonContent,.mentorContent{min-width:0}.lessonContent{border-left:1px solid var(--teaching-border)}.lessonChoice{width:100%;display:flex;align-items:baseline;gap:12px;padding:15px 16px;border:0;border-bottom:1px solid var(--teaching-border);background:transparent;color:inherit;font:inherit;font-size:13px;text-align:left;cursor:pointer;line-height:1.6}.lessonChoice>span:first-child{font-variant-numeric:tabular-nums;color:var(--teaching-muted);font-size:12px}.lessonChoice[aria-current="step"]{background:var(--teaching-soft);box-shadow:inset 3px 0 var(--teaching-primary);color:var(--teaching-primary)}.lessonChoice:hover{background:var(--teaching-subtle)}.mentorSelect{padding:16px;border-left:1px solid var(--teaching-border)}.mentorSelect label{display:grid;gap:8px;font-size:12px;color:var(--teaching-muted)}.mentorContent>details{margin:16px;padding:14px;border-radius:8px}.mentorContent>details summary{font-size:12px;cursor:pointer}.lessonContent .routing{border-left:0}
 .header { display: flex; justify-content: space-between; gap: 20px; align-items: center; padding: 25px 24px 18px; }
 .eyebrow { font-size: 11px; letter-spacing: .1em; color: var(--teaching-muted); margin-bottom: 7px; }
 .header h2 { display: flex; align-items: center; gap: 9px; margin: 0; font-size: 23px; font-weight: 750; letter-spacing: -.04em; }

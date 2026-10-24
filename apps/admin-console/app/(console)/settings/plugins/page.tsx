@@ -68,7 +68,7 @@ function emptyPlugin(name: string, hookPoint: PluginItem['hookPoint']): PluginIt
 }
 
 export default function PluginsSettingsPage() {
-  // 平台尚无插件注册表后端；此列表只承载管理员在本页手动登记的本地草稿。
+  // 平台尚无插件注册表后端；此列表只承载管理员在本页手动登记的本地配置。
   const [plugins, setPlugins] = useState<PluginItem[]>([]);
   const [showInstallModal, setShowInstallModal] = useState(false);
   const [installPackageName, setInstallPackageName] = useState('');
@@ -84,7 +84,7 @@ export default function PluginsSettingsPage() {
   };
 
   const handleDeletePlugin = (id: string, name: string) => {
-    if (!window.confirm(`确定要移除插件草稿「${name}」吗？`)) return;
+    if (!window.confirm(`确定要移除插件配置「${name}」吗？`)) return;
     setPlugins((prev) => prev.filter((p) => p.id !== id));
     if (editingPlugin?.id === id) setEditingPlugin(null);
     if (previewingPlugin?.id === id) setPreviewingPlugin(null);
@@ -108,8 +108,8 @@ export default function PluginsSettingsPage() {
     setShowInstallModal(false);
     setInstallPackageName('');
     alert(
-      `已在本页登记插件草稿「${newPlugin.name}」。\n` +
-      '注意：平台尚未提供插件安装与注册的服务端接口，草稿仅保存在当前页面会话中，不会真正安装或持久化。'
+      `已在本页登记插件配置「${newPlugin.name}」。\n` +
+      '注意：平台尚未提供插件安装与注册的服务端接口，未保存内容仅保存在当前页面会话中，不会真正安装或持久化。'
     );
   };
 
@@ -165,7 +165,7 @@ export default function PluginsSettingsPage() {
             <br />
             插件的安装、注册与运行状态需要后端插件总线支撑；当前平台尚未提供该服务端接口。
             <br />
-            你可以点击右上角「安装新插件」在本页登记插件草稿（仅当前会话可见，不会真正安装）。
+            你可以点击右上角「安装新插件」在本页登记插件配置（仅当前会话可见，不会真正安装）。
           </div>
         ) : (
           <div className="admin-knowledge-cards-grid">
@@ -179,13 +179,13 @@ export default function PluginsSettingsPage() {
                       style={{ fontSize: '10.5px', padding: '1px 6px', borderRadius: '4px', background: '#fff7ed', color: '#c2410c', fontWeight: 600 }}
                       title="仅保存在当前页面会话中；插件注册需要后端支撑"
                     >
-                      本地草稿
+                      本地配置
                     </span>
                   </div>
                   <div
                     className={`admin-toggle-switch${plugin.enabled ? ' is-on' : ''}`}
                     onClick={() => togglePlugin(plugin.id)}
-                    title={plugin.enabled ? '已标记启用（本地草稿状态）' : '已标记停用（本地草稿状态）'}
+                    title={plugin.enabled ? '已标记启用（本地配置状态）' : '已标记停用（本地配置状态）'}
                   >
                     <div className="admin-toggle-knob" />
                   </div>
@@ -218,7 +218,7 @@ export default function PluginsSettingsPage() {
                       fontWeight: 600,
                     }}
                   >
-                    {plugin.enabled ? '● 草稿已标记启用' : '○ 草稿已标记停用'}
+                    {plugin.enabled ? '● 未保存内容已标记启用' : '○ 未保存内容已标记停用'}
                   </span>
                   <div style={{ display: 'flex', gap: '6px' }}>
                     <button
@@ -234,7 +234,7 @@ export default function PluginsSettingsPage() {
                       type="button"
                       className="admin-skill-dot-btn"
                       onClick={() => setEditingPlugin({ ...plugin })}
-                      title="编辑插件草稿"
+                      title="编辑插件配置"
                     >
                       ✏️
                     </button>
@@ -243,7 +243,7 @@ export default function PluginsSettingsPage() {
                       className="admin-skill-dot-btn"
                       style={{ color: '#ef4444' }}
                       onClick={() => handleDeletePlugin(plugin.id, plugin.name)}
-                      title="移除插件草稿"
+                      title="移除插件配置"
                     >
                       🗑️
                     </button>
@@ -398,7 +398,7 @@ export default function PluginsSettingsPage() {
               </div>
               <p style={{ fontSize: '12px', color: '#b45309', margin: 0, lineHeight: 1.6 }}>
                 需要后端支撑：插件拉取、注册与运行时钩子总线尚无服务端接口。
-                提交后仅在当前页面登记为本地草稿，不会真正安装。
+                提交后仅在当前页面登记为本地配置，不会真正安装。
               </p>
             </div>
             <div className="admin-modal-footer">
@@ -414,7 +414,7 @@ export default function PluginsSettingsPage() {
                 className="settings-action-btn is-primary"
                 onClick={handleInstall}
               >
-                登记为本地草稿
+                登记为本地配置
               </button>
             </div>
           </div>
@@ -426,7 +426,7 @@ export default function PluginsSettingsPage() {
         <div className="admin-modal-overlay" onClick={() => setEditingPlugin(null)}>
           <div className="admin-modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="admin-modal-header">
-              <h3>编辑插件草稿: {editingPlugin.name}</h3>
+              <h3>编辑插件配置: {editingPlugin.name}</h3>
               <button
                 type="button"
                 className="admin-modal-close-btn"
@@ -480,7 +480,7 @@ export default function PluginsSettingsPage() {
                   setEditingPlugin(null);
                 }}
               >
-                🗑️ 移除草稿
+                🗑️ 移除未保存内容
               </button>
               <button
                 type="button"

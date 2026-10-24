@@ -50,6 +50,7 @@ export interface CaptureCourseware {
   sources: CoursewareSource[];
   curriculumHash: string;
   generation?: CoursewareGeneration;
+  use?: CoursewareUse;
   assetVersionId?: string;
   parentVersionId?: string;
   key: string;
@@ -138,9 +139,11 @@ export class CoursewareService {
   async capture(input: CaptureCourseware): Promise<CoursewareInstance> {
     if (input.actor.role !== 'student') throw new ForbiddenException('只有学生本人可产生课堂展示记录');
     if (!/^[a-f0-9]{64}$/u.test(input.curriculumHash) || !bounded(input.key, 400)) throw new BadRequestException('需要课程版本和操作标识。');
+    const use = input.use ?? 'explain';
+    if (!uses.includes(use)) throw new BadRequestException('课件用途无效。');
     const parsed = { content: content(input.content), sources: sources(input.sources), objectiveRefs: refs(input.objectiveRefs), curriculumHash: input.curriculumHash };
     const id = `cwi-${digest([input.actor.id, input.scope, input.key]).slice(0, 40)}`;
-    const hash = digest({ ...parsed, scope: input.scope, assetVersionId: input.assetVersionId ?? null, parentVersionId: input.parentVersionId ?? null });
+    const hash = digest({ ...parsed, ...(use !== 'explain' ? { use } : {}), scope: input.scope, assetVersionId: input.assetVersionId ?? null, parentVersionId: input.parentVersionId ?? null });
     return this.store.transaction(async store => {
       const existing = await store.instance(id);
       if (existing) {
@@ -155,7 +158,7 @@ export class CoursewareService {
           || !version.objectiveRefs.every(ref => parsed.objectiveRefs.includes(ref))) coursewareError('COURSEWARE_NOT_AUTHORIZED', '课件来源或版本已变化。');
         if (input.assetVersionId && digest(parsed.content) !== version.contentHash) coursewareError('COURSEWARE_CONTENT_MISMATCH', '复用内容与发布版本不一致。');
       }
-      const candidateId = input.assetVersionId ? null : `cwv-${digest([parsed, input.parentVersionId ?? null]).slice(0, 40)}`;
+      const candidateId = input.assetVersionId ? null : `cwv-${digest([parsed, input.parentVersionId ?? null, ...(use !== 'explain' ? [use] : [])]).slice(0, 40)}`;
       const value: CoursewareInstance = { ...input.scope, ...parsed, id, contentHash: digest(parsed.content),
         generation: input.generation ?? authored, candidateVersionId: candidateId,
         assetVersionId: input.assetVersionId ?? null, parentVersionId: input.parentVersionId ?? null,
@@ -167,7 +170,7 @@ export class CoursewareService {
           // Only teaching content is nominated. No project, learner, conversation or answer metadata is copied.
           await store.saveVersion({ ...parsed, assetId: parent?.assetId ?? `cwa-${randomUUID()}`, versionId: candidateId,
             parentVersionId: parent?.versionId ?? null, revision: 1, status: 'candidate', contentHash: value.contentHash,
-            generation: value.generation, use: 'explain', changeSummary: '教学课件候选，待管理员审核科学性、教学适配、隐私和来源使用范围。',
+            generation: value.generation, use, changeSummary: '教学课件候选，待管理员审核科学性、教学适配、隐私和来源使用范围。',
             review: null, createdAt: value.createdAt, updatedAt: value.createdAt });
         }
       }

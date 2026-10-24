@@ -81,12 +81,15 @@ export function useInspirationData(
 
   // In-memory cache for read-only offline rendering (never persisted).
   const cacheRef = useRef<InspirationTemplate[] | null>(null);
+  const requestRef = useRef(0);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (background = false) => {
+    const request = ++requestRef.current;
     setRetrying(true);
-    setQuery({ status: 'loading', code: null });
+    if (!background || cacheRef.current === null) setQuery({ status: 'loading', code: null });
 
     const outcome = await runQuery(() => dataSource.listTemplates());
+    if (request !== requestRef.current) return;
 
     // 401 means the session expired. Follow the AuthGuard convention and send
     // the browser to login (/) rather than showing a permission-denied state.
@@ -104,6 +107,7 @@ export function useInspirationData(
     } else {
       setQuery({ status: outcome.kind, code: outcome.code });
       if (outcome.kind === 'offline') setTemplates(cacheRef.current);
+      if (outcome.kind === 'denied') { cacheRef.current = null; setTemplates(null); }
     }
 
     setRetrying(false);
@@ -111,7 +115,20 @@ export function useInspirationData(
 
   useEffect(() => {
     void load();
+    return () => { requestRef.current += 1; };
   }, [load, reloadToken]);
+
+  useEffect(() => {
+    const refresh = () => { if (document.visibilityState === 'visible' && navigator.onLine) void load(true); };
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    const timer = window.setInterval(refresh, 30_000);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [load]);
 
   useEffect(() => {
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
@@ -135,7 +152,7 @@ export function useInspirationData(
   }, []);
 
   const state = useMemo<InspirationPageState>(() => {
-    if (offline) return 'offline';
+    if (offline || query.status === 'offline') return 'offline';
     if (query.status === 'denied') return 'permission-denied';
     if (query.status === 'loading') return 'loading';
     if (query.status === 'error') return 'error';
@@ -145,7 +162,7 @@ export function useInspirationData(
 
   return {
     state,
-    offline,
+    offline: offline || query.status === 'offline',
     templates: templates ?? [],
     errorCode: query.code,
     retrying,

@@ -212,38 +212,7 @@ export class TeacherController {
   ): Promise<{ data: TeacherInterventionActionResponse }> {
     const user = requireRole(this.authService, cookieHeader, 'teacher', '该操作仅向班主任开放');
 
-    const input = pickFields<TeacherInterventionActionRequest>(body, ['action', 'note']);
-
-    if (!input.action) {
-      throw new BadRequestException('action is required');
-    }
-
-    // 契约里的 TeacherInterventionAction 是 TS 类型，运行时不存在。
-    // 不校验就把它透传给服务层，将来服务层一旦不再无条件抛错，
-    // 任意字符串都会变成一条“已处理”记录。
-    if (input.action !== 'acknowledge' && input.action !== 'resolve') {
-      throw new BadRequestException('action 必须为 acknowledge 或 resolve');
-    }
-
-    if (idempotencyKey === undefined || idempotencyKey.trim().length === 0 || idempotencyKey.length > 160) {
-      throw new BadRequestException({ code: 'IDEMPOTENCY_KEY_REQUIRED', message: '缺少或无效的 Idempotency-Key 请求头' });
-    }
-    const scope = `teacher.intervention.action:${user.id}:${id}`;
-    if (input.note !== null && input.note !== undefined && (typeof input.note !== 'string' || input.note.length > 1000)) {
-      throw new BadRequestException('说明内容不能超过 1000 字');
-    }
-    await this.teacherService.getInterventionDetail(user.id, id);
-    try {
-      const result = await this.idempotency.execute(
-        scope,
-        idempotencyKey,
-        hashIdempotentInput(scope, { interventionId: id }, input),
-        async () => ({ status: 200, body: await this.teacherService.recordInterventionAction(user.id, id, input.action!, input.note ?? null) }),
-      );
-      return { data: result.body };
-    } catch (error) {
-      throwHttpForIdempotencyError(error);
-    }
+    return { data: await this.teacherService.recordInterventionAction(user.id, id, 'acknowledge') };
   }
 
   /**

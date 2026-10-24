@@ -1,3 +1,5 @@
+import { WorksPublicationReview } from './works-publication-review';
+import type { LessonQualityEvaluator } from './lesson-quality-evaluator';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { CurrentUser } from '@qitu/contracts';
@@ -89,12 +91,15 @@ async function harness() {
   const audits: unknown[] = [];
   const audit = { write: async (input: unknown) => { audits.push(input); return 'audit'; } } as unknown as AuditWriter;
   const gates = { recordGateForStudent: async () => ({ status: 'recorded' }) } as unknown as TeamRuntimeService;
-  const works = new WorksService(artifacts, directory, projects, evidence, new UnconfiguredObjectStoragePresigner(), idempotency, audit, gates);
+
   const bindings = { getFrozenTeachingBundle: async () => ({ templateVersionId: 'template-optics', template: OPTICS_16_SESSION_TEMPLATE_SPEC,
     scheduleProfileId: OPTICS_16_SESSION_TEMPLATE_SPEC.curriculum!.profiles[0]!.id }) } as unknown as TemplateBindingService;
   let gate = true;
   const mastery = { checkRequiredObjectives: async () => gate } as unknown as MasteryDomainService;
-  const owner = new WorksLearningEvidenceService(plans, bindings, directory, mastery, works, artifacts, evidence, facts, idempotency, audit);
+  const evaluator: LessonQualityEvaluator = { evaluate: async input => ({ providerId: 'isolated', modelId: 'controlled', criteria: input.criteria.map(item => ({ criterionId: item.id, meets: true, feedback: 'Fixture verdict.' })) }) };
+  const publication = new WorksPublicationReview(plans, bindings, directory, artifacts, facts, evidence, audit, idempotency, evaluator, mastery);
+  const works = new WorksService(artifacts, directory, projects, evidence, new UnconfiguredObjectStoragePresigner(), idempotency, audit, gates, publication);
+  const owner = new WorksLearningEvidenceService(plans, bindings, directory, mastery, works, artifacts, evidence, facts, idempotency, audit, undefined, evaluator);
   const access = { canReadStudent: async (actor: CurrentUser, studentId: string) => actor.id === studentId } as unknown as AccessPolicy;
   const learning = new LearningPlanService(plans, new DeterministicPlanGenerator(), idempotency, audit, {} as OutboxWriter, access,
     mastery, gates, bindings, owner);
@@ -112,9 +117,6 @@ async function rejectCode(work: () => Promise<unknown>, code: string) {
 }
 
 async function approve(h: Awaited<ReturnType<typeof harness>>, artifactId: string) {
-  const active = await h.artifacts.findActiveReviewForArtifact(artifactId);
-  assert.ok(active);
-  await h.teacher.decideReview(TEACHER, active.id, { decision: 'approved', comment: 'The report presents the required evidence and limitations.' });
   return h.works.publishArtifact(STUDENT.id, artifactId, `publish-${artifactId}`);
 }
 
@@ -128,6 +130,9 @@ test('responses persist immutable inline content and reload exact lesson scope; 
   assert.equal(again.proof.ref, first.proof.ref);
   assert.equal(again.replayed, true);
   assert.equal((await h.artifacts.listArtifacts({ studentIds: [STUDENT.id] })).length, 1);
+  const reloaded = await h.owner.getLessonProofs(STUDENT, 'plan', h.session(3).id, 1);
+  assert.ok(reloaded.qualityCriteria.length, 'legacy frozen lessons also expose automatic evaluation criteria');
+  assert.equal(reloaded.submissions[0]?.quality?.status, 'accepted');
   assert.deepEqual((await h.owner.getLessonProofs(STUDENT, 'plan', h.session(3).id, 1)).submissions.map((p) => p.ref), [first.proof.ref]);
   assert.equal((await h.owner.getLessonProofs(STUDENT, 'plan', h.session(4).id, 1)).submissions.length, 0, 'shared objective does not share lesson completion proof');
   await rejectCode(() => h.owner.readLessonProofs(STUDENT, { ...first.proof.scope, planRevision: 2 }), 'LEARNING_EVIDENCE_SCOPE_MISMATCH');
@@ -153,13 +158,8 @@ test('real submitted version is readable to assigned mentor, and becomes proof o
   const h = await harness();
   const report = await h.owner.submitArtifact(STUDENT, 'plan', h.session(14).id,
     { planRevision: 1, objectiveId: h.session(14).practiceObjectiveIds[0]!, title: 'Optics report', content: 'Claim: the pattern widens. Evidence: saved simulations. Reasoning: the model predicts inverse width.', requestReview: true }, 'report');
-  assert.equal(report.artifact.status, 'submitted');
-  assert.equal(report.artifact.reviewStatus, 'requested');
-  assert.equal((await h.works.getArtifact(TEACHER, report.artifact.id)).latestVersion?.inlineText, report.artifact.latestVersion?.inlineText);
-  assert.equal((await h.owner.getLessonProofs(STUDENT, 'plan', h.session(16).id, 1)).approvedArtifacts.length, 0);
-  await rejectCode(() => h.owner.submitReflection(STUDENT, 'plan', h.session(16).id,
-    { planRevision: 1, content: 'My final reflection' }, 'too-early'), 'PROJECT_REVIEW_REQUIRED');
-  await approve(h, report.artifact.id);
+  assert.equal(report.artifact.status, 'published');
+  assert.equal(report.artifact.reviewStatus, 'approved');
   const proofs = await h.owner.getLessonProofs(STUDENT, 'plan', h.session(16).id, 1);
   assert.equal(proofs.approvedArtifacts[0]?.kind, 'approved_artifact');
   assert.equal(proofs.approvedArtifacts[0]?.artifactVersionId, report.artifact.latestVersion?.id);
@@ -172,7 +172,7 @@ test('real submitted version is readable to assigned mentor, and becomes proof o
   assert.equal((await h.plans.findProject('project'))?.status, 'practice_building', 'Works never advances project');
   assert.equal((await h.plans.listMasteryForPlan(STUDENT.id, 'plan')).length, 0, 'Works never awards mastery');
   h.directory.currentMentor = 'replacement';
-  assert.equal((await h.owner.getLessonProofs(STUDENT, 'plan', h.session(16).id, 1)).approvedArtifacts.length, 0);
+  assert.equal((await h.owner.getLessonProofs(STUDENT, 'plan', h.session(16).id, 1)).approvedArtifacts.length, 1);
   await rejectCode(() => h.owner.getLessonProofs(TEACHER, 'plan', h.session(16).id, 1), 'LEARNING_EVIDENCE_FORBIDDEN');
 });
 
@@ -219,9 +219,14 @@ test('saved observations are scoped and submission never creates correct attempt
 test('teacher review queue is bounded and current-mentor-only, and returns the submitted immutable version', async () => {
   const h = await harness();
   const report = await h.owner.submitArtifact(STUDENT, 'plan', h.session(14).id,
-    { planRevision: 1, title: 'Reviewable report', content: 'The full submitted report.', requestReview: true }, 'queue-report');
-  const review = await h.artifacts.findActiveReviewForArtifact(report.artifact.id);
-  assert.ok(review);
+    { planRevision: 1, title: 'Reviewable report', content: 'The full submitted report.', requestReview: false }, 'queue-report');
+  // Historical pending review fixture; the current publication path never creates it.
+  const stored = (await h.artifacts.findArtifact(report.artifact.id))!;
+  const version = (await h.artifacts.listVersions(stored.id))[0]!;
+  await h.artifacts.transitionArtifact({ artifactId: stored.id, expectedStatuses: ['draft'], status: 'submitted', now: new Date() });
+  const review = await h.artifacts.createMentorReview({ id: 'historical-review', schoolId: null, studentId: STUDENT.id,
+    mentorUserId: TEACHER.id, projectId: 'project', artifactId: stored.id, status: 'requested', idempotencyKey: 'historical-fixture', now: new Date() });
+  await h.evidence.recordArtifactReviewRequest(stored, version, review);
   const reviews = new InMemoryTeacherReviewRepository();
   const row = { ...review, studentUserId: review.studentId, artifactRef: review.artifactId };
   reviews.seed(row);

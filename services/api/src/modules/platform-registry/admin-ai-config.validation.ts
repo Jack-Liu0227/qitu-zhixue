@@ -1,4 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
+import { EVIDENCE_PROFILES } from '@qitu/contracts';
 import {
   GATE_CONDITION_CORE,
   getVisualAsset,
@@ -65,9 +66,6 @@ export const GATE_CONDITIONS: readonly GateConditionId[] = [
 
 /** 已注册门禁 id 集合（写侧白名单）。 */
 export const REGISTERED_GATE_CONDITIONS: ReadonlySet<string> = new Set(GATE_CONDITIONS);
-
-/** 证据档案闭集。 */
-const EVIDENCE_PROFILES: readonly EvidenceProfile[] = ['runnable_code', 'experiment_report'];
 
 /**
  * 阶段缺省门禁——**仅是回落表**，不再具权威。

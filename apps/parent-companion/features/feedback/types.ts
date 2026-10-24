@@ -20,11 +20,11 @@ export interface FeedbackTypeOption {
 }
 
 /**
- * 一条反馈草稿。
+ * 一条反馈未提交内容。
  *
- * 草稿会以 `sessionStorage` 暂存在本机：
+ * 未提交内容会以 `sessionStorage` 暂存在本机：
  *  - 网络失败后重开浮窗能恢复用户已经写好的内容；
- *  - `idempotencyKey` 随草稿一起保存，**重试时复用同一个键**，
+ *  - `idempotencyKey` 随未提交内容一起保存，**重试时复用同一个键**，
  *    避免「后端其实已经收下、只是响应丢了」时开出第二张工单；
  *  - 用 `sessionStorage` 而不是 `localStorage`，是为了让未成年人相关
  *    内容不长期驻留、关闭标签页即失效。
@@ -37,9 +37,9 @@ export interface FeedbackDraft {
   childId: string;
   /** 可选关联项目；不关联时为 null。 */
   projectId: string | null;
-  /** 同一次草稿共用的幂等键。 */
+  /** 同一次未提交内容共用的幂等键。 */
   idempotencyKey: string;
 }
 
-/** 反馈提交失败的分类，用于驱动不同的界面提示与「是否保留草稿」。 */
+/** 反馈提交失败的分类，用于驱动不同的界面提示与「是否保留未提交内容」。 */
 export type FeedbackFailureKind = 'offline' | 'permission' | 'validation' | 'error';

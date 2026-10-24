@@ -42,3 +42,39 @@ test('untrusted KaTeX links cannot create active script URLs', () => {
   assert.doesNotMatch(html, /href="javascript:/);
   assert.doesNotMatch(html, /<script/);
 });
+
+test('lesson test matrices render as readable tables with column headers and a bounded scroll region', () => {
+  const html = render('测试记录\n| 操作 | 输入 | 预期 | 实际 |\n| --- | --- | --- | --- |\n| 命中 | 一颗子弹 | 加 10 分 | 加 10 分 |\n| 重开 | R | 生命恢复 | 生命 3 |\n\n接着解释结果。');
+  assert.equal((html.match(/<table /g) ?? []).length, 1);
+  assert.equal((html.match(/<th /g) ?? []).length, 4);
+  assert.equal((html.match(/<td /g) ?? []).length, 8);
+  assert.match(html, /scope="col"/);
+  assert.match(html, /overflow-x:auto/);
+  assert.match(html, /tabindex="0"/);
+  assert.doesNotMatch(html, /\| ---/);
+  assert.match(html, /接着解释结果/);
+});
+
+test('table cells preserve code, emphasis, inline math, escaped pipes, and declared alignment', () => {
+  const html = render('内容 | 说明\n:--- | ---:\n**预测** | $x+1$\n`a\\|b` | 实际');
+  assert.match(html, /<strong/);
+  assert.match(html, /class="katex"/);
+  assert.match(html, />a\|b<\/code>/);
+  assert.match(html, /text-align:right/);
+  assert.equal((html.match(/<td /g) ?? []).length, 4);
+});
+
+test('table HTML stays escaped and fenced table examples remain literal code', () => {
+  const html = render('| 项目 | 内容 |\n| --- | --- |\n| 安全 | <img src=x onerror=alert(1)> |\n\n```text\n| a | b |\n| --- | --- |\n```');
+  assert.equal((html.match(/<table /g) ?? []).length, 1);
+  assert.match(html, /&lt;img/);
+  assert.doesNotMatch(html, /<img/);
+  assert.match(html, /\| --- \| --- \|/);
+});
+
+test('ordinary pipes and malformed rows retain their visible text rather than disappearing into a table', () => {
+  assert.doesNotMatch(render('a | b\nnot a separator'), /<table/);
+  const html = render('| a | b |\n| --- | --- |\n| 1 | 2 | 3 |');
+  assert.match(html, /\| 1 \| 2 \| 3 \|/);
+  assert.doesNotMatch(html, /<td /);
+});

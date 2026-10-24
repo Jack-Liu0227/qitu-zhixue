@@ -37,7 +37,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
   }, [source, projectId]);
   const [explorationKey, setExplorationKey] = useState(0);
   const routeContextKey = searchParams.toString();
-  const session = useTutorSession(projectId, routeContextKey || explorationKey);
+  const session = useTutorSession(projectId, explorationKey, searchParams.get('explorationId') || undefined);
   const composer = useComposer();
   const [leftOpen, setLeftOpen] = useState(false);
   const [rightOpen, setRightOpen] = useState(false);
@@ -75,6 +75,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
     });
   };
   const [confirming, setConfirming] = useState(false);
+  const centerColumnRef = useRef<HTMLDivElement | null>(null);
   const [confirmationError, setConfirmationError] = useState<string | null>(null);
   const confirmKey = useRef<{ explorationId: string; templateVersionId: string; key: string } | null>(null);
 
@@ -94,23 +95,8 @@ export function TutorPage({ projectId }: { projectId?: string }) {
   const servingAssistantName = team?.assistantName ?? '启途智学助手';
   const currentAssistantName = team?.teamName ?? servingAssistantName;
   const currentIdentityName = currentAssistantName;
-  const ready = session.sessionStatus === 'ready' && session.connection === 'open';
+  const ready = session.canStartExploration || session.sessionStatus === 'ready' && session.connection === 'open';
   const busy = session.streaming || session.submitting || composer.submitting;
-
-  useEffect(() => {
-    // Entering AI搭档 without an explicit exploration opens the current project.
-    if (!projectId && searchParams.get('idle') !== '1' && !searchParams.get('new') && !searchParams.get('explorationId') && !searchParams.get('explorePrompt')) {
-      let cancelled = false;
-      void source.listProjects().then((projects) => {
-        if (cancelled) return;
-        const activeProject = projects.find((p) => p.isCurrent);
-        if (activeProject) router.replace(`/tutor/${encodeURIComponent(activeProject.id)}`);
-      }).catch(() => {
-        // The session surface will expose the server error; never insert demo data.
-      });
-      return () => { cancelled = true; };
-    }
-  }, [projectId, searchParams, source, router]);
 
   useEffect(() => {
     try {
@@ -146,7 +132,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
 
   function newExploration() {
     if (busy || confirming) return;
-    if (projectId) { router.push('/tutor?new=1', { scroll: false }); return; }
+    if (projectId) { composer.clear(); router.push('/tutor?new=1', { scroll: false }); return; }
     window.history.replaceState(null, '', `${window.location.pathname}?new=1`);
     confirmKey.current = null;
     setConfirmationError(null);
@@ -179,7 +165,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
             ? '离线 · 暂停发送'
             : session.sessionStatus === 'error'
               ? session.sessionError?.status === 401 ? '登录已失效' : '会话加载失败'
-              : busy ? '导师正在处理' : ready ? '教学会话已连接' : searchParams.get('idle') === '1' ? '选择会话或开始新的探索' : '正在连接教学会话'}
+              : busy ? '导师正在处理' : session.canStartExploration ? '发送第一句话，开启探索' : ready ? '教学会话已连接' : '正在连接教学会话'}
         </span>
         <button
           type="button"
@@ -218,7 +204,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
           router.push(`/tutor/${encodeURIComponent(targetProjectId)}`, { scroll: false });
         }}
       />
-      <div className="qitu-tutor-center-column">
+      <div className="qitu-tutor-center-column" ref={centerColumnRef}>
         {session.projectRefreshError ? <div role="alert" className="qitu-tutor-inline-alert">
           {session.projectRefreshError.message}<button type="button" onClick={() => { void session.refreshProjectContext(); }}>重新读取课时</button>
         </div> : null}
@@ -228,7 +214,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
           turns={session.turns}
           currentAssistantName={currentAssistantName}
           explorationContext={session.project?.exploration ? session.project : undefined}
-          idle={searchParams.get('idle') === '1'}
+          idle={session.canStartExploration}
           status={session.sessionStatus === 'ready' && session.turns.length === 0 ? 'empty' : session.sessionStatus}
           error={session.sessionError}
           streaming={session.streaming}
@@ -238,6 +224,11 @@ export function TutorPage({ projectId }: { projectId?: string }) {
           onRetry={session.projectStatus === 'error' ? session.retryProject : session.retrySession}
           onNewExploration={newExploration}
           onReconnect={session.reconnect}
+          onPrepareDraft={(text) => {
+            if (!ready || busy || confirming || session.offline) return;
+            if (text) composer.setDraft(text);
+            centerColumnRef.current?.querySelector<HTMLTextAreaElement>('textarea[aria-label="输入你的想法"]')?.focus({ preventScroll: true });
+          }}
           onSelectOption={(label, text) => {
             if (!ready || busy || confirming) return;
             if (text) void composer.submit(text, session.submitText);

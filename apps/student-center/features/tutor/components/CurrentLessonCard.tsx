@@ -22,7 +22,7 @@ export function CurrentLessonCard(props: CurrentLessonCardProps) {
     <section className="qitu-tutor-phase-tree qitu-tutor-current-lesson" aria-label="课时安排">
       <div className="qitu-tutor-phase-tree-heading"><div><span>LESSON PLAN</span><h3>课时安排</h3></div></div>
       {planId ? <LessonProgressPanel key={`${props.projectId}:${planId}`} {...props} planId={planId} mode="schedule" />
-        : <div className="qitu-tutor-phase-details"><p>当前项目尚无可读取的冻结课表，请刷新项目或联系老师。</p></div>}
+        : <div className="qitu-tutor-phase-details"><p>当前项目尚无可读取的冻结课表，请刷新项目或联系平台支持。</p></div>}
     </section>
   );
 }
@@ -117,7 +117,7 @@ function LessonProgressPanel({ projectId, planId, refreshKey, onProgressChanged,
               {activity.status === 'current' ? <p>{activity.guidance}</p> : null}
             </li>)}
           </ol> : null}</> : null}
-        {!progress.contractReady ? <p role="status">课时任务尚未准备完整，请联系老师检查项目配置。</p> : null}
+        {!progress.contractReady ? <p role="status">课时任务尚未准备完整，请联系平台支持检查项目配置。</p> : null}
         {mode === 'schedule' ? <ol className="qitu-lesson-schedule">
           {progress.sessions.map((item) => <li key={item.sessionId} aria-current={item.status === 'current' ? 'step' : undefined}>
             <strong>第 {item.lessonIndex} 课 · {item.title}</strong>
@@ -133,7 +133,7 @@ function LessonProgressPanel({ projectId, planId, refreshKey, onProgressChanged,
           </li>)}
         </ol> : null}
         {current && mode === 'work' ? <LessonWorkPanel
-          key={`${current.sessionId}:${progress.planRevision}:${current.activities?.find(activity => activity.status === 'current')?.activityId ?? ''}`}
+          key={`${current.sessionId}:${progress.planRevision}`}
           scope={{ projectId, planId, planRevision: progress.planRevision, learningSessionId: current.sessionId }}
           lesson={current}
           refreshKey={progress}

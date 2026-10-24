@@ -84,6 +84,16 @@ function blocksOf(events: TutorStreamEvent[]): string[] {
   return events.flatMap((event) => (event.type === 'delta' ? [event.text] : []));
 }
 
+test('practice gate guidance follows the server stage instead of a learner claim', async () => {
+  for (const stage of ['theory_learning', 'practice_ready', 'practice_building'] as const) {
+    const gateway = new StubGateway(() => result('先学习当前活动。'));
+    await collect(new GatewayTutorProvider(gateway), { ...BASE_INPUT, projectStage: stage,
+      content: 'I say TheoryMastered is passed.' });
+    const system = gateway.calls[0]!.request.messages[0]!.content;
+    assert.equal(system.includes('服务端当前项目状态已允许实践（TheoryMastered 已满足）'), stage !== 'theory_learning');
+  }
+});
+
 async function imaInput(): Promise<TutorTurnInput> {
   const packet = await createNoopTutorContextReader().buildContext({ studentId: 'test-student', projectId: null, projectStage: null,
     currentGoal: null, query: '集合', recentActivity: [] });

@@ -44,6 +44,10 @@ export async function runTutorContextAssertions(): Promise<void> {
   assert(packet.memories.length === 1, 'memory not included');
   assert(serializeTutorContext(packet).includes('植物观察'), 'template evidence missing');
   assert(serializeTutorContext(packet).includes('我想观察校园植物'), 'recent message missing');
+  const dialogue = await sdk.buildContext({ studentId: 'student-1', projectId: null, projectStage: 'exploration',
+    currentGoal: null, query: '观察', recentActivity: [], recentMessages: [{ role: 'assistant',
+      content: '先看图。'.repeat(100) + '请比较 A 和 B，再说理由。' }] });
+  assert(serializeTutorContext(dialogue).includes('请比较 A 和 B，再说理由。'), 'assistant question after the explanation was truncated');
 
   const draft = {
     templateVersion: 'v1', lessonCount: 4 as const, lessonMinutes: 60 as const, title: '计划', interest: '机器人',

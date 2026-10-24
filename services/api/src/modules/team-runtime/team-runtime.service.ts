@@ -32,7 +32,7 @@ import {
   withTransaction,
 } from '@qitu/database';
 import type { CurrentUser, PblPhase, TutorTeamAgentMessage, TutorTeamAgentToolCall, TutorTeamAgentStatus, RolePhaseMap, PblCurriculumProfile } from '@qitu/contracts';
-import { getPhaseAndRoleForSession } from '@qitu/contracts';
+import { getPhaseAndRoleForSession, GATE_CONDITION_REGISTRY } from '@qitu/contracts';
 import { IMA_READ_TOOLS } from '../ai-tutor/ima-mcp.client.js';
 import {
   PBL_ASSISTANT_BY_PHASE,
@@ -111,9 +111,9 @@ const TEAM_TOPIC_FRAME_KIND: Record<string, TeamStreamKind> = {
   [TEAM_MODEL_THINKING_TOPIC]: 'thinking',
 };
 
-const KNOWN_PBL_GATES: ReadonlySet<string> = new Set(Object.values(PBL_GATE_BY_PHASE));
+const KNOWN_PBL_GATES: ReadonlySet<string> = new Set(Object.keys(GATE_CONDITION_REGISTRY));
 const GATE_TO_PHASE: Record<string, PblPhase> = Object.fromEntries(
-  (Object.entries(PBL_GATE_BY_PHASE) as [PblPhase, string][]).map(([phase, gate]) => [gate, phase]),
+  Object.entries(GATE_CONDITION_REGISTRY).map(([gate, registration]) => [gate, registration.phase]),
 );
 
 /** 学生 SSE 帧按 kind 投影，只允许这些结构化字段。 */

@@ -114,17 +114,19 @@ export class ModelRuntimeError extends Error {
   readonly code: ModelRuntimeErrorCode;
   readonly retryable: boolean;
   readonly upstreamStatus: number | null;
+  readonly responseDiagnostic?: { finishReason: string; outputTokens: number };
 
   constructor(
     code: ModelRuntimeErrorCode,
     message: string,
-    options: { retryable?: boolean; upstreamStatus?: number | null } = {},
+    options: { retryable?: boolean; upstreamStatus?: number | null; responseDiagnostic?: { finishReason: string; outputTokens: number } } = {},
   ) {
     super(message);
     this.name = 'ModelRuntimeError';
     this.code = code;
     this.retryable = options.retryable ?? false;
     this.upstreamStatus = options.upstreamStatus ?? null;
+    this.responseDiagnostic = options.responseDiagnostic;
   }
 }
 
@@ -206,7 +208,9 @@ async function* runWithPi(resolver: ModelRuntimeResolver, input: ModelRuntimeReq
         context.messages.push({ role: 'user', content: 'Your last response contained no text. Give a brief final response using the existing tool receipts and the required output format. Do not call tools again, invent results or claim failed actions succeeded.', timestamp: Date.now() });
         continue;
       }
-      if (!text) throw new ModelRuntimeError('MODEL_EMPTY_RESPONSE', 'Model returned empty text');
+      if (!text) throw new ModelRuntimeError('MODEL_EMPTY_RESPONSE', 'Model returned empty text', {
+        responseDiagnostic: { finishReason: message.stopReason, outputTokens: finiteOrNull(message.usage.output) ?? 0 },
+      });
       yield { type: 'done', result: { ...toResult(target, message, text), usage } };
       return;
     }

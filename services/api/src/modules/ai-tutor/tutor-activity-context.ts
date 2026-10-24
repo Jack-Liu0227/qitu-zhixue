@@ -45,6 +45,8 @@ export async function prepareTutorLessonActivities(input: {
   const actor = { id: input.studentId, role: 'student' as const, email: '', displayName: '' };
   const assessmentObjective = [...teaching.session.theoryObjectiveIds, ...teaching.session.practiceObjectiveIds].includes(teaching.objective.id);
   const pendingQuestion = assessmentObjective ? await input.questions?.readPendingQuestionCandidate(actor, scope) : undefined;
+  const canVerifyQuestionSources = !!input.knowledgeAccess.scope && !!input.knowledgeAccess.readEvidence
+    && await input.knowledgeAccess.authorize?.('ima_read_document') === true;
   return createLessonActivityChannel({
     teaching, runtime, scope, idempotencyKey: input.idempotencyKey, pendingQuestion, assessmentPending: input.assessmentPending,
     ...(input.courseware && frozenTeachingSpec(teaching) ? { courseware: createCoursewareActivityPort({
@@ -64,7 +66,7 @@ export async function prepareTutorLessonActivities(input: {
         fresh.role, input.registry!.isModelAvailable(fresh.role.modelByPurpose.dialogue!)), fresh) };
     },
     verifyEvidence: (refs) => verifyLessonEvidence(input.knowledgeAccess, refs),
-    ...(assessmentObjective && input.questions ? { acceptQuestion: (candidate, key, verify: (refs: readonly string[]) => Promise<readonly ImaReadEvidence[]>) =>
+    ...(assessmentObjective && input.questions && canVerifyQuestionSources ? { acceptQuestion: (candidate, key, verify: (refs: readonly string[]) => Promise<readonly ImaReadEvidence[]>) =>
       input.questions!.acceptQuestionCandidate(actor, scope, candidate, key, verify) } : {}),
     proposeOptics: (candidate, key) => {
       if (!input.experiments) unavailable();

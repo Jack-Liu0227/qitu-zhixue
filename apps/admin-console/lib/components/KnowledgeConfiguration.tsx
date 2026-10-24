@@ -681,7 +681,7 @@ export function KnowledgeConfiguration({
               </button>
               {dialog === 'engine' && (
                 <button className={`${styles.button} ${styles.primary}`} onClick={addEngine}>
-                  生成配置草稿
+                  生成配置方案
                 </button>
               )}
             </div>

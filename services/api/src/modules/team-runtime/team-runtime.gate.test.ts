@@ -1546,6 +1546,7 @@ test('T25: whitelist constant is the single source of truth and live call sites 
     review_completed_and_archived: ['works.publish-approved', 'mentor_review', 'server_backfill'],
     // WS1 追加注册：报告 / 实验类交付物的门禁，生产者是文档结构校验器。
     experiment_report_validated: ['works.publish-approved', 'mentor_review', 'server_backfill'],
+    rubric_artifact_validated: ['works.publish-approved'],
   });
   // 表驱动校验 assertGateEvidenceWritable 本身。
   assert.deepEqual(assertGateEvidenceWritable('TheoryMastered', '  mastery:unit:77  ', 'mentor_review'), { evidenceRef: 'mastery:unit:77', source: 'mentor_review' });
