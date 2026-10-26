@@ -87,9 +87,11 @@
 }
 .workspace {
   display: grid;
-  grid-template-columns: 310px minmax(0, 1fr);
-  gap: 18px;
+  grid-template-columns: var(--qitu-panel-tracks, 310px 12px minmax(0, 1fr));
+  gap: 0;
   align-items: start;
+  width: 100%;
+  min-width: 0;
 }
 .card {
   padding: 18px;
@@ -122,16 +124,21 @@
   width: 100%;
   box-sizing: border-box;
   padding: 12px;
-  margin-top: 10px;
+  margin-top: 8px;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   background: #fff;
   text-align: left;
   font: inherit;
   min-width: 0;
+  transition: all 0.15s ease-in-out;
 }
 button.target {
   cursor: pointer;
+}
+.target:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
 }
 .target > strong {
   font-size: 14px;
@@ -147,6 +154,10 @@ button.target {
 .selected {
   border-color: #165dff !important;
   background: #eff6ff !important;
+}
+.selected:hover {
+  background: #eff6ff !important;
+  border-color: #165dff !important;
 }
 .selected > .targetHeading .targetName {
   color: #165dff;
@@ -414,9 +425,7 @@ button.target {
   justify-content: flex-end;
 }
 @media (max-width: 1100px) {
-  .workspace {
-    grid-template-columns: 270px minmax(0, 1fr);
-  }
+  
   .card {
     padding: 14px;
   }
@@ -453,4 +462,47 @@ button.target {
   .tabs button {
     flex: 1 1 auto;
   }
+}
+
+.mcpSplitLayout {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(340px, 1.15fr);
+  gap: 16px;
+  align-items: start;
+  margin-top: 12px;
+}
+@media (max-width: 1080px) {
+  .mcpSplitLayout {
+    grid-template-columns: 1fr;
+  }
+}
+.mcpToolsPane {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 14px;
+  min-width: 0;
+  max-height: 680px;
+  overflow-y: auto;
+}
+.mcpEditorPane {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.paneSubHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+}
+.paneHint {
+  font-size: 11.5px;
+  font-weight: 400;
+  color: #64748b;
 }

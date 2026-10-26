@@ -85,8 +85,8 @@ export class AuthController {
   }
 
   @Post('logout')
-  logout(@Headers('cookie') cookieHeader: string | undefined, @Res({ passthrough: true }) response: Response) {
-    this.authService.logout(this.readSession(cookieHeader));
+  async logout(@Headers('cookie') cookieHeader: string | undefined, @Res({ passthrough: true }) response: Response) {
+    await this.authService.logoutPersisted(this.readSession(cookieHeader));
     response.clearCookie(SESSION_COOKIE, { path: '/' });
     return { data: { ok: true } };
   }
@@ -100,10 +100,10 @@ export class AuthController {
   }
 
   @Delete('sessions/:id')
-  revokeSession(@Param('id') sessionId: string, @Headers('cookie') cookieHeader?: string) {
+  async revokeSession(@Param('id') sessionId: string, @Headers('cookie') cookieHeader?: string) {
     const session = this.authService.getSession(this.readSession(cookieHeader));
     if (session.user.role !== 'student') throw new ForbiddenException();
-    if (!this.authService.revokeStudentDevice(session.user.id, sessionId)) {
+    if (!await this.authService.revokeStudentDevicePersisted(session.user.id, sessionId)) {
       throw new NotFoundException({ code: 'STUDENT_DEVICE_NOT_FOUND', message: '设备会话不存在或已退出' });
     }
     return { data: { ok: true } };

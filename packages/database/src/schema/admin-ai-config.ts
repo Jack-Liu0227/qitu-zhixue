@@ -1,4 +1,4 @@
-import { boolean, doublePrecision, index, integer, jsonb, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import { boolean, doublePrecision, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 /**
@@ -45,6 +45,7 @@ export const adminAssistants = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
+    nameUniqueIdx: uniqueIndex('admin_assistants_name_unique_idx').on(sql`qitu_resource_name_key(${table.name})`),
     enabledSortIdx: index('admin_assistants_enabled_sort_idx').on(table.enabled, table.sortOrder),
     selectableIdx: index('admin_assistants_selectable_idx').on(table.teamSelectable, table.enabled),
   }),
@@ -76,6 +77,7 @@ export const adminTeams = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
+    nameUniqueIdx: uniqueIndex('admin_teams_name_unique_idx').on(sql`qitu_resource_name_key(${table.name})`),
     leaderIdx: index('admin_teams_leader_idx').on(table.leaderAssistantId),
     enabledIdx: index('admin_teams_enabled_idx').on(table.enabled),
   }),

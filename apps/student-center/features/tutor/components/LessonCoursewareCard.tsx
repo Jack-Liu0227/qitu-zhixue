@@ -19,6 +19,12 @@ export function LessonCoursewareCard({ projectId, lesson, refreshKey, disabled, 
   const [reload, setReload] = useState(0), [selected, setSelected] = useState('');
   const generation = useRef(0), action = useRef<AbortController | null>(null);
   const card = useRef<HTMLElement>(null);
+  const [isFullscreen, setFullscreen] = useState(false);
+  useEffect(() => {
+    const update = () => setFullscreen(document.fullscreenElement === card.current && card.current !== null);
+    document.addEventListener('fullscreenchange', update);
+    return () => document.removeEventListener('fullscreenchange', update);
+  }, []);
   const retry = useRef<{ signature: string; key: string } | null>(null);
   const base = `/api/v1/tutor/projects/${encodeURIComponent(projectId)}/lesson/courseware`;
   useEffect(() => {
@@ -85,10 +91,10 @@ export function LessonCoursewareCard({ projectId, lesson, refreshKey, disabled, 
     ...(visualStep.edges ?? []).map(edge => `qitu_${edge.from} --> qitu_${edge.to}`)].join('\n') : null;
   return <section ref={card} className={`qitu-lesson-assessment-card ${presentation.fullscreen}`} aria-label="本课课件">
     <div className={presentation.header}><strong className={presentation.eyebrow}>先学一学 · 本课课件</strong>
-      {instance ? <button type="button" className="qitu-button qitu-button-ghost" onClick={() => {
+      {instance ? <button type="button" className="qitu-button qitu-button-ghost" aria-pressed={isFullscreen} onClick={() => {
         if (document.fullscreenElement) void document.exitFullscreen();
         else void card.current?.requestFullscreen().catch(() => setError('此设备暂不支持全屏，可继续在这里学习。'));
-      }}>全屏看课件</button> : null}</div>
+      }}>{isFullscreen ? '退出课件全屏' : '全屏看课件'}</button> : null}</div>
     {loading ? <p role="status">正在恢复课件并核验来源…</p> : null}
     {error ? <p role="alert">{error} <button onClick={() => setReload(v => v + 1)} disabled={disabled || busy}>重新读取</button></p> : null}
     {view?.blockedReason ? <p role="status">{view.blockedReason}</p> : null}

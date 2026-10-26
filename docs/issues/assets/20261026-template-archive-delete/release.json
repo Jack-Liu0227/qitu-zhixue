@@ -1,0 +1,188 @@
+{
+  "status": "deployed-and-verified",
+  "verifiedAt": "2026-10-26T12:27:28.916Z",
+  "target": "study-remote",
+  "worktree": "/root/qitu-zhixue",
+  "url": "http://122.51.130.204/admin/settings/templates",
+  "head": "e1ca2f7fdaf3213b9fe5b61b9409b2f63a44a0a2",
+  "backup": "/var/backups/qitu-template-archive-delete-20261026-1222",
+  "adminBuildId": "J1wRCNO8B0_C79VoYz40n",
+  "previousAdminBuildId": "htRCHza6skU5CodMtYZrX",
+  "runtimeAndTestFiles": [
+    {
+      "path": "apps/admin-console/app/(console)/settings/templates/page.tsx",
+      "before": "063793ab4fbd01fa8f51541e67954848108b4076c69eb464875d54e12801b689",
+      "target": "c68ce0bdc1ce83ad95b6520c735bd91b7a3434f5d46a34b103bb1f623fe00bee"
+    },
+    {
+      "path": "apps/admin-console/lib/api/content.ts",
+      "before": "d682cb645fe860f1e1f0b6db6b013fd683b5722144d58dc1edaef3dd03423b3d",
+      "target": "4792b23b13df5eabaae4d6501e8b16f0f00b816c870b3b1e81e8b479b0033e56"
+    },
+    {
+      "path": "apps/admin-console/lib/components/template-library/TemplateLibraryCard.tsx",
+      "before": "4e159a8e474119ab5b02178eff49a68e9d3885472a9be3d9c8a0c34a260c8d81",
+      "target": "b52aacb46c31cdcc549e7c10836c714206c616355aabce442c60a4839fc58dc6"
+    },
+    {
+      "path": "services/api/src/modules/templates/templates-governance.service.ts",
+      "before": "f186210e7b34b2e8c57f214e0d8f6e95dd57e702fcfc28ec7b6bcd774b0a2c8b",
+      "target": "5a158383062162ddd0097efed9f5409226fa30f647a60dfb24199d03c18f32ea"
+    },
+    {
+      "path": "services/api/src/modules/templates/templates.store.ts",
+      "before": "9f54db8f418400df7fdad8726b946bc67d77238e6bea562e8ec1b69376c70214",
+      "target": "69856f6b6120210c70a7379d6ed645810d7cfc6a49ba78f771e6964988fc2bc4"
+    },
+    {
+      "path": "services/api/src/modules/templates/templates.store.postgres.ts",
+      "before": "61849774e779ced309cb405114491844f5e51cda9d7d3aec01811fbaff07197d",
+      "target": "1281a979425abcbf1b7605045738ff4214478168401e98c5400e902124d65f27"
+    },
+    {
+      "path": "services/api/src/modules/templates/templates.store.postgres.test.ts",
+      "before": "f22fbc64c300704ecb3d2a7c5b164eb78345198510a54c764d3c888cf5c9c7a6",
+      "target": "fc6552f87bdfc3f901c85b673657170b7a1c2a9b1df32083e4bf1b3086dd34bc"
+    },
+    {
+      "path": "services/api/src/modules/templates/templates-delete.service.test.ts",
+      "before": null,
+      "target": "5c6502ad08f6197eeef961f57eac71800dae95556820fc703ba09b02dece48e8"
+    },
+    {
+      "path": "tooling/template-delete.test.mjs",
+      "before": null,
+      "target": "356c8277d7fd29832ce64a5991fb8c68f76df808d65fa538d44dcf184c1267f1"
+    },
+    {
+      "path": "tooling/test-template-delete-postgres.mjs",
+      "before": null,
+      "target": "d8d0e95e1b8bfaec9e90cce89590a232d3d6c25ab3c89af2b94df385736940fc"
+    }
+  ],
+  "preservedSourceCount": 1959,
+  "buildSteps": [
+    {
+      "name": "stop-api",
+      "exitCode": 0
+    },
+    {
+      "name": "runtime-build",
+      "exitCode": 0
+    },
+    {
+      "name": "start-api",
+      "exitCode": 0
+    },
+    {
+      "name": "api-test-compile",
+      "exitCode": 0
+    },
+    {
+      "name": "api-behavior",
+      "exitCode": 0
+    },
+    {
+      "name": "frontend-readback",
+      "exitCode": 0
+    },
+    {
+      "name": "admin-typecheck",
+      "exitCode": 0
+    },
+    {
+      "name": "stop-admin",
+      "exitCode": 0
+    },
+    {
+      "name": "admin-build",
+      "exitCode": 0
+    },
+    {
+      "name": "start-admin",
+      "exitCode": 0
+    }
+  ],
+  "serverApiTests": {
+    "passed": 57,
+    "failed": 0,
+    "skipped": 0
+  },
+  "frontendReadbackTests": {
+    "passed": 3
+  },
+  "browser": {
+    "status": "passed",
+    "checks": [
+      "anonymous-delete-401",
+      "student-delete-403",
+      "teacher-delete-403",
+      "parent-delete-403",
+      "archive-delete-entry-and-cancel",
+      "archive-delete-ui-owner-success-and-replay",
+      "readback-failure-retains-card-and-retry-reuses-key",
+      "all-courses-accessible-with-zero-active-courses",
+      "mobile-archive-delete-visible",
+      "existing-catalog-unchanged-and-test-courses-cleaned"
+    ],
+    "archivedCourses": 4,
+    "temporaryCourses": [
+      "tpl-db5a433a-d28d-4342-ac74-c7504e1be4c4",
+      "tpl-bef4f2cd-3f44-47f5-a4ef-49ea76b244d2"
+    ]
+  },
+  "layout": {
+    "status": "passed",
+    "mobileDeleteFullyVisible": true,
+    "mobileDeleteClickable": true,
+    "staticAssets": 66,
+    "staticAssetFailures": 0,
+    "pageErrors": 0
+  },
+  "health": {
+    "sourceMismatches": [],
+    "preservedSourceChanges": [],
+    "health": {
+      "service": "qitu-zhixue-api",
+      "status": "ready",
+      "version": "0.1.0",
+      "checkedAt": "2026-10-26T12:27:28.916Z",
+      "dataMode": "live",
+      "dependencies": {
+        "database": {
+          "status": "ok"
+        },
+        "redis": {
+          "status": "ok"
+        }
+      }
+    },
+    "services": {
+      "api": "active",
+      "auth": "active",
+      "student": "active",
+      "parent": "active",
+      "teacher": "active",
+      "admin": "active"
+    }
+  },
+  "fixtureAudit": {
+    "created": 2,
+    "archived": 2,
+    "deleted": 2,
+    "remainingTemplates": 0,
+    "remainingVersions": 0
+  },
+  "existingCatalog": {
+    "total": 14,
+    "active": 10,
+    "archived": 4,
+    "unchanged": true
+  },
+  "databaseMigrations": false,
+  "existingCourseOrStudentDataChanged": false,
+  "documentation": {
+    "path": "docs/issues/20261026-template-archive-delete.md",
+    "sha256": "45a50378cb4c3041d4f46ad26b04de3d006e26b85a69bcd1178e80e1851624a3"
+  }
+}

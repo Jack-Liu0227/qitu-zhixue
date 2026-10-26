@@ -1,0 +1,226 @@
+{
+  "build": [
+    {
+      "name": "runtime-build",
+      "exitCode": 0
+    },
+    {
+      "name": "api-test-compile",
+      "exitCode": 0
+    },
+    {
+      "name": "api-regression",
+      "exitCode": 0
+    },
+    {
+      "name": "visual-layout",
+      "exitCode": 0
+    },
+    {
+      "name": "api-lint",
+      "exitCode": 0
+    },
+    {
+      "name": "admin-lint",
+      "exitCode": 0
+    },
+    {
+      "name": "admin-typecheck",
+      "exitCode": 0
+    }
+  ],
+  "frontend": [
+    {
+      "app": "admin-console",
+      "previousBuildId": "PybL3OfGZnLWwsDdgmhbC",
+      "buildId": "Tv0xAALmfpdMLuS0jswsF",
+      "http": 200
+    }
+  ],
+  "live": {
+    "health": {
+      "service": "qitu-zhixue-api",
+      "status": "ready",
+      "version": "0.1.0",
+      "checkedAt": "2026-10-26T12:51:56.513Z",
+      "dataMode": "live",
+      "dependencies": {
+        "database": {
+          "status": "ok"
+        },
+        "redis": {
+          "status": "ok"
+        }
+      }
+    },
+    "teamConfigurationsUnchanged": true,
+    "teamCount": 14,
+    "relations": [
+      {
+        "teamId": "team-optics-inquiry",
+        "templateCount": 2,
+        "bindingCount": 6,
+        "projectCount": 4
+      },
+      {
+        "teamId": "team-wave-optics",
+        "templateCount": 2,
+        "bindingCount": 5,
+        "projectCount": 4
+      },
+      {
+        "teamId": "team-courseware-7350f39e935d916ce8e08500",
+        "templateCount": 1,
+        "bindingCount": 1,
+        "projectCount": 0
+      },
+      {
+        "teamId": "team-wave-optics-zero-base",
+        "templateCount": 1,
+        "bindingCount": 1,
+        "projectCount": 23
+      },
+      {
+        "teamId": "team-thunder-fighter-zero-base",
+        "templateCount": 1,
+        "bindingCount": 1,
+        "projectCount": 8
+      },
+      {
+        "teamId": "team-copilot-d427e571b88e105cefe01c10843370dcdb4c7323435933ce7dc1962e4f4864d8",
+        "templateCount": 0,
+        "bindingCount": 0,
+        "projectCount": 0
+      },
+      {
+        "teamId": "team-seed-observation-inquiry",
+        "templateCount": 1,
+        "bindingCount": 1,
+        "projectCount": 0
+      },
+      {
+        "teamId": "team-packaging-reduction-action",
+        "templateCount": 1,
+        "bindingCount": 1,
+        "projectCount": 0
+      },
+      {
+        "teamId": "team-library-data-inquiry",
+        "templateCount": 1,
+        "bindingCount": 1,
+        "projectCount": 0
+      },
+      {
+        "teamId": "team-inclusive-wayfinding-design",
+        "templateCount": 1,
+        "bindingCount": 1,
+        "projectCount": 0
+      },
+      {
+        "teamId": "team-object-history-exhibition",
+        "templateCount": 1,
+        "bindingCount": 1,
+        "projectCount": 0
+      },
+      {
+        "teamId": "team-choice-story-studio",
+        "templateCount": 1,
+        "bindingCount": 1,
+        "projectCount": 0
+      },
+      {
+        "teamId": "team-claim-verification-lab",
+        "templateCount": 1,
+        "bindingCount": 1,
+        "projectCount": 0
+      },
+      {
+        "teamId": "team-creative-market-budget",
+        "templateCount": 1,
+        "bindingCount": 1,
+        "projectCount": 0
+      }
+    ],
+    "anonymous": 401,
+    "student": 403,
+    "missing": 404
+  },
+  "services": {
+    "sourceFilesMatched": 20,
+    "preservedFilesMatched": 287,
+    "services": {
+      "api": "active",
+      "admin": "active",
+      "student": "active",
+      "parent": "active",
+      "teacher": "active",
+      "auth": "active",
+      "profile-growth": "active",
+      "workers": "active",
+      "fix-admin": "active",
+      "fix-student": "active",
+      "fix-parent": "active",
+      "fix-teacher": "active",
+      "fix-auth": "active",
+      "ima-mcp": "active",
+      "local-embedding": "active"
+    },
+    "designAssetsRemoved": true,
+    "v1ImageFilenamesRemaining": 0
+  },
+  "isolatedPostgres": {
+    "passed": 14,
+    "checks": [
+      "references-use-source-ids",
+      "multiple-snapshots-do-not-double-count",
+      "non-primary-teams-and-draft-links-visible",
+      "unrelated-projects-excluded",
+      "audit-failure-rolls-back-team-and-members",
+      "stale-revision-refused",
+      "referenced-team-deleted",
+      "unrelated-team-preserved",
+      "project_templates-unchanged",
+      "project_template_versions-unchanged",
+      "pbl_template_team_bindings-unchanged",
+      "project_binding_snapshots-unchanged",
+      "runtime-owner-resolves-frozen-team-after-deletion",
+      "audited-reference-counts"
+    ]
+  },
+  "browser": {
+    "production": {
+      "teamId": "team-optics-inquiry",
+      "templateCount": 2,
+      "bindingCount": 6,
+      "projectCount": 4,
+      "versionLinkWorks": true,
+      "teamCount": 14
+    },
+    "isolatedFixture": {
+      "relationEmptyPermissionOffline": true,
+      "confirmationIncludesImpact": true,
+      "readbackFailureVisible": true,
+      "retryReusesKey": true,
+      "revisionHeader": true,
+      "deletedAfterReadback": true,
+      "bulkPartialFailureRetainsSelection": true
+    },
+    "pageErrors": []
+  },
+  "apiRegression": {
+    "passed": 140,
+    "failed": 0,
+    "skipped": 1,
+    "skipReason": "Existing tool-binding migration requires its explicitly disposable fixture database"
+  },
+  "visualLayout": {
+    "passed": 12
+  },
+  "sourceBoundary": {
+    "concurrentLocalChangesExcluded": [
+      "docs/admin/platform-governance.md"
+    ],
+    "sourceFiles": 20,
+    "remoteModifiedFilesPreserved": 287
+  }
+}

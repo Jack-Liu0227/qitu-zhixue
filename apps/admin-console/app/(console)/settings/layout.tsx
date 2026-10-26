@@ -173,7 +173,7 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
           ))}
         </div>
       </aside>
-      <main className="settings-main">{children}</main>
+      <section className="settings-main" aria-label="设置内容" tabIndex={0}>{children}</section>
       </ResizablePanels>
     </div>
   );

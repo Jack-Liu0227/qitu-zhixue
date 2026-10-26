@@ -17,6 +17,23 @@ function memoryService(): ModelRegistryService {
   return new ModelRegistryService(null, new AuditService(null));
 }
 
+test('provider names and provider-scoped model names are unique across create, rename and bulk save', async () => {
+  const service = memoryService();
+  await service.upsertProvider('one', { name: 'Test Gateway', baseUrl: 'https://one.example.test' }, 'admin');
+  await assert.rejects(service.upsertProvider('two', { name: ' TEST\tGATEWAY ', baseUrl: 'https://two.example.test' }, 'admin'), /同名模型供应商/);
+  await service.upsertProvider('two', { name: 'Other Gateway', baseUrl: 'https://two.example.test' }, 'admin');
+  await assert.rejects(service.upsertProvider('two', { name: 'test gateway' }, 'admin'), /同名模型供应商/);
+  await service.setProviderModels('one', [{ modelId: 'first', displayName: 'Teaching Model', source: 'manual' }], 'admin', 'first');
+  await assert.rejects(service.setProviderModels('one', [
+    { modelId: 'first', displayName: 'Teaching Model' }, { modelId: 'second', displayName: ' TEACHING  MODEL ' },
+  ], 'admin', 'bulk'), /同名模型/);
+  await assert.rejects(service.createManualModel('one', { modelId: 'second', displayName: 'teaching model' }, 'admin', 'create'), /同名模型/);
+  await service.createManualModel('one', { modelId: 'second', displayName: 'Other Model' }, 'admin', 'create-other');
+  await assert.rejects(service.updateManualModel('one', 'second', { displayName: 'teaching model' }, 'admin', 'rename'), /同名模型/);
+  await service.updateManualModel('one', 'first', { displayName: 'TEACHING MODEL' }, 'admin', 'self');
+  await service.setProviderModels('two', [{ modelId: 'first', displayName: 'Teaching Model' }], 'admin', 'other-provider');
+});
+
 test('内存模式：预置供应商自带手工模型，密钥只留在进程内', async () => {
   const service = memoryService();
   const provider = await service.upsertProvider(

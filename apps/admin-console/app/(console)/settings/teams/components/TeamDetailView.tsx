@@ -4,6 +4,7 @@ import { AssistantGlyph, VisualAsset } from '@qitu/ui';
 
 import type { AdminTeamConfig, AdminTeamMember, AdminAssistantConfig, AdminTeamUpdateInput } from '@qitu/contracts';
 import { useState } from 'react';
+import { TeamTemplatePanel } from './TeamTemplatePanel';
 
 interface TeamDetailViewProps {
   team: AdminTeamConfig;
@@ -14,6 +15,7 @@ interface TeamDetailViewProps {
   onAddMember: () => void;
   onRemoveMember: (slotId: string, memberName: string) => Promise<void>;
   onSetLeader: (assistantId: string) => Promise<void>;
+  onDeleteTeam: () => void;
 }
 
 export function TeamDetailView({
@@ -25,6 +27,7 @@ export function TeamDetailView({
   onAddMember,
   onRemoveMember,
   onSetLeader,
+  onDeleteTeam,
 }: TeamDetailViewProps) {
   const [activeTab, setActiveTab] = useState<'members' | 'guide'>('members');
   const [guideText, setGuideText] = useState(team.description || '');
@@ -49,7 +52,10 @@ export function TeamDetailView({
           <h2>{team.name}</h2>
           <p>{team.members.length} 名成员</p>
         </div>
+        <button type="button" className="member-action-btn is-danger" onClick={onDeleteTeam}>删除团队</button>
       </div>
+
+      <TeamTemplatePanel key={team.id} teamId={team.id} updatedAt={team.updatedAt} />
 
       <div className="team-detail-tabs">
         <button
@@ -145,7 +151,18 @@ function MembersPanel({
                   {isLeader && <span className="leader-badge">👑 队长</span>}
                 </div>
                 <div className="member-card-role">{displayRole}</div>
-                <div className="member-card-status">{assistant?.enabled ? '助手已启用' : '助手未启用'}</div>
+                <div className="member-card-status" style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span>{assistant?.enabled ? '助手已启用' : '助手未启用'}</span>
+                  {assistant?.modelId ? (
+                    <span style={{ fontSize: '11px', background: '#eff6ff', color: '#2563eb', padding: '1px 6px', borderRadius: '4px' }}>
+                      模型: {assistant.modelId}
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: '11px', background: '#f1f5f9', color: '#64748b', padding: '1px 6px', borderRadius: '4px' }}>
+                      模型: 跟随默认
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="member-card-actions" onClick={(e) => e.stopPropagation()}>
                 {!isLeader && (

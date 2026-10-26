@@ -1,3 +1,4 @@
+import { assertResourceNameAvailable } from '../../common/resource-name';
 import { randomUUID } from 'node:crypto';
 import type { AuditTransaction } from '../../common/audit/audit.service';
 import type {
@@ -65,6 +66,13 @@ export class TemplateStoreConflictError extends Error {
 }
 
 export class TemplateRestoreConflictError extends TemplateStoreConflictError {}
+
+export class TemplateDeleteProtectedError extends TemplateStoreConflictError {}
+
+export function assertTemplateDeletable(status: TemplateStatus, versionStatuses: TemplateStatus[]): void {
+  if (status === 'archived' || status === 'draft' && versionStatuses.every(value => value === 'draft')) return;
+  throw new TemplateDeleteProtectedError('仅可删除未发布草稿或已归档课程，请先归档当前课程。');
+}
 
 /** Restore the parent for editing; historical version states and content remain frozen. */
 export function prepareTemplateRestoration(template: ProjectTemplateRecord, versions: ProjectTemplateVersionRecord[], input: RestoreTemplateInput): RestoredTemplateRecord {
@@ -156,6 +164,8 @@ export class InMemoryTemplateStore extends TemplateStore {
     if (this.slugExists(input.schoolId, input.slug, null)) {
       throw new TemplateStoreConflictError(`模板 slug 已存在：${input.slug}`);
     }
+    assertResourceNameAvailable('template', input.title, [...this.templates.values()]
+      .filter(record => record.schoolId === input.schoolId).map(record => ({ id: record.id, name: record.title })));
     const record: ProjectTemplateRecord = {
       id: input.id,
       schoolId: input.schoolId,
@@ -219,6 +229,8 @@ export class InMemoryTemplateStore extends TemplateStore {
   ): Promise<ProjectTemplateRecord> {
     const record = this.templates.get(id);
     if (record === undefined) throw new Error(`template not found: ${id}`);
+    if (patch.title !== undefined) assertResourceNameAvailable('template', patch.title, [...this.templates.values()]
+      .filter(entry => entry.schoolId === record.schoolId).map(entry => ({ id: entry.id, name: entry.title })), id);
     applyTemplatePatch(record, patch);
     record.updatedAt = now;
     return cloneTemplate(record);
@@ -243,6 +255,9 @@ export class InMemoryTemplateStore extends TemplateStore {
   }
 
   async deleteTemplate(id: string, beforeCommit?: TemplateDeleteCommit): Promise<boolean> {
+    const template = this.templates.get(id);
+    if (!template) return false;
+    assertTemplateDeletable(template.status, (await this.listVersions(id)).map(version => version.status));
     await beforeCommit?.();
     this.templates.delete(id);
     for (const [vId, v] of this.versions.entries()) {

@@ -1,3 +1,4 @@
+import { assertResourceNamesUnique } from '../../common/resource-name';
 import { engineDefinition, ENGINE_FIELD_ALIASES } from './knowledge-engine.catalog';
 import { BadRequestException } from '@nestjs/common';
 import { parseGrowthProjectionSettings, type GrowthProjectionSettings } from '@qitu/contracts';
@@ -474,6 +475,8 @@ export function validateKnowledgeConfig(
       invalid('知识库检索授权无效');
     result.platformTools['project-knowledge'] = t as unknown as ProjectToolConfig;
   }
+  if (root.mcpServers !== undefined) assertResourceNamesUnique('mcp_server', Object.values(result.mcpServers).map(server => String(server.name)));
+  if (root.knowledgeEngines !== undefined) assertResourceNamesUnique('knowledge_engine', Object.values(result.knowledgeEngines).map(engine => engine.name));
   return result;
 }
 

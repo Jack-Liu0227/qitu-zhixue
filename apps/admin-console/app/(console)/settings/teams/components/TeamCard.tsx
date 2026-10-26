@@ -72,6 +72,7 @@ export function TeamCard({ team, isActive, isSelected, onToggleSelect, onToggleE
       </div>
       
       <div className="team-card-actions" onClick={(e) => e.stopPropagation()}>
+        <button type="button" className="team-card-action-btn" onClick={onClick}>成员与模板绑定</button>
         <VisualSelector owner={{ kind: 'team', id: team.id }} label="团队图标" onSaved={() => { setIconError(''); void fetchVisualBinding({ kind: 'team', id: team.id }, 'icon').then((binding) => setIcon(binding.effectiveAssetId)).catch(() => setIconError('图标回读失败，请刷新核对')); }} />
         {iconError && <small role="status">{iconError}</small>}
         <button

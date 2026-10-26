@@ -43,7 +43,7 @@ POST /api/v1/public/consultations
 
 `GET /public/home` 返回 `{ data: { stats, templates, generatedAt } }`，允许公开缓存 60 秒并在 300 秒内 stale-while-revalidate。
 
-`POST /public/consultations` 是唯一公开写入口：
+`POST /public/consultations` 是不要求签名凭据的公开咨询写入口：
 
 - 必须携带 `Idempotency-Key` 或 `X-Idempotency-Key`，长度由服务端限制。
 - 只接受白名单字段 `name`、`phone`、`identity`、`message`；`identity` 只能是 `student`、`parent` 或 `school`。
@@ -71,9 +71,12 @@ POST /api/v1/public/consultations
 
 ## 6. 未决事项
 
-- [ ] 咨询线索的受控后台处理、导出和数据保留策略。
-- [ ] 公示隐私政策、未成年人数据说明和备案信息的正式内容。
+- [x] 咨询线索的 Admin 受控跟进与审计，入口为现有运维页。
+- [ ] 咨询线索导出与到期清理策略。
+- [x] 提供经营主体、隐私政策、未成年人数据说明和备案信息的配置与展厅公示；正式文案及资质由经营者核实。
 - [ ] 对公开作品和模板建立人工审核及撤回流程。
+
+2026-10-26：展厅加入由服务端返回的项目包与条款，购买入口指向家长登录。受邀家庭开通加入 `/public/family-invitations/inspect` 与 `accept`，这两个命令必须验证有期限的服务器签名邀请，不能当作匿名注册或任意监护关系写入。详见[一人运营工作区](./business-operations.md)。
 
 
 ## 介绍页首屏排版

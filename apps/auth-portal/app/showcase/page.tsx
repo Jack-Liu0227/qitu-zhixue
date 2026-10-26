@@ -8,6 +8,7 @@ import { Icon } from '../home/icons';
 import { TemplateShowcase } from '../home/showcase';
 import { loadHomeView } from '../public-data';
 import { PublicPageShell } from '../public-shell';
+import { ProjectOfferShowcase } from './ProjectOfferShowcase';
 
 export const metadata: Metadata = {
   title: '项目展厅',
@@ -46,6 +47,7 @@ export default async function ShowcasePage() {
         </div>
       </section>
 
+      <ProjectOfferShowcase />
       <section className="public-section">
         <div className="home-shell">
           <div className="public-section-head">

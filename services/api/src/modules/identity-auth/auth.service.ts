@@ -1,5 +1,6 @@
-import { HttpException, HttpStatus, Injectable, Inject, UnauthorizedException } from '@nestjs/common';
-import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
+import { HttpException, HttpStatus, Injectable, Inject, Optional, UnauthorizedException, type OnModuleInit } from '@nestjs/common';
+import { AuthSessionPersistence } from './auth-session.persistence';
+import { createHash, randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto';
 import type { CurrentUser, LoginResponse } from '@qitu/contracts';
 import type { DirectoryService } from '../directory/directory.service';
 import { allowsConfiguredTestLogin, testLoginOptions } from './test-login';
@@ -11,7 +12,7 @@ export interface AuthUser extends CurrentUser {
 /** 公开投影：与契约中的 `CurrentUser` 一致，绝不包含口令或会话内部字段。 */
 export type PublicUser = CurrentUser;
 
-interface SessionRecord {
+export interface SessionRecord {
   id: string;
   user: CurrentUser;
   deviceId: string;
@@ -74,13 +75,18 @@ function safePasswordEqual(actual: string, expected: string): boolean {
 }
 
 @Injectable()
-export class AuthService {
+export class AuthService implements OnModuleInit {
   private readonly sessions = new Map<string, SessionRecord>();
   private readonly attempts = new Map<string, AttemptRecord>();
 
   constructor(
     @Inject('DirectoryService') private readonly directory: Pick<DirectoryService, 'findCredentialByEmail' | 'allowsDemoLogin' | 'findUser'>,
+    @Optional() private readonly persistence?: AuthSessionPersistence,
   ) {}
+
+  async onModuleInit() {
+    for (const [hash, record] of await this.persistence?.load() ?? []) this.sessions.set(hash, record);
+  }
 
   testLoginOptions() {
     return testLoginOptions(this.directory);
@@ -109,7 +115,7 @@ export class AuthService {
     const providedHash = createHash('sha256').update(passwordPlain, 'utf8').digest('hex');
     // 账号不存在时也要跑一次同代价的比较，否则响应时间会泄露账号是否存在。
     const expectedHash = credential?.passwordHash ?? DUMMY_PASSWORD_HASH;
-    const passwordMatches = safePasswordEqual(providedHash, expectedHash);
+    const passwordMatches = expectedHash.startsWith('scrypt$') ? verifyScryptPassword(passwordPlain, expectedHash) : safePasswordEqual(providedHash, expectedHash);
 
     const demoAccount = credential && (credential.user.userId.endsWith('-demo') || /@qtzx\.local$/i.test(credential.user.email));
     if (credential === null || !passwordMatches || (demoAccount && !this.directory.allowsDemoLogin() && !allowsConfiguredTestLogin(credential.user))) {
@@ -170,7 +176,7 @@ export class AuthService {
     const now = Date.now();
     const expiresAt = now + ttlMs;
 
-    this.sessions.set(token, {
+    this.sessions.set(sessionHash(token), {
       id: randomUUID(),
       user,
       deviceId,
@@ -180,6 +186,9 @@ export class AuthService {
       expiresAt,
     });
 
+    try { await this.persistence?.saveUser(user.id, [...this.sessions.entries()].filter(([, r]) => r.user.id === user.id)); }
+    catch (error) { this.sessions.delete(sessionHash(token)); throw error; }
+
     return {
       token,
       user,
@@ -188,7 +197,7 @@ export class AuthService {
   }
 
   getSession(token?: string): LoginResponse {
-    const record = token ? this.sessions.get(token) : undefined;
+    const record = token ? this.sessions.get(sessionHash(token)) : undefined;
     if (!record) {
       throw new UnauthorizedException({
         code: 'UNAUTHENTICATED',
@@ -196,7 +205,7 @@ export class AuthService {
       });
     }
     if (record.expiresAt <= Date.now()) {
-      this.sessions.delete(token as string);
+      if (token) this.sessions.delete(sessionHash(token));
       throw new UnauthorizedException({
         code: 'UNAUTHENTICATED',
         message: '登录已失效',
@@ -204,7 +213,7 @@ export class AuthService {
     }
     if ((record.user.id.endsWith('-demo') || /@qtzx\.local$/i.test(record.user.email)) && !this.directory.allowsDemoLogin()
       && !allowsConfiguredTestLogin({ userId: record.user.id, role: record.user.role })) {
-      this.sessions.delete(token as string);
+      if (token) this.sessions.delete(sessionHash(token));
       throw new UnauthorizedException({ code: 'UNAUTHENTICATED', message: '登录已失效' });
     }
     record.lastSeenAt = Date.now();
@@ -216,8 +225,13 @@ export class AuthService {
 
   logout(token?: string): void {
     if (token) {
-      this.sessions.delete(token);
+      this.sessions.delete(sessionHash(token));
     }
+  }
+
+  async logoutPersisted(token?: string) {
+    this.logout(token);
+    if (token) await this.persistence?.remove(sessionHash(token));
   }
 
   listStudentDevices(userId: string, currentToken?: string): StudentDeviceSession[] {
@@ -230,7 +244,7 @@ export class AuthService {
         createdAt: new Date(session.createdAt).toISOString(),
         lastSeenAt: new Date(session.lastSeenAt).toISOString(),
         expiresAt: new Date(session.expiresAt).toISOString(),
-        current: token === currentToken,
+        current: currentToken !== undefined && token === sessionHash(currentToken),
       }))
       .sort((left, right) => right.lastSeenAt.localeCompare(left.lastSeenAt));
   }
@@ -243,6 +257,13 @@ export class AuthService {
       }
     }
     return false;
+  }
+
+  async revokeStudentDevicePersisted(userId: string, sessionId: string): Promise<boolean> {
+    const entry = [...this.sessions.entries()].find(([, r]) => r.id === sessionId && r.user.id === userId && r.user.role === 'student');
+    if (!entry) return false;
+    await this.persistence?.remove(entry[0]);
+    return this.revokeStudentDevice(userId, sessionId);
   }
 
   private emailKey(email: string): string {
@@ -302,6 +323,14 @@ export class AuthService {
       this.sessions.delete(token);
     }
   }
+}
+
+function sessionHash(token: string): string { return createHash('sha256').update(token).digest('hex'); }
+
+export function verifyScryptPassword(password: string, encoded: string): boolean {
+  const parts = /^scrypt\$([a-f0-9]{32})\$([a-f0-9]{64})$/.exec(encoded);
+  if (!parts?.[1] || !parts[2] || password.length > 128) return false;
+  return timingSafeEqual(scryptSync(password, parts[1], 32), Buffer.from(parts[2], 'hex'));
 }
 
 function normalizeDeviceId(value: string | undefined): string | null {

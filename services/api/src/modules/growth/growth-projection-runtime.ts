@@ -56,7 +56,8 @@ export async function provisionGrowthProjectionRuntime(
     const assistant = assistants.find((row) => identities.includes(row.id) && row.enabled);
     if (!assistant) continue;
     // Only registered teaching leaders gain a missing identity; configuration stays Admin-owned.
-    await db.insert(agentConfigs).values({ id, displayName: assistant.name, role: assistant.role,
+    await db.insert(agentConfigs).values({ id,
+      displayName: id === assistant.id ? assistant.name : `${assistant.name} (${id})`, role: assistant.role,
       roleDefinition: '', capabilities: ['teach'], enabled: true, updatedBy: actorId,
     }).onConflictDoNothing({ target: agentConfigs.id });
   }

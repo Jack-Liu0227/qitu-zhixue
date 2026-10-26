@@ -199,19 +199,32 @@ export class PlatformRegistryController {
     }
   }
 
+  @Get('ai-runtime/teams/:teamId/templates')
+  async getTeamTemplates(
+    @Headers('cookie') cookie: string | undefined,
+    @Param('teamId') teamId: string,
+  ) {
+    const actor = requireRole(this.auth, cookie, 'admin', '团队关联仅管理员可查看');
+    return { data: await this.registry.getTeamTemplateUsage(actor, teamId) };
+  }
+
   @Delete('ai-runtime/teams/:teamId')
   async deleteTeam(
     @Headers('cookie') cookie: string | undefined,
     @Headers('idempotency-key') key: string | undefined,
     @Param('teamId') teamId: string,
+    @Headers('if-match') match?: string,
   ): Promise<AdminTeamDeleteResponse> {
     const actor = requireRole(this.auth, cookie, 'admin', '团队配置仅向管理员开放');
     const idempotencyKey = requireAdminAiIdempotencyKey(key);
     const scope = `${ADMIN_AI_RUNTIME_IDEMPOTENCY_SCOPES.teamDelete}:${teamId}`;
+    const expectedUpdatedAt = match?.replace(/^"|"$/gu, '');
+    if (expectedUpdatedAt && (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u.test(expectedUpdatedAt)
+      || !Number.isFinite(Date.parse(expectedUpdatedAt)))) throw new BadRequestException('Invalid If-Match timestamp');
     try {
-      const result = await this.idempotency.execute(scope, idempotencyKey, hashIdempotentInput(scope, { actorId: actor.id, teamId }, {}), async () => ({
+      const result = await this.idempotency.execute(scope, idempotencyKey, hashIdempotentInput(scope, { actorId: actor.id, teamId }, expectedUpdatedAt ? { expectedUpdatedAt } : {}), async () => ({
         status: 200,
-        body: await this.registry.deleteTeam(actor, teamId),
+        body: await this.registry.deleteTeam(actor, teamId, expectedUpdatedAt),
       }));
       return { data: result.body };
     } catch (error) {

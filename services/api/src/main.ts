@@ -1,6 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { json, urlencoded } from 'express';
+import { json, urlencoded, type Request } from 'express';
 import { AppModule } from './app.module';
 import { ProblemDetailsFilter } from './common/http/problem-details.filter';
 
@@ -8,6 +8,9 @@ async function bootstrap() {
   // Voice transcription transports a short base64 audio payload in JSON. Set
   // the limit explicitly while keeping the parser bounded for every route.
   const app = await NestFactory.create(AppModule, { bodyParser: false });
+  app.use('/api/v1/business/payments/wechat', json({ limit: '64kb', verify: (request, _response, buffer) => {
+    (request as Request & { rawBody?: Buffer }).rawBody = Buffer.from(buffer);
+  } }));
   // A 100 MiB knowledge file expands to about 134 MiB in base64 JSON.
   // Keep the larger request allowance scoped to the document upload endpoint.
   app.use(/^\/api\/v1\/admin\/knowledge\/bases\/[^/]+\/uploads\/?$/, json({ limit: '140mb' }));

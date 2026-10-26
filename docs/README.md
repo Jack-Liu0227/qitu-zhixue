@@ -36,6 +36,8 @@
 
 ## 仓库架构
 
+一人运营与商业交付见 [经营工作区](./admin/business-operations.md)及[四阶段实施记录](./plan/codex/one-person-operations-20261026.md)。
+
 ```text
 apps/       auth-portal（官网/统一登录）
             student-center / parent-companion / teacher-workspace / admin-console
@@ -88,6 +90,7 @@ Team Runtime 的真实协同链路是：Leader 创建 run → 服务端 route �
 - 所有 `@see docs/...` 和 Markdown 相对链接必须指向真实文件。
 - `.codex-tasks/`、`.tmp/`、`.runtime/` 和本机临时目录不能作为长期文档的文件链接目标；验收证据应使用已脱敏的受控资产或明确的私有归档说明。
 - 文档只读校验：`python tooling/validate-docs.py`；校验器回归：`python tooling/validate-docs.test.py`。覆盖当前 Markdown 的本地目标、退役截图引用及归档索引覆盖率；不验证历史快照正文、远程 URL 或锚点内容。
+- `.codex-tasks/`、`.tmp/`、`.runtime/` 和本机临时目录不能作为长期文档的文件链接目标；验收证据应使用已脱敏的受控资产或明确的私有归档说明。
 - 校验命令：`pnpm typecheck`、`pnpm test`、`pnpm build`、`pnpm check:basepath`。
 
 - [2026-10-26 仓库整理与验证](./issues/20261026-repository-cleanup.md)；[本轮历史资料](./archive/repository-cleanup-20261026/README.md)。

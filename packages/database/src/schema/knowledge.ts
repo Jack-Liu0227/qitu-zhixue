@@ -39,6 +39,10 @@ export const knowledgeBases = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
+    nameUniqueIdx: uniqueIndex('knowledge_bases_name_unique_idx').on(
+      sql`coalesce(${table.schoolId}, '')`, sql`coalesce(${table.ownerUserId}, '')`,
+      sql`coalesce(${table.projectId}, '')`, sql`qitu_resource_name_key(${table.name})`,
+    ).where(sql`${table.lifecycle} <> 'deleted'`),
     projectIdx: index('knowledge_bases_project_idx').on(table.projectId),
     lifecycleIdx: index('knowledge_bases_lifecycle_idx').on(table.lifecycle),
   }),

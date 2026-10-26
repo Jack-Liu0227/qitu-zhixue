@@ -131,7 +131,9 @@ function deletionDatabase() {
   let purposeInUse = false;
   const db = {
     transaction: async <T>(run: (tx: unknown) => Promise<T>) => run(db),
-    execute: async () => ({ rows: [{ used: purposeInUse }] }),
+    execute: async (query: SQL) => ({ rows: new PgDialect().sqlToQuery(query).sql.includes('WITH team_bindings')
+      ? [{ templateId: 'template', bindings: [{ id: 'version', status: 'active', projectCount: 1 }] }]
+      : [{ used: purposeInUse }] }),
     select: () => ({ from(table: unknown) {
       const chain = { where: () => chain, for: async () => tables.get(table) ?? [], limit: async () => tables.get(table) ?? [],
         then: (resolve: (rows: unknown[]) => unknown) => Promise.resolve(tables.get(table) ?? []).then(resolve) };
@@ -162,17 +164,19 @@ test('assistant deletion never reassigns leaders or removes a team; stale revisi
   assert.deepEqual(f.removed, [agentSkillBindings, agentToolBindings, agentMcpBindings, agentConfigs, adminAssistants]);
 });
 
-test('team and MCP deletion reject frozen or current bindings and remove only unused registrations', async () => {
+test('team deletion retains frozen bindings while MCP deletion still rejects referenced registrations', async () => {
   const f = deletionDatabase();
   const service = new PlatformRegistryService(f.db as never, 'live', { write: async () => 'audit' } as never, {} as never);
   f.tables.set(pblTemplateTeamBindings, [{ id: 'version' }]);
-  await assert.rejects(service.deleteTeam(admin, 'team', f.now.toISOString()));
-  f.tables.set(pblTemplateTeamBindings, []);
   await service.deleteTeam(admin, 'team', f.now.toISOString());
+  assert.deepEqual(f.removed, [adminTeamMembers, adminTeams]);
+  assert.deepEqual(f.tables.get(pblTemplateTeamBindings), [{ id: 'version' }]);
   const resources = new CopilotResources(f.db as never, { write: async () => 'audit' } as never);
   f.tables.set(agentMcpBindings, [{ agentId: 'agent' }]);
   await assert.rejects(resources.deleteMcp(admin, 'custom', 'blocked'));
   f.tables.set(agentMcpBindings, []); f.tables.set(adminAssistants, []);
+  await assert.rejects(resources.deleteMcp(admin, 'custom', 'frozen'));
+  f.tables.set(pblTemplateTeamBindings, []);
   await resources.deleteMcp(admin, 'custom', 'delete');
   assert.equal((await resources.assertMcpDeleted('custom')).deleted, true);
   await assert.rejects(resources.deleteMcp(admin, 'ima-knowledge', 'builtin'));

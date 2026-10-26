@@ -16,6 +16,7 @@ import { ChildPicker, DataState, PageFrame } from './ParentDataPage';
 import { formatShortDate } from './parentFormat';
 
 import { ProjectVisual } from './ProjectVisual';
+import { ProjectPurchases } from './purchases/ProjectPurchases';
 
 const KPI_CONFIG: Record<string, { icon: string; tone: string; unitHint?: string }> = {
   weekly_sessions: { icon: '📅', tone: 'blue', unitHint: '学习频次' },
@@ -93,6 +94,7 @@ export default function HomePage() {
         </div>
       </div>
 
+      <ProjectPurchases studentId={childId} />
       <DataState state={{ status: state }} reload={() => childId && load(childId)} emptyTitle="还没有绑定孩子">
         {data ? (
           <>

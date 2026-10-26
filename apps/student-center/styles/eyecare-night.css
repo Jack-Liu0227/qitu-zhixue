@@ -1630,9 +1630,13 @@
   color: inherit !important;
 }
 
-/* 会话历史顶部“收起 ◀”按键及通用“收起”按键 */
+/* 会话历史顶部“收起”按键及通用“收起/展开”按键 */
 :root[data-qitu-eyecare="true"] .qitu-live-session-sidebar .qitu-button-ghost,
 .qitu-tutor-page[data-eyecare="active"] .qitu-live-session-sidebar .qitu-button-ghost,
+:root[data-qitu-eyecare="true"] .qitu-history-collapse-btn,
+.qitu-tutor-page[data-eyecare="active"] .qitu-history-collapse-btn,
+:root[data-qitu-eyecare="true"] .qitu-tutor-sidebar-close-btn,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-sidebar-close-btn,
 :root[data-qitu-eyecare="true"] button[aria-label*="收起"],
 .qitu-tutor-page[data-eyecare="active"] button[aria-label*="收起"] {
   background-color: #1C2027 !important;
@@ -1644,10 +1648,21 @@
 
 :root[data-qitu-eyecare="true"] .qitu-live-session-sidebar .qitu-button-ghost:hover:not(:disabled),
 .qitu-tutor-page[data-eyecare="active"] .qitu-live-session-sidebar .qitu-button-ghost:hover:not(:disabled),
+:root[data-qitu-eyecare="true"] .qitu-history-collapse-btn:hover:not(:disabled),
+.qitu-tutor-page[data-eyecare="active"] .qitu-history-collapse-btn:hover:not(:disabled),
+:root[data-qitu-eyecare="true"] .qitu-tutor-sidebar-close-btn:hover:not(:disabled),
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-sidebar-close-btn:hover:not(:disabled),
 :root[data-qitu-eyecare="true"] button[aria-label*="收起"]:hover:not(:disabled),
 .qitu-tutor-page[data-eyecare="active"] button[aria-label*="收起"]:hover:not(:disabled) {
   background-color: #252D3A !important;
   background: #252D3A !important;
+  border-color: #10B981 !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-panel-toggle-btn.is-active,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-panel-toggle-btn.is-active {
+  background-color: #132E22 !important;
   border-color: #10B981 !important;
   color: #34D399 !important;
 }

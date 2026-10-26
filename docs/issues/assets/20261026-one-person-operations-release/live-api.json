@@ -1,0 +1,72 @@
+{
+  "status": "passed",
+  "checks": [
+    {
+      "check": "admin login",
+      "status": 201
+    },
+    {
+      "check": "parent login",
+      "status": 201
+    },
+    {
+      "check": "student login",
+      "status": 201
+    },
+    {
+      "check": "teacher login",
+      "status": 201
+    },
+    {
+      "check": "anonymous, role and guardian boundaries",
+      "passed": true
+    },
+    {
+      "check": "public catalog and admin readback; missing merchant keeps sales closed",
+      "passed": true
+    },
+    {
+      "check": "current guardian can read own child orders",
+      "passed": true
+    },
+    {
+      "check": "invalid commercial writes, invitation and unsigned payment rejected",
+      "passed": true
+    },
+    {
+      "check": "admin session survives API restart",
+      "passed": true
+    },
+    {
+      "check": "parent session survives API restart",
+      "passed": true
+    },
+    {
+      "check": "student session survives API restart",
+      "passed": true
+    },
+    {
+      "check": "teacher session survives API restart",
+      "passed": true
+    }
+  ],
+  "readiness": {
+    "service": "qitu-zhixue-api",
+    "status": "ready",
+    "version": "0.1.0",
+    "checkedAt": "2026-10-26T15:00:12.540Z",
+    "dataMode": "live",
+    "dependencies": {
+      "database": {
+        "status": "ok"
+      },
+      "redis": {
+        "status": "ok"
+      }
+    }
+  },
+  "realMerchantConfigured": false,
+  "actualPayments": false,
+  "businessFixturesCreated": false,
+  "learningRecordsModified": false
+}

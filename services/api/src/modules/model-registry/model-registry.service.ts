@@ -1,3 +1,4 @@
+import { assertResourceNameAvailable, assertResourceNamesUnique, resourceNameDatabaseConflict } from '../../common/resource-name';
 import { MODEL_USAGE_SLOTS } from '@qitu/contracts';
 import {
   BadRequestException,
@@ -321,6 +322,9 @@ export class ModelRegistryService implements OnModuleInit {
         }
       }
 
+      const mergedNames = new Map(this.modelEntryIds(state).map(id => [id, this.modelEntry(state, id)!.descriptor.name]));
+      for (const descriptor of descriptors) mergedNames.set(descriptor.id, descriptor.name);
+      assertResourceNamesUnique('model', mergedNames.values());
       skippedModels += providerSkipped;
 
       if (this.db && descriptors.length > 0) {
@@ -656,6 +660,7 @@ export class ModelRegistryService implements OnModuleInit {
     // 密钥先处理：缺少主密钥时立刻 503，不产生任何半写入。
     if (body.apiKey !== undefined) this.applyApiKey(state, body.apiKey);
     if (body.name !== undefined) state.name = body.name;
+    assertResourceNameAvailable('model_provider', state.name, this.providers.values(), id);
     if (body.baseUrl !== undefined) state.baseUrl = normaliseBaseUrl(body.baseUrl);
     if (body.api !== undefined) state.api = body.api;
     if (body.authHeader !== undefined) state.authHeader = body.authHeader;
@@ -851,6 +856,10 @@ export class ModelRegistryService implements OnModuleInit {
       if (!upstreamIds.has(entry.descriptor.id)) stale.push(entry.descriptor);
     }
 
+    assertResourceNamesUnique('model', this.modelEntryIds(state).map(modelId => {
+      const entry = this.modelEntry(state, modelId)!;
+      return entry.descriptor.source === 'fetched' ? byId.get(modelId)?.name ?? entry.descriptor.name : entry.descriptor.name;
+    }));
     if (this.db) {
       await withTransaction(this.db, async (tx) => {
         await syncRemoteModelMetadata(tx, id, models, now);
@@ -961,6 +970,7 @@ export class ModelRegistryService implements OnModuleInit {
       }
       desired.push({ modelId, displayName, input, output, contextWindow, maxTokens, source });
     }
+    assertResourceNamesUnique('model', desired.map(model => model.displayName));
     if (desired.length > 500) throw new BadRequestException('单次提交模型数不得超过 500');
 
     const desiredIds = new Set(desired.map((model) => model.modelId));
@@ -1191,6 +1201,7 @@ export class ModelRegistryService implements OnModuleInit {
       throw this.duplicateModelError(providerId, modelId, inMemory.source);
     }
 
+    assertResourceNameAvailable('model', displayName, this.modelEntryIds(state).map(id => ({ id, name: this.modelEntry(state, id)!.descriptor.name })));
     const descriptor: ModelDescriptor = {
       id: modelId,
       name: displayName,
@@ -1244,6 +1255,8 @@ export class ModelRegistryService implements OnModuleInit {
         });
       } catch (error) {
         // 并发插入绕过预检时，主键冲突（23505）统一翻译成 409，而不是 500。
+        const nameConflict = resourceNameDatabaseConflict(error);
+        if (nameConflict) throw nameConflict;
         if (isUniqueViolation(error)) throw this.duplicateModelError(providerId, modelId, null);
         throw error;
       }
@@ -1306,6 +1319,8 @@ export class ModelRegistryService implements OnModuleInit {
       );
     }
 
+    if (displayName !== undefined) assertResourceNameAvailable('model', displayName,
+      this.modelEntryIds(state).map(id => ({ id, name: this.modelEntry(state, id)!.descriptor.name })), modelId);
     const patch: ManualModelPatch = {};
     if (displayName !== undefined) patch.displayName = displayName;
     if (input !== undefined) patch.input = input;

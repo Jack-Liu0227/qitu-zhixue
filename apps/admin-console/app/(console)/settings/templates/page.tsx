@@ -1,5 +1,6 @@
 'use client';
 
+import { TemplateDeleteDialog } from '../../../../lib/components/template-library/TemplateDeleteDialog';
 import { TemplateLibraryCard } from '../../../../lib/components/template-library/TemplateLibraryCard';
 import libraryStyles from '../../../../lib/components/template-library/TemplateLibrary.module.css';
 import { TemplateTeamBindingPanel } from '../../../../lib/components/TemplateTeamBindingPanel';
@@ -12,7 +13,6 @@ import { VisualSelector } from '../../../../lib/components/VisualAssetPicker';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { AdminProjectTemplate, AdminTemplateVersionDetail } from '../../../../lib/api/content';
 import {
-  deleteAdminTemplate,
   createAdminTemplate,
   createAdminTemplateVersion,
   fetchAdminTemplateVersions,
@@ -180,6 +180,7 @@ export default function AdminTemplatesPage() {
   const courseSaveAttempt = useRef<{ signature: string; key: string; version: string } | null>(null);
   const restoreAttempt = useRef<{ signature: string; key: string } | null>(null);
   const restoreInFlight = useRef(false);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [restoringId, setRestoringId] = useState<string | null>(null);
 
   const [filterArchived, setFilterArchived] = useState<'active' | 'all'>('active');
@@ -310,22 +311,6 @@ export default function AdminTemplatesPage() {
     params.delete('templateId'); params.delete('versionId');
     window.history.replaceState(null, '', `${window.location.pathname}${params.size ? `?${params}` : ''}`);
     setEditingTemplate(null);
-  };
-
-  const handleDeleteTemplate = async (id: string, title: string) => {
-    if (!window.confirm(`确定要彻底删除项目模板「${title}」吗？
-此操作将直接从数据库中物理删除该模板及其全部版本，无法恢复。`)) return;
-    setSaving(true);
-    setSaveError('');
-    try {
-      await deleteAdminTemplate(id);
-      setTemplates((prev) => prev.filter((item) => item.id !== id));
-      if (editingTemplate?.id === id) closeEditor();
-    } catch (cause) {
-      setSaveError(cause instanceof Error ? cause.message : '模板删除失败');
-    } finally {
-      setSaving(false);
-    }
   };
 
   const handleCreateTemplate = async () => {
@@ -946,43 +931,49 @@ export default function AdminTemplatesPage() {
         </div>
       ) : null}
 
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', alignItems: 'center' }}>
+        <button
+          type="button"
+          className={`settings-action-btn ${filterArchived === 'active' ? 'is-primary' : ''}`}
+          onClick={() => setFilterArchived('active')}
+        >
+          已上架 ({templates.filter((t) => t.status === 'published' || t.status === 'piloting').length})
+        </button>
+        <button
+          type="button"
+          className={`settings-action-btn ${filterArchived === 'all' ? 'is-primary' : ''}`}
+          onClick={() => setFilterArchived('all')}
+        >
+          全部课程 ({templates.length})
+        </button>
+      </div>
+
       {displayedTemplates.length === 0 ? (
         <div className="settings-empty" style={{ padding: '32px', textAlign: 'center' }}>
-          <strong>暂无项目模板</strong>
+          <strong>{filterArchived === 'active' ? '暂无已上架课程' : '暂无项目模板'}</strong>
           <p style={{ margin: '8px 0 0', color: '#86909c', fontSize: '13px' }}>
-            点击右上角「新建项目模板」创建新模板。
+            {filterArchived === 'active' && templates.length > 0
+              ? '切换“全部课程”查看编辑中和已归档的课程。'
+              : '点击右上角“新建课程”创建新模板。'}
           </p>
         </div>
       ) : (
-        <>
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', alignItems: 'center' }}>
-            <button
-              type="button"
-              className={`settings-action-btn ${filterArchived === 'active' ? 'is-primary' : ''}`}
-              onClick={() => setFilterArchived('active')}
-            >
-              已上架 ({templates.filter((t) => t.status === 'published' || t.status === 'piloting').length})
-            </button>
-            <button
-              type="button"
-              className={`settings-action-btn ${filterArchived === 'all' ? 'is-primary' : ''}`}
-              onClick={() => setFilterArchived('all')}
-            >
-              全部课程 ({templates.length})
-            </button>
-          </div>
-
-          <div className={libraryStyles.grid}>
-            {displayedTemplates.map(template => (
-              <TemplateLibraryCard key={template.id} template={template}
-                onOpen={() => openEditor(template)}
-                onDelete={() => void handleDeleteTemplate(template.id, template.title)}
-                onSaved={() => void load()}
-                onRestore={() => void handleRestoreTemplate(template)} restoring={restoringId === template.id} restoreDisabled={saving} />
-            ))}
-          </div>
-        </>
+        <div className={libraryStyles.grid}>
+          {displayedTemplates.map(template => (
+            <TemplateLibraryCard key={template.id} template={template}
+              onOpen={() => openEditor(template)}
+              onDelete={() => setDeleteTarget(template.id)}
+              deleting={false} deleteDisabled={saving}
+              onSaved={() => void load()}
+              onRestore={() => void handleRestoreTemplate(template)} restoring={restoringId === template.id} restoreDisabled={saving} />
+          ))}
+        </div>
       )}
+      {deleteTarget && <TemplateDeleteDialog key={deleteTarget} templateId={deleteTarget}
+        onCancel={() => setDeleteTarget(null)} onDeleted={() => {
+          setTemplates(previous => previous.filter(item => item.id !== deleteTarget));
+          setDeleteTarget(null);
+        }} />}
     </div>
   );
 }

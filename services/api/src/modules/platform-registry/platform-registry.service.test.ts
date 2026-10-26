@@ -275,6 +275,23 @@ function harness(state?: { assistants: Row[]; teams: Row[]; members: Row[] }) {
   return { service, idempotency, audits: store.calls, ...fake };
 }
 
+test('assistant and team names reject duplicate creates and renames before writes or audit', async () => {
+  const h = harness({
+    assistants: [assistantRow({ id: 'first', name: 'Optics Assistant' }), assistantRow({ id: 'second', name: 'Other' })],
+    teams: [teamRow({ id: 'first', name: 'Optics Team', enabled: false }), teamRow({ id: 'second', name: 'Other' })],
+    members: [],
+  });
+  await assert.rejects(h.service.createAssistant(actor(), parseAssistantCreate({
+    name: ' OPTICS\tASSISTANT ', description: 'Synthetic fixture', role: 'coach', instructions: 'Synthetic instruction',
+  })), /同名助手/);
+  await assert.rejects(h.service.updateAssistant(actor(), 'second', { name: 'Optics Assistant' }), /同名助手/);
+  await assert.rejects(h.service.createTeam(actor(), parseTeamCreate(teamCreateBody({ name: ' optics  team ' }))), /同名团队/);
+  await assert.rejects(h.service.updateTeam(actor(), 'second', { name: 'Optics Team' }), /同名团队/);
+  assert.equal(h.ops.inserts.length + h.ops.updates.length + h.audits.length, 0);
+  await h.service.updateAssistant(actor(), 'first', { name: 'OPTICS ASSISTANT' });
+  assert.equal(h.ops.updates.length, 1);
+});
+
 /** 构造一个最小可用的 TutorRuntimeSource，避开真实文件系统。 */
 function runtimeSourceStub(overrides: {
   rootStatus?: 'ready' | 'missing' | 'unreadable';

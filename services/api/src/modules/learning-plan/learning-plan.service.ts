@@ -1,4 +1,5 @@
 import { CoursewareStore } from '../knowledge/courseware.store';
+import { BusinessAccess } from '../business/business.access';
 import { WAVE_TEACHING_TEMPLATE_SLUG } from '../templates/content/wave-teaching';
 import { createHash } from 'node:crypto';
 import {
@@ -159,6 +160,7 @@ export class LearningPlanService {
     @Optional() private readonly templateBindings?: TemplateBindingService,
     @Optional() private readonly learningEvidence?: WorksLearningEvidenceService,
     @Optional() private readonly courseware?: CoursewareStore,
+    @Optional() private readonly businessAccess?: BusinessAccess,
   ) {
     this.masteryDomain = mastery ?? new MasteryDomainService(store, new MasteryReadService(store, access), access, audit, outbox);
   }
@@ -342,6 +344,7 @@ export class LearningPlanService {
             // warning-only omission leaves Tutor without a governed team,
             // template, and MCP scope, so fail closed before returning success.
             commit: async (projectId, tx) => {
+              await this.businessAccess?.assertCanStart(actor.id, bundle.plan.templateVersion, tx);
               if (!this.templateBindings) {
                 throw new ConflictException({
                   code: 'CURRICULUM_BINDING_UNAVAILABLE',

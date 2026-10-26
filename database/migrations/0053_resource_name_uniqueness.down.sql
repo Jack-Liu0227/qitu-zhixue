@@ -1,0 +1,10 @@
+DROP INDEX IF EXISTS runtime_mcp_servers_name_unique_idx;
+DROP INDEX IF EXISTS model_models_name_unique_idx;
+DROP INDEX IF EXISTS model_providers_name_unique_idx;
+DROP INDEX IF EXISTS knowledge_bases_name_unique_idx;
+DROP INDEX IF EXISTS project_templates_school_name_unique_idx;
+DROP INDEX IF EXISTS project_templates_platform_name_unique_idx;
+DROP INDEX IF EXISTS agent_configs_name_unique_idx;
+DROP INDEX IF EXISTS admin_teams_name_unique_idx;
+DROP INDEX IF EXISTS admin_assistants_name_unique_idx;
+DROP FUNCTION IF EXISTS qitu_resource_name_key(text);

@@ -43,9 +43,9 @@ members 为 `{assistantId,role,slotId?,roleLabel?,pblPhase?}`。role 为 leader/
 
 `team.test {id}` 检查真实成员运行时、负责人、PBL 工作流和阶段分配。它是配置测试，不创建学生项目或 Team Run。真实协作测试仍须使用已有项目冻结范围及原 team-runtime owner。
 
-`team.delete {id,expectedUpdatedAt}` 仅 global 可用。已有教学绑定或模板 linkedTeamId 引用时返回 TEAM_IN_USE，使用 team.update enabled:false 保留历史语义。删除无引用团队后回读目录确认消失；不会级联删除成员助手。
+`team.delete {id,expectedUpdatedAt}` 仅 global 可用。允许删除当前团队配置及成员关系，包括已有教学绑定或模板 linkedTeamId 引用的团队。保留模板版本、绑定内冻结团队配置及项目快照，既有课程继续使用冻结配置，新编排须重新选择现存团队；不会级联删除成员助手或停用课程。删除前通过下述关联接口展示影响范围，删除后回读目录确认消失。
 
-直接 HTTP 为 `DELETE /api/v1/admin/ai-runtime/teams/:id`，带 Admin 会话和 Idempotency-Key；管家增加 revision 检查。
+直接 HTTP 为 `DELETE /api/v1/admin/ai-runtime/teams/:id`，需 Admin 会话与 Idempotency-Key，可用 If-Match 传入团队 updatedAt 防止删除过期配置；管家同样检查 revision。`GET /api/v1/admin/ai-runtime/teams/:id/templates` 返回关联模板、版本、绑定状态及项目引用数量，不返回学生明细。
 
 ## 真实团队委派
 

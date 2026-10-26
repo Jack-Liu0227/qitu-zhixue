@@ -7,13 +7,22 @@ import type { ModelGateway } from '../model-registry/model-gateway';
 import type { ModelCompletionRequest } from '../model-registry/model-gateway.types';
 import type { AuditWriter } from '../../common/audit/audit.service';
 import { FakeIdempotencyStore } from '../templates/templates.test-support';
-import { CopilotService } from './copilot.service';
+import { CopilotService, publicFailure } from './copilot.service';
 import { CopilotOperations } from './copilot.operations';
 import { parsePlan, parseRequest, resolveInput } from './copilot.protocol';
 import { managementSkill, validateManagementSkill } from './copilot.resources';
 import { loadRuntimeSkillCatalog, loadTutorRuntimeSource } from '../../common/tutor-runtime/runtime-source';
 
 const actor: CurrentUser = { id: 'admin-fixture', role: 'admin', displayName: 'Fixture', email: 'fixture@example.invalid' };
+
+test('copilot receipts preserve name conflict errors without exposing database details', () => {
+  const result = publicFailure({ cause: {
+    code: '23505', constraint: 'admin_teams_name_unique_idx', detail: 'PRIVATE_ROW',
+  } });
+  assert.equal(result.code, 'RESOURCE_NAME_CONFLICT');
+  assert.match(result.message, /同名团队/);
+  assert.doesNotMatch(result.message, /PRIVATE_ROW|unique_idx/);
+});
 const request: AdminCopilotRequest = {
   message: '为所选项目创建概念助手和团队', history: [], templateId: 'optics',
   templateVersionId: 'optics-v1', assistantId: 'qitu-assistant', teamId: null,

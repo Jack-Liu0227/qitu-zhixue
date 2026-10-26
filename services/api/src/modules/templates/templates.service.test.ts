@@ -26,6 +26,7 @@ async function seedTemplate(
   await store.createTemplate({
     ...VALID_CREATE_INPUT,
     id: input.id,
+    title: `${VALID_CREATE_INPUT.title} ${input.id}`,
     slug: input.slug,
     schoolId: input.schoolId,
     createdBy: 'admin-1',

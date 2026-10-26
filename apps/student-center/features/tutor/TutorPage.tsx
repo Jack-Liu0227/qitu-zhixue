@@ -15,6 +15,8 @@ import { TutorSessionHistory } from './components/TutorSessionHistory';
 import { TeamAgentHud } from './components/TeamAgentHud';
 import { CurrentLessonCard } from './components/CurrentLessonCard';
 import { LessonLearningDock, LessonTeachingWorkspace } from './components/LessonLearningDock';
+import { ProjectLearningHistory } from './components/ProjectLearningHistory';
+import { savedExperimentLinks } from './lib/timelinePresentation';
 import { useComposer } from './hooks/useComposer';
 import { useTutorViewport } from './hooks/useTutorViewport';
 import { useTutorSession } from './hooks/useTutorSession';
@@ -181,8 +183,29 @@ export function TutorPage({ projectId }: { projectId?: string }) {
           {eyecareActive && <span className="qitu-eyecare-pulse-dot" aria-hidden="true" />}
         </button>
 
-        <button type="button" className="qitu-button qitu-button-ghost" onClick={toggleContext} aria-expanded={rightOpen}>
-          项目与进度
+        <button
+          type="button"
+          className={`qitu-button qitu-button-ghost qitu-tutor-panel-toggle-btn ${rightOpen ? 'is-active' : ''}`}
+          onClick={toggleContext}
+          aria-expanded={rightOpen}
+          title={rightOpen ? '收起右侧项目与进度' : '展开右侧项目与进度'}
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <rect width="18" height="18" x="3" y="3" rx="4" />
+            <path d="M15 3v18" />
+            {rightOpen ? <path d="m8 9 3 3-3 3" /> : <path d="m11 15-3-3 3-3" />}
+          </svg>
+          <span>项目与进度</span>
         </button>
       </div>
     </header>
@@ -246,7 +269,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
           projectId={projectSummary?.id ?? projectId ?? null}
           coursewareSnapshots={session.project?.lesson?.teachingMode === 'zero-base.v1'}
           projectContext={session.project ?? undefined}
-          learningActivity={projectSummary && session.project?.lesson ? <LessonTeachingWorkspace
+          learningActivity={projectSummary && session.project?.lesson?.status === 'current' ? <LessonTeachingWorkspace
             projectId={projectSummary.id} lesson={session.project.lesson} refreshKey={session.project}
             disabled={!ready || busy || confirming || session.offline} onChanged={session.refreshProjectContext}
             onOpenRecords={() => {
@@ -272,9 +295,34 @@ export function TutorPage({ projectId }: { projectId?: string }) {
       </div>
       {rightOpen ? (
         <aside className="qitu-tutor-context-sidebar" aria-label="项目进度与团队智能体">
-          <div className="qitu-tutor-sidebar-tabs" role="tablist" aria-label="项目侧栏视图">
-            <button type="button" role="tab" aria-selected={rightSidebarTab === 'progress'} className={rightSidebarTab === 'progress' ? 'is-active' : ''} onClick={() => setRightSidebarTab('progress')}>项目进度</button>
-            <button type="button" role="tab" aria-selected={rightSidebarTab === 'agents'} className={rightSidebarTab === 'agents' ? 'is-active' : ''} onClick={() => setRightSidebarTab('agents')}>团队智能体</button>
+          <div className="qitu-tutor-sidebar-header-row">
+            <div className="qitu-tutor-sidebar-tabs" role="tablist" aria-label="项目侧栏视图">
+              <button type="button" role="tab" aria-selected={rightSidebarTab === 'progress'} className={rightSidebarTab === 'progress' ? 'is-active' : ''} onClick={() => setRightSidebarTab('progress')}>项目进度</button>
+              <button type="button" role="tab" aria-selected={rightSidebarTab === 'agents'} className={rightSidebarTab === 'agents' ? 'is-active' : ''} onClick={() => setRightSidebarTab('agents')}>团队智能体</button>
+            </div>
+            <button
+              type="button"
+              className="qitu-tutor-sidebar-close-btn"
+              onClick={toggleContext}
+              title="收起侧栏"
+              aria-label="收起项目与进度侧栏"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <rect width="18" height="18" x="3" y="3" rx="4" />
+                <path d="M15 3v18" />
+                <path d="m8 9 3 3-3 3" />
+              </svg>
+            </button>
           </div>
           {rightSidebarTab === 'agents' ? (
             <TeamAgentHud
@@ -310,6 +358,10 @@ export function TutorPage({ projectId }: { projectId?: string }) {
                   onExplain={message => { void composer.submit(message, session.submitText); }}
                 />
               ) : null}
+              {session.project.lesson ? <ProjectLearningHistory
+                key={`${projectSummary.id}:${session.project.lesson.planId}:${session.project.lesson.planRevision}`}
+                projectId={projectSummary.id} lesson={session.project.lesson} refreshKey={session.project}
+                experiments={savedExperimentLinks(session.turns)} /> : null}
               <CurrentTask task={projectSummary.stage === 'completed' || projectSummary.stage === 'published' ? null : session.project.currentTask} />
             </>
           ) : (

@@ -6,6 +6,7 @@ import {
   jsonb,
   timestamp,
   index,
+  uniqueIndex,
   primaryKey,
   foreignKey,
 } from 'drizzle-orm/pg-core';
@@ -52,7 +53,9 @@ export const modelProviders = pgTable('model_providers', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   updatedBy: text('updated_by'),
-});
+}, (table) => ({
+  nameUniqueIdx: uniqueIndex('model_providers_name_unique_idx').on(sql`qitu_resource_name_key(${table.name})`),
+}));
 
 /**
  * model_models: a discoverable model on a provider.
@@ -83,6 +86,7 @@ export const modelModels = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
+    nameUniqueIdx: uniqueIndex('model_models_name_unique_idx').on(table.providerId, sql`qitu_resource_name_key(${table.displayName})`),
     pk: primaryKey({ columns: [table.providerId, table.modelId], name: 'model_models_pkey' }),
   }),
 );

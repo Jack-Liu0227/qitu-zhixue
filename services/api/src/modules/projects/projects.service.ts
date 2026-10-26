@@ -9,6 +9,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
+import { BusinessAccess } from '../business/business.access';
 import type {
   CloseExplorationRequest,
   ConfirmIntentRequest,
@@ -92,6 +93,7 @@ export class ProjectsService {
     private readonly teamRuntime: TeamRuntimeService,
     @Optional() private readonly templateBindings?: TemplateBindingService,
     @Optional() private readonly learningPlans?: LearningPlanService,
+    @Optional() private readonly businessAccess?: BusinessAccess,
   ) {}
 
   /* ------------------------------ 读 ------------------------------ */
@@ -261,6 +263,7 @@ export class ProjectsService {
             },
             // 正式项目与冻结团队绑定必须在同一事务内成立。
             commit: async (projectId, tx) => {
+              await this.businessAccess?.assertCanStart(studentId, templateVersionId, tx);
               const outcome = await this.templateBindings?.freezeProjectBinding({
                 projectId, templateVersionId, boundAt: now, tx,
               });

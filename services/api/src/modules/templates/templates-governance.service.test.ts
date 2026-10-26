@@ -104,6 +104,20 @@ describe('TemplateGovernanceService（治理写 + 验证晋升）', () => {
     );
   });
 
+  it('不同 slug 的同名模板和重命名冲突返回 409，不追加成功审计', async () => {
+    const first = await harness.service.createTemplate(ADMIN, VALID_CREATE_INPUT, 'first');
+    await assertHttpError(() => harness.service.createTemplate(ADMIN,
+      { ...VALID_CREATE_INPUT, slug: 'duplicate-name', title: `  ${VALID_CREATE_INPUT.title}  ` }, 'duplicate'),
+    409, 'RESOURCE_NAME_CONFLICT');
+    const second = await harness.service.createTemplate(ADMIN,
+      { ...VALID_CREATE_INPUT, slug: 'different', title: 'Different fixture' }, 'second');
+    const auditCount = harness.audit.entries.length;
+    await assertHttpError(() => harness.service.updateTemplate(ADMIN, second.template.id,
+      { title: first.template.title }, 'rename'), 409, 'RESOURCE_NAME_CONFLICT');
+    assert.equal(harness.audit.entries.length, auditCount);
+    assert.equal((await harness.store.findTemplate(second.template.id))!.title, 'Different fixture');
+  });
+
   it('teacher 建校属模板强制绑定本校，指定他校 403', async () => {
     const created = await harness.service.createTemplate(
       TEACHER_A,
@@ -395,7 +409,7 @@ describe('TemplateGovernanceService（治理写 + 验证晋升）', () => {
     const replay = await harness.service.pilotVersion(ADMIN, templateId, versionId, 'k-pilot', '先试点');
     assert.equal(replay.replayed, true);
 
-    const published = await createDraftTemplate(harness, ADMIN, { slug: 'pilot-published' });
+    const published = await createDraftTemplate(harness, ADMIN, { slug: 'pilot-published', title: 'Published pilot fixture' });
     harness.evidence.seed(fullEvidence(published.versionId));
     await harness.service.publishVersion(ADMIN, published.templateId, published.versionId, 'k-pub-pilot', null);
     await assertHttpError(

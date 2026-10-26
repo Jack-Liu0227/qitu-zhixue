@@ -1,5 +1,6 @@
 'use client';
 import type { ToolCatalog } from '../api/knowledge-center';
+import { HierarchicalSchemaViewer } from './HierarchicalSchemaViewer';
 import styles from './KnowledgeConfiguration.module.css';
 function record(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -57,54 +58,10 @@ export function ToolParameters({
                 <summary>{tool.name}</summary>
                 {tool.description && <p>{tool.description}</p>}
                 {schema ? (
-                  <>
-                    {Object.keys(properties).length > 0 && (
-                      <div className={styles.parameterScroll}>
-                        <table className={styles.parameters}>
-                          <thead>
-                            <tr>
-                              <th>参数 / 类型</th>
-                              <th>必填</th>
-                              <th>说明与约束</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {Object.entries(properties).map(([name, raw]) => {
-                              const value = record(raw) ? raw : {};
-                              const { type, description, ...constraints } = value;
-                              return (
-                                <tr key={name}>
-                                  <td>
-                                    <code>{name}</code>
-                                    <small>
-                                      {Array.isArray(type)
-                                        ? type.join(' | ')
-                                        : String(type ?? '见 schema')}
-                                    </small>
-                                  </td>
-                                  <td>{required.includes(name) ? '是' : '否'}</td>
-                                  <td>
-                                    {typeof description === 'string' && <span>{description}</span>}
-                                    {Object.keys(constraints).length > 0 && (
-                                      <pre>{JSON.stringify(constraints, null, 2)}</pre>
-                                    )}
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                    <details className={styles.schema} open>
-                      <summary>
-                        {catalog.source === 'legacy_manifest'
-                          ? '原界面 inputSchema（只读）'
-                          : '完整 inputSchema（只读）'}
-                      </summary>
-                      <pre>{JSON.stringify(schema, null, 2)}</pre>
-                    </details>
-                  </>
+                  <HierarchicalSchemaViewer
+                    schema={schema as Record<string, unknown>}
+                    title={tool.name + ' 输入参数层级透视'}
+                  />
                 ) : (
                   <p className={styles.warning}>
                     参数定义暂不可用；服务未返回可验证的 inputSchema。

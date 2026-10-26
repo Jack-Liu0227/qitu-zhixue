@@ -320,7 +320,7 @@ export const ADMIN_COPILOT_OPERATIONS = [
     ],
     "targetResource": "team",
     "createsResource": false,
-    "inputGuide": "{id,expectedUpdatedAt}. Delete only a team without immutable versions or template references. Historical teams must be disabled, not erased."
+    "inputGuide": "{id,expectedUpdatedAt}. Delete the current editable team and its memberships. Template versions, binding-owned team snapshots and project snapshots remain unchanged; existing courses keep their frozen configuration. This does not delete assistants or retire courses."
   },
   {
     "kind": "template.test",

@@ -105,3 +105,6 @@ export * from './tutor-lesson-program.js';
 export * from './courseware.js';
 export * from './learning-activity.js';
 export * from './feedback-attachments.js';
+export * from './resource-name.js';
+export * from './team-template-usage.js';
+export * from './business.js';

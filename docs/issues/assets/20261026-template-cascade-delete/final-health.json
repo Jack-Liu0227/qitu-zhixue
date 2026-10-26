@@ -1,0 +1,26 @@
+{
+  "services": {
+    "qitu-api": "active",
+    "qitu-admin": "active",
+    "qitu-auth": "active",
+    "qitu-student": "active",
+    "qitu-parent": "active",
+    "qitu-teacher": "active",
+    "qitu-workers": "active",
+    "qitu-profile-growth": "active"
+  },
+  "http": {
+    "http://127.0.0.1:4100/api/v1/health/ready": 200,
+    "http://122.51.130.204/admin/settings/templates": 200
+  },
+  "audit": {
+    "remainingTemplates": 0,
+    "remainingVersions": 0,
+    "deleteAuditCount": 2,
+    "catalogCount": 12
+  },
+  "sourceHashesMatch": true,
+  "preservedSourceCount": 1970,
+  "concurrentSourceChanges": [],
+  "adminBuildId": "_KJ8Snhb3gqCQa6ZttMLV"
+}

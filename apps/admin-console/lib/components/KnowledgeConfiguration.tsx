@@ -84,8 +84,8 @@ export function KnowledgeConfiguration({
   onMode,
 }: {
   preview?: boolean;
-  onMode: (mode: 'matrix' | 'edit' | 'preview') => void;
-}) {
+  onMode?: (mode: 'matrix' | 'edit' | 'preview') => void;
+} = {}) {
   const [snapshot, setSnapshot] = useState<CenterConfig | null>(null);
   const snapshotRef = useRef<CenterConfig | null>(null);
   const [runtime, setRuntime] = useState<AdminRuntimeSnapshot | null>(null);
@@ -178,6 +178,17 @@ export function KnowledgeConfiguration({
     )
       void fetchCatalog(PROJECT);
   });
+  useEffect(() => {
+    if (
+      snapshot &&
+      target.startsWith('mcpServers/') &&
+      !catalogs[target] &&
+      !catalogPending[target] &&
+      !catalogErrors[target]
+    ) {
+      void fetchCatalog(target);
+    }
+  }, [snapshot, target, catalogs, catalogPending, catalogErrors]);
   function guard(action: () => void) {
     if (dirty) setNextAction(() => action);
     else action();
@@ -193,6 +204,9 @@ export function KnowledgeConfiguration({
       setBaseline(text);
       setError('');
       setNotice('');
+      if (key.startsWith('mcpServers/') && !catalogs[key]) {
+        void fetchCatalog(key);
+      }
     });
   }
   async function save(): Promise<boolean> {
@@ -249,18 +263,6 @@ export function KnowledgeConfiguration({
       setCatalogPending((old) => ({ ...old, [key]: false }));
     }
   }
-  function expand(key: string) {
-    setExpanded((old) => ({ ...old, [key]: !old[key] }));
-    if (!expanded[key] && !catalogs[key]) void fetchCatalog(key);
-  }
-  const toolList = (key: string) => (
-    <ToolParameters
-      catalog={catalogs[key]}
-      pending={catalogPending[key]}
-      error={catalogErrors[key]}
-      onRefresh={() => void fetchCatalog(key, true)}
-    />
-  );
   function format() {
     try {
       setDraft(json(JSON.parse(draft)));
@@ -342,48 +344,6 @@ export function KnowledgeConfiguration({
       : `${String(currentObject?.name ?? target.split('/')[1])}.json（单独配置）`;
   return (
     <div className={`${styles.page} admin-tools-page-view`}>
-      <header className={styles.header}>
-        <h1>工具与 MCP 配置中心</h1>
-        <p>
-          支持智能体授权矩阵、总的 mcpServers 全局配置与任意单个 MCP 的独立 JSON
-          设置。编辑与预览自由切换。
-        </p>
-        <div className={styles.actions}>
-          <div className={styles.tabs} role="tablist" aria-label="配置视图">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={false}
-              onClick={() => guard(() => onMode('matrix'))}
-            >
-              📊 智能体授权矩阵
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={!preview}
-              onClick={() => onMode('edit')}
-            >
-              📝 JSON 配置编辑
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={preview}
-              onClick={() => onMode('preview')}
-            >
-              👁️ JSON 实时预览
-            </button>
-          </div>
-          <button
-            type="button"
-            className={`${styles.button} ${styles.primary}`}
-            onClick={() => guard(() => setDialog('mcp'))}
-          >
-            ＋ 添加 MCP
-          </button>
-        </div>
-      </header>
       {error && (
         <p role="alert" className={styles.error}>
           {error}
@@ -412,59 +372,101 @@ export function KnowledgeConfiguration({
         <ResizablePanels storageKey="admin-knowledge-configuration" className={styles.workspace} initialSizes={[30, 70]} minWidths={[240, 340]} labels={['配置清单', '配置内容']}>
           <aside className={styles.card} aria-label="配置目标与清单">
             <div className={styles.cardHeading}>
-              <strong>配置目标与清单</strong>
-              <span>切换编辑对象</span>
+              <div>
+                <strong style={{ fontSize: '14px', color: '#0f172a' }}>配置目标与清单</strong>
+                <small style={{ display: 'block', color: '#64748b', fontSize: '11px', marginTop: '2px' }}>
+                  点击切换选中对象
+                </small>
+              </div>
+              <button
+                type="button"
+                className={styles.button}
+                style={{ padding: '4px 8px', fontSize: '11px' }}
+                onClick={() => guard(() => setDialog('mcp'))}
+                title="查看如何添加新的 MCP 节点"
+              >
+                ＋ 添加说明
+              </button>
             </div>
             <button
               type="button"
               className={`${styles.target} ${target === 'global' ? styles.selected : ''}`}
               onClick={() => select('global')}
+              style={{ textAlign: 'left', cursor: 'pointer', padding: '10px 12px' }}
             >
-              <strong>🌐 总配置（mcpServers 全局）</strong>
-              <span>全局</span>
-              <p>
-                统一管理 {Object.keys(snapshot.config.mcpServers).length} 个 MCP
-                服务及知识引擎、知识库工具扩展。
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                <strong style={{ fontSize: '13px' }}>🌐 mcpServers 全局配置</strong>
+                <span className={styles.badge} style={{ background: '#e0f2fe', color: '#0369a1' }}>全局</span>
+              </div>
+              <p style={{ margin: 0, fontSize: '11.5px', color: '#64748b' }}>
+                统一管理 {Object.keys(snapshot.config.mcpServers).length} 个 MCP 服务节点与底层结构
               </p>
             </button>
-            <h3 className={styles.sectionTitle}>单个 MCP 独立设置（点击单独配置）</h3>
-            {Object.entries(snapshot.config.mcpServers).map(([id, server]) => {
-              const key = `mcpServers/${id}`;
-              const live = runtime?.mcpServers.find((m) => m.id === id);
-              const count = Array.isArray(server.tools) ? server.tools.length : 0;
-              return (
-                <div
-                  className={`${styles.target} ${target === key ? styles.selected : ''}`}
-                  key={key}
-                >
-                  <div className={styles.targetHeading}>
-                    <button
-                      type="button"
-                      className={styles.arrow}
-                      aria-label={`展开 ${String(server.name)} 子工具`}
-                      aria-expanded={!!expanded[key]}
-                      onClick={() => expand(key)}
-                    >
-                      {expanded[key] ? '▾' : '▸'}
-                    </button>
-                    <button type="button" className={styles.targetName} onClick={() => select(key)}>
-                      {String(server.name)}
-                    </button>
-                    <span className={styles.badge}>
-                      {live ? (healthLabels[live.status] ?? live.status) : '状态未知'}
-                    </span>
-                  </div>
-                  <p>
-                    {server.enabled ? '允许调用' : '已停用'} · {count} 个工具 ·{' '}
-                    {runtime
-                      ? runtime.agents.filter((a) => a.mcpServerIds.includes(id)).length
-                      : '未知'}{' '}
-                    个智能体绑定
-                  </p>
-                  {expanded[key] && toolList(key)}
-                </div>
-              );
-            })}
+            <div className={styles.sectionTitle}>
+              MCP 服务节点 ({Object.keys(snapshot.config.mcpServers).length})
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {Object.entries(snapshot.config.mcpServers).map(([id, server]) => {
+                const key = `mcpServers/${id}`;
+                const live = runtime?.mcpServers.find((m) => m.id === id);
+                const count = Array.isArray(server.tools) ? server.tools.length : 0;
+                const boundCount = runtime
+                  ? runtime.agents.filter((a) => a.mcpServerIds.includes(id)).length
+                  : 0;
+                const isSelected = target === key;
+                const isOnline = live?.status === 'connected';
+                return (
+                  <button
+                    type="button"
+                    className={`${styles.target} ${isSelected ? styles.selected : ''}`}
+                    key={key}
+                    onClick={() => select(key)}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      padding: '10px 12px',
+                      margin: 0,
+                    }}
+                  >
+                    <div className={styles.targetHeading} style={{ justifyContent: 'space-between', marginBottom: '6px' }}>
+                      <span className={styles.targetName} style={{ fontWeight: isSelected ? 700 : 600 }}>
+                        {String(server.name)}
+                      </span>
+                      <span
+                        className={styles.badge}
+                        style={{
+                          background: isOnline ? '#dcfce7' : '#f1f5f9',
+                          color: isOnline ? '#15803d' : '#64748b',
+                        }}
+                      >
+                        {live ? (healthLabels[live.status] ?? live.status) : '状态未知'}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          background: server.enabled ? '#eff6ff' : '#fef2f2',
+                          color: server.enabled ? '#1d4ed8' : '#b91c1c',
+                        }}
+                      >
+                        {server.enabled ? '允许调用' : '已停用'}
+                      </span>
+                      <span style={{ fontSize: '11px', color: '#64748b' }}>
+                        🔧 {count} 个工具
+                      </span>
+                      <span style={{ fontSize: '11px', color: '#64748b' }}>
+                        🤖 {boundCount} 智能体
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </aside>
           <section className={`${styles.card} ${styles.editorCard}`} aria-label="JSON 配置工作区">
             <div className={styles.cardHeading}>
@@ -543,14 +545,45 @@ export function KnowledgeConfiguration({
                     ? '修改 enabled 与 boundAssistants（助手 ID）。仅检索管理员授权的知识库，无需为项目单独建库。'
                     : '编辑已注册服务的名称、开关与授权工具；连接地址和凭证由服务器管理。'}
             </p>
-            <textarea
-              aria-label="平台 JSON 配置"
-              className={styles.editor}
-              value={draft}
-              spellCheck={false}
-              readOnly={preview || pending}
-              onChange={(e) => setDraft(e.target.value)}
-            />
+            {target.startsWith('mcpServers/') ? (
+              <div className={styles.mcpSplitLayout}>
+                <div className={styles.mcpToolsPane}>
+                  <div className={styles.paneSubHeader}>
+                    <strong>🛠️ 工具与入参结构化透视</strong>
+                    <span className={styles.paneHint}>由 MCP 协议动态上报</span>
+                  </div>
+                  <ToolParameters
+                    catalog={catalogs[target]}
+                    pending={catalogPending[target]}
+                    error={catalogErrors[target]}
+                    onRefresh={() => void fetchCatalog(target, true)}
+                  />
+                </div>
+                <div className={styles.mcpEditorPane}>
+                  <div className={styles.paneSubHeader}>
+                    <strong>📝 底层 JSON 配置源码</strong>
+                    <span className={styles.paneHint}>修改后需点击右上角「保存配置」</span>
+                  </div>
+                  <textarea
+                    aria-label="平台 JSON 配置"
+                    className={styles.editor}
+                    value={draft}
+                    spellCheck={false}
+                    readOnly={preview || pending}
+                    onChange={(e) => setDraft(e.target.value)}
+                  />
+                </div>
+              </div>
+            ) : (
+              <textarea
+                aria-label="平台 JSON 配置"
+                className={styles.editor}
+                value={draft}
+                spellCheck={false}
+                readOnly={preview || pending}
+                onChange={(e) => setDraft(e.target.value)}
+              />
+            )}
             {target !== 'global' && (
               <div className={styles.bindings}>
                 <strong>
@@ -569,13 +602,15 @@ export function KnowledgeConfiguration({
                   ))}
                   {!bound.length && <small>暂无已读取的授权绑定。</small>}
                 </div>
-                <button
-                  type="button"
-                  className={styles.link}
-                  onClick={() => guard(() => onMode('matrix'))}
-                >
-                  前往智能体授权矩阵
-                </button>
+                {onMode && (
+                  <button
+                    type="button"
+                    className={styles.link}
+                    onClick={() => guard(() => onMode('matrix'))}
+                  >
+                    前往智能体授权矩阵
+                  </button>
+                )}
               </div>
             )}
           </section>

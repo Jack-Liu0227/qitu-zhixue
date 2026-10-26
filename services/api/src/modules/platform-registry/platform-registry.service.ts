@@ -1,5 +1,7 @@
+import { assertResourceNameAvailable, resourceNameDatabaseConflict } from '../../common/resource-name';
 import { assertDomainLeader } from '../../common/intake-boundary';
 import { resolveAgentModelSelection } from './agent-model-selection';
+import { readTeamTemplateUsage } from './team-template-usage';
 import { VisualAssetsService } from '../visual-assets/visual-assets.service';
 import { resolveVisualBinding } from '../visual-assets/visual-assets.policy';
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, Logger, NotFoundException, ServiceUnavailableException, Optional } from '@nestjs/common';
@@ -353,13 +355,15 @@ export class PlatformRegistryService {
         try {
           const insertBuilder = this.db.insert(adminAssistants).values(toInsert as any);
           if (typeof (insertBuilder as any)?.onConflictDoNothing === 'function') {
-            await (insertBuilder as any).onConflictDoNothing();
+            await (insertBuilder as any).onConflictDoNothing({ target: adminAssistants.id });
           } else {
             await insertBuilder;
           }
           const fresh = await this.db.select().from(adminAssistants);
           assistant = fresh.find((row) => row.id === assistantId) ?? (toInsert as any);
-        } catch {
+        } catch (error) {
+          const nameConflict = resourceNameDatabaseConflict(error);
+          if (nameConflict) throw nameConflict;
           assistant = toInsert as any;
         }
       }
@@ -595,6 +599,8 @@ export class PlatformRegistryService {
     if (!this.db) throw new ServiceUnavailableException('角色治理存储不可用');
     const allowedCapabilities = new Set(['explore', 'plan', 'teach', 'review', 'reflect']);
     const label = input.label?.trim();
+    if (label !== undefined) assertResourceNameAvailable('agent', label,
+      (await this.listAgentsFromDatabase()).map(agent => ({ id: agent.id, name: agent.label })), agentId);
     const definition = input.roleDefinition?.trim();
     const agentDefinition = input.agentDefinition?.trim();
     if (label !== undefined && (label.length < 2 || label.length > 80)) throw new BadRequestException('角色名称长度须为 2 至 80 个字符');
@@ -725,6 +731,7 @@ export class PlatformRegistryService {
     if ((await this.listAgentsFromDatabase()).some((agent) => agent.id === agentId)) throw new BadRequestException('Agent 已存在');
     const parentId = input.parentAgentId ?? null;
     const agents = await this.listAgentsFromDatabase();
+    assertResourceNameAvailable('agent', input.label, agents.map(agent => ({ id: agent.id, name: agent.label })));
     assertParentGraph(agentId, parentId, agents);
     const capabilities = input.capabilities ?? ['teach'];
     assertModelSelectionPair(input);
@@ -804,7 +811,7 @@ export class PlatformRegistryService {
         }));
         const insertBuilder = this.db.insert(adminAssistants).values(toInsert as any);
         if (typeof (insertBuilder as any)?.onConflictDoNothing === 'function') {
-          await (insertBuilder as any).onConflictDoNothing();
+          await (insertBuilder as any).onConflictDoNothing({ target: adminAssistants.id });
         } else {
           await insertBuilder;
         }
@@ -813,6 +820,8 @@ export class PlatformRegistryService {
           .from(adminAssistants)
           .orderBy(asc(adminAssistants.sortOrder), asc(adminAssistants.id));
       } catch (err) {
+        const nameConflict = resourceNameDatabaseConflict(err);
+        if (nameConflict) throw nameConflict;
         this.logger.warn(`Failed to auto-seed missing builtin assistants: ${err instanceof Error ? err.message : String(err)}`);
       }
     }
@@ -842,6 +851,7 @@ export class PlatformRegistryService {
     const rows = await this.db.select().from(adminAssistants);
     const replay = creationId ? rows.find(row => row.id === creationId) : undefined;
     if (replay) return this.assistantVisualView(toAssistantConfig(replay));
+    assertResourceNameAvailable('assistant', input.name, [...rows, ...BUILTIN_ASSISTANTS.filter(b => !rows.some(row => row.id === b.id))]);
     const now = new Date();
     const id = creationId ?? `assistant-${randomUUID()}`;
     const sortOrder = input.sortOrder ?? rows.reduce((max, row) => Math.max(max, row.sortOrder), 0) + 1;
@@ -942,7 +952,11 @@ export class PlatformRegistryService {
         mcpServerIds: existing.mcpServerIds,
       });
       const set: Partial<typeof adminAssistants.$inferInsert> = { updatedBy: actor.id, updatedAt: now };
-      if (patch.name !== undefined) set.name = patch.name;
+      if (patch.name !== undefined) {
+        const catalog = expectedUpdatedAt ? await tx.select().from(adminAssistants) : rows;
+        assertResourceNameAvailable('assistant', patch.name, [...catalog, ...BUILTIN_ASSISTANTS.filter(b => !catalog.some(row => row.id === b.id))], assistantId);
+        set.name = patch.name;
+      }
       if (patch.description !== undefined) set.description = patch.description;
       if (patch.role !== undefined) set.role = patch.role;
       if (patch.instructions !== undefined) set.instructions = patch.instructions;
@@ -1064,6 +1078,7 @@ export class PlatformRegistryService {
     if (!this.db) throw new ServiceUnavailableException('团队配置存储不可用');
     const replay = creationId ? (await this.listTeams()).find(team => team.id === creationId) : undefined;
     if (replay) return replay;
+    assertResourceNameAvailable('team', input.name, await this.db.select().from(adminTeams));
     const assistantRows = await this.db.select().from(adminAssistants);
     const existingMembers = await this.db.select().from(adminTeamMembers);
     this.assertTeamMembers(input.members, assistantRows);
@@ -1135,6 +1150,8 @@ export class PlatformRegistryService {
       if (expectedUpdatedAt && existing.updatedAt.toISOString() !== expectedUpdatedAt) {
         throw new ConflictException({ code: 'COPILOT_RESOURCE_CHANGED', message: '团队已被修改，请重新读取后生成计划' });
       }
+      if (patch.name !== undefined) assertResourceNameAvailable('team', patch.name,
+        expectedUpdatedAt ? await tx.select().from(adminTeams) : teams, teamId);
       const allMembers = await tx.select().from(adminTeamMembers);
       const currentMembers = allMembers.filter((member) => member.teamId === teamId);
       const assistantRows = await tx.select().from(adminAssistants);
@@ -1234,6 +1251,14 @@ export class PlatformRegistryService {
     });
   }
 
+  async getTeamTemplateUsage(actor: CurrentUser, teamId: string) {
+    if (actor.role !== 'admin') throw new ForbiddenException('团队关联仅管理员可查看');
+    if (!this.db) throw new ServiceUnavailableException('团队配置存储不可用');
+    const [team] = await this.db.select().from(adminTeams).where(eq(adminTeams.id, teamId)).limit(1);
+    if (!team) throw new NotFoundException('团队不存在');
+    return readTeamTemplateUsage(this.db, teamId, team.updatedAt);
+  }
+
   async deleteTeam(actor: CurrentUser, teamId: string, expectedUpdatedAt?: string): Promise<{ success: true; deletedTeamId: string }> {
     if (actor.role !== 'admin') throw new ForbiddenException('团队删除仅管理员可用');
     if (!this.db) throw new ServiceUnavailableException('团队配置存储不可用');
@@ -1241,13 +1266,13 @@ export class PlatformRegistryService {
       const [existing] = await tx.select().from(adminTeams).where(eq(adminTeams.id, teamId)).for('update');
       if (!existing) throw new NotFoundException('团队不存在');
       if (expectedUpdatedAt && existing.updatedAt.toISOString() !== expectedUpdatedAt) throw new ConflictException({ code: 'ADMIN_AI_CONFIG_CONFLICT', message: '团队已变化，请回读后重新删除' });
-      const versions = await tx.select({ id: pblTemplateTeamBindings.id }).from(pblTemplateTeamBindings).where(sql`EXISTS (SELECT 1 FROM jsonb_each(${pblTemplateTeamBindings.teamSnapshots}) AS frozen WHERE frozen.value->>'teamId'=${teamId})`).limit(1);
-      const templates = await tx.select({ id: projectTemplateVersions.id }).from(projectTemplateVersions).where(sql`${projectTemplateVersions.content}->>'linkedTeamId'=${teamId}`).limit(1);
-      if (versions.length || templates.length) throw new ConflictException({ code: 'TEAM_IN_USE', message: '团队已有教学绑定或模板引用，请停用团队并保留历史来源' });
+      const usage = await readTeamTemplateUsage(tx, teamId, existing.updatedAt);
       await tx.delete(adminTeamMembers).where(eq(adminTeamMembers.teamId, teamId));
       await tx.delete(adminTeams).where(eq(adminTeams.id, teamId));
       await this.audit.write({ actorId: actor.id, actorRole: actor.role, action: 'admin.team.delete',
-        targetType: 'admin_team', targetId: teamId, detail: { name: existing.name, leaderAssistantId: existing.leaderAssistantId } }, tx);
+        targetType: 'admin_team', targetId: teamId, detail: { name: existing.name, leaderAssistantId: existing.leaderAssistantId,
+          retainedTemplateCount: usage.templateCount, retainedBindingCount: usage.bindingCount,
+          retainedProjectCount: usage.projectCount, frozenConfigurationPreserved: true } }, tx);
       return { success: true, deletedTeamId: teamId };
     });
   }

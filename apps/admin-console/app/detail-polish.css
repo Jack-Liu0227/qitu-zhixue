@@ -30,6 +30,12 @@
 .copilot-columns > .qitu-resizable-panel { height: 100%; min-height: 0; }
 .copilot-columns .copilot-sidebar { width: 100% !important; height: 100%; }
 .copilot-columns > .qitu-resizable-panel > .copilot-main { height: 100%; min-width: 0; }
+.copilot-page { min-height: 0; }
+.copilot-messages-container { min-height: 0; overscroll-behavior: contain; }
+.copilot-columns.qitu-resizable-panels[data-stacked='true'] { height: 100%; overflow-y: auto; overscroll-behavior: contain; }
+.copilot-columns[data-stacked='true'] > .qitu-resizable-panel { height: auto; flex: 0 0 auto; }
+.copilot-columns[data-stacked='true'] .copilot-sidebar { max-height: 220px; }
+.copilot-columns[data-stacked='true'] > .qitu-resizable-panel:has(.copilot-main) { height: 90dvh; min-height: 680px; }
 .admin-console-main :is(.admin-stats-page, .admin-relationships-page) { min-width: 0; max-width: 100%; }
 .admin-console-main :is(.admin-hero-copy, .admin-hero-badges) { min-width: 0; max-width: 100%; flex-wrap: wrap; }
 .admin-console-main .member-editor-container { position: relative; inset: auto; z-index: auto; height: auto; min-height: 560px; border: 1px solid var(--qitu-border); border-radius: 14px; overflow: hidden; }
@@ -55,8 +61,7 @@
 .admin-console-main .member-overview dt { font-size: 12px; color: var(--qitu-muted); }.member-overview dd { margin: 8px 0 0; }
 .admin-console-main .member-editor-error { padding: 12px 18px; color: #b4233b; background: #fff0f3; }
 @media (max-width: 760px) {
-  .copilot-page { margin: 0 !important; width: 100%; height: auto !important; min-height: calc(100dvh - 160px); }
-  .copilot-page .copilot-columns { height: auto; }
+  .copilot-page { margin: 0 !important; width: 100%; height: 100% !important; min-height: 0; }
   .copilot-control-pill { max-width: 100%; min-width: 0; }
   .copilot-control-select { flex: 1; min-width: 0; max-width: 100%; }
   .settings-mobile-nav-toggle { min-height: 44px; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--qitu-border); background: var(--qitu-surface); color: var(--qitu-heading); font-size: 13px; text-align: left; }
@@ -74,10 +79,6 @@
   .provider-presets-catalog { padding: 14px !important; }
   .provider-preset-active-card > div { min-width: 0 !important; }
   .provider-preset-select { min-width: 0 !important; max-width: 100%; }
-  .copilot-columns.qitu-resizable-panels[data-stacked='true'] { overflow-y: auto; }
-  .copilot-columns[data-stacked='true'] > .qitu-resizable-panel { height: auto; flex: 0 0 auto; }
-  .copilot-columns[data-stacked='true'] .copilot-sidebar { max-height: 220px; }
-  .copilot-columns[data-stacked='true'] > .qitu-resizable-panel:has(.copilot-main) { height: 90dvh; min-height: 680px; }
   .admin-console-main :is(.admin-detail-grid, .runtime-form-grid) { grid-template-columns: minmax(0, 1fr); }
   .admin-console-main :is(.modal-content, .admin-modal) { margin: 0; border-radius: 14px; }
   .admin-console-main .modal-body { padding: 16px; }

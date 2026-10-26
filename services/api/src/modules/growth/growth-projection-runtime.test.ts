@@ -39,6 +39,18 @@ function fixture() {
 
 const settings = { profileAssistantId: 'profile-analyst-assistant', growthAssistantId: null };
 
+test('a newly provisioned historical alias has a distinct name without changing its routing identity', async () => {
+  const f = fixture();
+  f.assistants.push({ id: 'tutor-leader', name: 'Tutor', role: 'teacher', enabled: true });
+  f.agents.splice(f.agents.findIndex(agent => agent.id === 'qitu-learning-partner'), 1);
+  f.tables.get(adminTeams)!.push({ id: 'alias-team', leaderAssistantId: 'tutor-leader', enabled: true });
+  await provisionGrowthProjectionRuntime(f.db, settings, 'admin');
+  assert.equal(f.agents.find(agent => agent.id === 'tutor-leader')!.displayName, 'Tutor');
+  assert.equal(f.agents.find(agent => agent.id === 'qitu-learning-partner')!.displayName, 'Tutor (qitu-learning-partner)');
+  assert.ok(f.routes.some(route => route.fromAgentId === 'tutor-leader'));
+  assert.ok(f.routes.some(route => route.fromAgentId === 'qitu-learning-partner'));
+});
+
 test('explicit binding creates canonical identity and routes only from real live/frozen leaders', async () => {
   const f = fixture();
   await provisionGrowthProjectionRuntime(f.db, settings, 'admin');

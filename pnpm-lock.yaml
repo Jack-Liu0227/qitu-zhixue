@@ -38,6 +38,9 @@ importers:
       '@qitu/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      katex:
+        specifier: ^0.19.0
+        version: 0.19.0
       next:
         specifier: ^15.5.0
         version: 15.5.26(@types/node@22.20.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -54,6 +57,9 @@ importers:
         specifier: ^19.1.0
         version: 19.3.0(react@19.3.0)
     devDependencies:
+      '@types/katex':
+        specifier: ^0.16.8
+        version: 0.16.8
       '@types/node':
         specifier: ^22.0.0
         version: 22.20.4
@@ -124,6 +130,9 @@ importers:
       next:
         specifier: ^15.5.0
         version: 15.5.26(@types/node@22.20.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      qrcode-generator:
+        specifier: 2.0.4
+        version: 2.0.4
       react:
         specifier: ^19.1.0
         version: 19.3.0

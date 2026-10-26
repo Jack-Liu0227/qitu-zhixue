@@ -1,4 +1,4 @@
-import { boolean, index, integer, jsonb, pgTable, primaryKey, text, timestamp } from 'drizzle-orm/pg-core';
+import { boolean, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 /** Server-owned Agent governance configuration, independent from tutor_partners. */
@@ -20,6 +20,7 @@ export const agentConfigs = pgTable('agent_configs', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
+  nameUniqueIdx: uniqueIndex('agent_configs_name_unique_idx').on(sql`qitu_resource_name_key(${table.displayName})`),
   parentIdx: index('agent_configs_parent_idx').on(table.parentAgentId),
   enabledIdx: index('agent_configs_enabled_idx').on(table.enabled),
   modelIdx: index('agent_configs_model_idx').on(table.modelProviderId, table.modelId),
@@ -60,7 +61,9 @@ export const runtimeMcpServers = pgTable('runtime_mcp_servers', {
   lastError: text('last_error'),
   secretRef: text('secret_ref'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => ({
+  nameUniqueIdx: uniqueIndex('runtime_mcp_servers_name_unique_idx').on(sql`qitu_resource_name_key(${table.label})`),
+}));
 
 export const agentMcpBindings = pgTable('agent_mcp_bindings', {
   agentId: text('agent_id').notNull(),

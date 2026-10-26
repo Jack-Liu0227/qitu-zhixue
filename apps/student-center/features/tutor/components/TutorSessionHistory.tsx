@@ -192,27 +192,26 @@ export function TutorSessionHistory({
         <button
           type="button"
           onClick={onToggle}
-          title="展开侧边栏（会话历史）"
-          aria-label="展开侧边栏（会话历史）"
+          title="展开会话历史"
+          aria-label="展开会话历史"
           className="qitu-history-toggle-btn"
-          style={{
-            width: '52px',
-            height: '40px',
-            padding: 0,
-            margin: '0 auto',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: '10px',
-            cursor: 'pointer',
-            transition: 'all 0.15s ease',
-            boxSizing: 'border-box',
-            flexShrink: 0,
-          }}
         >
-          <span style={{ fontSize: '14px', lineHeight: 1 }}>📂</span>
-          <span style={{ fontSize: '10px', fontWeight: 600, marginTop: '2px', lineHeight: 1 }}>展开</span>
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <rect width="18" height="18" x="3" y="3" rx="4" />
+            <path d="M9 3v18" />
+            <path d="m14 9 3 3-3 3" />
+          </svg>
+          <span className="qitu-history-toggle-label">展开</span>
         </button>
         <button
           type="button"
@@ -394,12 +393,27 @@ export function TutorSessionHistory({
         </div>
         <button
           type="button"
-          className="qitu-button qitu-button-ghost qitu-button-sm"
+          className="qitu-history-collapse-btn"
           onClick={onToggle}
-          aria-label="收起侧栏"
-          style={{ fontSize: '12px', padding: '4px 8px' }}
+          title="收起会话历史"
+          aria-label="收起会话历史"
         >
-          收起 ◀
+          <svg
+            width="15"
+            height="15"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <rect width="18" height="18" x="3" y="3" rx="4" />
+            <path d="M9 3v18" />
+            <path d="m16 15-3-3 3-3" />
+          </svg>
+          <span className="qitu-history-collapse-label">收起</span>
         </button>
       </div>
 

@@ -72,7 +72,7 @@ For end-to-end skill adaptation or curriculum work, read `references/lifecycle.m
 
 ## 服务端能力合同
 
-<!-- qitu-copilot-contract: {"version":"1.4.1","operationsDigest":"f1f038731c14e42609d66eb38fc3d832211b06055e751153a74ccc56b969ab0b"} -->
+<!-- qitu-copilot-contract: {"version":"1.4.1","operationsDigest":"025c5a1939a14bf318167cfdb08f2c4e9474b6ac45c5ef7dfa767e31102e2149"} -->
 
 - 能力唯一来源为 `packages/contracts/src/admin-copilot.ts` 的 `ADMIN_COPILOT_OPERATIONS`；通过 `/admin/copilot/capabilities` 获取目录，运行时校验上面的版本和摘要。缺失或漂移必须停止配置，不自行补全操作。
 - `global` 管理全局资源，无需选择项目；修改已有资源必须用目录中的明确 ID。`selected_template` 只管理所选模板及服务端证明关联的资源，平台级操作切换到 global 后才执行。客户端选择的团队本身不构成关联证明。
@@ -89,7 +89,7 @@ For end-to-end skill adaptation or curriculum work, read `references/lifecycle.m
 
 - 使用对应模块的 .test 动作，区分 configuration、真实 model/engine/IMA connection 与 publication_evidence。配置检查不等于工具执行或团队真实运行。测试失败不能写成已保存或已通过。
 - 删除只在 global 范围执行，并使用真实 ID、revision/digest。用户要求停用时只修改 enabled，不自动升级为删除。
-- 助手/团队只有未被引用时才物理删除；保留教学绑定内的冻结配置和历史项目。不得自动移交负责人或删除其他团队。
+- 助手只有未被引用时才物理删除。团队可直接删除当前配置及成员关系，即使已有模板引用；保留模板版本、教学绑定内的冻结团队配置和历史项目，既有课程继续使用冻结配置。新编排须重新选择现存团队。不得自动移交负责人或删除其他团队。
 - 模板仅未发布、未引用草稿可物理删除；历史模板使用 template.archive。Skill 删除是 deprecated 软删除，保留源码和 canonical ID；知识库删除由原 owner 撤销来源并取消任务，保留远端资料。
 - 自定义 MCP 仅无引用、停用且无驱动凭据时可删除登记。内置 IMA 使用带平台 revision 的 ima.configure 停用；助手授权用 assistant.update，平台知识范围用 knowledge.configure。
 

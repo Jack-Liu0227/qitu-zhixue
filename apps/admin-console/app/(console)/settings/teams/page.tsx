@@ -1,21 +1,24 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
   AdminTeamConfig,
   AdminTeamMember,
   AdminAssistantConfig,
   AdminTeamUpdateInput,
+  AdminTeamTemplateUsage,
 } from '@qitu/contracts';
 import {
   fetchAdminTeamConfigs,
   createPersistedTeam,
   updatePersistedTeam,
   deletePersistedTeam,
+  fetchTeamTemplateUsage,
 } from '../../../../lib/api/teams';
 import { fetchAdminAssistantConfigs } from '../../../../lib/api/assistants';
 import { fetchAvailableConfiguredModels, type ConfiguredModelItem } from '../../../../lib/api/configuredModels';
 import { newIdempotencyKey } from '../../../../lib/api/modelRegistry';
+import { AdminApiError } from '../../../../lib/api/types';
 import { AdminStateViews } from '../../../../lib/components/AdminStateViews';
 import { TeamCard } from './components/TeamCard';
 import { TeamDetailView } from './components/TeamDetailView';
@@ -43,6 +46,8 @@ export default function AdminTeamsPage() {
   const [newTeamName, setNewTeamName] = useState('');
   const [newTeamDesc, setNewTeamDesc] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const pendingDeletes = useRef(new Map<string, { key: string; usage: AdminTeamTemplateUsage }>());
+  const deleteBusy = useRef(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -147,13 +152,18 @@ export default function AdminTeamsPage() {
 
   // 删除团队
   const handleDeleteTeam = async (teamId: string, teamName: string) => {
-    const ok = window.confirm(`确定要彻底删除团队「${teamName}」吗？\n删除后不可恢复。`);
-    if (!ok) return;
-
+    if (deleteBusy.current) return;
+    deleteBusy.current = true;
     try {
-      await deletePersistedTeam(teamId, newIdempotencyKey());
-      const nextTeams = teams.filter((t) => t.id !== teamId);
+      const pending = pendingDeletes.current.get(teamId) ?? { key: newIdempotencyKey(), usage: await fetchTeamTemplateUsage(teamId) };
+      const { usage } = pending;
+      if (!window.confirm(`确定删除团队「${teamName}」的当前配置吗？\n关联 ${usage.templateCount} 个模板、${usage.bindingCount} 个教学绑定、${usage.projectCount} 个项目。\n已冻结的课程和历史记录保留；后续新编排需重新选择团队。团队配置删除后不可恢复。`)) return;
+      pendingDeletes.current.set(teamId, pending);
+      await deletePersistedTeam(teamId, pending.key, usage.teamUpdatedAt);
+      const nextTeams = await fetchAdminTeamConfigs();
+      pendingDeletes.current.delete(teamId);
       setTeams(nextTeams);
+      setSelected(current => new Set([...current].filter(id => id !== teamId)));
       if (viewingTeamId === teamId) {
         setViewMode('list');
         setViewingTeamId(null);
@@ -162,7 +172,10 @@ export default function AdminTeamsPage() {
         setActiveTeamId(nextTeams[0]?.id || '');
       }
     } catch (err: any) {
+      if (err instanceof AdminApiError && err.code === 'ADMIN_AI_CONFIG_CONFLICT') pendingDeletes.current.delete(teamId);
       alert(`删除团队失败：${err?.message || '操作异常'}`);
+    } finally {
+      deleteBusy.current = false;
     }
   };
 
@@ -189,14 +202,29 @@ export default function AdminTeamsPage() {
 
   const handleBulkDelete = async () => {
     const ids = [...selected];
-    if (!ids.length || !window.confirm(`确认删除选中的 ${ids.length} 个未使用团队？`)) return;
-    const results = await Promise.allSettled(ids.map((id) => deletePersistedTeam(id, newIdempotencyKey())));
+    if (!ids.length || deleteBusy.current) return;
+    deleteBusy.current = true;
     try {
+      const pending = await Promise.all(ids.map(async id => {
+        const item = pendingDeletes.current.get(id) ?? { key: newIdempotencyKey(), usage: await fetchTeamTemplateUsage(id) };
+        return { id, ...item };
+      }));
+      if (!window.confirm(`确认删除选中的 ${ids.length} 个团队配置？\n已冻结的课程和历史项目保留，后续新编排需重新选择团队。`)) return;
+      const results = await Promise.allSettled(pending.map(async item => {
+        pendingDeletes.current.set(item.id, item);
+        try { await deletePersistedTeam(item.id, item.key, item.usage.teamUpdatedAt); }
+        catch (cause) {
+          if (cause instanceof AdminApiError && cause.code === 'ADMIN_AI_CONFIG_CONFLICT') pendingDeletes.current.delete(item.id);
+          throw cause;
+        }
+      }));
       const current = await fetchAdminTeamConfigs();
       const failed = ids.filter((id, index) => results[index]?.status === 'rejected' || current.some((team) => team.id === id));
+      for (const id of ids) if (!failed.includes(id)) pendingDeletes.current.delete(id);
       setTeams(current); setSelected(new Set(failed));
-      if (failed.length) setError(new Error(`${failed.length} 项未删除，已保留选中状态。历史引用的团队请停用。`));
+      if (failed.length) setError(new Error(`${ids.length - failed.length} 项已回读确认删除，${failed.length} 项未确认，已保留选中状态，请重试。`));
     } catch (cause) { setError(cause instanceof Error ? cause : new Error('删除结果回读失败')); }
+    finally { deleteBusy.current = false; }
   };
 
   // 打开团队详情
@@ -382,6 +410,7 @@ export default function AdminTeamsPage() {
           onAddMember={() => setShowAddMemberModal(true)}
           onRemoveMember={handleRemoveMember}
           onSetLeader={handleSetLeader}
+          onDeleteTeam={() => void handleDeleteTeam(viewingTeam.id, viewingTeam.name)}
         />
 
         {showAddMemberModal && (

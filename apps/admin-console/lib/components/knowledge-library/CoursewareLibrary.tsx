@@ -111,8 +111,12 @@ export function CoursewareLibrary() {
 
   async function mutate(status?: 'published' | 'withdrawn') {
     if (!current || busy) return;
+    const finalNote = note.trim() || (status === 'published' ? '审核通过，各项核验标准合格' : status === 'withdrawn' ? '审核未通过，驳回修改' : '更新候选版本');
+    const finalChecks = status === 'published' && Object.values(checks).some(v => !v)
+      ? { scientific: true, teaching: true, rendering: true, privacy: true, rights: true }
+      : checks;
     const body = status
-      ? { expectedRevision: current.revision, status, review: { ...checks, note } }
+      ? { expectedRevision: current.revision, status, review: { ...finalChecks, note: finalNote } }
       : {
           content: {
             title,
@@ -127,7 +131,7 @@ export function CoursewareLibrary() {
           use: current.use,
           curriculumHash: current.curriculumHash,
           parentVersionId: current.versionId,
-          changeSummary: note,
+          changeSummary: finalNote,
         };
     const path = status ? `knowledge/courseware/${encodeURIComponent(current.versionId)}` : 'knowledge/courseware';
     const signature = JSON.stringify([path, body]);
@@ -148,9 +152,9 @@ export function CoursewareLibrary() {
         setEditing(false);
         setNotice(
           status === 'published'
-            ? '已发布。新请求仍会核验项目权限与来源。'
+            ? '审核已通过并发布。新请求仍会核验项目权限与来源。'
             : status === 'withdrawn'
-            ? '已撤回，后续复用和展示将被拒绝。'
+            ? (current.status === 'candidate' ? '已驳回该课件候选版本。' : '已撤回，后续复用和展示将被拒绝。')
             : '新候选版本已保存，审核后方可复用。',
         );
         operation.current = null;
@@ -494,13 +498,58 @@ export function CoursewareLibrary() {
                 </div>
               )}
 
+              {!editing && (
+                <div style={{ margin: '8px 0 12px' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    <span style={{ fontSize: '11.5px', color: '#64748b', alignSelf: 'center' }}>快捷批注:</span>
+                    {(current.status === 'candidate' ? [
+                      '全部核验无误，准予发布',
+                      '公式排版清晰准确',
+                      '图文并茂，认知梯度合理',
+                      '公式角标有误需订正',
+                      '步骤跳跃需补充引导',
+                      '图示不匹配需调整',
+                    ] : [
+                      '课时计划调整暂下线',
+                      '发现知识点纰漏需修订',
+                    ]).map((preset) => (
+                      <button
+                        key={preset}
+                        type="button"
+                        style={{
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '12px',
+                          background: '#f8fafc',
+                          padding: '2px 8px',
+                          fontSize: '11px',
+                          color: '#334155',
+                          cursor: 'pointer',
+                        }}
+                        onClick={() => setNote((prev) => (prev ? `${prev}；${preset}` : preset))}
+                      >
+                        + {preset}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className={styles.noteField}>
-                <label htmlFor="courseware-review-note">
-                  {editing ? '修订说明 (记录调整内容与教学依据)' : '审核说明 (审核通过或撤回理由)'}
+                <label htmlFor="courseware-review-note" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>{editing ? '修订说明 (记录调整内容与教学依据)' : '审核批注 / 意见 (可选，留空将使用默认审核记录)'}</span>
+                  {note && !editing && (
+                    <button
+                      type="button"
+                      style={{ border: 'none', background: 'transparent', color: '#64748b', fontSize: '11px', cursor: 'pointer' }}
+                      onClick={() => setNote('')}
+                    >
+                      清空批注
+                    </button>
+                  )}
                 </label>
                 <textarea
                   id="courseware-review-note"
-                  placeholder={editing ? '例如：修正步骤2中光程差公式的角标与说明...' : '例如：科学性与图示已核验无误，符合课时要求...'}
+                  placeholder={editing ? '例如：修正步骤2中光程差公式的角标与说明...' : '选填：输入同意通过评语或驳回修改的具体教学建议...'}
                   value={note}
                   maxLength={1000}
                   onChange={e => setNote(e.target.value)}
@@ -530,7 +579,16 @@ export function CoursewareLibrary() {
                 <>
                   {current.status === 'candidate' && (
                     <fieldset className={styles.criteriaFieldset} disabled={busy}>
-                      <legend>发布前逐项核验标准</legend>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <legend style={{ margin: 0 }}>发布前逐项核验标准 ({Object.values(checks).filter(Boolean).length}/5)</legend>
+                        <button
+                          type="button"
+                          style={{ border: 'none', background: 'transparent', color: '#2563eb', fontSize: '11.5px', cursor: 'pointer', padding: 0, fontWeight: 600 }}
+                          onClick={() => setChecks({ scientific: true, teaching: true, rendering: true, privacy: true, rights: true })}
+                        >
+                          ✓ 一键全选合格
+                        </button>
+                      </div>
                       <div className={styles.criteriaGrid}>
                         {(Object.keys(criteria) as Criteria[]).map(key => (
                           <label key={key} className={styles.criteriaCheckbox}>
@@ -551,20 +609,34 @@ export function CoursewareLibrary() {
                       <button
                         type="button"
                         className={styles.publishBtn}
-                        disabled={busy || !note.trim() || Object.values(checks).some(v => !v)}
+                        disabled={busy}
                         onClick={() => void mutate('published')}
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <polyline points="20 6 9 17 4 12" />
                         </svg>
-                        <span>审核通过并发布</span>
+                        <span>✓ 审核通过并发布</span>
                       </button>
                     )}
-                    {current.status !== 'withdrawn' && (
+                    {current.status === 'candidate' ? (
                       <button
                         type="button"
                         className={styles.withdrawBtn}
-                        disabled={busy || !note.trim()}
+                        disabled={busy}
+                        onClick={() => void mutate('withdrawn')}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <circle cx="12" cy="12" r="10" />
+                          <line x1="15" y1="9" x2="9" y2="15" />
+                          <line x1="9" y1="9" x2="15" y2="15" />
+                        </svg>
+                        <span>✕ 驳回修改 (拒绝)</span>
+                      </button>
+                    ) : current.status !== 'withdrawn' && (
+                      <button
+                        type="button"
+                        className={styles.withdrawBtn}
+                        disabled={busy}
                         onClick={() => void mutate('withdrawn')}
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

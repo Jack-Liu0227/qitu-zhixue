@@ -10,6 +10,7 @@ import { persistAssistantBinding } from '../../../../lib/api/assistantBindings';
 import { fetchRuntimeSnapshot } from '../../../../lib/api/runtime';
 import { AdminApiError, AdminOfflineError, AdminPermissionError } from '../../../../lib/api/types';
 import type { AdminAssistantConfig, AdminRuntimeSkill } from '@qitu/contracts';
+import { resourceNameKey } from '@qitu/contracts';
 
 interface SkillFile {
   name: string;
@@ -369,9 +370,16 @@ export default function SkillsSettingsPage() {
 
   // 新建 Skill（本地配置：服务端暂未提供技能内容写入接口）
   const handleCreateSkill = () => {
+    if (catalogPending || catalogError) {
+      setSaveNotice('技能目录尚未读取成功，暂时无法检查重名，请读取成功后重试。');
+      return;
+    }
+    const usedNames = new Set(skills.map(skill => resourceNameKey(skill.name)));
+    let suffix = skills.length + 1;
+    while (usedNames.has(`custom-skill-${suffix}`)) suffix++;
     const newSkill: SkillItem = {
       id: `local-skill-${Date.now()}`,
-      name: `custom-skill-${skills.length + 1}`,
+      name: `custom-skill-${suffix}`,
       description: '',
       tags: ['本地配置'],
       filesCount: 1,
@@ -394,9 +402,23 @@ export default function SkillsSettingsPage() {
     setSaveNotice('技能内容编辑仅保存在当前会话；服务端技能写入接口尚未提供。');
   };
 
+  const canSaveSkillName = () => {
+    if (!editingSkill) return false;
+    if (catalogPending || catalogError) {
+      setSaveNotice('技能目录尚未读取成功，暂时无法检查重名，请读取成功后重试。');
+      return false;
+    }
+    const key = resourceNameKey(editingSkill.name);
+    if (!key || skills.some(skill => skill.id !== editingSkill.id && resourceNameKey(skill.name) === key)) {
+      setSaveNotice(key ? '同类别下已存在同名技能，请使用其他名称。' : '请输入技能名称。');
+      return false;
+    }
+    return true;
+  };
+
   // 保存 Skill 编辑（含属性与文件）
   const handleSaveSkill = () => {
-    if (!editingSkill) return;
+    if (!editingSkill || !canSaveSkillName()) return;
     const updatedFiles = editingSkill.files.map((f) =>
       f.name === selectedFileName
         ? { ...f, content: fileContentDraft, sizeBytes: new Blob([fileContentDraft]).size }
@@ -412,7 +434,7 @@ export default function SkillsSettingsPage() {
 
   // 保存当前单文件
   const handleSaveCurrentFile = () => {
-    if (!editingSkill) return;
+    if (!editingSkill || !canSaveSkillName()) return;
     const updatedFiles = editingSkill.files.map((f) =>
       f.name === selectedFileName
         ? { ...f, content: fileContentDraft, sizeBytes: new Blob([fileContentDraft]).size }
@@ -428,11 +450,11 @@ export default function SkillsSettingsPage() {
 
   // 添加新文件
   const handleAddNewFile = () => {
-    if (!editingSkill) return;
+    if (!editingSkill || !canSaveSkillName()) return;
     const fileName = prompt('请输入新文件名（如：rules/constraints.md 或 rubric.json）：');
     if (!fileName?.trim()) return;
     const trimmed = fileName.trim();
-    if (editingSkill.files.some((f) => f.name === trimmed)) {
+    if (editingSkill.files.some((f) => resourceNameKey(f.name) === resourceNameKey(trimmed))) {
       alert('已存在同名文件');
       return;
     }
@@ -452,7 +474,7 @@ export default function SkillsSettingsPage() {
   // 删除文件
   const handleDeleteFile = (fileName: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!editingSkill) return;
+    if (!editingSkill || !canSaveSkillName()) return;
     if (editingSkill.files.length <= 1) {
       alert('Skill 至少需保留一个文件');
       return;

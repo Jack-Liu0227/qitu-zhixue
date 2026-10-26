@@ -1,0 +1,255 @@
+.section {
+  background: #fff;
+  border: 1px solid #dbe6ef;
+  border-radius: 14px;
+  padding: clamp(20px, 3vw, 30px);
+  margin: 0 0 26px;
+  color: #18354e;
+}
+.heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+.heading h2 {
+  margin: 6px 0 10px;
+  font-size: 23px;
+  letter-spacing: -0.035em;
+}
+.heading h3,
+.heading h4 {
+  margin: 0 0 8px;
+}
+.heading p,
+.muted {
+  font-size: 12px;
+  color: #63798b;
+  line-height: 1.8;
+}
+.heading small {
+  color: #59788b;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.primary,
+.secondary {
+  border-radius: 8px;
+  min-height: 39px;
+  padding: 9px 15px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.primary {
+  background: #255fc5;
+  color: white;
+  border: 1px solid #255fc5;
+}
+.secondary {
+  background: white;
+  color: #294b64;
+  border: 1px solid #cfdee9;
+}
+.section button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.section :is(button, a, input, textarea, summary):focus-visible {
+  outline: 3px solid #82b6f7;
+  outline-offset: 3px;
+}
+.steps {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+  margin: 22px 0;
+  padding: 15px 0;
+  border-block: 1px solid #e5edf4;
+  color: #62788c;
+  font-size: 12px;
+}
+.steps span:not(:last-child)::after {
+  content: '›';
+  padding-left: 15px;
+  color: #9ab0be;
+}
+.offers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr));
+  gap: 16px;
+}
+.offer {
+  padding: 23px;
+  border: 1px solid #d8e5ef;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.offer h3 {
+  font-size: 18px;
+  margin: 19px 0 9px;
+}
+.offer p,
+.offer li {
+  font-size: 13px;
+  line-height: 1.8;
+  color: #586e82;
+}
+.offer small {
+  font-size: 11px;
+  color: #63798b;
+}
+.offer ul {
+  padding-left: 18px;
+  flex: 1;
+}
+.tag {
+  display: inline-block;
+  font-size: 11px;
+  padding: 5px 8px;
+  border-radius: 5px;
+  color: #236e6b;
+  background: #edf7f4;
+}
+.offerFooter {
+  margin-top: 15px;
+  padding-top: 18px;
+  width: 100%;
+  border-top: 1px solid #e3ebf1;
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  justify-content: space-between;
+}
+.offerFooter strong {
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+}
+.confirm {
+  background: #f6f9fd;
+  border: 1px solid #c8dcf4;
+  border-radius: 10px;
+  padding: 22px;
+  margin-top: 20px;
+}
+.section details {
+  margin: 12px 0;
+  font-size: 12px;
+}
+.section summary {
+  cursor: pointer;
+  line-height: 1.8;
+}
+.terms {
+  white-space: pre-wrap;
+  max-height: 260px;
+  overflow-y: auto;
+  color: #566e83;
+  line-height: 1.8;
+  padding: 14px;
+  background: white;
+  border: 1px solid #dce7ef;
+}
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 12px;
+  line-height: 1.8;
+  margin: 14px 0;
+}
+.check input {
+  margin-top: 5px;
+}
+.error,
+.notice {
+  padding: 12px 15px;
+  font-size: 12px;
+  line-height: 1.8;
+  border-radius: 6px;
+}
+.error {
+  color: #a23844;
+  background: #fff1f3;
+}
+.notice {
+  color: #236f67;
+  background: #edf8f3;
+}
+.empty {
+  padding: 24px 8px;
+  color: #63798b;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.orderList {
+  margin-top: 27px;
+}
+.orderList > h3 {
+  font-size: 16px;
+}
+.order {
+  padding: 20px 0;
+  border-top: 1px solid #e0e9f0;
+}
+.payment {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  padding: 18px 0;
+}
+.payment p {
+  font-size: 12px;
+  line-height: 1.8;
+  color: #63798b;
+}
+.qr {
+  width: 170px;
+  height: 170px;
+  flex-shrink: 0;
+  border: 1px solid #e4ebf3;
+}
+.actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+.refund {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+  justify-items: start;
+}
+.refund label {
+  display: grid;
+  gap: 8px;
+  font-size: 12px;
+  width: 100%;
+}
+.refund textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ccdce9;
+  border-radius: 6px;
+  font: inherit;
+  resize: vertical;
+}
+@media (max-width: 600px) {
+  .heading {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .heading h2 {
+    font-size: 20px;
+  }
+  .payment {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .steps {
+    gap: 10px;
+  }
+}

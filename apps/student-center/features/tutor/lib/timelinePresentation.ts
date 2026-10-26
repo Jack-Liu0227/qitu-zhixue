@@ -1,5 +1,14 @@
 import type { TutorReplyBlock, TutorTurn } from '@qitu/contracts';
 
+/** Keep lesson controls with a completed reply while the next response streams. */
+export function learningActivityTurnId(turns: readonly TutorTurn[], streamingTurnId: string | null): string | null {
+  for (let index = turns.length - 1; index >= 0; index -= 1) {
+    const turn = turns[index];
+    if (turn?.role === 'assistant' && turn.turnId !== streamingTurnId && turn.blocks.length > 0) return turn.turnId;
+  }
+  return null;
+}
+
 export function retainCoursewareSelection(selected: string, previous: readonly string[], next: readonly string[]): string {
   if (selected && next.includes(selected) && selected !== previous.at(-1)) return selected;
   return next.at(-1) ?? '';

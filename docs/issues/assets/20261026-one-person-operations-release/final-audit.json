@@ -1,0 +1,96 @@
+{
+  "status": "passed",
+  "checkedAt": "2026-10-26T15:02:55.772458+00:00",
+  "releaseFileCount": 79,
+  "preservedSourceCount": 1956,
+  "sourceMismatches": [],
+  "preservedMismatches": [],
+  "tests": {
+    "tests": 169,
+    "pass": 169,
+    "fail": 0,
+    "skipped": 0
+  },
+  "services": {
+    "qitu-api": {
+      "ActiveState": "active",
+      "SubState": "running",
+      "MainPID": "3733947",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    "qitu-auth": {
+      "ActiveState": "active",
+      "SubState": "running",
+      "MainPID": "3732065",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    "qitu-admin": {
+      "ActiveState": "active",
+      "SubState": "running",
+      "MainPID": "3731271",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    "qitu-parent": {
+      "ActiveState": "active",
+      "SubState": "running",
+      "MainPID": "3731575",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    "qitu-student": {
+      "ActiveState": "active",
+      "SubState": "running",
+      "MainPID": "3669018",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    "qitu-teacher": {
+      "ActiveState": "active",
+      "SubState": "running",
+      "MainPID": "3669706",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    "qitu-workers": {
+      "ActiveState": "active",
+      "SubState": "running",
+      "MainPID": "3730791",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    "qitu-profile-growth": {
+      "ActiveState": "active",
+      "SubState": "running",
+      "MainPID": "3730792",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    }
+  },
+  "routes": {
+    "/login": 200,
+    "/showcase": 200,
+    "/admin/settings/ops": 200,
+    "/parent": 200,
+    "/student/today": 200,
+    "/teacher/dashboard": 200,
+    "/api/v1/health/ready": 200
+  },
+  "readiness": {
+    "service": "qitu-zhixue-api",
+    "status": "ready",
+    "version": "0.1.0",
+    "checkedAt": "2026-10-26T15:02:55.581Z",
+    "dataMode": "live",
+    "dependencies": {
+      "database": {
+        "status": "ok"
+      },
+      "redis": {
+        "status": "ok"
+      }
+    }
+  },
+  "businessRecordCounts": {
+    "offers": 0,
+    "orders": 0,
+    "invitations": 0,
+    "expenses": 0
+  },
+  "invitationSigningConfigured": true,
+  "actualPayments": false
+}

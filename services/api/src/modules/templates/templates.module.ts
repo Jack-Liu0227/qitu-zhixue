@@ -16,6 +16,8 @@ import {
 import { PostgresTemplateVerificationStore } from './template-verification.store.postgres';
 import { TemplateGovernanceController } from './templates-governance.controller';
 import { TemplateGovernanceService } from './templates-governance.service';
+import { TemplateDeletionService } from './template-deletion.service';
+import { TemplateDeletionController } from './template-deletion.controller';
 import { TemplateBindingController } from './templates-binding.controller';
 import { TemplateBindingService } from './templates-binding.service';
 import { InMemoryTemplateBindingStore, TemplateBindingStore } from './templates-binding.store';
@@ -43,11 +45,12 @@ import { ProjectBindingRecoveryController } from './project-binding-recovery.con
  */
 @Module({
   imports: [AuthModule, PlatformRegistryModule, ModelRegistryModule, forwardRef(() => KnowledgeModule)],
-  controllers: [TemplatesController, TemplateGovernanceController, TemplateBindingController, ProjectBindingRecoveryController],
+  controllers: [TemplatesController, TemplateGovernanceController, TemplateDeletionController, TemplateBindingController, ProjectBindingRecoveryController],
   providers: [
     TeachingBundleCatalog,
     TemplatesService,
     TemplateGovernanceService,
+    TemplateDeletionService,
     TemplateBindingService,
     ProjectBindingRecoveryService,
     {

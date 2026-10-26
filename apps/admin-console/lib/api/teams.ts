@@ -4,6 +4,7 @@ import type {
   AdminTeamConfig,
   AdminTeamCreateInput,
   AdminTeamUpdateInput,
+  AdminTeamTemplateUsage,
 } from '@qitu/contracts';
 import { AdminOfflineError, AdminPermissionError, adminEnvelopeRequest, type DataEnvelope } from './types';
 import { newIdempotencyKey } from './modelRegistry';
@@ -76,6 +77,10 @@ export function fetchAdminTeamConfigs(): Promise<AdminTeamConfig[]> {
   return adminEnvelopeRequest<AdminTeamConfig[]>({ path: ADMIN_TEAMS_PATH, method: 'GET' });
 }
 
+export function fetchTeamTemplateUsage(id: string): Promise<AdminTeamTemplateUsage> {
+  return adminEnvelopeRequest<AdminTeamTemplateUsage>({ path: `${ADMIN_TEAM_ITEM_PATH(id)}/templates`, method: 'GET' });
+}
+
 export async function createPersistedTeam(
   input: AdminTeamCreateInput,
   idempotencyKey = newIdempotencyKey(),
@@ -111,15 +116,21 @@ async function readTeam(saved: AdminTeamConfig): Promise<AdminTeamConfig> {
   return current;
 }
 
-export function deletePersistedTeam(
+export async function deletePersistedTeam(
   id: string,
   idempotencyKey = newIdempotencyKey(),
+  expectedUpdatedAt?: string,
 ): Promise<{ success: true; deletedTeamId: string }> {
-  return adminEnvelopeRequest<{ success: true; deletedTeamId: string }>({
+  const result = await adminEnvelopeRequest<{ success: true; deletedTeamId: string }>({
     path: ADMIN_TEAM_ITEM_PATH(id),
     method: 'DELETE',
     idempotencyKey,
+    ifMatch: expectedUpdatedAt,
   });
+  if ((await fetchAdminTeamConfigs()).some(team => team.id === id)) {
+    throw new Error('团队删除后的回读未确认，请刷新核对后重试。');
+  }
+  return result;
 }
 
 

@@ -1,5 +1,6 @@
 import { createModelRuntime, isModelRuntimeError, type ModelRuntime } from '@qitu/model-runtime';
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
+import { BusinessUsage } from '../business/business.usage';
 import { ModelGatewayError, type ModelGatewayErrorCode } from './model-gateway.errors';
 import {
   type ModelCompletionRequest,
@@ -20,7 +21,7 @@ export const MODEL_RUNTIME_RESOLVER = Symbol('MODEL_RUNTIME_RESOLVER');
 export class ModelGateway {
   private readonly runtime: ModelRuntime;
 
-  constructor(@Inject(MODEL_RUNTIME_RESOLVER) private readonly resolver: ModelRuntimeResolver) {
+  constructor(@Inject(MODEL_RUNTIME_RESOLVER) private readonly resolver: ModelRuntimeResolver, @Optional() private readonly usage?: BusinessUsage) {
     this.runtime = createModelRuntime(resolver);
   }
 
@@ -38,7 +39,9 @@ export class ModelGateway {
     selection?: ModelRuntimeModelSelection,
   ): Promise<ModelCompletionResult> {
     try {
-      return await this.runtime.complete({ usageId, ...request, ...selection });
+      const result = await this.runtime.complete({ usageId, ...request, ...selection });
+      await this.usage?.record(usageId, result);
+      return result;
     } catch (error) {
       if (isModelRuntimeError(error)) {
         throw new ModelGatewayError(error.code as ModelGatewayErrorCode, error.message, {
@@ -61,7 +64,10 @@ export class ModelGateway {
   ): AsyncGenerator<ModelStreamEvent> {
     for await (const event of this.runtime.stream({ usageId, ...request, ...selection })) {
       if (event.type === 'text-delta') yield { type: 'text-delta', text: event.text };
-      else if (event.type === 'done') yield { type: 'done', result: event.result };
+      else if (event.type === 'done') {
+        await this.usage?.record(usageId, event.result);
+        yield { type: 'done', result: event.result };
+      }
       else if (event.type === 'error') yield event;
     }
   }

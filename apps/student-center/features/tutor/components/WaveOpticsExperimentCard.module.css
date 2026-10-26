@@ -25,4 +25,33 @@
 .confirmed { font-size: 13px; color: var(--qitu-success, #0f766e); }
 .error { padding: 10px 12px; border-radius: 8px; background: var(--qitu-error-surface, #fff1f2); color: var(--qitu-error, #be123c); font-size: 13px; overflow-wrap: anywhere; }
 .empty { padding: 42px 18px; background: var(--qitu-surface-secondary, #f5f8fd); border-radius: 12px; color: var(--qitu-text-secondary, #64748b); text-align: center; }
+@media (min-width: 1200px) and (min-height: 900px) {
+  .card:fullscreen { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(400px, 1fr); grid-template-rows: auto auto auto auto auto auto auto minmax(0, 1fr) auto auto; gap: 10px 24px; align-content: start; height: 100%; margin: 0; padding: 22px max(24px, calc((100vw - 2200px) / 2)); font-size: 18px; }
+  .card:fullscreen > * { min-width: 0; }
+  .card:fullscreen .header { grid-column: 1 / -1; grid-row: 1; }
+  .card:fullscreen .header h3 { font-size: 28px; line-height: 1.35; }
+  .card:fullscreen .eyebrow { font-size: 16px; }
+  .card:fullscreen .intro { grid-column: 1 / -1; grid-row: 2; margin: 0 0 4px; font-size: 20px; }
+  .card:fullscreen .prediction, .card:fullscreen .confirmed { grid-column: 2; grid-row: 3; margin: 0; font-size: 17px; }
+  .card:fullscreen .controls { grid-column: 2; grid-row: 4; padding: 10px 0; gap: 14px 20px; align-self: start; }
+  .card:fullscreen .controls label { font-size: 18px; }
+  .card:fullscreen .runBar { grid-column: 2; grid-row: 5; margin: 0; font-size: 17px; }
+  .card:fullscreen > figure[aria-label] { grid-column: 1; grid-row: 3 / 8; margin: 0; padding: 18px; align-self: stretch; }
+  .card:fullscreen > figure[aria-label] > svg:first-of-type { height: clamp(180px, 24vh, 330px); margin: 12px 0; }
+  .card:fullscreen > figure[aria-label] > svg:nth-of-type(2) { height: 82px; }
+  .card:fullscreen > figure[aria-label] > figcaption > div > span { font-size: 21px; }
+  .card:fullscreen > figure[aria-label] small, .card:fullscreen > figure[aria-label] p { font-size: 16px; }
+  .card:fullscreen .figure { grid-column: 1; grid-row: 8 / 11; align-self: start; padding: 14px; }
+  .card:fullscreen .figure svg { height: clamp(180px, 20vh, 280px); }
+  .card:fullscreen .figure figcaption { font-size: 16px; }
+  .card:fullscreen .readouts { grid-column: 2; grid-row: 6; padding: 8px 0; }
+  .card:fullscreen .readouts span { font-size: 17px; }
+  .card:fullscreen .readouts strong { font-size: 27px; }
+  .card:fullscreen .note { grid-column: 2; grid-row: 7; margin: 0; font-size: 16px; }
+  .card:fullscreen .observation { grid-column: 2; grid-row: 8; align-self: start; margin: 0; font-size: 18px; }
+  .card:fullscreen textarea { font-size: 18px; line-height: 1.5; min-height: 108px; }
+  .card:fullscreen > button { grid-column: 2; grid-row: 9; justify-self: start; align-self: start; }
+  .card:fullscreen > .confirmed:last-child, .card:fullscreen .error { grid-column: 2; grid-row: 10; margin: 0; font-size: 16px; }
+  .card:fullscreen .empty { grid-column: 1; grid-row: 3 / 11; display: grid; place-items: center; }
+}
 @media (max-width: 600px) { .card { padding: 14px; } .controls { grid-template-columns: 1fr; } .header { align-items: flex-start; } .header h3 { font-size: 16px; } .readouts { gap: 12px; } }

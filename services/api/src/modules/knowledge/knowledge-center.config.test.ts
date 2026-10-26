@@ -27,6 +27,18 @@ function baseline(): PlatformKnowledgeConfig {
     },
   };
 }
+
+test('configuration rejects duplicate engine and MCP names, including disabled entries', () => {
+  const current = baseline();
+  const next = structuredClone(current);
+  next.knowledgeEngines['ima-copy'] = { ...next.knowledgeEngines['ima-main']!, name: ' IMA ' };
+  assert.throws(() => validateKnowledgeConfig(next, current), /同名知识引擎/);
+  current.mcpServers.second = { ...current.mcpServers.existing, name: 'Another' };
+  const duplicate = structuredClone(current);
+  duplicate.mcpServers.second!.name = '\tEXISTING ';
+  assert.throws(() => validateKnowledgeConfig(duplicate, current), /同名MCP/);
+  assert.deepEqual(validateKnowledgeConfig(current, current), current);
+});
 test('legacy MCP imports preserve engine and platform authorization', () => {
   const current = baseline();
   assert.deepEqual(validateKnowledgeConfig({ mcpServers: current.mcpServers }, current), current);

@@ -1421,6 +1421,12 @@
   box-sizing: border-box !important;
 }
 
+/* Lesson controls follow their assistant reply in the conversation scroll. */
+.qitu-chat-learning-activity {
+  min-width: 0;
+  width: 100%;
+}
+
 @media (max-width: 960px) {
   .qitu-tutor-grid { grid-template-columns: 1fr !important; padding-inline: 16px; }
   .qitu-tutor-pinned-sources { position: static; max-height: none; }
@@ -1722,9 +1728,109 @@
 .qitu-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
 .qitu-tutor-context-sidebar { width: min(280px, 23vw); flex: 0 0 min(280px, 23vw); display: flex; flex-direction: column; gap: 12px; padding: 12px; box-sizing: border-box; border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc; }
+.qitu-tutor-sidebar-header-row { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.qitu-tutor-sidebar-header-row .qitu-tutor-sidebar-tabs { flex: 1 1 auto; margin: 0; }
 .qitu-tutor-sidebar-tabs { display: flex; flex: 0 0 auto; gap: 4px; padding: 3px; border: 1px solid #e2e8f0; border-radius: 8px; background: #eef2f7; }
 .qitu-tutor-sidebar-tabs button { flex: 1 1 0; min-width: 0; padding: 7px 5px; border: 0; border-radius: 6px; background: transparent; color: #64748b; font: inherit; font-size: 12px; cursor: pointer; }
 .qitu-tutor-sidebar-tabs button.is-active { background: #fff; color: #1d4ed8; font-weight: 700; box-shadow: 0 1px 3px rgba(15, 23, 42, .08); }
+.qitu-tutor-sidebar-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  flex-shrink: 0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+.qitu-tutor-sidebar-close-btn:hover {
+  background: #eff6ff;
+  border-color: #2563eb;
+  color: #2563eb;
+  transform: scale(1.04);
+}
+
+/* 优化折叠与展开面板按钮体系 */
+.qitu-history-toggle-btn {
+  width: 44px;
+  height: 42px;
+  padding: 0;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+.qitu-history-toggle-btn:hover {
+  background: #eff6ff;
+  border-color: #2563eb;
+  color: #2563eb;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(37, 99, 235, 0.14);
+}
+.qitu-history-toggle-label {
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.qitu-history-collapse-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  line-height: 1;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+.qitu-history-collapse-btn:hover {
+  background: #eff6ff;
+  border-color: #2563eb;
+  color: #2563eb;
+  transform: translateY(-0.5px);
+}
+.qitu-history-collapse-label {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.qitu-tutor-panel-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.qitu-tutor-panel-toggle-btn.is-active {
+  background: #eff6ff !important;
+  border-color: #bfdbfe !important;
+  color: #1d4ed8 !important;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.12);
+}
 .qitu-tutor-state-panel { padding: 16px; border: 1px dashed #cbd5e1; border-radius: 10px; background: #fff; color: #475569; }
 .qitu-tutor-state-panel strong { display: block; color: #1e293b; font-size: 13px; }
 .qitu-tutor-state-panel p { margin: 6px 0 0; color: #64748b; font-size: 12px; line-height: 1.5; }

@@ -1,0 +1,19 @@
+{
+  "status": "passed",
+  "origin": "http://122.51.130.204",
+  "environment": {
+    "secureContext": false,
+    "randomUUIDAvailable": false
+  },
+  "checks": [
+    "admin operating check and server readback on public HTTP",
+    "admin mobile layout and offline action lock",
+    "parent own-child empty orders, mobile layout, admin access denied",
+    "public catalog empty state and invalid invitation rejected",
+    "student and teacher cannot read business admin"
+  ],
+  "pageErrors": [],
+  "actualPayments": false,
+  "syntheticBusinessRecordsCreated": false,
+  "learningRecordsModified": false
+}

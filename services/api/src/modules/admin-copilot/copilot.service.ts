@@ -1,3 +1,4 @@
+import { resourceNameDatabaseConflict } from '../../common/resource-name';
 import { BUILTIN_ASSISTANTS } from '@qitu/ai-client';
 import { ConflictException, ForbiddenException, HttpException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { createHash } from 'node:crypto';
@@ -237,6 +238,7 @@ function receiptBase(action: { id: string; kind: AdminCopilotReceipt['kind']; la
   return { id: action.id, kind: action.kind, label: action.label };
 }
 export function publicFailure(error: unknown): { code: string; message: string } {
+  error = resourceNameDatabaseConflict(error) ?? error;
   if (error instanceof HttpException) {
     const response = error.getResponse();
     if (typeof response === 'object' && response) {

@@ -28,7 +28,8 @@
 - 前端**不使用 `localStorage`** 保存登录态。
 - `AuthGuard`（`packages/auth`）按 `expectedRole` 做前端路由保护，但**只是体验层**；
   所有对象级权限仍由后端判定（见 [`permissions.md`](./permissions.md)）。
-- 当前会话由 API 进程内的受限 session store 管理，默认 8 小时，勾选记住登录时 30 天；重启 API 会使进程内会话失效。数据库中的 `sessions` 表尚未接入持久化轮换与跨实例撤销。
+- 会话默认 8 小时，勾选记住登录时 30 天。0054 接入 `auth_sessions`，仅保存 bearer token 的 SHA-256 摘要；登录持久化后才返回，单 API 实例启动时恢复未过期会话。HTTP 退出与学生设备撤销同时删除持久记录。当前仍使用进程内索引，跨实例即时撤销与轮换尚未实现。
+- 受邀家庭开通流程由 Directory owner 创建账号和监护关系，新账号使用独立 salt 的 scrypt 密码记录；已有 SHA-256 账号保持登录兼容。见[一人运营工作区](./business-operations.md)。
 
 ## 3. 演示账号
 
@@ -67,6 +68,7 @@
 
 ## 6. 未决事项
 
-- [ ] 将 session store 接入持久化 `sessions` 表，并支持跨实例轮换和撤销。
+- [x] 单 API 实例会话持久化及重启恢复。
+- [ ] 跨实例轮换和即时撤销。
 - [ ] MFA、会话轮换与撤销。
 - [ ] 跨角色账户面（凭证、设备会话、退出）。

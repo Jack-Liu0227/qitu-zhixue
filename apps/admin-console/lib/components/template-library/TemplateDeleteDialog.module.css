@@ -1,0 +1,19 @@
+.dialog { border: 1px solid #e5e7eb; border-radius: 16px; width: min(600px, calc(100vw - 32px)); max-height: calc(100dvh - 40px); overflow: auto; padding: 24px; color: #172033; background: #fff; box-shadow: 0 24px 80px #0003; margin: auto; }
+.dialog::backdrop { background: #10182880; }
+.dialog h2 { margin: 0 0 16px; font-size: 20px; }
+.dialog p { line-height: 1.65; }
+.counts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 16px 0; }
+.counts div { border-radius: 8px; background: #f3f5f8; padding: 10px; }
+.counts dt { font-size: 12px; color: #526075; }
+.counts dd { margin: 4px 0 0; font-weight: 700; font-size: 18px; }
+.note { font-size: 13px; color: #526075; }
+.check { display: flex; align-items: flex-start; gap: 8px; margin: 16px 0; font-size: 14px; }
+.check input { margin-top: 3px; }
+.title { display: grid; gap: 8px; font-size: 14px; }
+.title input { width: 100%; min-width: 0; box-sizing: border-box; padding: 10px; border: 1px solid #b7c1d2; border-radius: 8px; }
+.error { color: #b42318; background: #fef3f2; padding: 12px; border-radius: 8px; overflow-wrap: anywhere; }
+.actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+.actions button { border: 1px solid #d0d5dd; border-radius: 8px; padding: 9px 14px; cursor: pointer; background: #fff; }
+.actions .danger { background: #b42318; color: white; border-color: #b42318; }
+.actions button:disabled { opacity: .5; cursor: not-allowed; }
+@media (max-width: 480px) { .dialog { padding: 18px; } .counts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

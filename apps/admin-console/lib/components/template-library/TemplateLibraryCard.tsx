@@ -13,9 +13,10 @@ const DOMAINS: Record<string, string> = {
 };
 const STATUS: Record<string, string> = { published: '已发布', piloting: '已上架', archived: '已归档', draft: '编辑中', review: '待检查' };
 
-export function TemplateLibraryCard({ template, onOpen, onDelete, onSaved, onRestore, restoring, restoreDisabled }: {
+export function TemplateLibraryCard({ template, onOpen, onDelete, onSaved, onRestore, restoring, restoreDisabled, deleting, deleteDisabled }: {
   template: AdminProjectTemplate; onOpen(): void; onDelete(): void; onSaved(): void;
   onRestore(): void; restoring: boolean; restoreDisabled: boolean;
+  deleting: boolean; deleteDisabled: boolean;
 }) {
   const available = template.status === 'published' || template.status === 'piloting';
   const schedule = template.lessonCount && template.lessonMinutes
@@ -43,7 +44,9 @@ export function TemplateLibraryCard({ template, onOpen, onDelete, onSaved, onRes
           <VisualSelector owner={{ kind: 'template', id: template.id }} usage="icon" label="主题图标" onSaved={onSaved} />
           <VisualSelector owner={{ kind: 'template', id: template.id }} usage="cover" label="主题封面" onSaved={onSaved} />
           {template.latestPublishedVersionId ? <VisualSelector owner={{ kind: 'template-version', id: template.latestPublishedVersionId }} usage="icon" label="版本图标" onSaved={onSaved} /> : null}
-          {template.status !== 'archived' && <button type="button" className={styles.remove} onClick={onDelete}>移除课程</button>}
+          <button type="button" className={styles.remove} disabled={deleteDisabled} onClick={onDelete}>
+            {deleting ? '正在删除并核对…' : '删除课程'}
+          </button>
         </div>
       </details>
     </footer>

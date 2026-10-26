@@ -166,12 +166,39 @@ export function createAdminTemplateVersion(
   });
 }
 
-export function deleteAdminTemplate(id: string): Promise<{ success: boolean; id: string }> {
-  return adminEnvelopeRequest<{ success: boolean; id: string }>({
+export async function deleteAdminTemplate(id: string, idempotencyKey = newIdempotencyKey()): Promise<{ success: boolean; id: string }> {
+  const result = await adminEnvelopeRequest<{ success: boolean; id: string }>({
     path: `/api/v1/admin/project-templates/${encodeURIComponent(id)}`,
     method: 'DELETE',
-    idempotencyKey: newIdempotencyKey(),
+    idempotencyKey,
   });
+  if (!result.success || result.id !== id || (await fetchAdminTemplates()).some(template => template.id === id)) {
+    throw new Error('课程删除尚未回读确认，请重试或重新加载核对。');
+  }
+  return result;
+}
+
+export interface TemplateDeletionImpact {
+  templateId: string;
+  title: string;
+  fingerprint: string;
+  counts: Record<string, number>;
+}
+
+export function fetchTemplateDeletionImpact(id: string): Promise<TemplateDeletionImpact> {
+  return adminEnvelopeRequest({ path: `/api/v1/admin/project-templates/${encodeURIComponent(id)}/deletion-impact`, method: 'GET' });
+}
+
+export async function deleteTemplateWithRecords(impact: TemplateDeletionImpact, confirmedTitle: string, idempotencyKey: string) {
+  const result = await adminEnvelopeRequest<{ success: boolean; id: string; deletedCounts: Record<string, number> }>({
+    path: `/api/v1/admin/project-templates/${encodeURIComponent(impact.templateId)}/with-records`,
+    method: 'DELETE', idempotencyKey,
+    body: { includeLearningData: true, expectedFingerprint: impact.fingerprint, confirmedTitle },
+  });
+  if (!result.success || result.id !== impact.templateId || (await fetchAdminTemplates()).some(template => template.id === impact.templateId)) {
+    throw new Error('课程删除尚未回读确认，请使用当前确认窗口重试。');
+  }
+  return result;
 }
 
 export function archiveAdminTemplate(id: string): Promise<AdminTemplateMutation> {

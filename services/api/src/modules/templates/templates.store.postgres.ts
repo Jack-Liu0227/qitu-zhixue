@@ -1,7 +1,9 @@
-import { and, asc, eq, isNull, or } from 'drizzle-orm';
+import { resourceNameDatabaseConflict } from '../../common/resource-name';
+import { and, asc, eq, inArray, isNull, or } from 'drizzle-orm';
 import {
   projectTemplates,
   projectTemplateVersions,
+  pblTemplateTeamBindings,
   withTransaction,
   type Database,
   type ProjectTemplateStage,
@@ -16,6 +18,8 @@ import {
   TemplateStore,
   TemplateStoreConflictError,
   TemplateRestoreConflictError,
+  TemplateDeleteProtectedError,
+  assertTemplateDeletable,
   prepareTemplateRestoration,
   parseVersionLabel,
   type CreateTemplateRecordInput,
@@ -71,6 +75,8 @@ export class PostgresTemplateStore extends TemplateStore {
       if (row === undefined) throw new Error('插入模板未返回数据行');
       return mapTemplate(row);
     } catch (error) {
+      const nameConflict = resourceNameDatabaseConflict(error);
+      if (nameConflict) throw nameConflict;
       if (isUniqueViolation(error)) {
         throw new TemplateStoreConflictError(`模板 slug 已存在：${input.slug}`);
       }
@@ -219,10 +225,12 @@ export class PostgresTemplateStore extends TemplateStore {
         const [template] = await tx.select({ status: projectTemplates.status }).from(projectTemplates)
           .where(eq(projectTemplates.id, id)).for('update');
         if (!template) return false;
-        const versions = await tx.select({ status: projectTemplateVersions.status }).from(projectTemplateVersions)
+        const versions = await tx.select({ id: projectTemplateVersions.id, status: projectTemplateVersions.status }).from(projectTemplateVersions)
           .where(eq(projectTemplateVersions.templateId, id)).for('update');
-        if (template.status !== 'draft' || versions.some(version => version.status !== 'draft')) {
-          throw new TemplateStoreConflictError('模板已发布或状态已变化，请使用归档');
+        assertTemplateDeletable(template.status as TemplateStatus, versions.map(version => version.status as TemplateStatus));
+        if (versions.length > 0) {
+          await tx.delete(pblTemplateTeamBindings)
+            .where(inArray(pblTemplateTeamBindings.templateVersionId, versions.map(version => version.id)));
         }
         await tx
           .delete(projectTemplateVersions)
@@ -233,8 +241,8 @@ export class PostgresTemplateStore extends TemplateStore {
       });
     } catch (error) {
       if (isForeignKeyViolation(error)) {
-        throw new TemplateStoreConflictError(
-          '模板已被项目、计划或验证记录引用，请使用归档而不是删除',
+        throw new TemplateDeleteProtectedError(
+          '课程已有项目、探索、学习计划、作品、冻结教学配置或质量验证记录引用，不能删除，请保留归档。',
         );
       }
       throw error;
@@ -367,6 +375,10 @@ function isUniqueViolation(error: unknown): boolean {
 }
 
 function isForeignKeyViolation(error: unknown): boolean {
-  if (error === null || typeof error !== 'object') return false;
-  return (error as { code?: unknown }).code === '23503';
+  for (let depth = 0; depth < 5 && error !== null && typeof error === 'object'; depth++) {
+    const code = (error as { code?: unknown }).code;
+    if (code === '23503' || code === '23001') return true;
+    error = (error as { cause?: unknown }).cause;
+  }
+  return false;
 }

@@ -1,0 +1,588 @@
+{
+  "success": true,
+  "releaseId": "tutor-inline-20261025145522-retry1",
+  "baseCommit": "3bd71540de672f338227a8c4f5a56d146d45aed4",
+  "backup": "/root/qitu-backups/tutor-inline-20261025145522-retry1",
+  "completedAt": "2026-10-25T15:03:48.869650+00:00",
+  "oldBuildId": "UEgJb4cTKgn8hBz_vSmzB",
+  "buildId": "9uHMUBhNl4Cs4SGr3QXQV",
+  "sourceManifest": {
+    "id": "tutor-inline-20261025145522-retry1",
+    "baseCommit": "3bd71540de672f338227a8c4f5a56d146d45aed4",
+    "files": [
+      {
+        "path": "apps/student-center/features/tutor/TutorPage.tsx",
+        "sha256": "a0024f559cc4641e710ff386cf12386a108fc05d4d08c3beb39b9d71ce080c71",
+        "expectedRemoteSha256": "c136e28e175b7bbb50d859957840c1761d377ab12a90ae7c150665dd1a52af57"
+      },
+      {
+        "path": "apps/student-center/features/tutor/components/ChatThread.tsx",
+        "sha256": "0480cc17af4e509966f131f59efcc56e256c893ababe2f61af4a2914346709d3",
+        "expectedRemoteSha256": "7473e4a1d76dff94d4641505a6af641d2c9d31d02dbde4135bce704931fe8d9f"
+      },
+      {
+        "path": "apps/student-center/features/tutor/components/ProjectLearningHistory.tsx",
+        "sha256": "912db514a345c68b07f0a1928162ed0b9889bbdc7a11291aba7b20a206b1a790",
+        "expectedRemoteSha256": "03580ecd9d80f5f5782da17565d4f5ce9815aa6655ba4bbc32602db2f1a9e982"
+      },
+      {
+        "path": "apps/student-center/features/tutor/lib/timelinePresentation.ts",
+        "sha256": "cb3bcbad510c5450785620714d5fbe4e6095227e96e133dc9b2634c5ed251307",
+        "expectedRemoteSha256": "5cf6701a3543dc2de16b6a55fc59c3c220003d946894c40313cac663ffbb3b86"
+      },
+      {
+        "path": "apps/student-center/features/tutor/lib/timelinePresentation.test.ts",
+        "sha256": "0c7d9faddc78dce0ead028cddac1c9ff3833129e088b2e56c5a6b9a89613edcc",
+        "expectedRemoteSha256": "2148edb7f3bb5244ffe8181db84500d1b8c5743f08827c8426dfa2487ef63930"
+      },
+      {
+        "path": "apps/student-center/styles/tutor.css",
+        "sha256": "cb8c9c8753473cb81557ce5b6d2985da4f02e2de4325a0bf991fb8663bcb7cb5",
+        "expectedRemoteSha256": "dd697c61b68b254995aafb65927544a8584f83a13efc1205e928efbde75816db"
+      }
+    ],
+    "preserved": [
+      {
+        "path": "apps/student-center/features/tutor/components/CoursewarePresentation.module.css",
+        "normalizedSha256": "b5a7c870c73f8b31eb273246488eb8f4f5d9745743259b99d2f3cc0d543ece50"
+      },
+      {
+        "path": "apps/student-center/features/tutor/components/LessonCoursewareCard.tsx",
+        "normalizedSha256": "552d024b26bbd2a4ea0ad0344dce58f850a4c2e48460094ea47133ded3c677de"
+      },
+      {
+        "path": "apps/student-center/features/tutor/components/TutorReplyBlockView.tsx",
+        "normalizedSha256": "6301bd0379dbbc77fb2980d2fee925c46bfe87e87794158e7f958d6e438acadb"
+      },
+      {
+        "path": "apps/student-center/features/tutor/components/WaveOpticsExperimentCard.module.css",
+        "normalizedSha256": "2d52767d7c847fe94d1ae15716df4c601d2bd81a11cb9a1c76057f8a897f6dae"
+      }
+    ]
+  },
+  "before": {
+    "qitu-admin.service": {
+      "Id": "qitu-admin.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "UnitFileState": "enabled",
+      "MainPID": "3030471",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Sun 2026-10-25 03:41:23 CST",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    "qitu-api.service": {
+      "Id": "qitu-api.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "UnitFileState": "enabled",
+      "MainPID": "2988094",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Sun 2026-10-25 01:29:28 CST",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    "qitu-auth.service": {
+      "Id": "qitu-auth.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "UnitFileState": "enabled",
+      "MainPID": "3030998",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Sun 2026-10-25 03:42:07 CST",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    "qitu-fix-admin.service": {
+      "Id": "qitu-fix-admin.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "UnitFileState": "enabled",
+      "MainPID": "3030472",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Sun 2026-10-25 03:41:23 CST",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    "qitu-fix-auth.service": {
+      "Id": "qitu-fix-auth.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "UnitFileState": "enabled",
+      "MainPID": "3030996",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Sun 2026-10-25 03:42:07 CST",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    "qitu-fix-parent.service": {
+      "Id": "qitu-fix-parent.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "UnitFileState": "enabled",
+      "MainPID": "3032516",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Sun 2026-10-25 03:44:54 CST",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    "qitu-fix-student.service": {
+      "Id": "qitu-fix-student.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "UnitFileState": "enabled",
+      "MainPID": "3031548",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Sun 2026-10-25 03:43:22 CST",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    "qitu-fix-teacher.service": {
+      "Id": "qitu-fix-teacher.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "UnitFileState": "enabled",
+      "MainPID": "3032043",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Sun 2026-10-25 03:44:13 CST",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    "qitu-ima-mcp.service": {
+      "Id": "qitu-ima-mcp.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "UnitFileState": "enabled",
+      "MainPID": "2987959",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Sun 2026-10-25 01:29:26 CST",
+      "WorkingDirectory": "/opt/qitu-ima"
+    },
+    "qitu-local-embedding.service": {
+      "Id": "qitu-local-embedding.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "UnitFileState": "enabled",
+      "MainPID": "2987960",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Sun 2026-10-25 01:29:26 CST",
+      "WorkingDirectory": "/root/qitu-zhixue/services/knowledge"
+    },
+    "qitu-parent.service": {
+      "Id": "qitu-parent.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "UnitFileState": "enabled",
+      "MainPID": "3032517",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Sun 2026-10-25 03:44:54 CST",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    "qitu-profile-growth.service": {
+      "Id": "qitu-profile-growth.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "UnitFileState": "enabled",
+      "MainPID": "2988096",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Sun 2026-10-25 01:29:28 CST",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    "qitu-student.service": {
+      "Id": "qitu-student.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "UnitFileState": "enabled",
+      "MainPID": "3283316",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Sun 2026-10-25 19:35:31 CST",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    "qitu-teacher.service": {
+      "Id": "qitu-teacher.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "UnitFileState": "enabled",
+      "MainPID": "3032044",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Sun 2026-10-25 03:44:13 CST",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    "qitu-workers.service": {
+      "Id": "qitu-workers.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "UnitFileState": "enabled",
+      "MainPID": "2988099",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Sun 2026-10-25 01:29:28 CST",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    }
+  },
+  "after": {
+    "qitu-admin.service": {
+      "Id": "qitu-admin.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "UnitFileState": "enabled",
+      "MainPID": "3339506",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Sun 2026-10-25 23:00:33 CST",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    "qitu-api.service": {
+      "Id": "qitu-api.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "UnitFileState": "enabled",
+      "MainPID": "3339374",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Sun 2026-10-25 23:00:28 CST",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    "qitu-auth.service": {
+      "Id": "qitu-auth.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "UnitFileState": "enabled",
+      "MainPID": "3339436",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Sun 2026-10-25 23:00:33 CST",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    "qitu-fix-admin.service": {
+      "Id": "qitu-fix-admin.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "UnitFileState": "enabled",
+      "MainPID": "3339520",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Sun 2026-10-25 23:00:33 CST",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    "qitu-fix-auth.service": {
+      "Id": "qitu-fix-auth.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "UnitFileState": "enabled",
+      "MainPID": "3339450",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Sun 2026-10-25 23:00:33 CST",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    "qitu-fix-parent.service": {
+      "Id": "qitu-fix-parent.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "UnitFileState": "enabled",
+      "MainPID": "3339469",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Sun 2026-10-25 23:00:33 CST",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    "qitu-fix-student.service": {
+      "Id": "qitu-fix-student.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "UnitFileState": "enabled",
+      "MainPID": "3339536",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Sun 2026-10-25 23:00:33 CST",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    "qitu-fix-teacher.service": {
+      "Id": "qitu-fix-teacher.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "UnitFileState": "enabled",
+      "MainPID": "3339495",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Sun 2026-10-25 23:00:33 CST",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    "qitu-ima-mcp.service": {
+      "Id": "qitu-ima-mcp.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "UnitFileState": "enabled",
+      "MainPID": "3339344",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Sun 2026-10-25 23:00:26 CST",
+      "WorkingDirectory": "/opt/qitu-ima"
+    },
+    "qitu-local-embedding.service": {
+      "Id": "qitu-local-embedding.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "UnitFileState": "enabled",
+      "MainPID": "3339338",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Sun 2026-10-25 23:00:26 CST",
+      "WorkingDirectory": "/root/qitu-zhixue/services/knowledge"
+    },
+    "qitu-parent.service": {
+      "Id": "qitu-parent.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "UnitFileState": "enabled",
+      "MainPID": "3339463",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Sun 2026-10-25 23:00:33 CST",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    "qitu-profile-growth.service": {
+      "Id": "qitu-profile-growth.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "UnitFileState": "enabled",
+      "MainPID": "3339424",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Sun 2026-10-25 23:00:33 CST",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    "qitu-student.service": {
+      "Id": "qitu-student.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "UnitFileState": "enabled",
+      "MainPID": "3339527",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Sun 2026-10-25 23:00:33 CST",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    "qitu-teacher.service": {
+      "Id": "qitu-teacher.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "UnitFileState": "enabled",
+      "MainPID": "3339483",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Sun 2026-10-25 23:00:33 CST",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    "qitu-workers.service": {
+      "Id": "qitu-workers.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "UnitFileState": "enabled",
+      "MainPID": "3339390",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Sun 2026-10-25 23:00:31 CST",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    }
+  },
+  "infrastructure": {
+    "nginx.service": {
+      "Id": "nginx.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "UnitFileState": "enabled",
+      "MainPID": "2535913",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Sat 2026-10-24 03:34:31 CST",
+      "WorkingDirectory": ""
+    },
+    "postgresql.service": {
+      "Id": "postgresql.service",
+      "ActiveState": "active",
+      "SubState": "exited",
+      "UnitFileState": "enabled",
+      "MainPID": "0",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Sat 2026-10-10 02:05:48 CST",
+      "WorkingDirectory": ""
+    },
+    "redis-server.service": {
+      "Id": "redis-server.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "UnitFileState": "enabled",
+      "MainPID": "2535774",
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Sat 2026-10-24 03:34:29 CST",
+      "WorkingDirectory": ""
+    }
+  },
+  "readiness": {
+    "service": "qitu-zhixue-api",
+    "status": "ready",
+    "version": "0.1.0",
+    "checkedAt": "2026-10-25T15:03:46.705Z",
+    "dataMode": "live",
+    "dependencies": {
+      "database": {
+        "status": "ok"
+      },
+      "redis": {
+        "status": "ok"
+      }
+    }
+  },
+  "sourceHashesVerified": true,
+  "studentBuildPassed": true,
+  "restartedCount": 15,
+  "installedDependenciesVerified": [
+    {
+      "name": "@qitu/ai-client",
+      "wanted": "workspace:*",
+      "version": "0.1.0",
+      "matched": true,
+      "packagePath": "/root/qitu-zhixue/packages/ai-client/package.json"
+    },
+    {
+      "name": "@qitu/api-client",
+      "wanted": "workspace:*",
+      "version": "0.1.0",
+      "matched": true,
+      "packagePath": "/root/qitu-zhixue/packages/api-client/package.json"
+    },
+    {
+      "name": "@qitu/auth",
+      "wanted": "workspace:*",
+      "version": "0.1.0",
+      "matched": true,
+      "packagePath": "/root/qitu-zhixue/packages/auth/package.json"
+    },
+    {
+      "name": "@qitu/contracts",
+      "wanted": "workspace:*",
+      "version": "0.1.0",
+      "matched": true,
+      "packagePath": "/root/qitu-zhixue/packages/contracts/package.json"
+    },
+    {
+      "name": "@qitu/design-tokens",
+      "wanted": "workspace:*",
+      "version": "0.1.0",
+      "matched": true,
+      "packagePath": "/root/qitu-zhixue/packages/design-tokens/package.json"
+    },
+    {
+      "name": "@qitu/ui",
+      "wanted": "workspace:*",
+      "version": "0.1.0",
+      "matched": true,
+      "packagePath": "/root/qitu-zhixue/packages/ui/package.json"
+    },
+    {
+      "name": "@types/katex",
+      "wanted": "^0.16.8",
+      "version": "0.16.8",
+      "matched": true,
+      "packagePath": "/root/qitu-zhixue/node_modules/.pnpm/@types+katex@0.16.8/node_modules/@types/katex/package.json"
+    },
+    {
+      "name": "katex",
+      "wanted": "^0.19.0",
+      "version": "0.19.0",
+      "matched": true,
+      "packagePath": "/root/qitu-zhixue/node_modules/.pnpm/katex@0.19.0/node_modules/katex/package.json"
+    },
+    {
+      "name": "mermaid",
+      "wanted": "^12.2.0",
+      "version": "12.2.0",
+      "matched": true,
+      "packagePath": "/root/qitu-zhixue/node_modules/.pnpm/mermaid@12.2.0/node_modules/mermaid/package.json"
+    },
+    {
+      "name": "next",
+      "wanted": "^15.5.0",
+      "version": "15.5.26",
+      "matched": true,
+      "packagePath": "/root/qitu-zhixue/node_modules/.pnpm/next@15.5.26_@types+node@22.20.4_react-dom@19.3.0_react@19.3.0__react@19.3.0/node_modules/next/package.json"
+    },
+    {
+      "name": "react",
+      "wanted": "^19.1.0",
+      "version": "19.3.0",
+      "matched": true,
+      "packagePath": "/root/qitu-zhixue/node_modules/.pnpm/react@19.3.0/node_modules/react/package.json"
+    },
+    {
+      "name": "react-dom",
+      "wanted": "^19.1.0",
+      "version": "19.3.0",
+      "matched": true,
+      "packagePath": "/root/qitu-zhixue/node_modules/.pnpm/react-dom@19.3.0_react@19.3.0/node_modules/react-dom/package.json"
+    },
+    {
+      "name": "@types/node",
+      "wanted": "^22.0.0",
+      "version": "22.20.4",
+      "matched": true,
+      "packagePath": "/root/qitu-zhixue/node_modules/.pnpm/@types+node@22.20.4/node_modules/@types/node/package.json"
+    },
+    {
+      "name": "@types/react",
+      "wanted": "^19.0.0",
+      "version": "19.3.0",
+      "matched": true,
+      "packagePath": "/root/qitu-zhixue/node_modules/.pnpm/@types+react@19.3.0/node_modules/@types/react/package.json"
+    },
+    {
+      "name": "@types/react-dom",
+      "wanted": "^19.0.0",
+      "version": "19.3.0",
+      "matched": true,
+      "packagePath": "/root/qitu-zhixue/node_modules/.pnpm/@types+react-dom@19.3.0_@types+react@19.3.0/node_modules/@types/react-dom/package.json"
+    },
+    {
+      "name": "tsx",
+      "wanted": "^4.23.15",
+      "version": "4.23.15",
+      "matched": true,
+      "packagePath": "/root/qitu-zhixue/node_modules/.pnpm/tsx@4.23.15/node_modules/tsx/package.json"
+    },
+    {
+      "name": "typescript",
+      "wanted": "^5.8.3",
+      "version": "5.9.3",
+      "matched": true,
+      "packagePath": "/root/qitu-zhixue/node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/package.json"
+    }
+  ],
+  "lockfileUnchanged": true,
+  "dependencyInstallation": "Reused matching installed dependencies after frozen install failed on preexisting Admin lockfile mismatch",
+  "assets": {
+    "local": {
+      "passed": true,
+      "routes": [
+        "/",
+        "/login",
+        "/student/today",
+        "/student/tutor",
+        "/parent",
+        "/teacher/dashboard",
+        "/admin"
+      ],
+      "details": [
+        "PASS /: 13 stylesheet/script references",
+        "PASS /login: 11 stylesheet/script references",
+        "PASS /student/today: 15 stylesheet/script references",
+        "PASS /student/tutor: 18 stylesheet/script references",
+        "PASS /parent: 12 stylesheet/script references",
+        "PASS /teacher/dashboard: 11 stylesheet/script references",
+        "PASS /admin: 14 stylesheet/script references"
+      ]
+    },
+    "public": {
+      "passed": true,
+      "routes": [
+        "/",
+        "/login",
+        "/student/today",
+        "/student/tutor",
+        "/parent",
+        "/teacher/dashboard",
+        "/admin"
+      ],
+      "details": [
+        "PASS /: 13 stylesheet/script references",
+        "PASS /login: 11 stylesheet/script references",
+        "PASS /student/today: 15 stylesheet/script references",
+        "PASS /student/tutor: 18 stylesheet/script references",
+        "PASS /parent: 12 stylesheet/script references",
+        "PASS /teacher/dashboard: 11 stylesheet/script references",
+        "PASS /admin: 14 stylesheet/script references"
+      ]
+    }
+  },
+  "anonymousProtectedApiStatus": 401,
+  "imaHealthStatus": 200,
+  "firstReadinessAttempt": "Initial asset probes ran before Next processes finished startup and returned 502; final local/public probes passed after startup",
+  "testLog": "/root/qitu-backups/tutor-inline-20261025145522-retry1/commands.log"
+}

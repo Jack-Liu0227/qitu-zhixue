@@ -1,6 +1,8 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "baseUrl": ".",
+    "paths": { "@qitu/contracts": ["../../packages/contracts/src/index"] },
     "jsx": "preserve",
     "plugins": [
       {

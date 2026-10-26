@@ -37,6 +37,8 @@ import {
   TemplateStore,
   TemplateStoreConflictError,
   TemplateRestoreConflictError,
+  TemplateDeleteProtectedError,
+  assertTemplateDeletable,
   newTemplateId,
   newTemplateVersionId,
 } from './templates.store';
@@ -292,14 +294,18 @@ export class TemplateGovernanceService {
     templateId: string,
     idempotencyKey: string,
   ): Promise<{ success: boolean; id: string }> {
-    const { template } = await this.requireGovernableTemplate(actor, templateId);
-    const versions = await this.store.listVersions(templateId);
-    if (template.status !== 'draft' || versions.some(version => version.status !== 'draft')) {
-      throw new ConflictException({ code: 'TEMPLATE_DELETE_PROTECTED', message: '仅可删除未发布草稿；已有发布或历史语义的模板请使用归档' });
-    }
+    if (actor.role !== 'admin') throw new ForbiddenException('仅管理员可删除课程');
     const scope = `template.delete:${actor.id}:${templateId}`;
     const requestHash = hashIdempotentInput(scope, { templateId }, {});
     const result = await this.executeIdempotent(scope, idempotencyKey, requestHash, async () => {
+      const { template } = await this.requireGovernableTemplate(actor, templateId);
+      const versions = await this.store.listVersions(templateId);
+      assertTemplateDeletable(template.status, versions.map(version => version.status));
+      for (const version of versions) {
+        if ((await this.verification.listByVersion(version.id)).length > 0) {
+          throw new TemplateDeleteProtectedError('课程已有质量验证记录，不能删除，请保留归档。');
+        }
+      }
       await this.store.deleteTemplate(templateId, async tx => {
         await this.audit.write({
           actorId: actor.id,
@@ -309,7 +315,7 @@ export class TemplateGovernanceService {
           targetId: templateId,
           idempotencyKey: `${scope}:${idempotencyKey}`,
           reason: '管理员直接删除模板',
-          detail: { slug: template.slug, title: template.title },
+          detail: { slug: template.slug, title: template.title, from: template.status },
         }, tx);
       });
       return { status: 200, body: { success: true, id: templateId } };
@@ -730,7 +736,8 @@ export class TemplateGovernanceService {
     } catch (error) {
       if (error instanceof TemplateStoreConflictError) {
         throw new ConflictException({
-          code: error instanceof TemplateRestoreConflictError ? 'TEMPLATE_RESTORE_CONFLICT' : 'TEMPLATE_CONFLICT',
+          code: error instanceof TemplateRestoreConflictError ? 'TEMPLATE_RESTORE_CONFLICT'
+            : error instanceof TemplateDeleteProtectedError ? 'TEMPLATE_DELETE_PROTECTED' : 'TEMPLATE_CONFLICT',
           message: error.message,
         });
       }

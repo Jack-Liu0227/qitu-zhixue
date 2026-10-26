@@ -5,6 +5,7 @@ import { BrandMark, OfflineBanner, VisualAsset } from '@qitu/ui';
 import type { CurrentUser, LoginRequest, LoginResponse, Role, TestLoginAccount } from '@qitu/contracts';
 import { getOrCreateDeviceId, readCachedSession, writeCachedSession, safeRoleDestination } from '@qitu/auth';
 import { parseTestLoginOptions } from './test-accounts';
+import { FamilyInvitation } from './FamilyInvitation';
 
 const REMEMBERED_ACCOUNT_KEY = 'qitu.auth.rememberedAccount';
 
@@ -257,6 +258,7 @@ export default function LoginPage() {
         </div>
         <h2 id="login-title">登录你的工作空间</h2>
         <p className="login-muted">选择身份后，将进入对应的学习系统。</p>
+        <FamilyInvitation />
 
         {cachedUser ? (
           <div className="login-session-banner" role="status">

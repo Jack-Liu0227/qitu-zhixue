@@ -1,3 +1,4 @@
+import { resourceNameDatabaseConflict } from '../resource-name';
 import { HttpException, HttpStatus } from '@nestjs/common';
 import type { ProblemDetails, ProblemFieldError } from '@qitu/contracts';
 
@@ -170,7 +171,8 @@ function fallbackDetail(status: number): string {
  *
  * 不依赖任何 Nest 运行时（不碰 request/response），因此可以直接单测。
  */
-export function buildProblemDetails(exception: unknown, context: ProblemContext = {}): ProblemDetails {
+export function buildProblemDetails(input: unknown, context: ProblemContext = {}): ProblemDetails {
+  const exception = resourceNameDatabaseConflict(input) ?? input;
   const isHttpException = exception instanceof HttpException;
   const status = isHttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
   const raw = readRawProblem(isHttpException ? safeGetResponse(exception) : undefined);

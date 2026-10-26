@@ -24,9 +24,9 @@ export function ProjectLearningHistory({ projectId, lesson, refreshKey, experime
     }).catch(cause => { if (current) setError(navigator.onLine ? String(cause.message || cause) : '网络已断开，恢复后可继续读取。'); });
     return () => { current = false; };
   }, [source, projectId, lesson.planId, lesson.planRevision, refreshKey, retry]);
-  return <section className="qitu-lesson-assessment-card" aria-label="对话中的学习记录">
+  return <section className="qitu-lesson-assessment-card" aria-label="已保存的学习记录">
     <h3>已保存的学习记录</h3>
-    <p>课件保留在上方原对话中；回应、观察、作品与评价可按课时回看。</p>
+    <p>课件与实验保留在原对话中；回应、观察、作品与评价可按课时回看。</p>
     {experiments.length ? <div role="group" aria-label="已保存动态实验">
       <h4>已保存动态实验</h4>
       <p>选择课时回到原来的动态仿真，可暂停、调节参数和重新演示。</p>

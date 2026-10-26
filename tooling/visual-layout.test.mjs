@@ -38,7 +38,7 @@ const render = (Component, props) => renderToStaticMarkup(React.createElement(Co
 
 test('companion uses the bundled basePath-aware asset at the requested size', () => {
   const html = render(RobotMascot, { size: 40 });
-  assert.match(html, /src="\/student\/_next\/static\/media\/avatar-general-v1-64.png"/);
+  assert.match(html, /src="\/student\/_next\/static\/media\/avatar-general-64.png"/);
   assert.match(html, /width="40" height="40"/);
   assert.match(html, /alt="启途 AI 智学搭档"/);
 });
@@ -47,7 +47,7 @@ test('decorative instances do not repeat adjacent assistant names to screen read
   const html = render(RobotMascot, { decorative: true, mood: 'thinking' });
   assert.match(html, /alt=""/);
   assert.match(html, /aria-hidden="true"/);
-  assert.match(html, /emotion-thinking-v1-\d+\.png/);
+  assert.match(html, /emotion-thinking-\d+\.png/);
 });
 
 test('legacy robot avatars and missing avatars use the same artwork', () => {
@@ -57,10 +57,10 @@ test('legacy robot avatars and missing avatars use the same artwork', () => {
 });
 
 test('library selections survive; old emoji and URLs use the shared default', () => {
-  assert.match(render(AssistantGlyph, { value: 'asset:avatar-data-v1' }), /avatar-data-v1/);
+  assert.match(render(AssistantGlyph, { value: 'asset:avatar-data-v1' }), /avatar-data-\d+\.png/);
   for (const value of ['🔬', 'https://example.test/old.png']) {
     const html = render(AssistantGlyph, { value });
-    assert.match(html, /avatar-general-v1/);
+    assert.match(html, /avatar-general-\d+\.png/);
     assert.doesNotMatch(html, /example\.test|🔬/);
   }
 });
@@ -176,7 +176,7 @@ for (const slot of ['admin-card-icon-box', 'admin-identity-avatar-icon']) {
     for (const value of ['asset:avatar-general-v1', 'asset:avatar-data-v1', '🤖', null, undefined, 'asset:missing-avatar']) {
       const html = renderAssistantAvatarSlot(slot, value);
       assert.match(html, /<img/);
-      assert.match(html, value === 'asset:avatar-data-v1' ? /avatar-data-v1/ : /avatar-general-v1/);
+      assert.match(html, value === 'asset:avatar-data-v1' ? /avatar-data-\d+\.png/ : /avatar-general-\d+\.png/);
       assert.doesNotMatch(html, /asset:/);
     }
   });

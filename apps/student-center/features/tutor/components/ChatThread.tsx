@@ -10,8 +10,7 @@ import { TypingIndicator } from './TypingIndicator';
 import { ProjectConversationHistory } from './ProjectConversationHistory';
 import { ProjectTeachingPlanRecovery } from './ProjectTeachingPlanRecovery';
 import { ExplorationWelcome } from './ExplorationWelcome';
-import { firstExperimentTurns, savedExperimentLinks } from '../lib/timelinePresentation';
-import { ProjectLearningHistory } from './ProjectLearningHistory';
+import { firstExperimentTurns, learningActivityTurnId } from '../lib/timelinePresentation';
 import { nextThreadScroll, type ThreadScrollState } from '../lib/threadScroll';
 
 /** Center conversation column. The composer remains inside this flex column. */
@@ -81,7 +80,7 @@ export function ChatThread({
   const newestTurn = turns.at(-1);
   const openingOnly = idle && !hasTurns || !projectId && Boolean(explorationContext?.exploration) && turns.length === 1
     && newestTurn?.seq === 1 && newestTurn.role === 'assistant';
-  const streamingTurnId = streaming && newestAssistant !== null ? newestAssistant.turnId : null;
+  const streamingTurnId = streaming && newestTurn?.role === 'assistant' ? newestTurn.turnId : null;
   const showIndicator =
     streaming &&
     status !== 'loading' &&
@@ -91,6 +90,7 @@ export function ChatThread({
   const turnElements = useRef(new Map<string, HTMLDivElement>());
   const scrollState = useRef<ThreadScrollState>({ sessionId: null, following: true });
   const experimentTurns = firstExperimentTurns(turns);
+  const activityTurnId = learningActivityTurnId(turns, streamingTurnId);
 
   useLayoutEffect(() => {
     const element = threadScrollRef.current;
@@ -159,7 +159,7 @@ export function ChatThread({
           </div>
         ) : null}
 
-        {turns.map((turn) => <div key={turn.turnId} data-tutor-turn={turn.turnId} style={{ display: 'grid', minWidth: 0 }} ref={(node) => {
+        {turns.flatMap((turn) => [<div key={turn.turnId} data-tutor-turn={turn.turnId} style={{ display: 'grid', minWidth: 0 }} ref={(node) => {
           if (node) turnElements.current.set(turn.turnId, node); else turnElements.current.delete(turn.turnId);
         }}>{!projectId && explorationContext?.exploration && turn.seq === 1 && turn.role === 'assistant'
           && turn.blocks.every(isTutorReplyBlock)
@@ -185,13 +185,14 @@ export function ChatThread({
             disabled={disabled || offline}
             streaming={turn.turnId === streamingTurnId}
           />
-        )}</div>)}
-
-        {projectId && projectContext?.lesson ? <ProjectLearningHistory
-          key={`${projectId}:${projectContext.lesson.planId}:${projectContext.lesson.planRevision}`}
-          projectId={projectId} lesson={projectContext.lesson} refreshKey={projectContext}
-          experiments={savedExperimentLinks(turns)} /> : null}
-        {learningActivity}
+        )}</div>,
+        // A stable sibling key preserves reading position and pending answers
+        // when the lesson controls move alongside a new completed reply.
+        learningActivity && turn.turnId === activityTurnId ? <div
+          key={`learning-activity:${sessionId}`} className="qitu-chat-learning-activity"
+          data-learning-activity-turn={turn.turnId} aria-label="当前课件与课时任务">
+          {learningActivity}
+        </div> : null])}
         {showIndicator ? <TypingIndicator label={runningToolLabel ?? 'AI搭档正在思考'} /> : null}
 
         {status === 'error' && hasTurns ? (

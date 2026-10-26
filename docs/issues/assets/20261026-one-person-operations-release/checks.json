@@ -1,0 +1,98 @@
+[
+  {
+    "name": "database-before",
+    "exitCode": 0
+  },
+  {
+    "name": "frozen-install",
+    "exitCode": 0
+  },
+  {
+    "name": "stop-runtime",
+    "exitCode": 0
+  },
+  {
+    "name": "runtime-build",
+    "exitCode": 0
+  },
+  {
+    "name": "api-test-compile",
+    "exitCode": 0
+  },
+  {
+    "name": "api-regression",
+    "exitCode": 0
+  },
+  {
+    "name": "api-lint",
+    "exitCode": 0
+  },
+  {
+    "name": "database-migrate",
+    "exitCode": 0
+  },
+  {
+    "name": "database-after",
+    "exitCode": 0
+  },
+  {
+    "name": "start-runtime",
+    "exitCode": 0
+  },
+  {
+    "name": "admin-typecheck",
+    "exitCode": 0
+  },
+  {
+    "name": "stop-admin",
+    "exitCode": 0
+  },
+  {
+    "name": "admin-build",
+    "exitCode": 0
+  },
+  {
+    "name": "start-admin",
+    "exitCode": 0
+  },
+  {
+    "name": "parent-typecheck",
+    "exitCode": 0
+  },
+  {
+    "name": "stop-parent",
+    "exitCode": 0
+  },
+  {
+    "name": "parent-build",
+    "exitCode": 0
+  },
+  {
+    "name": "start-parent",
+    "exitCode": 0
+  },
+  {
+    "name": "auth-typecheck",
+    "exitCode": 0
+  },
+  {
+    "name": "stop-auth",
+    "exitCode": 0
+  },
+  {
+    "name": "auth-build",
+    "exitCode": 0
+  },
+  {
+    "name": "start-auth",
+    "exitCode": 0
+  },
+  {
+    "name": "frontend-assets",
+    "exitCode": 0
+  },
+  {
+    "name": "nginx-config",
+    "exitCode": 0
+  }
+]

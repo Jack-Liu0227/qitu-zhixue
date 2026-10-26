@@ -1,0 +1,52 @@
+{
+  "fixtureOnly": true,
+  "assertions": [
+    "Current controls immediately follow the completed AI reply",
+    "Lesson workspace belongs to message scroll",
+    "No permanent footer panel",
+    "History does not trail conversation",
+    "History is in project progress",
+    "Board stays expanded in original reply",
+    "Courseware fullscreen preserved",
+    "Sending keeps controls with the prior AI reply",
+    "Streaming does not move pending controls",
+    "Pending answer survives moving to new reply",
+    "Courseware position survives new reply",
+    "New reply does not restart assessment",
+    "Offline answer submission is disabled",
+    "Offline courseware writes are disabled",
+    "Sidebar experiment link reopens original simulation",
+    "Historical simulation can replay without writes",
+    "Replay produces no learning evidence",
+    "Mobile has no horizontal overflow",
+    "Courseware fits mobile width",
+    "403 removes revoked courseware content",
+    "Courseware error retry restores verified content",
+    "Completed lessons retain original boards with no active workspace",
+    "No browser runtime errors"
+  ],
+  "consoleErrors": [],
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/api/v1/tutor/projects/fixture-project/lesson/courseware"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/tutor/projects/fixture-project/lesson/assessment"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/tutor/projects/fixture-project/lesson/courseware/position"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tutor/projects/fixture-project/lesson/courseware"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tutor/projects/fixture-project/lesson/courseware"
+    }
+  ],
+  "passed": true
+}

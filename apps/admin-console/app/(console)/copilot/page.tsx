@@ -552,22 +552,38 @@ export default function CopilotPage() {
             type="button"
             onClick={() => setIsSidebarCollapsed(false)}
             title="展开启途管家会话侧边栏"
+            aria-label="展开启途管家会话侧边栏"
+            className="copilot-sidebar-expand-btn"
             style={{
-              width: '40px',
-              height: '40px',
+              width: '38px',
+              height: '38px',
               background: '#eff6ff',
               border: '1px solid #bfdbfe',
               borderRadius: '10px',
               color: '#2563eb',
-              fontSize: '14px',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               flexShrink: 0,
+              transition: 'all 0.15s ease',
             }}
           >
-            ▶
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <rect width="18" height="18" x="3" y="3" rx="4" />
+              <path d="M9 3v18" />
+              <path d="m14 9 3 3-3 3" />
+            </svg>
           </button>
           <div style={{ fontSize: '10px', fontWeight: 600, color: '#94a3b8', margin: '8px 0 6px', flexShrink: 0 }}>
             {sessions.length}
@@ -685,17 +701,38 @@ export default function CopilotPage() {
                   type="button"
                   onClick={() => setIsSidebarCollapsed(true)}
                   title="收起侧边栏，为会话腾出更大空间"
+                  aria-label="收起侧边栏"
+                  className="copilot-sidebar-collapse-btn"
                   style={{
-                    background: 'none',
-                    border: 'none',
+                    background: 'rgba(0, 0, 0, 0.03)',
+                    border: '1px solid rgba(0, 0, 0, 0.08)',
                     color: '#64748b',
                     cursor: 'pointer',
-                    fontSize: '14px',
-                    padding: '2px 4px',
-                    borderRadius: '4px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '26px',
+                    height: '26px',
+                    padding: 0,
+                    borderRadius: '6px',
+                    transition: 'all 0.15s ease',
                   }}
                 >
-                  ◀
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <rect width="18" height="18" x="3" y="3" rx="4" />
+                    <path d="M9 3v18" />
+                    <path d="m16 15-3-3 3-3" />
+                  </svg>
                 </button>
               </div>
             </div>
@@ -813,6 +850,7 @@ export default function CopilotPage() {
                   className="copilot-expand-btn"
                   onClick={() => setIsSidebarCollapsed(false)}
                   title="展开侧边栏"
+                  aria-label="展开侧边栏"
                   style={{
                     background: '#f1f5f9',
                     border: '1px solid #cbd5e1',
@@ -822,9 +860,27 @@ export default function CopilotPage() {
                     cursor: 'pointer',
                     color: '#334155',
                     fontWeight: 600,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
                   }}
                 >
-                  📁 会话列表
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <rect width="18" height="18" x="3" y="3" rx="4" />
+                    <path d="M9 3v18" />
+                    <path d="m14 9 3 3-3 3" />
+                  </svg>
+                  <span>会话列表</span>
                 </button>
               )}
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1127,11 +1183,11 @@ export default function CopilotPage() {
                 width: '100%',
                 marginBottom: '24px',
               }}>
-                {QUICK_PROMPTS.map((item, idx) => (
+                {QUICK_PROMPTS.map((quickPrompt, idx) => (
                   <button
                     key={idx}
                     type="button"
-                    onClick={() => setInputMessage(item.prompt)}
+                    onClick={() => setInputMessage(quickPrompt.prompt)}
                     style={{
                       display: 'flex',
                       flexDirection: 'column',
@@ -1157,11 +1213,11 @@ export default function CopilotPage() {
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                      <span style={{ fontSize: '18px' }}>{item.icon}</span>
-                      <span style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>{item.title}</span>
+                      <span style={{ fontSize: '18px' }}>{quickPrompt.icon}</span>
+                      <span style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>{quickPrompt.title}</span>
                     </div>
                     <div style={{ fontSize: '12px', color: '#64748b', lineHeight: 1.5 }}>
-                      {item.desc}
+                      {quickPrompt.desc}
                     </div>
                   </button>
                 ))}

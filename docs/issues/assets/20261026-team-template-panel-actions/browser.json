@@ -1,0 +1,25 @@
+{
+  "production": {
+    "teamId": "team-optics-inquiry",
+    "templateRows": 2,
+    "bindingsCollapsed": true,
+    "internalIdsHidden": true,
+    "desktopHeight": 276.12501525878906,
+    "compactWidthFits": true,
+    "editAndDeleteVisible": true,
+    "sourceVersionLink": true,
+    "liveDeletionPreview": true
+  },
+  "fixture": {
+    "restoreFailureVisible": true,
+    "restoreRetryReusesKey": true,
+    "restoredDraftOpened": true,
+    "deletePermissionVisible": true,
+    "explicitImpactConfirmation": true,
+    "deleteReadbackFailureVisible": true,
+    "deleteRetryReusesKey": true,
+    "relationsReloadedAfterDeletion": true,
+    "permissionOfflineEmpty": true
+  },
+  "pageErrors": []
+}

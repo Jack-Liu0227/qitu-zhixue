@@ -1,10 +1,17 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { AssistantGlyph, ResizablePanels } from '@qitu/ui';
-import type { AdminTeamMember, AdminAssistantConfig, TeammateRole } from '@qitu/contracts';
-import { configuredModelLabel, configuredModelKey, type ConfiguredModelItem } from '../../../../../lib/api/configuredModels';
+import { AssistantGlyph } from '@qitu/ui';
+import type { AdminTeamMember, AdminAssistantConfig, TeammateRole, AdminRuntimeSnapshot } from '@qitu/contracts';
+import {
+  configuredModelLabel,
+  configuredModelKey,
+  configuredModelPatch,
+  type ConfiguredModelItem,
+} from '../../../../../lib/api/configuredModels';
+import { updatePersistedAssistant } from '../../../../../lib/api/assistants';
+import { fetchRuntimeSnapshot } from '../../../../../lib/api/runtime';
 
 interface MemberEditorProps {
   member: AdminTeamMember;
@@ -13,75 +20,862 @@ interface MemberEditorProps {
   onSave: (updates: Partial<AdminTeamMember>) => Promise<void>;
   onClose: () => void;
 }
-const roles: Record<TeammateRole, string> = { leader: '队长 / 总负责人', coach: '原理教练', teammate: '伙伴向导', reviewer: '评审导师' };
-const capabilityTabs = [{ id: 'instruction', label: '指令' }, { id: 'skills', label: 'Skills' }, { id: 'mcp', label: '工具与 MCP' }, { id: 'integration', label: '集成' }] as const;
-const settingTabs = [{ id: 'general', label: '通用' }, { id: 'permissions', label: '权限' }, { id: 'env', label: '环境变量' }, { id: 'custom', label: '自定义' }] as const;
 
-export function MemberEditor({ member, assistant, configuredModels, onSave, onClose }: MemberEditorProps) {
-  const [tab, setTab] = useState<'overview' | 'work' | 'capabilities' | 'settings'>('capabilities');
-  const [capability, setCapability] = useState<string>('instruction');
-  const [setting, setSetting] = useState<string>('general');
-  const [role, setRole] = useState(member.role);
-  const [roleLabel, setRoleLabel] = useState(member.roleLabel || roles[member.role]);
+const ROLE_CONFIGS: Record<TeammateRole, { label: string; defaultName: string; badge: string; desc: string }> = {
+  leader: {
+    label: '队长 / 总负责人',
+    defaultName: '总负责人 / 队长',
+    badge: '👑',
+    desc: '负责引导整个探究流的破题开篇、协调各阶段分工、跟进总任务目标与把控进度节奏。',
+  },
+  coach: {
+    label: '原理教练',
+    defaultName: '原理与概念教练',
+    badge: '🧠',
+    desc: '负责学科原理启发、前概念探查、引导苏格拉底式思考，并通过理论门禁考核（TheoryMastered）。',
+  },
+  teammate: {
+    label: '伙伴向导',
+    defaultName: '探究与实验向导',
+    badge: '🧭',
+    desc: '负责引导动手实践、虚拟仿真对比实验设计、数据素养与操作纠错。',
+  },
+  reviewer: {
+    label: '评审导师',
+    defaultName: '成果与答辩评审导师',
+    badge: '⚖️',
+    desc: '负责学生作品迭代批注、CER 科学论证审核、结项成果答辩与深度质询。',
+  },
+};
+
+const ROLES: Record<TeammateRole, string> = {
+  leader: ROLE_CONFIGS.leader.label,
+  coach: ROLE_CONFIGS.coach.label,
+  teammate: ROLE_CONFIGS.teammate.label,
+  reviewer: ROLE_CONFIGS.reviewer.label,
+};
+
+const FALLBACK_SKILLS = [
+  { id: 'tutor-guided-learning', name: '苏格拉底导学 (tutor-guided-learning)', desc: '基于苏格拉底提问启发式引导' },
+  { id: 'optics-wave-inquiry', name: '波动光学探究 (optics-wave-inquiry)', desc: '单缝衍射与微粒散射实验启发' },
+  { id: 'pbl-cer-coach', name: 'CER 科学论证教练 (pbl-cer-coach)', desc: '主张-证据-推理逻辑构建' },
+  { id: 'pbl-experiment-design', name: '对比实验设计 (pbl-experiment-design)', desc: '控制变量法与实验方案规划' },
+  { id: 'pbl-defense-coach', name: '结项答辩教练 (pbl-defense-coach)', desc: '答辩质询与深度追问' },
+  { id: 'pbl-concept-probe', name: '前概念探查 (pbl-concept-probe)', desc: '检测学生迷思概念与认知断点' },
+  { id: 'pbl-artifact-revision', name: '作品迭代批注 (pbl-artifact-revision)', desc: '基于量规引导作品修改' },
+  { id: 'pbl-data-literacy', name: '数据素养指导 (pbl-data-literacy)', desc: '数据单位、误差与极限分析' },
+];
+
+const FALLBACK_MCP_SERVERS = [
+  { id: 'optics-physical-inquiry-mcp', label: '启途物理探究仿真MCP服务', desc: '单缝衍射与细雾室散射物理仿真内核' },
+  { id: 'fetch', label: 'fetch 网页抓取', desc: '读取外部文档与资料正文' },
+  { id: 'groksearch', label: 'groksearch 实时检索', desc: '互联网最新学术与科普文献检索' },
+  { id: 'aionui-browser', label: 'aionui-browser 浏览器沙箱', desc: '网页可视化操作与 DOM 解析' },
+  { id: 'chrome-devtools', label: 'chrome-devtools 调试套件', desc: '控制台日志与网络通信跟踪' },
+];
+
+const FALLBACK_TOOLS = [
+  { id: 'knowledge_search', label: '知识库检索 (knowledge_search)', desc: '检索管理员授权的教材与资料' },
+  { id: 'knowledge_read', label: '知识库来源读取 (knowledge_read)', desc: '读取检索命中段落的完整证据正文' },
+  { id: 'mastery_query', label: '知识掌握度查询 (mastery_query)', desc: '只读获取学生当前核心概念掌握状态' },
+  { id: 'student_profile_get', label: '学生学情画像查询 (student_profile_get)', desc: '读取当前学生认知倾向与能力雷达' },
+  { id: 'tutor.context_packet', label: '导师上下文封包 (tutor.context_packet)', desc: '组合有界脱敏的课时对话上下文' },
+  { id: 'tutor.pedagogy_move', label: '苏格拉底教学动作 (tutor.pedagogy_move)', desc: '启发引导、提示阶梯与检查题' },
+  { id: 'tutor.mastery_gate', label: '理论门禁测评 (tutor.mastery_gate)', desc: '实践前必须通过的 TheoryMastered 判定' },
+  { id: 'tutor.propose_lesson_activity', label: '生成课时教学活动 (tutor.propose_lesson_activity)', desc: '动态生成看板、实验仿真与过程性检验题' },
+];
+
+export function MemberEditor({
+  member,
+  assistant,
+  configuredModels,
+  onSave,
+  onClose,
+}: MemberEditorProps) {
+  // 合并后的 2 个高阶 Tab：角色职责 (role) vs 核心能力与模型配置 (capabilities)
+  const [tab, setTab] = useState<'role' | 'capabilities'>('capabilities');
+
+  // 角色与指令状态
+  const [role, setRole] = useState<TeammateRole>(member.role);
+  const [roleLabel, setRoleLabel] = useState(member.roleLabel || ROLES[member.role] || '');
+  const [instructions, setInstructions] = useState(assistant?.instructions || '');
+
+  // 模型配置状态
+  const initialModelKey =
+    assistant?.modelProviderId && assistant?.modelId
+      ? configuredModelKey({ providerId: assistant.modelProviderId, id: assistant.modelId })
+      : member.model || '';
+  const [selectedModelKey, setSelectedModelKey] = useState<string>(initialModelKey);
+
+  // 技能、MCP、工具多选状态
+  const [enabledSkills, setEnabledSkills] = useState<string[]>([...(assistant?.enabledSkills || [])]);
+  const [mcpServerIds, setMcpServerIds] = useState<string[]>([...(assistant?.mcpServerIds || [])]);
+  const [toolIds, setToolIds] = useState<string[]>([...(assistant?.toolIds || [])]);
+
+  // 运行时快照（动态获取平台已登记的全部 Skills、MCP 与内置工具）
+  const [snapshot, setSnapshot] = useState<AdminRuntimeSnapshot | null>(null);
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const inFlight = useRef(false);
-  const assistantHref = `/settings/assistants?assistantId=${encodeURIComponent(member.assistantId)}`;
-  const model = configuredModels.find(item => item.providerId === assistant?.modelProviderId && item.id === assistant.modelId);
+
+  useEffect(() => {
+    let active = true;
+    void fetchRuntimeSnapshot().then(
+      (data) => {
+        if (active) setSnapshot(data);
+      },
+      () => {
+        // Fallback to presets
+      }
+    );
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const availableSkills = snapshot?.skills?.length
+    ? snapshot.skills.map((s) => ({ id: s.id, name: s.label, desc: s.description }))
+    : FALLBACK_SKILLS;
+
+  const availableMcpServers = snapshot?.mcpServers?.length
+    ? snapshot.mcpServers.map((m) => ({ id: m.id, label: m.label, desc: `${m.transport} · ${m.toolCount ?? 0} 个挂载工具` }))
+    : FALLBACK_MCP_SERVERS;
+
+  const availableTools = snapshot?.builtInTools?.length
+    ? snapshot.builtInTools.map((t) => ({ id: t.id, label: t.label, desc: t.description || '平台受控内置工具' }))
+    : FALLBACK_TOOLS;
+
+  const handleRoleChange = (newRole: TeammateRole) => {
+    setRole(newRole);
+    const oldConfig = ROLE_CONFIGS[role];
+    const newConfig = ROLE_CONFIGS[newRole];
+    const isStandardName =
+      !roleLabel.trim() ||
+      roleLabel === oldConfig?.defaultName ||
+      roleLabel === oldConfig?.label ||
+      Object.values(ROLE_CONFIGS).some((c) => c.defaultName === roleLabel || c.label === roleLabel);
+
+    if (isStandardName && newConfig) {
+      setRoleLabel(newConfig.defaultName);
+    }
+  };
+
+  const toggleItem = (list: string[], setList: (next: string[]) => void, id: string) => {
+    if (list.includes(id)) {
+      setList(list.filter((x) => x !== id));
+    } else {
+      setList([...list, id]);
+    }
+  };
+
   async function save() {
     if (inFlight.current || !roleLabel.trim()) return;
-    inFlight.current = true; setSaving(true); setError('');
-    try { await onSave({ role, roleLabel: roleLabel.trim() }); }
-    catch (cause: unknown) { setError(cause instanceof Error ? cause.message : '成员配置未确认保存，请重试。'); }
-    finally { inFlight.current = false; setSaving(false); }
-  }
-  const capabilityContent = capability === 'instruction' ? <>
-    <h3>系统指令</h3><p className="member-editor-note">团队使用该助手统一维护的指令。修改后，课程需重新保存教学安排。</p>
-    <Link className="qitu-button qitu-button-primary" href={assistantHref}>前往助手编辑指令</Link>
-    <pre className="member-instruction-readonly">{assistant?.instructions || '该助手暂无已保存的指令。'}</pre>
-  </> : capability === 'skills' ? <CapabilityList title="已绑定技能" items={assistant?.enabledSkills ?? []} href={assistantHref} action="管理助手技能" empty="该助手尚未绑定技能。" />
-    : capability === 'mcp' ? <><CapabilityList title="已授权工具" items={assistant?.toolIds ?? []} href="/settings/tools" action="管理工具授权" empty="该助手尚未获得工具授权。" />
-      <CapabilityList title="MCP 服务" items={assistant?.mcpServerIds ?? []} href="/settings/tools" action="查看服务连接" empty="尚未绑定 MCP 服务。" />
-      <p className="member-editor-note">授权和服务连接均有效时，助手才可调用。已有项目继续使用确认时的教学安排。</p></>
-      : <><h3>第三方集成</h3><p className="member-editor-note">在知识中心维护资料来源，在工具中心检查外部服务连接。</p><div className="member-editor-links">
-        <Link className="qitu-button" href="/settings/knowledge">知识中心</Link><Link className="qitu-button" href="/settings/tools">工具与 MCP</Link></div></>;
-  const general = <><h3>团队中的职责</h3><div className="member-editor-form">
-    <label>角色类型<select value={role} disabled={saving} onChange={event => { const value = event.target.value; if (value === 'leader' || value === 'coach' || value === 'teammate' || value === 'reviewer') setRole(value); }}>
-      {Object.entries(roles).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-    <label>角色标签<input value={roleLabel} disabled={saving} maxLength={120} onChange={event => setRoleLabel(event.target.value)} /></label>
-    <div><strong>默认模型</strong><p>{model ? configuredModelLabel(configuredModelKey(model), configuredModels) : assistant?.modelId ?? '尚未配置'}</p><Link href={assistantHref}>在助手设置中管理模型 →</Link></div>
-  </div></>;
-  const settingsContent = setting === 'general' || setting === 'custom' ? general
-    : setting === 'permissions' ? <><h3>助手权限</h3><p className="member-editor-note">权限沿用助手的工具、技能与知识库授权，项目运行时还会核对其教学范围。</p>
-      <div className="member-editor-links"><Link className="qitu-button" href="/settings/tools">工具授权</Link><Link className="qitu-button" href="/settings/knowledge">知识库授权</Link></div></>
-      : <><h3>连接与运行配置</h3><p className="member-editor-note">提供商凭据在模型接入中维护，外部工具的连接参数在工具中心维护。</p>
-        <div className="member-editor-links"><Link className="qitu-button" href="/settings/model-providers">模型接入</Link><Link className="qitu-button" href="/settings/tools">工具连接</Link></div></>;
+    inFlight.current = true;
+    setSaving(true);
+    setError('');
+    setNotice('');
 
-  return <div className="member-editor-container">
-    <header className="member-editor-header">
-      <button type="button" className="member-editor-back" disabled={saving} onClick={onClose}>← 返回团队</button>
-      <div className="member-editor-tabs" role="tablist" aria-label="团队成员配置">{([
-        ['overview', '概览'], ['work', '工作'], ['capabilities', '能力'], ['settings', '设置'],
-      ] as const).map(([value, label]) => <button key={value} type="button" role="tab" aria-selected={tab === value} className={`editor-tab ${tab === value ? 'is-active' : ''}`} onClick={() => setTab(value)}>{label}</button>)}</div>
-      <div className="member-editor-actions"><button type="button" className="save-member-btn" onClick={() => void save()} disabled={saving || !roleLabel.trim()}>{saving ? '正在保存…' : '保存团队职责'}</button>
-        <button type="button" className="cancel-member-btn" onClick={onClose} disabled={saving}>取消</button></div>
-    </header>
-    {error && <p role="alert" className="member-editor-error">{error}</p>}
-    <div className="member-editor-identity"><AssistantGlyph value={assistant?.avatar || member.avatar} size={40} /><div><strong>{assistant?.name || member.assistantName}</strong><p>{roleLabel} · {assistant?.enabled ? '助手已启用' : '助手未启用'}</p></div></div>
-    {tab === 'capabilities' || tab === 'settings' ? <ResizablePanels storageKey={`admin-member-${tab}`} className="member-editor-body" initialSizes={[22, 78]} minWidths={[160, 340]} stackBelow={620} labels={['配置分类', '配置详情']}>
-      <nav className="member-editor-sidebar" aria-label="成员配置分类">{(tab === 'capabilities' ? capabilityTabs : settingTabs).map(item => <button key={item.id} type="button"
-        aria-pressed={(tab === 'capabilities' ? capability : setting) === item.id} className={`sidebar-btn ${(tab === 'capabilities' ? capability : setting) === item.id ? 'is-active' : ''}`}
-        onClick={() => tab === 'capabilities' ? setCapability(item.id) : setSetting(item.id)}>{item.label}</button>)}</nav>
-      <section className="member-editor-content">{tab === 'capabilities' ? capabilityContent : settingsContent}</section>
-    </ResizablePanels> : <section className="member-editor-content">{tab === 'overview' ? <>
-      <h3>成员概览</h3><dl className="member-overview"><div><dt>团队角色</dt><dd>{roles[member.role]}</dd></div><div><dt>教学模型</dt><dd>{model ? configuredModelLabel(configuredModelKey(model), configuredModels) : assistant?.modelId ?? '尚未配置'}</dd></div>
-        <div><dt>技能</dt><dd>{assistant?.enabledSkills.length ?? 0} 项</dd></div><div><dt>工具</dt><dd>{assistant?.toolIds.length ?? 0} 项</dd></div></dl><Link className="qitu-button" href={assistantHref}>查看完整助手配置</Link>
-    </> : <><h3>教学工作安排</h3><p className="member-editor-note">在项目模板中选择这支团队，并为每个课时安排教学者。修改后的安排经检查并启用后，用于新确认的项目。</p>
-      <Link className="qitu-button qitu-button-primary" href="/settings/templates">查看项目模板与课时安排</Link></>}</section>}
-  </div>;
+    try {
+      // 1. 保存团队成员本身的职责与关联模型
+      await onSave({
+        role,
+        roleLabel: roleLabel.trim(),
+        model: selectedModelKey || undefined,
+      });
+
+      // 2. 如果存在关联的助手配置，同步持久化助手的模型、指令、技能、MCP与工具配置
+      if (assistant) {
+        const modelPatch = configuredModelPatch(selectedModelKey, configuredModels);
+        await updatePersistedAssistant(assistant.id, {
+          role: roleLabel.trim(),
+          instructions,
+          enabledSkills,
+          toolIds,
+          mcpServerIds,
+          modelProviderId: modelPatch.modelProviderId ?? null,
+          modelId: modelPatch.modelId ?? null,
+        });
+      }
+
+      setNotice('成员职责与各项能力配置已成功保存！');
+      setTimeout(() => {
+        onClose();
+      }, 700);
+    } catch (cause: unknown) {
+      setError(cause instanceof Error ? cause.message : '成员配置保存失败，请检查后重试。');
+    } finally {
+      inFlight.current = false;
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="member-editor-container">
+      {/* 顶部标题与 Tab 栏 */}
+      <header className="member-editor-header">
+        <button type="button" className="member-editor-back" disabled={saving} onClick={onClose}>
+          ← 返回团队
+        </button>
+
+        {/* 合并为 2 个清晰的主 Tab */}
+        <div className="member-editor-tabs" role="tablist" aria-label="团队成员配置">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'role'}
+            className={`editor-tab ${tab === 'role' ? 'is-active' : ''}`}
+            onClick={() => setTab('role')}
+          >
+            📋 角色职责与基础设定
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'capabilities'}
+            className={`editor-tab ${tab === 'capabilities' ? 'is-active' : ''}`}
+            onClick={() => setTab('capabilities')}
+          >
+            ⚡ 核心能力与模型配置 ({enabledSkills.length} 技能 · {mcpServerIds.length} MCP · {toolIds.length} 工具)
+          </button>
+        </div>
+
+        <div className="member-editor-actions">
+          <button
+            type="button"
+            className="save-member-btn"
+            onClick={() => void save()}
+            disabled={saving || !roleLabel.trim()}
+          >
+            {saving ? '正在保存…' : '💾 保存成员配置'}
+          </button>
+          <button type="button" className="cancel-member-btn" onClick={onClose} disabled={saving}>
+            取消
+          </button>
+        </div>
+      </header>
+
+      {/* 提示与错误 */}
+      {error && (
+        <div style={{ padding: '10px 24px', background: '#fef2f2', color: '#b91c1c', borderBottom: '1px solid #fecaca', fontSize: '13px' }}>
+          ⚠️ {error}
+        </div>
+      )}
+      {notice && (
+        <div style={{ padding: '10px 24px', background: '#f0fdf4', color: '#15803d', borderBottom: '1px solid #bbf7d0', fontSize: '13px' }}>
+          ✓ {notice}
+        </div>
+      )}
+
+      {/* 身份摘要卡片 */}
+      <div
+        className="member-editor-identity"
+        style={{
+          padding: '14px 24px',
+          background: '#f8fafc',
+          borderBottom: '1px solid #e2e8f0',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '14px',
+        }}
+      >
+        <AssistantGlyph value={assistant?.avatar || member.avatar} size={40} />
+        <div>
+          <strong style={{ fontSize: '16px', color: '#0f172a' }}>
+            {assistant?.name || member.assistantName}
+          </strong>
+          <p style={{ margin: '3px 0 0', fontSize: '12.5px', color: '#64748b' }}>
+            {roleLabel} · {member.role === 'leader' ? '👑 团队总负责人' : '团队成员'} ·{' '}
+            {assistant?.enabled ? '助手已启用' : '助手未启用'}
+          </p>
+        </div>
+      </div>
+
+      {/* 内容主体：收拢边距与内边距，杜绝空旷感 */}
+      <div className="member-editor-content" style={{ padding: '16px 20px', maxWidth: '920px', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+        {/* ===================== TAB 1: 角色职责与基础设定 ===================== */}
+        {tab === 'role' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '16px 18px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                <h3 style={{ margin: 0, fontSize: '14.5px', color: '#0f172a', fontWeight: 600 }}>
+                  1. 团队内角色定位
+                </h3>
+                <span style={{ fontSize: '12px', color: '#64748b' }}>
+                  当前角色：<strong>{ROLE_CONFIGS[role].badge} {ROLE_CONFIGS[role].label}</strong>
+                </span>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px', alignItems: 'flex-start' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                    角色类型
+                  </label>
+                  <select
+                    value={role}
+                    disabled={saving}
+                    onChange={(e) => handleRoleChange(e.target.value as TeammateRole)}
+                    style={{ width: '100%', padding: '8px 10px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '13px', background: '#ffffff' }}
+                  >
+                    {Object.entries(ROLE_CONFIGS).map(([val, conf]) => (
+                      <option key={val} value={val}>
+                        {conf.badge} {conf.label}
+                      </option>
+                    ))}
+                  </select>
+                  <small style={{ display: 'block', marginTop: '4px', color: '#64748b', fontSize: '11.5px' }}>
+                    切换角色类型会自动关联对应的默认显示名称。
+                  </small>
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <label style={{ fontSize: '12.5px', fontWeight: 600, color: '#334155' }}>
+                      角色显示标签 (自定义名称)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setRoleLabel(ROLE_CONFIGS[role].defaultName)}
+                      disabled={saving || roleLabel === ROLE_CONFIGS[role].defaultName}
+                      title="重置为当前角色的默认推荐名称"
+                      style={{
+                        fontSize: '11.5px',
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        border: '1px solid #bfdbfe',
+                        background: '#eff6ff',
+                        color: '#1d4ed8',
+                        cursor: roleLabel === ROLE_CONFIGS[role].defaultName ? 'default' : 'pointer',
+                        opacity: roleLabel === ROLE_CONFIGS[role].defaultName ? 0.6 : 1,
+                        fontWeight: 500,
+                      }}
+                    >
+                      ↺ 填入默认
+                    </button>
+                  </div>
+                  <input
+                    value={roleLabel}
+                    disabled={saving}
+                    maxLength={120}
+                    onChange={(e) => setRoleLabel(e.target.value)}
+                    placeholder={`例如：${ROLE_CONFIGS[role].defaultName}`}
+                    style={{ width: '100%', padding: '8px 10px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '13px', background: '#ffffff', boxSizing: 'border-box' }}
+                  />
+                  <small style={{ display: 'block', marginTop: '4px', color: '#64748b', fontSize: '11.5px' }}>
+                    推荐默认：<strong>{ROLE_CONFIGS[role].defaultName}</strong>，支持点击「↺ 填入默认」或自由编辑。
+                  </small>
+                </div>
+              </div>
+
+              {/* 角色职责与阶段说明胶囊 */}
+              <div
+                style={{
+                  marginTop: '12px',
+                  padding: '8px 12px',
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  color: '#475569',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
+              >
+                <span style={{ fontSize: '14px' }}>{ROLE_CONFIGS[role].badge}</span>
+                <span><strong>阶段职责分工：</strong>{ROLE_CONFIGS[role].desc}</span>
+              </div>
+            </div>
+
+            <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '16px 18px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <h3 style={{ margin: 0, fontSize: '14.5px', color: '#0f172a', fontWeight: 600 }}>
+                  2. 系统设定与引导提示词 (System Prompt)
+                </h3>
+                <span style={{ fontSize: '11.5px', color: '#64748b' }}>
+                  {instructions.length} 字符
+                </span>
+              </div>
+              <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#64748b' }}>
+                定义该导师的苏格拉底教学风格、提问梯度及对学生卡顿的启发策略。修改后直接保存生效。
+              </p>
+              <textarea
+                value={instructions}
+                disabled={saving}
+                onChange={(e) => setInstructions(e.target.value)}
+                placeholder="输入该助手的系统指令与引导原则..."
+                rows={6}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '6px',
+                  fontSize: '12.5px',
+                  lineHeight: '1.55',
+                  fontFamily: 'ui-monospace, SFMono-Regular, Consolas, monospace',
+                  background: '#f8fafc',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
+
+            <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', color: '#1e40af', lineHeight: 1.5 }}>
+              💡 <strong>课时与教学绑定说明：</strong>该成员在项目模板中被选入后，可在各个具体课时分配教学任务。修改职责后，已有历史归档项目不受影响，新确认的项目将按最新配置执行。
+            </div>
+          </div>
+        )}
+
+        {/* ===================== TAB 2: 核心能力与模型配置（紧凑下拉复选框排版） ===================== */}
+        {tab === 'capabilities' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {/* 1. 大语言模型底座选择 */}
+            <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '14px 18px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <h3 style={{ margin: 0, fontSize: '14.5px', color: '#0f172a', fontWeight: 600 }}>
+                  1. 大语言模型底座 (LLM Model)
+                </h3>
+                <Link
+                  href="/settings/model-providers"
+                  style={{ fontSize: '12px', color: '#2563eb', textDecoration: 'none' }}
+                >
+                  管理模型供应商 →
+                </Link>
+              </div>
+              <p style={{ margin: '0 0 10px', fontSize: '12px', color: '#64748b' }}>
+                为该导师指定负责对话推理的底层模型。支持即选即改，无需离开团队管理界面。
+              </p>
+
+              <select
+                value={selectedModelKey}
+                disabled={saving}
+                onChange={(e) => setSelectedModelKey(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  background: '#ffffff',
+                  boxSizing: 'border-box',
+                }}
+              >
+                <option value="">跟随团队/默认全局模型</option>
+                {configuredModels.map((m) => {
+                  const key = configuredModelKey(m);
+                  return (
+                    <option key={key} value={key}>
+                      {m.name || m.id} ({m.providerName || m.providerId})
+                    </option>
+                  );
+                })}
+              </select>
+              {selectedModelKey && (
+                <div style={{ marginTop: '6px', fontSize: '12px', color: '#15803d', fontWeight: 500 }}>
+                  ✓ 当前选中模型：{configuredModelLabel(selectedModelKey, configuredModels)}
+                </div>
+              )}
+            </div>
+
+            {/* 2. 挂载 Skill 教学技能库（下拉复选框形式） */}
+            <CompactMultiSelectDropdown
+              label="2. 挂载 Skill 教学技能库"
+              countBadge={`${enabledSkills.length} 项已启用`}
+              hint="勾选该导师可调用的专业技能包（如苏格拉底导学、CER 科学论证、对比实验设计等）。"
+              items={availableSkills}
+              selectedIds={enabledSkills}
+              onChange={setEnabledSkills}
+              colorTheme="blue"
+              actionLink={{ href: '/settings/skills', label: '平台技能中心 →' }}
+              searchPlaceholder="搜索技能名称或描述..."
+            />
+
+            {/* 3. 授权外部 MCP 服务（下拉复选框形式） */}
+            <CompactMultiSelectDropdown
+              label="3. 授权外部 MCP 服务"
+              countBadge={`${mcpServerIds.length} 项已授权`}
+              hint="授权该导师在对话中挂载并调用外部 MCP 服务（如物理仿真实验内核、文献检索抓取等）。"
+              items={availableMcpServers}
+              selectedIds={mcpServerIds}
+              onChange={setMcpServerIds}
+              colorTheme="purple"
+              actionLink={{ href: '/settings/tools', label: 'MCP 节点管理 →' }}
+              searchPlaceholder="搜索 MCP 服务名称..."
+            />
+
+            {/* 4. 平台受控运行时内置工具（下拉复选框形式） */}
+            <CompactMultiSelectDropdown
+              label="4. 平台受控内置工具"
+              countBadge={`${toolIds.length} 项已授权`}
+              hint="直接控制该导师对知识库检索、掌握度查询、理论门禁考核及课时活动生成的调用权限。"
+              items={availableTools}
+              selectedIds={toolIds}
+              onChange={setToolIds}
+              colorTheme="green"
+              actionLink={{ href: '/settings/tools', label: '工具授权中心 →' }}
+              searchPlaceholder="搜索内置工具名称..."
+            />
+
+            {/* 5. 知识库挂载与来源 */}
+            <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '14px 18px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <h3 style={{ margin: 0, fontSize: '14.5px', color: '#0f172a', fontWeight: 600 }}>
+                  5. 知识中心与教学资产关联
+                </h3>
+                <Link
+                  href="/settings/knowledge"
+                  style={{ fontSize: '12px', color: '#2563eb', textDecoration: 'none' }}
+                >
+                  前往知识中心 →
+                </Link>
+              </div>
+              <p style={{ margin: '0 0 10px', fontSize: '12px', color: '#64748b' }}>
+                知识库与已审核课件资产的检索范围由系统知识中心统一鉴权。导师使用已授权的 <code>knowledge_search</code> 工具即可按课时范围检索资料。
+              </p>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <Link
+                  href="/settings/knowledge"
+                  style={{
+                    padding: '6px 12px',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '6px',
+                    color: '#334155',
+                    fontSize: '12px',
+                    textDecoration: 'none',
+                    background: '#f8fafc',
+                  }}
+                >
+                  管理资料库
+                </Link>
+                <Link
+                  href="/settings/knowledge"
+                  style={{
+                    padding: '6px 12px',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '6px',
+                    color: '#334155',
+                    fontSize: '12px',
+                    textDecoration: 'none',
+                    background: '#f8fafc',
+                  }}
+                >
+                  查看已审核课件资产
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
-function CapabilityList({ title, items, href, action, empty }: { title: string; items: readonly string[]; href: string; action: string; empty: string }) {
-  return <section className="member-capability-section"><header><h3>{title}</h3><Link className="qitu-button" href={href}>{action}</Link></header>
-    {items.length ? <ul>{items.map(item => <li key={item}>{item}</li>)}</ul> : <p className="member-editor-note">{empty}</p>}</section>;
+// ----------------------------------------------------------------------
+// 下拉复选框多选组件 (Compact Multi-Select Checkbox Dropdown)
+// ----------------------------------------------------------------------
+interface CompactMultiSelectDropdownProps {
+  label: string;
+  countBadge: string;
+  actionLink?: { href: string; label: string };
+  hint: string;
+  items: Array<{ id: string; name?: string; label?: string; desc?: string | null }>;
+  selectedIds: string[];
+  onChange: (nextIds: string[]) => void;
+  colorTheme: 'blue' | 'purple' | 'green';
+  searchPlaceholder?: string;
+}
+
+function CompactMultiSelectDropdown({
+  label,
+  countBadge,
+  actionLink,
+  hint,
+  items,
+  selectedIds,
+  onChange,
+  colorTheme,
+  searchPlaceholder = '搜索...',
+}: CompactMultiSelectDropdownProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onMouseDown = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onMouseDown);
+    return () => document.removeEventListener('mousedown', onMouseDown);
+  }, [isOpen]);
+
+  const filteredItems = items.filter((it) => {
+    const text = `${it.id} ${it.name || it.label || ''} ${it.desc || ''}`.toLowerCase();
+    return text.includes(search.toLowerCase());
+  });
+
+  const toggleOne = (id: string) => {
+    if (selectedIds.includes(id)) {
+      onChange(selectedIds.filter((x) => x !== id));
+    } else {
+      onChange([...selectedIds, id]);
+    }
+  };
+
+  const selectAllFiltered = () => {
+    const next = new Set([...selectedIds, ...filteredItems.map((it) => it.id)]);
+    onChange(Array.from(next));
+  };
+
+  const clearAll = () => {
+    onChange([]);
+  };
+
+  const themeColors = {
+    blue: { primary: '#2563eb', bg: '#eff6ff', border: '#bfdbfe', text: '#1d4ed8' },
+    purple: { primary: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe', text: '#6d28d9' },
+    green: { primary: '#059669', bg: '#f0fdf4', border: '#a7f3d0', text: '#047857' },
+  }[colorTheme];
+
+  return (
+    <div
+      ref={dropdownRef}
+      style={{
+        position: 'relative',
+        background: '#ffffff',
+        border: '1px solid #e2e8f0',
+        borderRadius: '10px',
+        padding: '14px 18px',
+        boxSizing: 'border-box',
+      }}
+    >
+      {/* 头部标题与外链 */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h3 style={{ margin: 0, fontSize: '14.5px', color: '#0f172a', fontWeight: 600 }}>{label}</h3>
+          <span
+            style={{
+              fontSize: '11px',
+              padding: '1px 8px',
+              borderRadius: '999px',
+              background: themeColors.bg,
+              color: themeColors.text,
+              border: `1px solid ${themeColors.border}`,
+              fontWeight: 600,
+            }}
+          >
+            {countBadge}
+          </span>
+        </div>
+        {actionLink && (
+          <Link href={actionLink.href} style={{ fontSize: '12px', color: '#2563eb', textDecoration: 'none' }}>
+            {actionLink.label}
+          </Link>
+        )}
+      </div>
+
+      <p style={{ margin: '0 0 10px', fontSize: '12px', color: '#64748b', lineHeight: 1.4 }}>{hint}</p>
+
+      {/* 下拉选择器触发栏 */}
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        aria-expanded={isOpen}
+        style={{
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '8px 12px',
+          border: isOpen ? `1.5px solid ${themeColors.primary}` : '1px solid #cbd5e1',
+          borderRadius: '6px',
+          background: '#ffffff',
+          cursor: 'pointer',
+          textAlign: 'left',
+          fontSize: '13px',
+          transition: 'all 0.15s ease',
+          boxSizing: 'border-box',
+        }}
+      >
+        <span style={{ color: selectedIds.length ? '#0f172a' : '#94a3b8', fontWeight: selectedIds.length ? 500 : 400 }}>
+          {selectedIds.length > 0 ? `已挂载 ${selectedIds.length} 项（点击展开修改或搜索）` : '未挂载任何项目（点击展开勾选）'}
+        </span>
+        <span style={{ fontSize: '11px', color: '#64748b', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }}>
+          ▼
+        </span>
+      </button>
+
+      {/* 浮动下拉复选框面板 */}
+      {isOpen && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 4px)',
+            left: 18,
+            right: 18,
+            zIndex: 100,
+            background: '#ffffff',
+            border: '1px solid #cbd5e1',
+            borderRadius: '8px',
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+            padding: '10px',
+            boxSizing: 'border-box',
+          }}
+        >
+          {/* 搜索框与工具条 */}
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={searchPlaceholder}
+              autoFocus
+              style={{
+                flex: 1,
+                padding: '6px 10px',
+                border: '1px solid #cbd5e1',
+                borderRadius: '6px',
+                fontSize: '12.5px',
+                outline: 'none',
+              }}
+            />
+            <button
+              type="button"
+              onClick={selectAllFiltered}
+              style={{
+                fontSize: '11.5px',
+                padding: '4px 8px',
+                background: '#f8fafc',
+                border: '1px solid #cbd5e1',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                color: '#334155',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              全选过滤项
+            </button>
+            <button
+              type="button"
+              onClick={clearAll}
+              style={{
+                fontSize: '11.5px',
+                padding: '4px 8px',
+                background: '#fef2f2',
+                border: '1px solid #fecaca',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                color: '#dc2626',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              全部取消
+            </button>
+          </div>
+
+          {/* 选项滚动列表 */}
+          <div
+            style={{
+              maxHeight: '220px',
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '4px',
+              paddingRight: '2px',
+            }}
+          >
+            {filteredItems.length === 0 ? (
+              <div style={{ padding: '16px', textAlign: 'center', fontSize: '12px', color: '#94a3b8' }}>
+                暂无匹配项目
+              </div>
+            ) : (
+              filteredItems.map((item) => {
+                const isChecked = selectedIds.includes(item.id);
+                return (
+                  <label
+                    key={item.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '8px',
+                      padding: '6px 8px',
+                      borderRadius: '6px',
+                      background: isChecked ? themeColors.bg : '#ffffff',
+                      border: isChecked ? `1px solid ${themeColors.border}` : '1px solid transparent',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => toggleOne(item.id)}
+                      style={{ marginTop: '2px', accentColor: themeColors.primary, width: '15px', height: '15px' }}
+                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <strong style={{ display: 'block', color: '#0f172a', fontSize: '12px', overflowWrap: 'anywhere' }}>
+                        {item.name || item.label || item.id}
+                      </strong>
+                      {item.desc && (
+                        <span style={{ display: 'block', color: '#64748b', fontSize: '11px', marginTop: '1px' }}>
+                          {item.desc}
+                        </span>
+                      )}
+                    </div>
+                  </label>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 已选项目微型胶囊展示区（直接可视，带 × 快捷移除） */}
+      {selectedIds.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
+          {selectedIds.map((id) => {
+            const found = items.find((x) => x.id === id);
+            const title = found?.name || found?.label || id;
+            return (
+              <span
+                key={id}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '2px 8px',
+                  borderRadius: '6px',
+                  background: themeColors.bg,
+                  color: themeColors.text,
+                  border: `1px solid ${themeColors.border}`,
+                  fontSize: '11.5px',
+                  fontWeight: 500,
+                }}
+              >
+                <span>{title}</span>
+                <button
+                  type="button"
+                  onClick={() => onChange(selectedIds.filter((x) => x !== id))}
+                  title="移除此项"
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    color: 'inherit',
+                    cursor: 'pointer',
+                    padding: '0 2px',
+                    fontSize: '12px',
+                    lineHeight: 1,
+                  }}
+                >
+                  ×
+                </button>
+              </span>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }

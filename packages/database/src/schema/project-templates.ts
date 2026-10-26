@@ -68,6 +68,10 @@ export const projectTemplates = pgTable(
   },
   (table) => ({
     // 平台共享模板（school_id IS NULL）在平台内 slug 唯一。
+    platformNameUniqueIdx: uniqueIndex('project_templates_platform_name_unique_idx')
+      .on(sql`qitu_resource_name_key(${table.title})`).where(sql`${table.schoolId} IS NULL`),
+    schoolNameUniqueIdx: uniqueIndex('project_templates_school_name_unique_idx')
+      .on(table.schoolId, sql`qitu_resource_name_key(${table.title})`).where(sql`${table.schoolId} IS NOT NULL`),
     platformSlugUniqueIdx: uniqueIndex('project_templates_platform_slug_unique_idx')
       .on(table.slug)
       .where(sql`${table.schoolId} is null`),

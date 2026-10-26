@@ -750,7 +750,7 @@ export class KnowledgeCenterService {
     await this.database().transaction(async (tx) => {
       const inserted = rows(
         await tx.execute(
-          sql`INSERT INTO knowledge_bases(id,name,kind,engine_instance_id,build_state,library_settings) VALUES(${id},${String(input.name).trim()},'platform',${String(input.engineInstanceId)},'unindexed',${JSON.stringify(settings)}::jsonb) ON CONFLICT DO NOTHING RETURNING id`,
+          sql`INSERT INTO knowledge_bases(id,name,kind,engine_instance_id,build_state,library_settings) VALUES(${id},${String(input.name).trim()},'platform',${String(input.engineInstanceId)},'unindexed',${JSON.stringify(settings)}::jsonb) ON CONFLICT (id) DO NOTHING RETURNING id`,
         ),
       );
       if (inserted.length)

@@ -124,7 +124,7 @@
 /* 项目卡网格：现代横向宽卡片双列排版，彻底告别狭窄挤压与空白 */
 .qitu-project-grid {
   display: grid !important;
-  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)) !important;
   gap: 18px !important;
   width: 100% !important;
   align-items: start !important;
@@ -341,16 +341,16 @@
   max-height: 120px !important;
 }
 
-/* 右侧内容区：高度与封面精确对齐，紧凑布局，彻底杜绝空白 */
+/* 内容至少与封面等高，长标题和标签可以自然撑开卡片。 */
 .qitu-project-card-body {
   display: flex !important;
   flex-direction: column !important;
   justify-content: space-between !important;
   flex: 1 !important;
   min-width: 0 !important;
-  height: 120px !important;
+  height: auto !important;
   min-height: 120px !important;
-  max-height: 120px !important;
+  max-height: none !important;
   padding: 0 !important;
   gap: 6px !important;
   box-sizing: border-box !important;
@@ -358,6 +358,7 @@
 
 .qitu-project-card-header-row {
   display: flex !important;
+  flex-wrap: wrap;
   align-items: center !important;
   justify-content: space-between !important;
   gap: 8px !important;
@@ -406,6 +407,7 @@
 
 .qitu-project-card-footer-row {
   display: flex !important;
+  flex-wrap: wrap;
   align-items: center !important;
   justify-content: space-between !important;
   gap: 8px !important;
@@ -459,6 +461,8 @@
 /* 底部操作条：紧凑轻量，左右分布 */
 .qitu-project-actions {
   display: flex !important;
+  flex-wrap: wrap;
+  gap: 8px;
   align-items: center !important;
   justify-content: space-between !important;
   padding: 6px 16px !important;
@@ -1011,14 +1015,25 @@
 
 @media (max-width: 520px) {
   .qitu-project-card {
-    flex-direction: column;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 14px !important;
   }
-  .qitu-project-cover {
-    width: 100%;
-    min-width: 100%;
-    max-width: 100%;
-    height: 140px;
-    border-right: none;
-    border-bottom: 1px solid var(--qitu-border);
+  .qitu-project-cover,
+  .qitu-project-cover.is-placeholder {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    aspect-ratio: 16 / 9;
   }
+  .qitu-project-card-title,
+  .qitu-project-card-subtitle { white-space: normal !important; overflow-wrap: anywhere; }
+  .qitu-project-card-body { gap: 12px !important; }
+  .qitu-project-card-tags { flex-wrap: wrap; overflow: visible !important; }
+  .qitu-project-actions-right { flex-wrap: wrap; justify-content: flex-end; margin-left: auto; }
+  .qitu-project-actions button { min-height: 36px !important; }
+  .qitu-project-list-toolbar, .qitu-project-batch-bar { flex-wrap: wrap; gap: 8px; }
 }
