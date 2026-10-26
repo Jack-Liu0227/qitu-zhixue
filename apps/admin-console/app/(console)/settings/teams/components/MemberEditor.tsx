@@ -225,36 +225,138 @@ export function MemberEditor({
   }
 
   return (
-    <div className="member-editor-container" style={{ background: '#f8fafc', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* 顶部标题与 Tab 栏 */}
-      <header className="member-editor-header">
-        <button type="button" className="member-editor-back" disabled={saving} onClick={onClose}>
-          ← 返回团队
-        </button>
+    <div className="member-editor-container" style={{ background: '#f8fafc', minHeight: 'auto', display: 'flex', flexDirection: 'column' }}>
+      {/* 顶部综合导航与身份栏：左侧聚合返回、身份与标签页，彻底消除左右割裂的巨大留白 */}
+      <header
+        className="member-editor-header"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '10px 20px',
+          background: '#ffffff',
+          borderBottom: '1px solid #e2e8f0',
+          gap: '16px',
+          flexWrap: 'wrap',
+        }}
+      >
+        {/* 左侧组：返回 + 成员基础身份 + 标签页 */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap', minWidth: 0 }}>
+          <button
+            type="button"
+            className="member-editor-back"
+            disabled={saving}
+            onClick={onClose}
+            style={{
+              padding: '6px 12px',
+              fontSize: '13px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            ← 返回团队
+          </button>
 
-        {/* 合并为 2 个清晰的主 Tab */}
-        <div className="member-editor-tabs" role="tablist" aria-label="团队成员配置">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === 'role'}
-            className={`editor-tab ${tab === 'role' ? 'is-active' : ''}`}
-            onClick={() => setTab('role')}
+          <div style={{ width: '1px', height: '22px', background: '#e2e8f0' }} />
+
+          {/* 成员身份信息：头像 + 助手名称 + 角色徽章 + 启用状态 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+            <AssistantGlyph value={assistant?.avatar || member.avatar} size={32} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <strong style={{ fontSize: '14px', color: '#0f172a', whiteSpace: 'nowrap' }}>
+                {assistant?.name || member.assistantName}
+              </strong>
+              <span
+                style={{
+                  fontSize: '11px',
+                  padding: '1px 6px',
+                  borderRadius: '4px',
+                  background: '#eff6ff',
+                  color: '#1d4ed8',
+                  border: '1px solid #bfdbfe',
+                  fontWeight: 600,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {ROLE_CONFIGS[role].badge} {roleLabel}
+              </span>
+              <span
+                style={{
+                  fontSize: '11px',
+                  color: assistant?.enabled ? '#16a34a' : '#94a3b8',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                ● {assistant?.enabled ? '已启用' : '未启用'}
+              </span>
+            </div>
+          </div>
+
+          <div style={{ width: '1px', height: '22px', background: '#e2e8f0' }} />
+
+          {/* 标签页紧凑组合，消除左右大面积空白 */}
+          <div
+            className="member-editor-tabs"
+            role="tablist"
+            aria-label="团队成员配置"
+            style={{
+              display: 'inline-flex',
+              gap: '4px',
+              background: '#f1f5f9',
+              padding: '3px',
+              borderRadius: '8px',
+              border: '1px solid #e2e8f0',
+            }}
           >
-            📋 角色职责与基础设定
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === 'capabilities'}
-            className={`editor-tab ${tab === 'capabilities' ? 'is-active' : ''}`}
-            onClick={() => setTab('capabilities')}
-          >
-            ⚡ 核心能力与模型配置 ({enabledSkills.length} 技能 · {mcpServerIds.length} MCP · {toolIds.length} 工具)
-          </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === 'role'}
+              className={`editor-tab ${tab === 'role' ? 'is-active' : ''}`}
+              onClick={() => setTab('role')}
+              style={{
+                padding: '6px 14px',
+                fontSize: '13px',
+                borderRadius: '6px',
+                border: 'none',
+                cursor: 'pointer',
+                background: tab === 'role' ? '#ffffff' : 'transparent',
+                color: tab === 'role' ? '#0f172a' : '#64748b',
+                fontWeight: tab === 'role' ? 600 : 500,
+                boxShadow: tab === 'role' ? '0 1px 2px rgba(0, 0, 0, 0.05)' : 'none',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              📋 角色职责与基础设定
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === 'capabilities'}
+              className={`editor-tab ${tab === 'capabilities' ? 'is-active' : ''}`}
+              onClick={() => setTab('capabilities')}
+              style={{
+                padding: '6px 14px',
+                fontSize: '13px',
+                borderRadius: '6px',
+                border: 'none',
+                cursor: 'pointer',
+                background: tab === 'capabilities' ? '#ffffff' : 'transparent',
+                color: tab === 'capabilities' ? '#0f172a' : '#64748b',
+                fontWeight: tab === 'capabilities' ? 600 : 500,
+                boxShadow: tab === 'capabilities' ? '0 1px 2px rgba(0, 0, 0, 0.05)' : 'none',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              ⚡ 核心能力与模型配置 ({enabledSkills.length} 技能 · {mcpServerIds.length} MCP · {toolIds.length} 工具)
+            </button>
+          </div>
         </div>
 
-        <div className="member-editor-actions">
+        {/* 右侧：保存与取消操作按钮 */}
+        <div className="member-editor-actions" style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
           <button
             type="button"
             className="save-member-btn"
@@ -281,35 +383,11 @@ export function MemberEditor({
         </div>
       )}
 
-      {/* 身份摘要卡片 */}
-      <div
-        className="member-editor-identity"
-        style={{
-          padding: '14px 24px',
-          background: '#f8fafc',
-          borderBottom: '1px solid #e2e8f0',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '14px',
-        }}
-      >
-        <AssistantGlyph value={assistant?.avatar || member.avatar} size={40} />
-        <div>
-          <strong style={{ fontSize: '16px', color: '#0f172a' }}>
-            {assistant?.name || member.assistantName}
-          </strong>
-          <p style={{ margin: '3px 0 0', fontSize: '12.5px', color: '#64748b' }}>
-            {roleLabel} · {member.role === 'leader' ? '👑 团队总负责人' : '团队成员'} ·{' '}
-            {assistant?.enabled ? '助手已启用' : '助手未启用'}
-          </p>
-        </div>
-      </div>
-
-      {/* 内容主体：自适应全景排版，消除空旷留白 */}
-      <div className="member-editor-content" style={{ padding: '20px 24px', maxWidth: '1440px', margin: '0 auto', width: '100%', boxSizing: 'border-box', flex: 1, display: 'flex', flexDirection: 'column' }}>
+      {/* 主体内容：去除过大的全局 maxWidth 与多余边距，消除左右空白 */}
+      <div className="member-editor-content" style={{ padding: '16px 20px', width: '100%', boxSizing: 'border-box' }}>
         {/* ===================== TAB 1: 角色职责与基础设定 ===================== */}
         {tab === 'role' && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(340px, 1fr) minmax(460px, 1.4fr)', gap: '16px', alignItems: 'stretch', flex: 1, minHeight: 'calc(100vh - 280px)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(340px, 1fr) minmax(460px, 1.4fr)', gap: '16px', alignItems: 'start' }}>
             {/* 左列：角色定位与课时说明 */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '18px 20px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)' }}>
@@ -421,8 +499,8 @@ export function MemberEditor({
               </div>
             </div>
 
-            {/* 右列：系统设定与引导提示词 (System Prompt)，纵向撑满 */}
-            <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '18px 20px', display: 'flex', flexDirection: 'column', minHeight: '480px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)' }}>
+            {/* 右列：系统设定与引导提示词 (System Prompt)，适度紧凑 */}
+            <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '18px 20px', display: 'flex', flexDirection: 'column', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                 <h3 style={{ margin: 0, fontSize: '15px', color: '#0f172a', fontWeight: 600 }}>
                   2. 系统设定与引导提示词 (System Prompt)
@@ -441,8 +519,9 @@ export function MemberEditor({
                 placeholder="输入该助手的系统指令与引导原则..."
                 style={{
                   width: '100%',
-                  flex: 1,
-                  minHeight: '380px',
+                  height: '240px',
+                  minHeight: '160px',
+                  maxHeight: '380px',
                   padding: '12px 14px',
                   border: '1px solid #cbd5e1',
                   borderRadius: '6px',
@@ -605,8 +684,8 @@ export function MemberEditor({
               </div>
             </div>
 
-            {/* 下部：导师三大能力授权矩阵（Skills · MCP · Built-in Tools 并行排版，饱满自适应） */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px', alignItems: 'stretch', flex: 1, minHeight: 'calc(100vh - 350px)' }}>
+            {/* 下部：导师三大能力授权矩阵（Skills · MCP · Built-in Tools 并行排版） */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px', alignItems: 'start' }}>
               {/* 3. 挂载 Skill 教学技能库 */}
               <CapabilityMatrixColumn
                 label="3. 挂载 Skill 教学技能库"
@@ -736,9 +815,8 @@ function CapabilityMatrixColumn({
         flexDirection: 'column',
         boxSizing: 'border-box',
         boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
-        flex: 1,
-        minHeight: '480px',
-        height: '100%',
+        height: '380px',
+        maxHeight: '420px',
         overflow: 'hidden',
       }}
     >

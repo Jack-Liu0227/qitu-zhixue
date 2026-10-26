@@ -89,10 +89,10 @@
   display: grid;
   grid-template-columns: var(--qitu-panel-tracks, 310px 12px minmax(0, 1fr));
   gap: 0;
-  align-items: stretch;
+  align-items: start;
   width: 100%;
   min-width: 0;
-  min-height: calc(100vh - 220px);
+  min-height: auto;
 }
 .card {
   padding: 18px;
@@ -257,10 +257,9 @@ button.target {
   display: block;
   width: 100%;
   min-width: 0;
-  min-height: 480px;
-  flex: 1;
-  height: 100%;
-  max-height: none;
+  min-height: 360px;
+  height: 440px;
+  max-height: 680px;
   overflow: auto;
   box-sizing: border-box;
   resize: vertical;
