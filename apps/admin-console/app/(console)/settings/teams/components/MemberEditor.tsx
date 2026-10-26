@@ -292,8 +292,8 @@ export function MemberEditor({
         </div>
       </div>
 
-      {/* 内容主体：自适应宽屏排版，彻底消除两侧及卡片内空旷空白 */}
-      <div className="member-editor-content" style={{ padding: '20px 24px', width: '100%', boxSizing: 'border-box' }}>
+      {/* 内容主体：紧凑自适应居中排版，消除空旷留白 */}
+      <div className="member-editor-content" style={{ padding: '20px 24px', maxWidth: '1280px', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
         {/* ===================== TAB 1: 角色职责与基础设定 ===================== */}
         {tab === 'role' && (
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(340px, 1fr) minmax(420px, 1.4fr)', gap: '16px', alignItems: 'stretch' }}>
@@ -432,13 +432,24 @@ export function MemberEditor({
           </div>
         )}
 
-        {/* ===================== TAB 2: 核心能力与模型配置（双列紧凑自适应排版） ===================== */}
+        {/* ===================== TAB 2: 核心能力与模型配置（顶栏底座+三列能力授权矩阵） ===================== */}
         {tab === 'capabilities' && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(460px, 1fr))', gap: '16px', alignItems: 'start' }}>
-            {/* 左列：模型底座、教学技能库、知识中心 */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {/* 1. 大语言模型底座选择 */}
-              <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '16px 18px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {/* 顶栏：推理底座与知识中心关联 (单卡双列，充实紧凑) */}
+            <div
+              style={{
+                background: '#ffffff',
+                border: '1px solid #e2e8f0',
+                borderRadius: '10px',
+                padding: '16px 20px',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
+                gap: '20px',
+                alignItems: 'center',
+              }}
+            >
+              {/* 左侧：大语言模型底座 */}
+              <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                   <h3 style={{ margin: 0, fontSize: '14.5px', color: '#0f172a', fontWeight: 600 }}>
                     1. 大语言模型底座 (LLM Model)
@@ -450,10 +461,9 @@ export function MemberEditor({
                     管理模型供应商 →
                   </Link>
                 </div>
-                <p style={{ margin: '0 0 10px', fontSize: '12px', color: '#64748b' }}>
+                <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#64748b' }}>
                   为该导师指定负责对话推理的底层模型。支持即选即改，无需离开团队管理界面。
                 </p>
-
                 <select
                   value={selectedModelKey}
                   disabled={saving}
@@ -479,17 +489,70 @@ export function MemberEditor({
                   })}
                 </select>
                 {selectedModelKey && (
-                  <div style={{ marginTop: '6px', fontSize: '12px', color: '#15803d', fontWeight: 500 }}>
-                    ✓ 当前选中模型：{configuredModelLabel(selectedModelKey, configuredModels)}
+                  <div style={{ marginTop: '5px', fontSize: '12px', color: '#15803d', fontWeight: 500 }}>
+                    ✓ 当前底座：{configuredModelLabel(selectedModelKey, configuredModels)}
                   </div>
                 )}
               </div>
 
-              {/* 2. 挂载 Skill 教学技能库（下拉复选框形式） */}
+              {/* 右侧：知识中心与教学资产关联 */}
+              <div style={{ borderLeft: '1px solid #f1f5f9', paddingLeft: '18px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <h3 style={{ margin: 0, fontSize: '14.5px', color: '#0f172a', fontWeight: 600 }}>
+                    2. 知识中心与教学资产关联
+                  </h3>
+                  <Link
+                    href="/settings/knowledge"
+                    style={{ fontSize: '12px', color: '#2563eb', textDecoration: 'none' }}
+                  >
+                    知识中心 →
+                  </Link>
+                </div>
+                <p style={{ margin: '0 0 10px', fontSize: '12px', color: '#64748b', lineHeight: 1.4 }}>
+                  导师使用已授权的 <code>knowledge_search</code> 工具按课时范围检索资料。
+                </p>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <Link
+                    href="/settings/knowledge"
+                    style={{
+                      padding: '6px 12px',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '6px',
+                      color: '#334155',
+                      fontSize: '12px',
+                      textDecoration: 'none',
+                      background: '#f8fafc',
+                      fontWeight: 500,
+                    }}
+                  >
+                    📚 管理资料库
+                  </Link>
+                  <Link
+                    href="/settings/knowledge"
+                    style={{
+                      padding: '6px 12px',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '6px',
+                      color: '#334155',
+                      fontSize: '12px',
+                      textDecoration: 'none',
+                      background: '#f8fafc',
+                      fontWeight: 500,
+                    }}
+                  >
+                    📑 查看已审核课件
+                  </Link>
+                </div>
+              </div>
+            </div>
+
+            {/* 下部：导师三大能力授权矩阵（Skills · MCP · Built-in Tools 并行排版，饱满自适应） */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px', alignItems: 'start' }}>
+              {/* 3. 挂载 Skill 教学技能库 */}
               <CompactMultiSelectDropdown
-                label="2. 挂载 Skill 教学技能库"
+                label="3. 挂载 Skill 教学技能库"
                 countBadge={`${enabledSkills.length} 项已启用`}
-                hint="勾选该导师可调用的专业技能包（如苏格拉底导学、CER 科学论证、对比实验设计等）。"
+                hint="勾选专业导学包（如苏格拉底导学、CER 科学论证、实验设计等）。"
                 items={availableSkills}
                 selectedIds={enabledSkills}
                 onChange={setEnabledSkills}
@@ -498,62 +561,11 @@ export function MemberEditor({
                 searchPlaceholder="搜索技能名称或描述..."
               />
 
-              {/* 5. 知识中心与教学资产关联 */}
-              <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '16px 18px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                  <h3 style={{ margin: 0, fontSize: '14.5px', color: '#0f172a', fontWeight: 600 }}>
-                    5. 知识中心与教学资产关联
-                  </h3>
-                  <Link
-                    href="/settings/knowledge"
-                    style={{ fontSize: '12px', color: '#2563eb', textDecoration: 'none' }}
-                  >
-                    前往知识中心 →
-                  </Link>
-                </div>
-                <p style={{ margin: '0 0 10px', fontSize: '12px', color: '#64748b' }}>
-                  知识库与已审核课件资产的检索范围由系统知识中心统一鉴权。导师使用已授权的 <code>knowledge_search</code> 工具即可按课时范围检索资料。
-                </p>
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                  <Link
-                    href="/settings/knowledge"
-                    style={{
-                      padding: '6px 12px',
-                      border: '1px solid #cbd5e1',
-                      borderRadius: '6px',
-                      color: '#334155',
-                      fontSize: '12px',
-                      textDecoration: 'none',
-                      background: '#f8fafc',
-                    }}
-                  >
-                    管理资料库
-                  </Link>
-                  <Link
-                    href="/settings/knowledge"
-                    style={{
-                      padding: '6px 12px',
-                      border: '1px solid #cbd5e1',
-                      borderRadius: '6px',
-                      color: '#334155',
-                      fontSize: '12px',
-                      textDecoration: 'none',
-                      background: '#f8fafc',
-                    }}
-                  >
-                    查看已审核课件资产
-                  </Link>
-                </div>
-              </div>
-            </div>
-
-            {/* 右列：MCP 外部服务与平台受控工具 */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {/* 3. 授权外部 MCP 服务（下拉复选框形式） */}
+              {/* 4. 授权外部 MCP 服务 */}
               <CompactMultiSelectDropdown
-                label="3. 授权外部 MCP 服务"
+                label="4. 授权外部 MCP 服务"
                 countBadge={`${mcpServerIds.length} 项已授权`}
-                hint="授权该导师在对话中挂载并调用外部 MCP 服务（如物理仿真实验内核、文献检索抓取等）。"
+                hint="授权挂载外部 MCP 服务（如物理仿真实验内核、文献抓取检索等）。"
                 items={availableMcpServers}
                 selectedIds={mcpServerIds}
                 onChange={setMcpServerIds}
@@ -562,11 +574,11 @@ export function MemberEditor({
                 searchPlaceholder="搜索 MCP 服务名称..."
               />
 
-              {/* 4. 平台受控运行时内置工具（下拉复选框形式） */}
+              {/* 5. 平台受控运行时内置工具 */}
               <CompactMultiSelectDropdown
-                label="4. 平台受控内置工具"
+                label="5. 平台受控内置工具"
                 countBadge={`${toolIds.length} 项已授权`}
-                hint="直接控制该导师对知识库检索、掌握度查询、理论门禁考核及课时活动生成的调用权限。"
+                hint="控制知识库检索、掌握度查询、理论门禁考核等调用权限。"
                 items={availableTools}
                 selectedIds={toolIds}
                 onChange={setToolIds}
@@ -719,19 +731,14 @@ function CompactMultiSelectDropdown({
         </span>
       </button>
 
-      {/* 浮动下拉复选框面板 */}
+      {/* 展开复选框面板 (Inline 自适应展开，撑满卡片，不溢出浮动) */}
       {isOpen && (
         <div
           style={{
-            position: 'absolute',
-            top: 'calc(100% + 4px)',
-            left: 18,
-            right: 18,
-            zIndex: 100,
+            marginTop: '10px',
             background: '#ffffff',
-            border: '1px solid #cbd5e1',
+            border: `1.5px solid ${themeColors.border}`,
             borderRadius: '8px',
-            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
             padding: '10px',
             boxSizing: 'border-box',
           }}
@@ -749,7 +756,7 @@ function CompactMultiSelectDropdown({
                 padding: '6px 10px',
                 border: '1px solid #cbd5e1',
                 borderRadius: '6px',
-                fontSize: '12.5px',
+                fontSize: '12px',
                 outline: 'none',
               }}
             />
@@ -757,8 +764,8 @@ function CompactMultiSelectDropdown({
               type="button"
               onClick={selectAllFiltered}
               style={{
-                fontSize: '11.5px',
-                padding: '4px 8px',
+                fontSize: '11px',
+                padding: '3px 8px',
                 background: '#f8fafc',
                 border: '1px solid #cbd5e1',
                 borderRadius: '4px',
@@ -767,14 +774,14 @@ function CompactMultiSelectDropdown({
                 whiteSpace: 'nowrap',
               }}
             >
-              全选过滤项
+              全选
             </button>
             <button
               type="button"
               onClick={clearAll}
               style={{
-                fontSize: '11.5px',
-                padding: '4px 8px',
+                fontSize: '11px',
+                padding: '3px 8px',
                 background: '#fef2f2',
                 border: '1px solid #fecaca',
                 borderRadius: '4px',
@@ -783,7 +790,7 @@ function CompactMultiSelectDropdown({
                 whiteSpace: 'nowrap',
               }}
             >
-              全部取消
+              清空
             </button>
           </div>
 
@@ -845,8 +852,8 @@ function CompactMultiSelectDropdown({
       )}
 
       {/* 已选项目微型胶囊展示区（直接可视，带 × 快捷移除） */}
-      {selectedIds.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
+      {selectedIds.length > 0 ? (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '10px', maxHeight: '110px', overflowY: 'auto' }}>
           {selectedIds.map((id) => {
             const found = items.find((x) => x.id === id);
             const title = found?.name || found?.label || id;
@@ -886,6 +893,10 @@ function CompactMultiSelectDropdown({
               </span>
             );
           })}
+        </div>
+      ) : (
+        <div style={{ marginTop: '8px', fontSize: '11.5px', color: '#94a3b8', fontStyle: 'italic' }}>
+          暂无已挂载项（点击上方展开添加）
         </div>
       )}
     </div>

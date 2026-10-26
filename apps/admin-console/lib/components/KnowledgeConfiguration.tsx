@@ -15,7 +15,6 @@ import {
 import { fetchRuntimeSnapshot } from '../api/runtime';
 import { fetchAdminAssistantConfigs } from '../api/assistants';
 import { createIdempotentRetryKey } from '../api/types';
-import { ToolParameters } from './ToolParameters';
 import styles from './KnowledgeConfiguration.module.css';
 const PROJECT = 'platformTools/project-knowledge';
 const providers = [
@@ -545,45 +544,14 @@ export function KnowledgeConfiguration({
                     ? '修改 enabled 与 boundAssistants（助手 ID）。仅检索管理员授权的知识库，无需为项目单独建库。'
                     : '编辑已注册服务的名称、开关与授权工具；连接地址和凭证由服务器管理。'}
             </p>
-            {target.startsWith('mcpServers/') ? (
-              <div className={styles.mcpSplitLayout}>
-                <div className={styles.mcpToolsPane}>
-                  <div className={styles.paneSubHeader}>
-                    <strong>🛠️ 工具与入参结构化透视</strong>
-                    <span className={styles.paneHint}>由 MCP 协议动态上报</span>
-                  </div>
-                  <ToolParameters
-                    catalog={catalogs[target]}
-                    pending={catalogPending[target]}
-                    error={catalogErrors[target]}
-                    onRefresh={() => void fetchCatalog(target, true)}
-                  />
-                </div>
-                <div className={styles.mcpEditorPane}>
-                  <div className={styles.paneSubHeader}>
-                    <strong>📝 底层 JSON 配置源码</strong>
-                    <span className={styles.paneHint}>修改后需点击右上角「保存配置」</span>
-                  </div>
-                  <textarea
-                    aria-label="平台 JSON 配置"
-                    className={styles.editor}
-                    value={draft}
-                    spellCheck={false}
-                    readOnly={preview || pending}
-                    onChange={(e) => setDraft(e.target.value)}
-                  />
-                </div>
-              </div>
-            ) : (
-              <textarea
-                aria-label="平台 JSON 配置"
-                className={styles.editor}
-                value={draft}
-                spellCheck={false}
-                readOnly={preview || pending}
-                onChange={(e) => setDraft(e.target.value)}
-              />
-            )}
+            <textarea
+              aria-label="平台 JSON 配置"
+              className={styles.editor}
+              value={draft}
+              spellCheck={false}
+              readOnly={preview || pending}
+              onChange={(e) => setDraft(e.target.value)}
+            />
             {target !== 'global' && (
               <div className={styles.bindings}>
                 <strong>

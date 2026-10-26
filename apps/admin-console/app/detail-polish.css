@@ -38,7 +38,7 @@
 .copilot-columns[data-stacked='true'] > .qitu-resizable-panel:has(.copilot-main) { height: 90dvh; min-height: 680px; }
 .admin-console-main :is(.admin-stats-page, .admin-relationships-page) { min-width: 0; max-width: 100%; }
 .admin-console-main :is(.admin-hero-copy, .admin-hero-badges) { min-width: 0; max-width: 100%; flex-wrap: wrap; }
-.admin-console-main .member-editor-container { position: relative; inset: auto; z-index: auto; height: auto; min-height: 560px; border: 1px solid var(--qitu-border); border-radius: 14px; overflow: hidden; }
+.admin-console-main .member-editor-container { position: relative; inset: auto; z-index: auto; height: auto; min-height: auto; border: 1px solid var(--qitu-border); border-radius: 14px; overflow: hidden; }
 .admin-console-main .member-editor-header { flex-wrap: wrap; gap: 12px; padding: 16px; }
 .admin-console-main .member-editor-tabs { flex-wrap: wrap; }
 .admin-console-main .member-editor-identity { display: flex; align-items: center; gap: 12px; padding: 20px; border-bottom: 1px solid var(--qitu-border); }
