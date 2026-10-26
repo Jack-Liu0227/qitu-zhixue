@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { AssistantGlyph } from '@qitu/ui';
 import type { AdminTeamMember, AdminAssistantConfig, TeammateRole, AdminRuntimeSnapshot } from '@qitu/contracts';
@@ -212,7 +212,7 @@ export function MemberEditor({
   }
 
   return (
-    <div className="member-editor-container">
+    <div className="member-editor-container" style={{ background: '#f8fafc', minHeight: '100%' }}>
       {/* 顶部标题与 Tab 栏 */}
       <header className="member-editor-header">
         <button type="button" className="member-editor-back" disabled={saving} onClick={onClose}>
@@ -292,14 +292,14 @@ export function MemberEditor({
         </div>
       </div>
 
-      {/* 内容主体：紧凑自适应居中排版，消除空旷留白 */}
-      <div className="member-editor-content" style={{ padding: '20px 24px', maxWidth: '1280px', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+      {/* 内容主体：自适应全景排版，消除空旷留白 */}
+      <div className="member-editor-content" style={{ padding: '20px 24px', maxWidth: '1440px', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
         {/* ===================== TAB 1: 角色职责与基础设定 ===================== */}
         {tab === 'role' && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(340px, 1fr) minmax(420px, 1.4fr)', gap: '16px', alignItems: 'stretch' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(340px, 1fr) minmax(460px, 1.4fr)', gap: '16px', alignItems: 'stretch' }}>
             {/* 左列：角色定位与课时说明 */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '18px 20px' }}>
+              <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '18px 20px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
                   <h3 style={{ margin: 0, fontSize: '15px', color: '#0f172a', fontWeight: 600 }}>
                     1. 团队内角色定位
@@ -390,13 +390,26 @@ export function MemberEditor({
                 </div>
               </div>
 
-              <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '10px', padding: '14px 18px', fontSize: '12.5px', color: '#1e40af', lineHeight: 1.6 }}>
+              <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '10px', padding: '14px 18px', fontSize: '12.5px', color: '#1e40af', lineHeight: 1.6, boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)' }}>
                 💡 <strong>课时与教学绑定说明：</strong>该成员在项目模板中被选入后，可在各个具体课时分配教学任务。修改职责后，已有历史归档项目不受影响，新确认的项目将按最新配置执行。
+              </div>
+
+              {/* 导师角色准则说明卡片 */}
+              <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '16px 20px', fontSize: '12px', color: '#475569', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)' }}>
+                <strong style={{ display: 'block', fontSize: '13px', color: '#0f172a', marginBottom: '8px' }}>
+                  📌 导师角色配置准则
+                </strong>
+                <ul style={{ margin: 0, paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '6px', lineHeight: 1.5 }}>
+                  <li>每个导师团队必须指定一位「总负责人 / 队长」统领课时主线。</li>
+                  <li>原理教练应具备苏格拉底导学能力，在 TheoryMastered 门禁前充分启发。</li>
+                  <li>探究向导应挂载对应的物理探究仿真 MCP 及相关对比实验技能。</li>
+                  <li>评审导师负责结项作品 CER 质量量规评价与答辩 challenge。</li>
+                </ul>
               </div>
             </div>
 
             {/* 右列：系统设定与引导提示词 (System Prompt)，纵向撑满 */}
-            <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '18px 20px', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '18px 20px', display: 'flex', flexDirection: 'column', minHeight: '480px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                 <h3 style={{ margin: 0, fontSize: '15px', color: '#0f172a', fontWeight: 600 }}>
                   2. 系统设定与引导提示词 (System Prompt)
@@ -416,7 +429,7 @@ export function MemberEditor({
                 style={{
                   width: '100%',
                   flex: 1,
-                  minHeight: '260px',
+                  minHeight: '380px',
                   padding: '12px 14px',
                   border: '1px solid #cbd5e1',
                   borderRadius: '6px',
@@ -428,6 +441,39 @@ export function MemberEditor({
                   resize: 'vertical',
                 }}
               />
+
+              {/* 快捷插入教学规范 Snippets */}
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px', alignItems: 'center' }}>
+                <span style={{ fontSize: '11.5px', color: '#64748b' }}>快捷插入规范：</span>
+                <button
+                  type="button"
+                  onClick={() => setInstructions((prev) => (prev ? `${prev}\n\n【教学原则】坚持苏格拉底式提问，通过引导性问题启发学生自主分析，不直接给出推导答案。` : '【教学原则】坚持苏格拉底式提问，通过引导性问题启发学生自主分析，不直接给出推导答案。'))}
+                  style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '4px', border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1d4ed8', cursor: 'pointer' }}
+                >
+                  + 苏格拉底启发式追问
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInstructions((prev) => (prev ? `${prev}\n\n【前概念诊断】在探究前先探查学生已有认知迷思，针对错误前概念设计认知冲突。` : '【前概念诊断】在探究前先探查学生已有认知迷思，针对错误前概念设计认知冲突。'))}
+                  style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '4px', border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1d4ed8', cursor: 'pointer' }}
+                >
+                  + 迷思概念前置探查
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInstructions((prev) => (prev ? `${prev}\n\n【论证标准】严格审查主张（Claim）、证据（Evidence）与推理（Reasoning）的闭环。` : '【论证标准】严格审查主张（Claim）、证据（Evidence）与推理（Reasoning）的闭环。'))}
+                  style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '4px', border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1d4ed8', cursor: 'pointer' }}
+                >
+                  + CER 科学论证要求
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInstructions((prev) => (prev ? `${prev}\n\n【实验指导】引导学生在单缝衍射与微粒散射仿真中坚持单变量对比原则，严防混淆变量。` : '【实验指导】引导学生在单缝衍射与微粒散射仿真中坚持单变量对比原则，严防混淆变量。'))}
+                  style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '4px', border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1d4ed8', cursor: 'pointer' }}
+                >
+                  + 控制变量对比实验
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -547,11 +593,11 @@ export function MemberEditor({
             </div>
 
             {/* 下部：导师三大能力授权矩阵（Skills · MCP · Built-in Tools 并行排版，饱满自适应） */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px', alignItems: 'start' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px', alignItems: 'stretch' }}>
               {/* 3. 挂载 Skill 教学技能库 */}
-              <CompactMultiSelectDropdown
+              <CapabilityMatrixColumn
                 label="3. 挂载 Skill 教学技能库"
-                countBadge={`${enabledSkills.length} 项已启用`}
+                countBadge={`${enabledSkills.length} / ${availableSkills.length} 已启用`}
                 hint="勾选专业导学包（如苏格拉底导学、CER 科学论证、实验设计等）。"
                 items={availableSkills}
                 selectedIds={enabledSkills}
@@ -562,9 +608,9 @@ export function MemberEditor({
               />
 
               {/* 4. 授权外部 MCP 服务 */}
-              <CompactMultiSelectDropdown
+              <CapabilityMatrixColumn
                 label="4. 授权外部 MCP 服务"
-                countBadge={`${mcpServerIds.length} 项已授权`}
+                countBadge={`${mcpServerIds.length} / ${availableMcpServers.length} 已授权`}
                 hint="授权挂载外部 MCP 服务（如物理仿真实验内核、文献抓取检索等）。"
                 items={availableMcpServers}
                 selectedIds={mcpServerIds}
@@ -575,9 +621,9 @@ export function MemberEditor({
               />
 
               {/* 5. 平台受控运行时内置工具 */}
-              <CompactMultiSelectDropdown
-                label="5. 平台受控内置工具"
-                countBadge={`${toolIds.length} 项已授权`}
+              <CapabilityMatrixColumn
+                label="5. 平台受控运行时内置工具"
+                countBadge={`${toolIds.length} / ${availableTools.length} 已授权`}
                 hint="控制知识库检索、掌握度查询、理论门禁考核等调用权限。"
                 items={availableTools}
                 selectedIds={toolIds}
@@ -595,9 +641,9 @@ export function MemberEditor({
 }
 
 // ----------------------------------------------------------------------
-// 下拉复选框多选组件 (Compact Multi-Select Checkbox Dropdown)
+// 导师核心能力全景矩阵列 (Capability Matrix Column)
 // ----------------------------------------------------------------------
-interface CompactMultiSelectDropdownProps {
+interface CapabilityMatrixColumnProps {
   label: string;
   countBadge: string;
   actionLink?: { href: string; label: string };
@@ -609,7 +655,7 @@ interface CompactMultiSelectDropdownProps {
   searchPlaceholder?: string;
 }
 
-function CompactMultiSelectDropdown({
+function CapabilityMatrixColumn({
   label,
   countBadge,
   actionLink,
@@ -619,26 +665,17 @@ function CompactMultiSelectDropdown({
   onChange,
   colorTheme,
   searchPlaceholder = '搜索...',
-}: CompactMultiSelectDropdownProps) {
-  const [isOpen, setIsOpen] = useState(false);
+}: CapabilityMatrixColumnProps) {
   const [search, setSearch] = useState('');
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const onMouseDown = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', onMouseDown);
-    return () => document.removeEventListener('mousedown', onMouseDown);
-  }, [isOpen]);
-
-  const filteredItems = items.filter((it) => {
-    const text = `${it.id} ${it.name || it.label || ''} ${it.desc || ''}`.toLowerCase();
-    return text.includes(search.toLowerCase());
-  });
+  const filteredItems = useMemo(() => {
+    if (!search.trim()) return items;
+    const q = search.toLowerCase();
+    return items.filter((it) => {
+      const text = `${it.id} ${it.name || it.label || ''} ${it.desc || ''}`.toLowerCase();
+      return text.includes(q);
+    });
+  }, [items, search]);
 
   const toggleOne = (id: string) => {
     if (selectedIds.includes(id)) {
@@ -665,240 +702,216 @@ function CompactMultiSelectDropdown({
 
   return (
     <div
-      ref={dropdownRef}
       style={{
-        position: 'relative',
         background: '#ffffff',
         border: '1px solid #e2e8f0',
         borderRadius: '10px',
-        padding: '14px 18px',
+        display: 'flex',
+        flexDirection: 'column',
         boxSizing: 'border-box',
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+        minHeight: '480px',
+        maxHeight: '560px',
+        overflow: 'hidden',
       }}
     >
       {/* 头部标题与外链 */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <h3 style={{ margin: 0, fontSize: '14.5px', color: '#0f172a', fontWeight: 600 }}>{label}</h3>
-          <span
-            style={{
-              fontSize: '11px',
-              padding: '1px 8px',
-              borderRadius: '999px',
-              background: themeColors.bg,
-              color: themeColors.text,
-              border: `1px solid ${themeColors.border}`,
-              fontWeight: 600,
-            }}
-          >
-            {countBadge}
-          </span>
+      <div style={{ padding: '14px 16px 10px', borderBottom: '1px solid #f1f5f9' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h3 style={{ margin: 0, fontSize: '14px', color: '#0f172a', fontWeight: 600 }}>{label}</h3>
+            <span
+              style={{
+                fontSize: '11px',
+                padding: '1px 8px',
+                borderRadius: '999px',
+                background: themeColors.bg,
+                color: themeColors.text,
+                border: `1px solid ${themeColors.border}`,
+                fontWeight: 600,
+              }}
+            >
+              {countBadge}
+            </span>
+          </div>
+          {actionLink && (
+            <Link href={actionLink.href} style={{ fontSize: '11.5px', color: '#2563eb', textDecoration: 'none' }}>
+              {actionLink.label}
+            </Link>
+          )}
         </div>
-        {actionLink && (
-          <Link href={actionLink.href} style={{ fontSize: '12px', color: '#2563eb', textDecoration: 'none' }}>
-            {actionLink.label}
-          </Link>
-        )}
-      </div>
+        <p style={{ margin: 0, fontSize: '11.5px', color: '#64748b', lineHeight: 1.4 }}>{hint}</p>
 
-      <p style={{ margin: '0 0 10px', fontSize: '12px', color: '#64748b', lineHeight: 1.4 }}>{hint}</p>
-
-      {/* 下拉选择器触发栏 */}
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        aria-expanded={isOpen}
-        style={{
-          width: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '8px 12px',
-          border: isOpen ? `1.5px solid ${themeColors.primary}` : '1px solid #cbd5e1',
-          borderRadius: '6px',
-          background: '#ffffff',
-          cursor: 'pointer',
-          textAlign: 'left',
-          fontSize: '13px',
-          transition: 'all 0.15s ease',
-          boxSizing: 'border-box',
-        }}
-      >
-        <span style={{ color: selectedIds.length ? '#0f172a' : '#94a3b8', fontWeight: selectedIds.length ? 500 : 400 }}>
-          {selectedIds.length > 0 ? `已挂载 ${selectedIds.length} 项（点击展开修改或搜索）` : '未挂载任何项目（点击展开勾选）'}
-        </span>
-        <span style={{ fontSize: '11px', color: '#64748b', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }}>
-          ▼
-        </span>
-      </button>
-
-      {/* 展开复选框面板 (Inline 自适应展开，撑满卡片，不溢出浮动) */}
-      {isOpen && (
-        <div
-          style={{
-            marginTop: '10px',
-            background: '#ffffff',
-            border: `1.5px solid ${themeColors.border}`,
-            borderRadius: '8px',
-            padding: '10px',
-            boxSizing: 'border-box',
-          }}
-        >
-          {/* 搜索框与工具条 */}
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+        {/* 搜索框与全选/清空工具条 */}
+        <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+          <div style={{ position: 'relative', flex: 1 }}>
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={searchPlaceholder}
-              autoFocus
               style={{
-                flex: 1,
+                width: '100%',
                 padding: '6px 10px',
                 border: '1px solid #cbd5e1',
                 borderRadius: '6px',
                 fontSize: '12px',
+                background: '#f8fafc',
+                boxSizing: 'border-box',
                 outline: 'none',
               }}
             />
-            <button
-              type="button"
-              onClick={selectAllFiltered}
-              style={{
-                fontSize: '11px',
-                padding: '3px 8px',
-                background: '#f8fafc',
-                border: '1px solid #cbd5e1',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                color: '#334155',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              全选
-            </button>
-            <button
-              type="button"
-              onClick={clearAll}
-              style={{
-                fontSize: '11px',
-                padding: '3px 8px',
-                background: '#fef2f2',
-                border: '1px solid #fecaca',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                color: '#dc2626',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              清空
-            </button>
-          </div>
-
-          {/* 选项滚动列表 */}
-          <div
-            style={{
-              maxHeight: '220px',
-              overflowY: 'auto',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '4px',
-              paddingRight: '2px',
-            }}
-          >
-            {filteredItems.length === 0 ? (
-              <div style={{ padding: '16px', textAlign: 'center', fontSize: '12px', color: '#94a3b8' }}>
-                暂无匹配项目
-              </div>
-            ) : (
-              filteredItems.map((item) => {
-                const isChecked = selectedIds.includes(item.id);
-                return (
-                  <label
-                    key={item.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: '8px',
-                      padding: '6px 8px',
-                      borderRadius: '6px',
-                      background: isChecked ? themeColors.bg : '#ffffff',
-                      border: isChecked ? `1px solid ${themeColors.border}` : '1px solid transparent',
-                      cursor: 'pointer',
-                      fontSize: '12px',
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isChecked}
-                      onChange={() => toggleOne(item.id)}
-                      style={{ marginTop: '2px', accentColor: themeColors.primary, width: '15px', height: '15px' }}
-                    />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <strong style={{ display: 'block', color: '#0f172a', fontSize: '12px', overflowWrap: 'anywhere' }}>
-                        {item.name || item.label || item.id}
-                      </strong>
-                      {item.desc && (
-                        <span style={{ display: 'block', color: '#64748b', fontSize: '11px', marginTop: '1px' }}>
-                          {item.desc}
-                        </span>
-                      )}
-                    </div>
-                  </label>
-                );
-              })
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* 已选项目微型胶囊展示区（直接可视，带 × 快捷移除） */}
-      {selectedIds.length > 0 ? (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '10px', maxHeight: '110px', overflowY: 'auto' }}>
-          {selectedIds.map((id) => {
-            const found = items.find((x) => x.id === id);
-            const title = found?.name || found?.label || id;
-            return (
-              <span
-                key={id}
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
                 style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  padding: '2px 8px',
-                  borderRadius: '6px',
-                  background: themeColors.bg,
-                  color: themeColors.text,
-                  border: `1px solid ${themeColors.border}`,
-                  fontSize: '11.5px',
-                  fontWeight: 500,
+                  position: 'absolute',
+                  right: '8px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  color: '#94a3b8',
+                  fontSize: '13px',
                 }}
               >
-                <span>{title}</span>
-                <button
-                  type="button"
-                  onClick={() => onChange(selectedIds.filter((x) => x !== id))}
-                  title="移除此项"
+                ×
+              </button>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={selectAllFiltered}
+            style={{
+              fontSize: '11px',
+              padding: '4px 8px',
+              background: '#f8fafc',
+              border: '1px solid #cbd5e1',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              color: '#334155',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            全选
+          </button>
+          <button
+            type="button"
+            onClick={clearAll}
+            style={{
+              fontSize: '11px',
+              padding: '4px 8px',
+              background: '#fef2f2',
+              border: '1px solid #fecaca',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              color: '#dc2626',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            清空
+          </button>
+        </div>
+      </div>
+
+      {/* 选项滚动列表 (纵向充满，可流畅浏览每个能力卡片与说明) */}
+      <div
+        style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: '10px 14px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '6px',
+        }}
+      >
+        {filteredItems.length === 0 ? (
+          <div style={{ padding: '24px 12px', textAlign: 'center', fontSize: '12px', color: '#94a3b8' }}>
+            未找到匹配项目
+          </div>
+        ) : (
+          filteredItems.map((item) => {
+            const isChecked = selectedIds.includes(item.id);
+            return (
+              <label
+                key={item.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '10px',
+                  padding: '8px 10px',
+                  borderRadius: '6px',
+                  background: isChecked ? themeColors.bg : '#ffffff',
+                  border: isChecked ? `1px solid ${themeColors.border}` : '1px solid #f1f5f9',
+                  cursor: 'pointer',
+                  transition: 'background 0.12s ease',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={isChecked}
+                  onChange={() => toggleOne(item.id)}
                   style={{
-                    border: 'none',
-                    background: 'transparent',
-                    color: 'inherit',
+                    marginTop: '2px',
+                    accentColor: themeColors.primary,
+                    width: '15px',
+                    height: '15px',
                     cursor: 'pointer',
-                    padding: '0 2px',
-                    fontSize: '12px',
-                    lineHeight: 1,
                   }}
-                >
-                  ×
-                </button>
-              </span>
+                />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                    <strong
+                      style={{
+                        fontSize: '12.5px',
+                        color: isChecked ? themeColors.text : '#0f172a',
+                        overflowWrap: 'anywhere',
+                      }}
+                    >
+                      {item.name || item.label || item.id}
+                    </strong>
+                    {isChecked && (
+                      <span style={{ fontSize: '10.5px', color: themeColors.primary, fontWeight: 600 }}>
+                        ✓ 已启用
+                      </span>
+                    )}
+                  </div>
+                  {item.desc && (
+                    <span style={{ display: 'block', color: '#64748b', fontSize: '11px', marginTop: '2px', lineHeight: 1.4 }}>
+                      {item.desc}
+                    </span>
+                  )}
+                </div>
+              </label>
             );
-          })}
-        </div>
-      ) : (
-        <div style={{ marginTop: '8px', fontSize: '11.5px', color: '#94a3b8', fontStyle: 'italic' }}>
-          暂无已挂载项（点击上方展开添加）
-        </div>
-      )}
+          })
+        )}
+      </div>
+
+      {/* 底部摘要区 (带已选计数) */}
+      <div
+        style={{
+          padding: '8px 14px',
+          background: '#f8fafc',
+          borderTop: '1px solid #e2e8f0',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          fontSize: '11.5px',
+          color: '#64748b',
+        }}
+      >
+        <span>
+          已启用 <strong style={{ color: themeColors.text }}>{selectedIds.length}</strong> / {items.length} 项
+        </span>
+        {selectedIds.length > 0 && (
+          <span style={{ color: '#059669', fontWeight: 500 }}>
+            ✓ 权限已配齐
+          </span>
+        )}
+      </div>
     </div>
   );
 }

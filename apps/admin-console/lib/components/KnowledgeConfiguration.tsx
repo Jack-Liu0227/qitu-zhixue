@@ -15,6 +15,7 @@ import {
 import { fetchRuntimeSnapshot } from '../api/runtime';
 import { fetchAdminAssistantConfigs } from '../api/assistants';
 import { createIdempotentRetryKey } from '../api/types';
+import { ToolParameters } from './ToolParameters';
 import styles from './KnowledgeConfiguration.module.css';
 const PROJECT = 'platformTools/project-knowledge';
 const providers = [
@@ -95,6 +96,8 @@ export function KnowledgeConfiguration({
   const [baseline, setBaseline] = useState('');
   const [staged, setStaged] = useState<{ id: string; engine: Engine } | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [expandedServers, setExpandedServers] = useState<Record<string, boolean>>({});
+  const [detailTab, setDetailTab] = useState<'tools' | 'json'>('tools');
   const [catalogs, setCatalogs] = useState<Record<string, ToolCatalog>>({});
   const [catalogPending, setCatalogPending] = useState<Record<string, boolean>>({});
   const [catalogErrors, setCatalogErrors] = useState<Record<string, string>>({});
@@ -203,8 +206,15 @@ export function KnowledgeConfiguration({
       setBaseline(text);
       setError('');
       setNotice('');
-      if (key.startsWith('mcpServers/') && !catalogs[key]) {
-        void fetchCatalog(key);
+      if (key.startsWith('mcpServers/')) {
+        setDetailTab('tools');
+        const mcpId = key.split('/')[1];
+        if (mcpId) setExpandedServers((prev) => ({ ...prev, [mcpId]: true }));
+        if (!catalogs[key]) {
+          void fetchCatalog(key);
+        }
+      } else {
+        setDetailTab('json');
       }
     });
   }
@@ -414,25 +424,33 @@ export function KnowledgeConfiguration({
                   : 0;
                 const isSelected = target === key;
                 const isOnline = live?.status === 'connected';
+                const isExpanded = !!expandedServers[id];
+                const toolsList = Array.isArray(server.tools) ? (server.tools as string[]) : [];
                 return (
-                  <button
-                    type="button"
-                    className={`${styles.target} ${isSelected ? styles.selected : ''}`}
+                  <div
                     key={key}
-                    onClick={() => select(key)}
                     style={{
-                      display: 'block',
-                      width: '100%',
-                      textAlign: 'left',
-                      cursor: 'pointer',
+                      border: isSelected ? '1.5px solid #2563eb' : '1px solid #e2e8f0',
+                      borderRadius: '8px',
+                      background: isSelected ? '#eff6ff' : '#ffffff',
                       padding: '10px 12px',
-                      margin: 0,
+                      boxSizing: 'border-box',
+                      transition: 'all 0.15s ease',
                     }}
                   >
-                    <div className={styles.targetHeading} style={{ justifyContent: 'space-between', marginBottom: '6px' }}>
-                      <span className={styles.targetName} style={{ fontWeight: isSelected ? 700 : 600 }}>
+                    <div
+                      onClick={() => select(key)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        cursor: 'pointer',
+                        marginBottom: '6px',
+                      }}
+                    >
+                      <strong style={{ fontSize: '13.5px', color: '#0f172a' }}>
                         {String(server.name)}
-                      </span>
+                      </strong>
                       <span
                         className={styles.badge}
                         style={{
@@ -443,26 +461,104 @@ export function KnowledgeConfiguration({
                         {live ? (healthLabels[live.status] ?? live.status) : '状态未知'}
                       </span>
                     </div>
-                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
-                      <span
+
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                        <span
+                          style={{
+                            fontSize: '11px',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            background: server.enabled ? '#dbeafe' : '#fef2f2',
+                            color: server.enabled ? '#1d4ed8' : '#b91c1c',
+                          }}
+                        >
+                          {server.enabled ? '允许调用' : '已停用'}
+                        </span>
+                        <span style={{ fontSize: '11px', color: '#64748b' }}>
+                          🤖 {boundCount} 智能体
+                        </span>
+                      </div>
+
+                      {/* 展开/收起工具层级按钮 */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setExpandedServers((prev) => ({ ...prev, [id]: !prev[id] }));
+                          if (!catalogs[key]) void fetchCatalog(key);
+                        }}
+                        title={isExpanded ? '收起子工具清单' : '展开子工具清单'}
                         style={{
-                          fontSize: '11px',
-                          padding: '2px 6px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: '2px 7px',
+                          border: '1px solid #cbd5e1',
                           borderRadius: '4px',
-                          background: server.enabled ? '#eff6ff' : '#fef2f2',
-                          color: server.enabled ? '#1d4ed8' : '#b91c1c',
+                          background: isExpanded ? '#dbeafe' : '#f8fafc',
+                          fontSize: '11px',
+                          color: isExpanded ? '#1d4ed8' : '#334155',
+                          cursor: 'pointer',
+                          fontWeight: 500,
                         }}
                       >
-                        {server.enabled ? '允许调用' : '已停用'}
-                      </span>
-                      <span style={{ fontSize: '11px', color: '#64748b' }}>
-                        🔧 {count} 个工具
-                      </span>
-                      <span style={{ fontSize: '11px', color: '#64748b' }}>
-                        🤖 {boundCount} 智能体
-                      </span>
+                        <span>🔧 {count} 工具</span>
+                        <span style={{ fontSize: '9px' }}>{isExpanded ? '▲' : '▼'}</span>
+                      </button>
                     </div>
-                  </button>
+
+                    {/* 展开的工具层级树 (Tool Hierarchy Tree) */}
+                    {isExpanded && (
+                      <div
+                        style={{
+                          marginTop: '8px',
+                          paddingTop: '6px',
+                          borderTop: '1px dashed #cbd5e1',
+                          paddingLeft: '4px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '4px',
+                        }}
+                      >
+                        {toolsList.length > 0 ? (
+                          toolsList.map((toolName) => (
+                            <div
+                              key={toolName}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                select(key);
+                                setDetailTab('tools');
+                              }}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                padding: '4px 8px',
+                                borderRadius: '4px',
+                                background: '#ffffff',
+                                border: '1px solid #e2e8f0',
+                                fontSize: '11.5px',
+                                cursor: 'pointer',
+                                color: '#1e293b',
+                              }}
+                              title={`查看 ${toolName} 入参规约`}
+                            >
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <span style={{ color: '#94a3b8' }}>↳</span>
+                                <code style={{ fontSize: '11.5px', color: '#0f172a' }}>{toolName}</code>
+                              </span>
+                              <span style={{ fontSize: '10px', color: '#2563eb' }}>规约 →</span>
+                            </div>
+                          ))
+                        ) : (
+                          <div style={{ fontSize: '11px', color: '#94a3b8', padding: '4px' }}>
+                            暂无已登记工具
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>
@@ -535,23 +631,110 @@ export function KnowledgeConfiguration({
                 )}
               </div>
             </div>
-            <p className={styles.hint}>
-              {target === 'global'
-                ? '全局包含 mcpServers、knowledgeEngines、platformTools；修改后统一校验并保存。'
-                : target.startsWith('knowledgeEngines/')
-                  ? '配置此知识引擎实例；URL 使用 server_url，账户 ID 使用 clientId，API Key 使用 apiKey。与知识中心表单同步。'
-                  : target === PROJECT
-                    ? '修改 enabled 与 boundAssistants（助手 ID）。仅检索管理员授权的知识库，无需为项目单独建库。'
-                    : '编辑已注册服务的名称、开关与授权工具；连接地址和凭证由服务器管理。'}
-            </p>
-            <textarea
-              aria-label="平台 JSON 配置"
-              className={styles.editor}
-              value={draft}
-              spellCheck={false}
-              readOnly={preview || pending}
-              onChange={(e) => setDraft(e.target.value)}
-            />
+            {target.startsWith('mcpServers/') && (
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '8px',
+                  margin: '12px 0 16px',
+                  paddingBottom: '12px',
+                  borderBottom: '1px solid #e2e8f0',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setDetailTab('tools')}
+                  style={{
+                    padding: '7px 16px',
+                    borderRadius: '6px',
+                    border: detailTab === 'tools' ? '1.5px solid #2563eb' : '1px solid #cbd5e1',
+                    background: detailTab === 'tools' ? '#eff6ff' : '#ffffff',
+                    color: detailTab === 'tools' ? '#1d4ed8' : '#475569',
+                    fontWeight: detailTab === 'tools' ? 600 : 500,
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  <span>🛠️ 子工具与入参规约</span>
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      padding: '1px 7px',
+                      borderRadius: '999px',
+                      background: detailTab === 'tools' ? '#bfdbfe' : '#f1f5f9',
+                      color: detailTab === 'tools' ? '#1e40af' : '#64748b',
+                    }}
+                  >
+                    {Array.isArray(currentObject?.tools) ? currentObject.tools.length : 0}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setDetailTab('json')}
+                  style={{
+                    padding: '7px 16px',
+                    borderRadius: '6px',
+                    border: detailTab === 'json' ? '1.5px solid #2563eb' : '1px solid #cbd5e1',
+                    background: detailTab === 'json' ? '#eff6ff' : '#ffffff',
+                    color: detailTab === 'json' ? '#1d4ed8' : '#475569',
+                    fontWeight: detailTab === 'json' ? 600 : 500,
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  <span>📝 底层 JSON 源码配置</span>
+                  {dirty && (
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        padding: '1px 6px',
+                        borderRadius: '999px',
+                        background: '#fef3c7',
+                        color: '#b45309',
+                      }}
+                    >
+                      未保存
+                    </span>
+                  )}
+                </button>
+              </div>
+            )}
+            {target.startsWith('mcpServers/') && detailTab === 'tools' ? (
+              <ToolParameters
+                catalog={catalogs[target]}
+                pending={catalogPending[target]}
+                error={catalogErrors[target]}
+                fallbackTools={Array.isArray(currentObject?.tools) ? (currentObject.tools as string[]) : []}
+                onRefresh={() => void fetchCatalog(target, true)}
+              />
+            ) : (
+              <>
+                <p className={styles.hint}>
+                  {target === 'global'
+                    ? '全局包含 mcpServers、knowledgeEngines、platformTools；修改后统一校验并保存。'
+                    : target.startsWith('knowledgeEngines/')
+                      ? '配置此知识引擎实例；URL 使用 server_url，账户 ID 使用 clientId，API Key 使用 apiKey。与知识中心表单同步。'
+                      : target === PROJECT
+                        ? '修改 enabled 与 boundAssistants（助手 ID）。仅检索管理员授权的知识库，无需为项目单独建库。'
+                        : '编辑已注册服务的名称、开关与授权工具；连接地址和凭证由服务器管理。'}
+                </p>
+                <textarea
+                  aria-label="平台 JSON 配置"
+                  className={styles.editor}
+                  value={draft}
+                  spellCheck={false}
+                  readOnly={preview || pending}
+                  onChange={(e) => setDraft(e.target.value)}
+                />
+              </>
+            )}
             {target !== 'global' && (
               <div className={styles.bindings}>
                 <strong>
