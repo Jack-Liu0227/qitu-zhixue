@@ -292,112 +292,120 @@ export function MemberEditor({
         </div>
       </div>
 
-      {/* 内容主体：收拢边距与内边距，杜绝空旷感 */}
-      <div className="member-editor-content" style={{ padding: '16px 20px', maxWidth: '920px', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+      {/* 内容主体：自适应宽屏排版，彻底消除两侧及卡片内空旷空白 */}
+      <div className="member-editor-content" style={{ padding: '20px 24px', width: '100%', boxSizing: 'border-box' }}>
         {/* ===================== TAB 1: 角色职责与基础设定 ===================== */}
         {tab === 'role' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '16px 18px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                <h3 style={{ margin: 0, fontSize: '14.5px', color: '#0f172a', fontWeight: 600 }}>
-                  1. 团队内角色定位
-                </h3>
-                <span style={{ fontSize: '12px', color: '#64748b' }}>
-                  当前角色：<strong>{ROLE_CONFIGS[role].badge} {ROLE_CONFIGS[role].label}</strong>
-                </span>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px', alignItems: 'flex-start' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
-                    角色类型
-                  </label>
-                  <select
-                    value={role}
-                    disabled={saving}
-                    onChange={(e) => handleRoleChange(e.target.value as TeammateRole)}
-                    style={{ width: '100%', padding: '8px 10px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '13px', background: '#ffffff' }}
-                  >
-                    {Object.entries(ROLE_CONFIGS).map(([val, conf]) => (
-                      <option key={val} value={val}>
-                        {conf.badge} {conf.label}
-                      </option>
-                    ))}
-                  </select>
-                  <small style={{ display: 'block', marginTop: '4px', color: '#64748b', fontSize: '11.5px' }}>
-                    切换角色类型会自动关联对应的默认显示名称。
-                  </small>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(340px, 1fr) minmax(420px, 1.4fr)', gap: '16px', alignItems: 'stretch' }}>
+            {/* 左列：角色定位与课时说明 */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '18px 20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                  <h3 style={{ margin: 0, fontSize: '15px', color: '#0f172a', fontWeight: 600 }}>
+                    1. 团队内角色定位
+                  </h3>
+                  <span style={{ fontSize: '12px', color: '#64748b' }}>
+                    当前角色：<strong>{ROLE_CONFIGS[role].badge} {ROLE_CONFIGS[role].label}</strong>
+                  </span>
                 </div>
 
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                    <label style={{ fontSize: '12.5px', fontWeight: 600, color: '#334155' }}>
-                      角色显示标签 (自定义名称)
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                      角色类型
                     </label>
-                    <button
-                      type="button"
-                      onClick={() => setRoleLabel(ROLE_CONFIGS[role].defaultName)}
-                      disabled={saving || roleLabel === ROLE_CONFIGS[role].defaultName}
-                      title="重置为当前角色的默认推荐名称"
-                      style={{
-                        fontSize: '11.5px',
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        border: '1px solid #bfdbfe',
-                        background: '#eff6ff',
-                        color: '#1d4ed8',
-                        cursor: roleLabel === ROLE_CONFIGS[role].defaultName ? 'default' : 'pointer',
-                        opacity: roleLabel === ROLE_CONFIGS[role].defaultName ? 0.6 : 1,
-                        fontWeight: 500,
-                      }}
+                    <select
+                      value={role}
+                      disabled={saving}
+                      onChange={(e) => handleRoleChange(e.target.value as TeammateRole)}
+                      style={{ width: '100%', padding: '9px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '13px', background: '#ffffff' }}
                     >
-                      ↺ 填入默认
-                    </button>
+                      {Object.entries(ROLE_CONFIGS).map(([val, conf]) => (
+                        <option key={val} value={val}>
+                          {conf.badge} {conf.label}
+                        </option>
+                      ))}
+                    </select>
+                    <small style={{ display: 'block', marginTop: '5px', color: '#64748b', fontSize: '11.5px' }}>
+                      切换角色类型会自动关联对应的默认显示名称。
+                    </small>
                   </div>
-                  <input
-                    value={roleLabel}
-                    disabled={saving}
-                    maxLength={120}
-                    onChange={(e) => setRoleLabel(e.target.value)}
-                    placeholder={`例如：${ROLE_CONFIGS[role].defaultName}`}
-                    style={{ width: '100%', padding: '8px 10px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '13px', background: '#ffffff', boxSizing: 'border-box' }}
-                  />
-                  <small style={{ display: 'block', marginTop: '4px', color: '#64748b', fontSize: '11.5px' }}>
-                    推荐默认：<strong>{ROLE_CONFIGS[role].defaultName}</strong>，支持点击「↺ 填入默认」或自由编辑。
-                  </small>
+
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <label style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>
+                        角色显示标签 (自定义名称)
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setRoleLabel(ROLE_CONFIGS[role].defaultName)}
+                        disabled={saving || roleLabel === ROLE_CONFIGS[role].defaultName}
+                        title="重置为当前角色的默认推荐名称"
+                        style={{
+                          fontSize: '11.5px',
+                          padding: '3px 9px',
+                          borderRadius: '4px',
+                          border: '1px solid #bfdbfe',
+                          background: '#eff6ff',
+                          color: '#1d4ed8',
+                          cursor: roleLabel === ROLE_CONFIGS[role].defaultName ? 'default' : 'pointer',
+                          opacity: roleLabel === ROLE_CONFIGS[role].defaultName ? 0.6 : 1,
+                          fontWeight: 500,
+                        }}
+                      >
+                        ↺ 填入默认
+                      </button>
+                    </div>
+                    <input
+                      value={roleLabel}
+                      disabled={saving}
+                      maxLength={120}
+                      onChange={(e) => setRoleLabel(e.target.value)}
+                      placeholder={`例如：${ROLE_CONFIGS[role].defaultName}`}
+                      style={{ width: '100%', padding: '9px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '13px', background: '#ffffff', boxSizing: 'border-box' }}
+                    />
+                    <small style={{ display: 'block', marginTop: '5px', color: '#64748b', fontSize: '11.5px' }}>
+                      推荐默认：<strong>{ROLE_CONFIGS[role].defaultName}</strong>，支持点击「↺ 填入默认」或自由编辑。
+                    </small>
+                  </div>
+                </div>
+
+                {/* 角色职责与阶段说明胶囊 */}
+                <div
+                  style={{
+                    marginTop: '16px',
+                    padding: '10px 14px',
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px',
+                    fontSize: '12.5px',
+                    color: '#475569',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                  }}
+                >
+                  <span style={{ fontSize: '16px' }}>{ROLE_CONFIGS[role].badge}</span>
+                  <span><strong>阶段职责分工：</strong>{ROLE_CONFIGS[role].desc}</span>
                 </div>
               </div>
 
-              {/* 角色职责与阶段说明胶囊 */}
-              <div
-                style={{
-                  marginTop: '12px',
-                  padding: '8px 12px',
-                  background: '#f8fafc',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '6px',
-                  fontSize: '12px',
-                  color: '#475569',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                }}
-              >
-                <span style={{ fontSize: '14px' }}>{ROLE_CONFIGS[role].badge}</span>
-                <span><strong>阶段职责分工：</strong>{ROLE_CONFIGS[role].desc}</span>
+              <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '10px', padding: '14px 18px', fontSize: '12.5px', color: '#1e40af', lineHeight: 1.6 }}>
+                💡 <strong>课时与教学绑定说明：</strong>该成员在项目模板中被选入后，可在各个具体课时分配教学任务。修改职责后，已有历史归档项目不受影响，新确认的项目将按最新配置执行。
               </div>
             </div>
 
-            <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '16px 18px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <h3 style={{ margin: 0, fontSize: '14.5px', color: '#0f172a', fontWeight: 600 }}>
+            {/* 右列：系统设定与引导提示词 (System Prompt)，纵向撑满 */}
+            <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '18px 20px', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <h3 style={{ margin: 0, fontSize: '15px', color: '#0f172a', fontWeight: 600 }}>
                   2. 系统设定与引导提示词 (System Prompt)
                 </h3>
-                <span style={{ fontSize: '11.5px', color: '#64748b' }}>
+                <span style={{ fontSize: '12px', color: '#64748b' }}>
                   {instructions.length} 字符
                 </span>
               </div>
-              <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#64748b' }}>
+              <p style={{ margin: '0 0 12px', fontSize: '12px', color: '#64748b' }}>
                 定义该导师的苏格拉底教学风格、提问梯度及对学生卡顿的启发策略。修改后直接保存生效。
               </p>
               <textarea
@@ -405,163 +413,167 @@ export function MemberEditor({
                 disabled={saving}
                 onChange={(e) => setInstructions(e.target.value)}
                 placeholder="输入该助手的系统指令与引导原则..."
-                rows={6}
                 style={{
                   width: '100%',
-                  padding: '10px 12px',
+                  flex: 1,
+                  minHeight: '260px',
+                  padding: '12px 14px',
                   border: '1px solid #cbd5e1',
                   borderRadius: '6px',
-                  fontSize: '12.5px',
-                  lineHeight: '1.55',
+                  fontSize: '13px',
+                  lineHeight: '1.6',
                   fontFamily: 'ui-monospace, SFMono-Regular, Consolas, monospace',
                   background: '#f8fafc',
                   boxSizing: 'border-box',
+                  resize: 'vertical',
                 }}
               />
-            </div>
-
-            <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', color: '#1e40af', lineHeight: 1.5 }}>
-              💡 <strong>课时与教学绑定说明：</strong>该成员在项目模板中被选入后，可在各个具体课时分配教学任务。修改职责后，已有历史归档项目不受影响，新确认的项目将按最新配置执行。
             </div>
           </div>
         )}
 
-        {/* ===================== TAB 2: 核心能力与模型配置（紧凑下拉复选框排版） ===================== */}
+        {/* ===================== TAB 2: 核心能力与模型配置（双列紧凑自适应排版） ===================== */}
         {tab === 'capabilities' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            {/* 1. 大语言模型底座选择 */}
-            <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '14px 18px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                <h3 style={{ margin: 0, fontSize: '14.5px', color: '#0f172a', fontWeight: 600 }}>
-                  1. 大语言模型底座 (LLM Model)
-                </h3>
-                <Link
-                  href="/settings/model-providers"
-                  style={{ fontSize: '12px', color: '#2563eb', textDecoration: 'none' }}
-                >
-                  管理模型供应商 →
-                </Link>
-              </div>
-              <p style={{ margin: '0 0 10px', fontSize: '12px', color: '#64748b' }}>
-                为该导师指定负责对话推理的底层模型。支持即选即改，无需离开团队管理界面。
-              </p>
-
-              <select
-                value={selectedModelKey}
-                disabled={saving}
-                onChange={(e) => setSelectedModelKey(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #cbd5e1',
-                  borderRadius: '6px',
-                  fontSize: '13px',
-                  background: '#ffffff',
-                  boxSizing: 'border-box',
-                }}
-              >
-                <option value="">跟随团队/默认全局模型</option>
-                {configuredModels.map((m) => {
-                  const key = configuredModelKey(m);
-                  return (
-                    <option key={key} value={key}>
-                      {m.name || m.id} ({m.providerName || m.providerId})
-                    </option>
-                  );
-                })}
-              </select>
-              {selectedModelKey && (
-                <div style={{ marginTop: '6px', fontSize: '12px', color: '#15803d', fontWeight: 500 }}>
-                  ✓ 当前选中模型：{configuredModelLabel(selectedModelKey, configuredModels)}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(460px, 1fr))', gap: '16px', alignItems: 'start' }}>
+            {/* 左列：模型底座、教学技能库、知识中心 */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* 1. 大语言模型底座选择 */}
+              <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '16px 18px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <h3 style={{ margin: 0, fontSize: '14.5px', color: '#0f172a', fontWeight: 600 }}>
+                    1. 大语言模型底座 (LLM Model)
+                  </h3>
+                  <Link
+                    href="/settings/model-providers"
+                    style={{ fontSize: '12px', color: '#2563eb', textDecoration: 'none' }}
+                  >
+                    管理模型供应商 →
+                  </Link>
                 </div>
-              )}
+                <p style={{ margin: '0 0 10px', fontSize: '12px', color: '#64748b' }}>
+                  为该导师指定负责对话推理的底层模型。支持即选即改，无需离开团队管理界面。
+                </p>
+
+                <select
+                  value={selectedModelKey}
+                  disabled={saving}
+                  onChange={(e) => setSelectedModelKey(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '6px',
+                    fontSize: '13px',
+                    background: '#ffffff',
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  <option value="">跟随团队/默认全局模型</option>
+                  {configuredModels.map((m) => {
+                    const key = configuredModelKey(m);
+                    return (
+                      <option key={key} value={key}>
+                        {m.name || m.id} ({m.providerName || m.providerId})
+                      </option>
+                    );
+                  })}
+                </select>
+                {selectedModelKey && (
+                  <div style={{ marginTop: '6px', fontSize: '12px', color: '#15803d', fontWeight: 500 }}>
+                    ✓ 当前选中模型：{configuredModelLabel(selectedModelKey, configuredModels)}
+                  </div>
+                )}
+              </div>
+
+              {/* 2. 挂载 Skill 教学技能库（下拉复选框形式） */}
+              <CompactMultiSelectDropdown
+                label="2. 挂载 Skill 教学技能库"
+                countBadge={`${enabledSkills.length} 项已启用`}
+                hint="勾选该导师可调用的专业技能包（如苏格拉底导学、CER 科学论证、对比实验设计等）。"
+                items={availableSkills}
+                selectedIds={enabledSkills}
+                onChange={setEnabledSkills}
+                colorTheme="blue"
+                actionLink={{ href: '/settings/skills', label: '平台技能中心 →' }}
+                searchPlaceholder="搜索技能名称或描述..."
+              />
+
+              {/* 5. 知识中心与教学资产关联 */}
+              <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '16px 18px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <h3 style={{ margin: 0, fontSize: '14.5px', color: '#0f172a', fontWeight: 600 }}>
+                    5. 知识中心与教学资产关联
+                  </h3>
+                  <Link
+                    href="/settings/knowledge"
+                    style={{ fontSize: '12px', color: '#2563eb', textDecoration: 'none' }}
+                  >
+                    前往知识中心 →
+                  </Link>
+                </div>
+                <p style={{ margin: '0 0 10px', fontSize: '12px', color: '#64748b' }}>
+                  知识库与已审核课件资产的检索范围由系统知识中心统一鉴权。导师使用已授权的 <code>knowledge_search</code> 工具即可按课时范围检索资料。
+                </p>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  <Link
+                    href="/settings/knowledge"
+                    style={{
+                      padding: '6px 12px',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '6px',
+                      color: '#334155',
+                      fontSize: '12px',
+                      textDecoration: 'none',
+                      background: '#f8fafc',
+                    }}
+                  >
+                    管理资料库
+                  </Link>
+                  <Link
+                    href="/settings/knowledge"
+                    style={{
+                      padding: '6px 12px',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '6px',
+                      color: '#334155',
+                      fontSize: '12px',
+                      textDecoration: 'none',
+                      background: '#f8fafc',
+                    }}
+                  >
+                    查看已审核课件资产
+                  </Link>
+                </div>
+              </div>
             </div>
 
-            {/* 2. 挂载 Skill 教学技能库（下拉复选框形式） */}
-            <CompactMultiSelectDropdown
-              label="2. 挂载 Skill 教学技能库"
-              countBadge={`${enabledSkills.length} 项已启用`}
-              hint="勾选该导师可调用的专业技能包（如苏格拉底导学、CER 科学论证、对比实验设计等）。"
-              items={availableSkills}
-              selectedIds={enabledSkills}
-              onChange={setEnabledSkills}
-              colorTheme="blue"
-              actionLink={{ href: '/settings/skills', label: '平台技能中心 →' }}
-              searchPlaceholder="搜索技能名称或描述..."
-            />
+            {/* 右列：MCP 外部服务与平台受控工具 */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* 3. 授权外部 MCP 服务（下拉复选框形式） */}
+              <CompactMultiSelectDropdown
+                label="3. 授权外部 MCP 服务"
+                countBadge={`${mcpServerIds.length} 项已授权`}
+                hint="授权该导师在对话中挂载并调用外部 MCP 服务（如物理仿真实验内核、文献检索抓取等）。"
+                items={availableMcpServers}
+                selectedIds={mcpServerIds}
+                onChange={setMcpServerIds}
+                colorTheme="purple"
+                actionLink={{ href: '/settings/tools', label: 'MCP 节点管理 →' }}
+                searchPlaceholder="搜索 MCP 服务名称..."
+              />
 
-            {/* 3. 授权外部 MCP 服务（下拉复选框形式） */}
-            <CompactMultiSelectDropdown
-              label="3. 授权外部 MCP 服务"
-              countBadge={`${mcpServerIds.length} 项已授权`}
-              hint="授权该导师在对话中挂载并调用外部 MCP 服务（如物理仿真实验内核、文献检索抓取等）。"
-              items={availableMcpServers}
-              selectedIds={mcpServerIds}
-              onChange={setMcpServerIds}
-              colorTheme="purple"
-              actionLink={{ href: '/settings/tools', label: 'MCP 节点管理 →' }}
-              searchPlaceholder="搜索 MCP 服务名称..."
-            />
-
-            {/* 4. 平台受控运行时内置工具（下拉复选框形式） */}
-            <CompactMultiSelectDropdown
-              label="4. 平台受控内置工具"
-              countBadge={`${toolIds.length} 项已授权`}
-              hint="直接控制该导师对知识库检索、掌握度查询、理论门禁考核及课时活动生成的调用权限。"
-              items={availableTools}
-              selectedIds={toolIds}
-              onChange={setToolIds}
-              colorTheme="green"
-              actionLink={{ href: '/settings/tools', label: '工具授权中心 →' }}
-              searchPlaceholder="搜索内置工具名称..."
-            />
-
-            {/* 5. 知识库挂载与来源 */}
-            <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '14px 18px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                <h3 style={{ margin: 0, fontSize: '14.5px', color: '#0f172a', fontWeight: 600 }}>
-                  5. 知识中心与教学资产关联
-                </h3>
-                <Link
-                  href="/settings/knowledge"
-                  style={{ fontSize: '12px', color: '#2563eb', textDecoration: 'none' }}
-                >
-                  前往知识中心 →
-                </Link>
-              </div>
-              <p style={{ margin: '0 0 10px', fontSize: '12px', color: '#64748b' }}>
-                知识库与已审核课件资产的检索范围由系统知识中心统一鉴权。导师使用已授权的 <code>knowledge_search</code> 工具即可按课时范围检索资料。
-              </p>
-              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                <Link
-                  href="/settings/knowledge"
-                  style={{
-                    padding: '6px 12px',
-                    border: '1px solid #cbd5e1',
-                    borderRadius: '6px',
-                    color: '#334155',
-                    fontSize: '12px',
-                    textDecoration: 'none',
-                    background: '#f8fafc',
-                  }}
-                >
-                  管理资料库
-                </Link>
-                <Link
-                  href="/settings/knowledge"
-                  style={{
-                    padding: '6px 12px',
-                    border: '1px solid #cbd5e1',
-                    borderRadius: '6px',
-                    color: '#334155',
-                    fontSize: '12px',
-                    textDecoration: 'none',
-                    background: '#f8fafc',
-                  }}
-                >
-                  查看已审核课件资产
-                </Link>
-              </div>
+              {/* 4. 平台受控运行时内置工具（下拉复选框形式） */}
+              <CompactMultiSelectDropdown
+                label="4. 平台受控内置工具"
+                countBadge={`${toolIds.length} 项已授权`}
+                hint="直接控制该导师对知识库检索、掌握度查询、理论门禁考核及课时活动生成的调用权限。"
+                items={availableTools}
+                selectedIds={toolIds}
+                onChange={setToolIds}
+                colorTheme="green"
+                actionLink={{ href: '/settings/tools', label: '工具授权中心 →' }}
+                searchPlaceholder="搜索内置工具名称..."
+              />
             </div>
           </div>
         )}
