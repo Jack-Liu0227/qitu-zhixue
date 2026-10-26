@@ -33,3 +33,11 @@
 - 主仓库的活动依赖、应用构建、知识服务和 `.runtime/qitu` 保留；未修改数据库、模型配置或学习记录，也未重启生产服务。
 
 以上是文档结构、归档完整性和服务存活验证，不替代业务端到端验收。本次临时 worktree 在文档提交合入主分支后移除；最终 Git 状态写入私有恢复目录中的 `final-verification.json`。
+
+## 并行修改保护补记
+
+最终复核期间，其他工作同步了五个界面文件：`apps/admin-console/app/(console)/settings/layout.tsx`、`apps/admin-console/app/(console)/settings/settings-compact.css`、`apps/admin-console/app/detail-polish.css`、`apps/admin-console/app/globals.css`、`apps/student-center/styles/projects.css`。
+
+这些文件保持未提交，单独保存于私有恢复目录的 `concurrent-changes.tar.gz`、补丁与 hash 清单。与共享目录逐文件比较时，统一 CRLF/LF 后的 SHA-256 全部相同；本轮不把它们纳入清理提交，也不宣称其业务测试通过。原先保护的 16 个文件仍逐字节不变。
+
+另移除一个校验期间出现的 `tooling/__pycache__` 可重建缓存；生产依赖和活动运行时继续保留。
