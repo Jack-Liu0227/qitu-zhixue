@@ -144,4 +144,10 @@ export const LEGACY_MCP_MANIFESTS: readonly LegacyMcpManifest[] = [
   },
 ];
 export const legacyMcpManifest = (id: string) =>
-  LEGACY_MCP_MANIFESTS.find((manifest) => manifest.id === id);
+  LEGACY_MCP_MANIFESTS.find(
+    (manifest) =>
+      manifest.id === id ||
+      manifest.name === id ||
+      manifest.id === `mcp-${id}` ||
+      manifest.id.replace(/^mcp-/, '') === id
+  );

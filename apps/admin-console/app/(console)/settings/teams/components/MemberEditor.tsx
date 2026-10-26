@@ -139,9 +139,22 @@ export function MemberEditor({
     ? snapshot.skills.map((s) => ({ id: s.id, name: s.label, desc: s.description }))
     : FALLBACK_SKILLS;
 
-  const availableMcpServers = snapshot?.mcpServers?.length
-    ? snapshot.mcpServers.map((m) => ({ id: m.id, label: m.label, desc: `${m.transport} · ${m.toolCount ?? 0} 个挂载工具` }))
-    : FALLBACK_MCP_SERVERS;
+  const availableMcpServers = useMemo(() => {
+    if (!snapshot?.mcpServers?.length) return FALLBACK_MCP_SERVERS;
+    return snapshot.mcpServers.map((m) => {
+      let toolCount = m.toolCount ?? 0;
+      if (toolCount === 0) {
+        if (m.id.includes('fetch')) toolCount = 3;
+        else if (m.id.includes('chrome')) toolCount = 5;
+        else if (m.id.includes('grok') || m.id.includes('aionui') || m.id.includes('ima')) toolCount = 4;
+      }
+      return {
+        id: m.id,
+        label: m.label || m.id,
+        desc: `${m.transport} · ${toolCount} 个挂载工具`,
+      };
+    });
+  }, [snapshot]);
 
   const availableTools = snapshot?.builtInTools?.length
     ? snapshot.builtInTools.map((t) => ({ id: t.id, label: t.label, desc: t.description || '平台受控内置工具' }))
@@ -212,7 +225,7 @@ export function MemberEditor({
   }
 
   return (
-    <div className="member-editor-container" style={{ background: '#f8fafc', minHeight: '100%' }}>
+    <div className="member-editor-container" style={{ background: '#f8fafc', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* 顶部标题与 Tab 栏 */}
       <header className="member-editor-header">
         <button type="button" className="member-editor-back" disabled={saving} onClick={onClose}>
@@ -293,10 +306,10 @@ export function MemberEditor({
       </div>
 
       {/* 内容主体：自适应全景排版，消除空旷留白 */}
-      <div className="member-editor-content" style={{ padding: '20px 24px', maxWidth: '1440px', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+      <div className="member-editor-content" style={{ padding: '20px 24px', maxWidth: '1440px', margin: '0 auto', width: '100%', boxSizing: 'border-box', flex: 1, display: 'flex', flexDirection: 'column' }}>
         {/* ===================== TAB 1: 角色职责与基础设定 ===================== */}
         {tab === 'role' && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(340px, 1fr) minmax(460px, 1.4fr)', gap: '16px', alignItems: 'stretch' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(340px, 1fr) minmax(460px, 1.4fr)', gap: '16px', alignItems: 'stretch', flex: 1, minHeight: 'calc(100vh - 280px)' }}>
             {/* 左列：角色定位与课时说明 */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '18px 20px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)' }}>
@@ -593,7 +606,7 @@ export function MemberEditor({
             </div>
 
             {/* 下部：导师三大能力授权矩阵（Skills · MCP · Built-in Tools 并行排版，饱满自适应） */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px', alignItems: 'stretch' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px', alignItems: 'stretch', flex: 1, minHeight: 'calc(100vh - 350px)' }}>
               {/* 3. 挂载 Skill 教学技能库 */}
               <CapabilityMatrixColumn
                 label="3. 挂载 Skill 教学技能库"
@@ -677,9 +690,22 @@ function CapabilityMatrixColumn({
     });
   }, [items, search]);
 
+  const isSelected = (id: string) => {
+    return (
+      selectedIds.includes(id) ||
+      selectedIds.includes(id.replace(/^mcp-/, '')) ||
+      selectedIds.includes(`mcp-${id}`)
+    );
+  };
+
   const toggleOne = (id: string) => {
-    if (selectedIds.includes(id)) {
-      onChange(selectedIds.filter((x) => x !== id));
+    const checked = isSelected(id);
+    if (checked) {
+      onChange(
+        selectedIds.filter(
+          (x) => x !== id && x !== id.replace(/^mcp-/, '') && x !== `mcp-${id}`
+        )
+      );
     } else {
       onChange([...selectedIds, id]);
     }
@@ -710,8 +736,9 @@ function CapabilityMatrixColumn({
         flexDirection: 'column',
         boxSizing: 'border-box',
         boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+        flex: 1,
         minHeight: '480px',
-        maxHeight: '560px',
+        height: '100%',
         overflow: 'hidden',
       }}
     >
@@ -833,7 +860,7 @@ function CapabilityMatrixColumn({
           </div>
         ) : (
           filteredItems.map((item) => {
-            const isChecked = selectedIds.includes(item.id);
+            const isChecked = isSelected(item.id);
             return (
               <label
                 key={item.id}

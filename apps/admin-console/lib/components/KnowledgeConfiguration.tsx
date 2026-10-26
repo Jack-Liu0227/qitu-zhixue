@@ -97,6 +97,7 @@ export function KnowledgeConfiguration({
   const [staged, setStaged] = useState<{ id: string; engine: Engine } | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [expandedServers, setExpandedServers] = useState<Record<string, boolean>>({});
+  const [activeToolName, setActiveToolName] = useState<string | undefined>(undefined);
   const [detailTab, setDetailTab] = useState<'tools' | 'json'>('tools');
   const [catalogs, setCatalogs] = useState<Record<string, ToolCatalog>>({});
   const [catalogPending, setCatalogPending] = useState<Record<string, boolean>>({});
@@ -195,8 +196,12 @@ export function KnowledgeConfiguration({
     if (dirty) setNextAction(() => action);
     else action();
   }
-  function select(key: string) {
-    if (key === target || !snapshot || pending) return;
+  function select(key: string, forceDetailTab?: 'tools' | 'json') {
+    if (!snapshot || pending) return;
+    if (key === target) {
+      if (forceDetailTab) setDetailTab(forceDetailTab);
+      return;
+    }
     guard(() => {
       const state = snapshotRef.current!;
       setStaged(null);
@@ -206,15 +211,19 @@ export function KnowledgeConfiguration({
       setBaseline(text);
       setError('');
       setNotice('');
-      if (key.startsWith('mcpServers/')) {
+      if (forceDetailTab) {
+        setDetailTab(forceDetailTab);
+      } else if (key.startsWith('mcpServers/')) {
         setDetailTab('tools');
+      } else {
+        setDetailTab('json');
+      }
+      if (key.startsWith('mcpServers/')) {
         const mcpId = key.split('/')[1];
         if (mcpId) setExpandedServers((prev) => ({ ...prev, [mcpId]: true }));
         if (!catalogs[key]) {
           void fetchCatalog(key);
         }
-      } else {
-        setDetailTab('json');
       }
     });
   }
@@ -417,10 +426,23 @@ export function KnowledgeConfiguration({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {Object.entries(snapshot.config.mcpServers).map(([id, server]) => {
                 const key = `mcpServers/${id}`;
-                const live = runtime?.mcpServers.find((m) => m.id === id);
-                const count = Array.isArray(server.tools) ? server.tools.length : 0;
+                const live = runtime?.mcpServers.find(
+                  (m) =>
+                    m.id === id ||
+                    m.id === server.name ||
+                    m.label === server.name ||
+                    m.id === id.replace(/^mcp-/, '') ||
+                    m.id === `mcp-${id}`
+                );
+                const count = Array.isArray(server.tools) ? server.tools.length : (live?.toolCount ?? 0);
                 const boundCount = runtime
-                  ? runtime.agents.filter((a) => a.mcpServerIds.includes(id)).length
+                  ? runtime.agents.filter(
+                      (a) =>
+                        a.mcpServerIds.includes(id) ||
+                        a.mcpServerIds.includes(String(server.name)) ||
+                        a.mcpServerIds.includes(id.replace(/^mcp-/, '')) ||
+                        a.mcpServerIds.includes(`mcp-${id}`)
+                    ).length
                   : 0;
                 const isSelected = target === key;
                 const isOnline = live?.status === 'connected';
@@ -527,8 +549,8 @@ export function KnowledgeConfiguration({
                               key={toolName}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                select(key);
-                                setDetailTab('tools');
+                                select(key, 'tools');
+                                setActiveToolName(toolName);
                               }}
                               style={{
                                 display: 'flex',
@@ -712,6 +734,7 @@ export function KnowledgeConfiguration({
                 pending={catalogPending[target]}
                 error={catalogErrors[target]}
                 fallbackTools={Array.isArray(currentObject?.tools) ? (currentObject.tools as string[]) : []}
+                activeToolName={activeToolName}
                 onRefresh={() => void fetchCatalog(target, true)}
               />
             ) : (

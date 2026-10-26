@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ToolCatalog } from '../api/knowledge-center';
 import { HierarchicalSchemaViewer } from './HierarchicalSchemaViewer';
 import styles from './KnowledgeConfiguration.module.css';
@@ -14,6 +14,7 @@ export interface ToolParametersProps {
   pending?: boolean;
   error?: string;
   fallbackTools?: string[];
+  activeToolName?: string;
   onRefresh: () => void;
 }
 
@@ -23,10 +24,24 @@ export function ToolParameters({
   pending,
   error,
   fallbackTools = [],
+  activeToolName,
   onRefresh,
 }: ToolParametersProps) {
   const [search, setSearch] = useState('');
   const [collapsedTools, setCollapsedTools] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (activeToolName) {
+      setCollapsedTools((prev) => ({
+        ...prev,
+        [activeToolName]: false,
+      }));
+      const el = document.getElementById(`tool-param-card-${activeToolName}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+  }, [activeToolName]);
 
   // 融合从运行时 Catalog 获取的工具和静态配置中的 fallback 工具
   const displayTools = useMemo(() => {
@@ -215,15 +230,17 @@ export function ToolParameters({
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {filteredTools.map((tool) => {
           const isCollapsed = !!collapsedTools[tool.name];
+          const isActive = tool.name === activeToolName;
           const schema = tool.inputSchema;
           return (
             <div
               key={tool.name}
+              id={`tool-param-card-${tool.name}`}
               style={{
-                border: '1px solid #e2e8f0',
+                border: isActive ? '1.5px solid #2563eb' : '1px solid #e2e8f0',
                 borderRadius: '8px',
-                background: '#ffffff',
-                boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
+                background: isActive ? '#f8fafc' : '#ffffff',
+                boxShadow: isActive ? '0 0 0 2px rgba(37, 99, 235, 0.15)' : '0 1px 2px rgba(0, 0, 0, 0.04)',
                 overflow: 'hidden',
                 transition: 'all 0.15s ease',
               }}

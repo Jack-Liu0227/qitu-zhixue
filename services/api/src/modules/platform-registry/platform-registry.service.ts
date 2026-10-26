@@ -1,3 +1,4 @@
+import { legacyMcpManifest } from './legacy-mcp-catalog';
 import { assertResourceNameAvailable, resourceNameDatabaseConflict } from '../../common/resource-name';
 import { assertDomainLeader } from '../../common/intake-boundary';
 import { resolveAgentModelSelection } from './agent-model-selection';
@@ -567,13 +568,40 @@ export class PlatformRegistryService {
   private async listMcpServerRows() {
     if (!this.db) return [];
     try {
-      const servers=await this.db.select().from(runtimeMcpServers);
-      if(!this.knowledgeCenter)return servers;
-      const {config}=await this.knowledgeCenter.configuration();
-      return servers.map(s=>{
-        const effective=config.mcpServers[s.id];
-        if(s.id==='ima-knowledge')return {...s,enabled:config.knowledgeEngines['ima-main']?.enabled===true};
-        return effective?{...s,enabled:effective.enabled===true,label:String(effective.name),toolIds:s.toolIds.filter(id=>(effective.tools as string[]).includes(id))}:s;
+      const servers = await this.db.select().from(runtimeMcpServers);
+      const configMcp = this.knowledgeCenter ? (await this.knowledgeCenter.configuration()).config.mcpServers : {};
+      return servers.map((s) => {
+        const effective = configMcp[s.id]
+          || configMcp[`mcp-${s.id}`]
+          || Object.values(configMcp).find((c: any) => c?.name === s.id || c?.name === s.label);
+        const manifest = legacyMcpManifest(s.id) || legacyMcpManifest(s.label);
+        const manifestTools = manifest?.tools.map((t) => t.name) ?? [];
+
+        let toolIds = s.toolIds && s.toolIds.length > 0 ? [...s.toolIds] : [];
+        if (effective && Array.isArray(effective.tools) && effective.tools.length > 0) {
+          toolIds = effective.tools as string[];
+        } else if (toolIds.length === 0 && manifestTools.length > 0) {
+          toolIds = manifestTools;
+        }
+
+        const toolCount = s.toolCount ?? toolIds.length;
+
+        if (s.id === 'ima-knowledge') {
+          return {
+            ...s,
+            enabled: (configMcp['ima-main'] as any)?.enabled === true || s.enabled,
+            toolIds,
+            toolCount: toolIds.length,
+          };
+        }
+
+        return {
+          ...s,
+          enabled: effective ? effective.enabled === true : s.enabled,
+          label: String(effective?.name || s.label || s.id),
+          toolIds,
+          toolCount,
+        };
       });
     } catch {
       return [];
@@ -588,7 +616,7 @@ export class PlatformRegistryService {
       transport: server.transport as AdminRuntimeSnapshot['mcpServers'][number]['transport'],
       status: server.status as AdminRuntimeSnapshot['mcpServers'][number]['status'],
       enabled: server.enabled,
-      toolCount: server.toolCount,
+      toolCount: server.toolCount ?? server.toolIds?.length ?? 0,
       endpointOrigin: server.endpointOrigin,
       lastCheckedAt: server.lastCheckedAt?.toISOString() ?? null,
       lastError: server.lastError,

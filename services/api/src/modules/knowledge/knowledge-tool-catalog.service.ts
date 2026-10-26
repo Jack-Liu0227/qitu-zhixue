@@ -77,15 +77,21 @@ export class KnowledgeToolCatalogService {
         };
       return this.ima(refresh);
     }
-    const entry = config.mcpServers[id];
+    const entry = config.mcpServers[id]
+      || config.mcpServers[`mcp-${id}`]
+      || Object.values(config.mcpServers).find((c: any) => c?.name === id);
     if (!entry) throw new NotFoundException('MCP 服务未注册');
     const registered = (await this.center.database().select().from(runtimeMcpServers)).find(
-      (row) => row.id === id,
+      (row) => row.id === id || row.label === id || row.id === `mcp-${id}` || row.id.replace(/^mcp-/, '') === id,
     );
-    // The current registry stores tool IDs, not invented schemas or executable client commands.
-    const names =
-      registered?.toolIds ?? (Array.isArray(entry.tools) ? (entry.tools as string[]) : []);
-    const manifest = legacyMcpManifest(id);
+    const manifest = legacyMcpManifest(id) || legacyMcpManifest(registered?.label ?? '') || legacyMcpManifest(String((entry as any).name ?? ''));
+    const manifestTools = manifest?.tools.map((t) => t.name) ?? [];
+
+    const names = (registered?.toolIds && registered.toolIds.length > 0)
+      ? registered.toolIds
+      : (Array.isArray(entry.tools) && entry.tools.length > 0
+          ? (entry.tools as string[])
+          : manifestTools);
     if (manifest)
       return {
         tools: names.map(

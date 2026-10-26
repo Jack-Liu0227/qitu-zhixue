@@ -1,4 +1,5 @@
 import { engineDefinition } from './knowledge-engine.catalog';
+import { legacyMcpManifest } from '../platform-registry/legacy-mcp-catalog';
 import {
   BadRequestException,
   ConflictException,
@@ -202,9 +203,12 @@ export class KnowledgeCenterService {
     const models = await this.database().select().from(modelModels);
     const servers = await this.database().select().from(runtimeMcpServers);
     for (const [id, server] of Object.entries(config.mcpServers)) {
-      const registered = servers.find((s) => s.id === id);
+      const registered = servers.find((s) => s.id === id || s.label === id || s.id === (server as any).name || s.id === `mcp-${id}` || s.id.replace(/^mcp-/, '') === id);
+      const manifest = legacyMcpManifest(id) || legacyMcpManifest((server as any).name) || legacyMcpManifest(registered?.label ?? '');
+      const manifestTools = manifest?.tools.map((t) => t.name) ?? [];
+      const allowedPool = new Set([...(registered?.toolIds ?? []), ...manifestTools]);
       // Tool catalog comes from the registered bridge, never a model supplied tool name.
-      if (!registered || (server.tools as string[]).some((t) => !registered.toolIds.includes(t)))
+      if (!registered || (allowedPool.size > 0 && (server.tools as string[]).some((t) => !allowedPool.has(t))))
         throw new BadRequestException('MCP 工具不在服务端已注册清单内');
     }
     for (const engine of Object.values(config.knowledgeEngines)) {
@@ -281,10 +285,18 @@ export class KnowledgeCenterService {
       await tx.execute(
         sql`INSERT INTO platform_configuration_revisions(revision,parent_revision,config,updated_by,idempotency_key,request_hash) VALUES(${revision},${current.revision},${JSON.stringify(validated.config)}::jsonb,${actor.id},${key},${hash})`,
       );
-      for (const [id, server] of Object.entries(validated.config.mcpServers))
+      for (const [id, server] of Object.entries(validated.config.mcpServers)) {
+        const toolList = Array.isArray(server.tools) ? (server.tools as string[]) : [];
         await tx.execute(
-          sql`UPDATE runtime_mcp_servers SET label=${server.name as string},enabled=${server.enabled as boolean},updated_at=now() WHERE id=${id}`,
+          sql`UPDATE runtime_mcp_servers 
+              SET label=${server.name as string},
+                  enabled=${server.enabled as boolean},
+                  tool_ids=${JSON.stringify(toolList)}::jsonb,
+                  tool_count=${toolList.length},
+                  updated_at=now() 
+              WHERE id=${id} OR id=${server.name as string} OR label=${server.name as string}`,
         );
+      }
       await this.audit.write(
         {
           actorId: actor.id,
