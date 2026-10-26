@@ -1,3 +1,5 @@
+> 状态：原日期的方案或验证记录；2026-10-26 整理仅补充分类与引用，不新增功能完成或生产验收结论。
+
 # 教学编排与学生对话界面
 
 状态：待实施设计。保留 Admin 模板入口、学生 AI 搭档／灵感空间导航，以及右侧项目进度／团队智能体两个 Tab。
@@ -77,10 +79,10 @@
 针对目前学生端出现的聊天流底部冗余卡片与交互粗糙问题：
 
 1. **聊天流纯净化**：
-   - 彻底从 [ChatThread.tsx](file:///z:/Study/qitu-zhixue/apps/student-center/features/tutor/components/ChatThread.tsx) 消息列表底部移除 `{learningActivity}`。
+   - 彻底从 [ChatThread.tsx](../../../../apps/student-center/features/tutor/components/ChatThread.tsx) 消息列表底部移除 `{learningActivity}`。
    - 对话主视口只保留对话气泡、动态板书/实验仿真、输入框及底部灵感胶囊，消除“对话结束后粘滞在末尾的大灰块/粉红块”。
 2. **课时进度与证据提交通道移入抽屉/上下文侧栏**：
-   - 课时任务、证据提交与作品申请统一在右侧 `qitu-tutor-context-sidebar`（已挂载的 [CurrentLessonCard.tsx](file:///z:/Study/qitu-zhixue/apps/student-center/features/tutor/components/CurrentLessonCard.tsx)）中操作，移动端折叠进侧边抽屉。
+   - 课时任务、证据提交与作品申请统一在右侧 `qitu-tutor-context-sidebar`（已挂载的 [CurrentLessonCard.tsx](../../../../apps/student-center/features/tutor/components/CurrentLessonCard.tsx)）中操作，移动端折叠进侧边抽屉。
 3. **修正红色考核区域**：
    - 当前 `LessonAssessmentCard` 对所有当前课时挂载，且复用错误提示样式；接口在非理论考核课返回“本课通过学习产物或探究证据完成”。这是任务适用性，不是错误。
    - 由服务端投影本活动可用动作及原因：只有当前课时进入“理论考核（check）”阶段才激活考核卡；观察活动显示观察表，设计活动显示假设／方案提交，报告与反思显示相应作品入口。前端据此渲染，接口再次校验，不能仅凭课号推断。真正的权限、范围变化和网络失败才使用错误样式。

@@ -1,0 +1,915 @@
+{
+  "schemaVersion": 1,
+  "checkedOn": "2026-10-20",
+  "codeBaseline": "0b07929d06f88a947090e4cd080698bb43012776",
+  "method": "Direct HTTPS and GitHub API tree/pinned raw-file verification; Grok used for discovery only and its zero-source summaries excluded as evidence; no scripts executed, no upstream packages installed.",
+  "records": [
+    {
+      "id": "skills-spec",
+      "url": "https://agentskills.io/specification",
+      "resolvedUrl": "https://agentskills.io/specification",
+      "status": 200,
+      "bytes": 446491,
+      "sha256": "295101c9876ba5e573e031a9c0c8cdcddc0556ee962561817f7eb94f766b2d42",
+      "fetchedAt": "2026-10-19T07:40:22.584499+00:00"
+    },
+    {
+      "id": "skills-overview",
+      "url": "https://agentskills.io/what-are-skills",
+      "resolvedUrl": "https://agentskills.io/home",
+      "status": 200,
+      "bytes": 297591,
+      "sha256": "e39cb81e0d953c340a4497b12b7d96800d6432724eca1cda457b58fd4d3b58ea",
+      "fetchedAt": "2026-10-19T07:40:25.921765+00:00"
+    },
+    {
+      "id": "anthropic-repo",
+      "url": "https://api.github.com/repos/anthropics/skills",
+      "resolvedUrl": "https://api.github.com/repos/anthropics/skills",
+      "status": 200,
+      "bytes": 6447,
+      "sha256": "642ebf79ee2fde96ea4464e0d425fbef45ece13b93be2ee23d6e567ca5369237",
+      "fetchedAt": "2026-10-19T07:40:21.428698+00:00"
+    },
+    {
+      "id": "openai-repo",
+      "url": "https://api.github.com/repos/openai/skills",
+      "resolvedUrl": "https://api.github.com/repos/openai/skills",
+      "status": 200,
+      "bytes": 5821,
+      "sha256": "e4eb54bcd285561e740c70f079c32eafa352bbf89b9623eed03196ef8ee3e322",
+      "fetchedAt": "2026-10-19T07:40:21.611599+00:00"
+    },
+    {
+      "id": "scientific-repo",
+      "url": "https://api.github.com/repos/K-Dense-AI/claude-scientific-skills",
+      "resolvedUrl": "https://api.github.com/repositories/1079456184",
+      "status": 200,
+      "bytes": 7548,
+      "sha256": "0054238d9e9c71d9390635c5d250392e4201f7467117135438758daa3e735ec3",
+      "fetchedAt": "2026-10-19T07:40:22.728086+00:00"
+    },
+    {
+      "id": "mcp-security",
+      "url": "https://modelcontextprotocol.io/specification/2025-11-25/basic/security_best_practices",
+      "resolvedUrl": "https://modelcontextprotocol.io/docs/2025-11-25/tutorials/security/security_best_practices",
+      "status": 200,
+      "bytes": 534516,
+      "sha256": "28b30f2d0119794e0cc339e49c0a0c55162b59ecdc988d41b30f177d42e43993",
+      "fetchedAt": "2026-10-19T07:40:25.726598+00:00"
+    },
+    {
+      "id": "mcp-auth",
+      "url": "https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization",
+      "resolvedUrl": "https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization",
+      "status": 200,
+      "bytes": 619974,
+      "sha256": "41b4e8b1bee0be204d8831cafc0bfc12f7fd4b601901254fbf71038163410c1a",
+      "fetchedAt": "2026-10-19T07:40:22.696759+00:00"
+    },
+    {
+      "id": "mcp-tools",
+      "url": "https://modelcontextprotocol.io/specification/2025-11-25/server/tools",
+      "resolvedUrl": "https://modelcontextprotocol.io/specification/2025-11-25/server/tools",
+      "status": 200,
+      "bytes": 691624,
+      "sha256": "39c48d13d2aab1bcfddc88bc4ad4b665b6f9847bfc8eea254b5a1b579167df6f",
+      "fetchedAt": "2026-10-19T07:40:22.760667+00:00"
+    },
+    {
+      "id": "pblworks",
+      "url": "https://www.pblworks.org/what-is-pbl/gold-standard-project-design",
+      "resolvedUrl": "https://www.pblworks.org/gold-standard/pbl-project-design",
+      "status": 200,
+      "bytes": 113411,
+      "sha256": "6eefbaaf86c317b611d23ab537e32acf39b7aee4262164fd525bcce978bc779d",
+      "fetchedAt": "2026-10-19T07:40:24.241996+00:00"
+    },
+    {
+      "id": "openalex",
+      "url": "https://docs.openalex.org/",
+      "resolvedUrl": "https://help.openalex.org/",
+      "status": 200,
+      "bytes": 20753,
+      "sha256": "4da0d6bd341a2db9ce877ea6fcd78d15908150f09d83b02fa43c2e8845c37077",
+      "fetchedAt": "2026-10-19T07:40:25.342628+00:00"
+    },
+    {
+      "id": "crossref",
+      "url": "https://www.crossref.org/documentation/retrieve-metadata/rest-api/",
+      "resolvedUrl": "https://www.crossref.org/documentation/retrieve-metadata/rest-api/",
+      "status": 200,
+      "bytes": 70799,
+      "sha256": "7bccbaff86c4f0840f0b8c9620eac091c9cede4d08abf2963d9ee515371b0b82",
+      "fetchedAt": "2026-10-19T07:40:24.631102+00:00"
+    },
+    {
+      "id": "openstax",
+      "url": "https://openstax.org/books/physics/pages/17-1-understanding-diffraction-and-interference",
+      "resolvedUrl": "https://openstax.org/books/physics/pages/17-1-understanding-diffraction-and-interference",
+      "status": 200,
+      "bytes": 399131,
+      "sha256": "be5779f6b9d270ed48e36b0816650c047cb7ea334ff800251a52461d07c879bb",
+      "fetchedAt": "2026-10-19T07:40:25.491265+00:00"
+    },
+    {
+      "id": "openai-skills-readme",
+      "url": "https://raw.githubusercontent.com/openai/skills/49f948faa9258a0c61caceaf225e179651397431/README.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/openai/skills/49f948faa9258a0c61caceaf225e179651397431/README.md",
+      "status": 200,
+      "bytes": 1840,
+      "sha256": "0f6a07580f3c627253e15a58dd0439e135049ec38eb16cf3587f7e50abc6f590",
+      "fetchedAt": "2026-10-19T07:46:19.872481+00:00"
+    },
+    {
+      "id": "skills--skills--skill-creator--SKILL.md",
+      "url": "https://raw.githubusercontent.com/anthropics/skills/dbd4588f9e1033efb41dad4bef2f7947c8993d44/skills/skill-creator/SKILL.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/anthropics/skills/dbd4588f9e1033efb41dad4bef2f7947c8993d44/skills/skill-creator/SKILL.md",
+      "status": 200,
+      "bytes": 33168,
+      "sha256": "dcd4803e61e913e6fc27294184cd3a71f09f5e924ff20c8a9a20173e7b3c2bcf",
+      "fetchedAt": "2026-10-19T07:41:47.912464+00:00"
+    },
+    {
+      "id": "skills--skills--mcp-builder--SKILL.md",
+      "url": "https://raw.githubusercontent.com/anthropics/skills/dbd4588f9e1033efb41dad4bef2f7947c8993d44/skills/mcp-builder/SKILL.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/anthropics/skills/dbd4588f9e1033efb41dad4bef2f7947c8993d44/skills/mcp-builder/SKILL.md",
+      "status": 200,
+      "bytes": 9092,
+      "sha256": "0f4592dcb53cf2b5d6b7febee6b4152018b565551a1c29e3c612f57b218ab295",
+      "fetchedAt": "2026-10-19T07:41:47.124202+00:00"
+    },
+    {
+      "id": "skills--skills--pdf--SKILL.md",
+      "url": "https://raw.githubusercontent.com/anthropics/skills/dbd4588f9e1033efb41dad4bef2f7947c8993d44/skills/pdf/SKILL.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/anthropics/skills/dbd4588f9e1033efb41dad4bef2f7947c8993d44/skills/pdf/SKILL.md",
+      "status": 200,
+      "bytes": 8072,
+      "sha256": "9f78b8359fbd4943ad260a7a1e436e5a96503406d6c34e99f69223d647d85b9c",
+      "fetchedAt": "2026-10-19T07:41:47.267027+00:00"
+    },
+    {
+      "id": "skills--skills--pdf--LICENSE.txt",
+      "url": "https://raw.githubusercontent.com/anthropics/skills/dbd4588f9e1033efb41dad4bef2f7947c8993d44/skills/pdf/LICENSE.txt",
+      "resolvedUrl": "https://raw.githubusercontent.com/anthropics/skills/dbd4588f9e1033efb41dad4bef2f7947c8993d44/skills/pdf/LICENSE.txt",
+      "status": 200,
+      "bytes": 1467,
+      "sha256": "79f6d8f5b427252fa3b1c11ecdbdb6bf610b944f7530b4de78f770f38741cfaa",
+      "fetchedAt": "2026-10-19T07:41:47.156847+00:00"
+    },
+    {
+      "id": "skills--skills--pptx--LICENSE.txt",
+      "url": "https://raw.githubusercontent.com/anthropics/skills/dbd4588f9e1033efb41dad4bef2f7947c8993d44/skills/pptx/LICENSE.txt",
+      "resolvedUrl": "https://raw.githubusercontent.com/anthropics/skills/dbd4588f9e1033efb41dad4bef2f7947c8993d44/skills/pptx/LICENSE.txt",
+      "status": 200,
+      "bytes": 1467,
+      "sha256": "79f6d8f5b427252fa3b1c11ecdbdb6bf610b944f7530b4de78f770f38741cfaa",
+      "fetchedAt": "2026-10-19T07:41:47.273647+00:00"
+    },
+    {
+      "id": "skills--skills--skill-creator--LICENSE.txt",
+      "url": "https://raw.githubusercontent.com/anthropics/skills/dbd4588f9e1033efb41dad4bef2f7947c8993d44/skills/skill-creator/LICENSE.txt",
+      "resolvedUrl": "https://raw.githubusercontent.com/anthropics/skills/dbd4588f9e1033efb41dad4bef2f7947c8993d44/skills/skill-creator/LICENSE.txt",
+      "status": 200,
+      "bytes": 11345,
+      "sha256": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362",
+      "fetchedAt": "2026-10-19T07:41:47.157009+00:00"
+    },
+    {
+      "id": "skills--skills--.curated--jupyter-notebook--SKILL.md",
+      "url": "https://raw.githubusercontent.com/openai/skills/49f948faa9258a0c61caceaf225e179651397431/skills/.curated/jupyter-notebook/SKILL.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/openai/skills/49f948faa9258a0c61caceaf225e179651397431/skills/.curated/jupyter-notebook/SKILL.md",
+      "status": 200,
+      "bytes": 4154,
+      "sha256": "62f102e8554b25716dccef0ffab4572d4e3eaf05ccc76562d33a065bc9c521fb",
+      "fetchedAt": "2026-10-19T07:41:47.077396+00:00"
+    },
+    {
+      "id": "skills--skills--.curated--pdf--SKILL.md",
+      "url": "https://raw.githubusercontent.com/openai/skills/49f948faa9258a0c61caceaf225e179651397431/skills/.curated/pdf/SKILL.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/openai/skills/49f948faa9258a0c61caceaf225e179651397431/skills/.curated/pdf/SKILL.md",
+      "status": 200,
+      "bytes": 2517,
+      "sha256": "d108cf2b36355ab37eb5962933f4d09785ec002f3105c506129320209306b9d2",
+      "fetchedAt": "2026-10-19T07:41:48.047547+00:00"
+    },
+    {
+      "id": "skills--skills--.curated--jupyter-notebook--LICENSE.txt",
+      "url": "https://raw.githubusercontent.com/openai/skills/49f948faa9258a0c61caceaf225e179651397431/skills/.curated/jupyter-notebook/LICENSE.txt",
+      "resolvedUrl": "https://raw.githubusercontent.com/openai/skills/49f948faa9258a0c61caceaf225e179651397431/skills/.curated/jupyter-notebook/LICENSE.txt",
+      "status": 200,
+      "bytes": 10776,
+      "sha256": "4dd13869245e356246a5b770723247bbb80a8f07a181d1d3d873a1734297cdb9",
+      "fetchedAt": "2026-10-19T07:41:48.335129+00:00"
+    },
+    {
+      "id": "scientific-agent-skills--README.md",
+      "url": "https://raw.githubusercontent.com/K-Dense-AI/scientific-agent-skills/a1043ef544e3a100c28e70a736b6cf32554d0677/README.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/K-Dense-AI/scientific-agent-skills/a1043ef544e3a100c28e70a736b6cf32554d0677/README.md",
+      "status": 200,
+      "bytes": 84156,
+      "sha256": "2d4a9f2268c6ed70fc0d0d769921963da6b82966bd71c4b0225e35b0779b2447",
+      "fetchedAt": "2026-10-19T07:41:48.581843+00:00"
+    },
+    {
+      "id": "scientific-agent-skills--LICENSE.md",
+      "url": "https://raw.githubusercontent.com/K-Dense-AI/scientific-agent-skills/a1043ef544e3a100c28e70a736b6cf32554d0677/LICENSE.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/K-Dense-AI/scientific-agent-skills/a1043ef544e3a100c28e70a736b6cf32554d0677/LICENSE.md",
+      "status": 200,
+      "bytes": 1068,
+      "sha256": "09b02a3c9df3053c55531d503357a9c7cde275970e6c3ceaa1ddf5f0e90b40c1",
+      "fetchedAt": "2026-10-19T07:41:48.335281+00:00"
+    },
+    {
+      "id": "scientific-agent-skills--skills--scientific-brainstorming--SKILL.md",
+      "url": "https://raw.githubusercontent.com/K-Dense-AI/scientific-agent-skills/a1043ef544e3a100c28e70a736b6cf32554d0677/skills/scientific-brainstorming/SKILL.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/K-Dense-AI/scientific-agent-skills/a1043ef544e3a100c28e70a736b6cf32554d0677/skills/scientific-brainstorming/SKILL.md",
+      "status": 200,
+      "bytes": 14658,
+      "sha256": "06f73b71556356a7f488c369b9445d7943543a3f14d159b2168fd3f621d6f8a9",
+      "fetchedAt": "2026-10-19T07:41:48.336609+00:00"
+    },
+    {
+      "id": "scientific-agent-skills--skills--hypothesis-generation--SKILL.md",
+      "url": "https://raw.githubusercontent.com/K-Dense-AI/scientific-agent-skills/a1043ef544e3a100c28e70a736b6cf32554d0677/skills/hypothesis-generation/SKILL.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/K-Dense-AI/scientific-agent-skills/a1043ef544e3a100c28e70a736b6cf32554d0677/skills/hypothesis-generation/SKILL.md",
+      "status": 200,
+      "bytes": 16622,
+      "sha256": "5bccec0437d96d61821ec2095e7e32b61e8634cd8c02f11f42da953121e92719",
+      "fetchedAt": "2026-10-19T07:41:48.392495+00:00"
+    },
+    {
+      "id": "scientific-agent-skills--skills--experimental-design--SKILL.md",
+      "url": "https://raw.githubusercontent.com/K-Dense-AI/scientific-agent-skills/a1043ef544e3a100c28e70a736b6cf32554d0677/skills/experimental-design/SKILL.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/K-Dense-AI/scientific-agent-skills/a1043ef544e3a100c28e70a736b6cf32554d0677/skills/experimental-design/SKILL.md",
+      "status": 200,
+      "bytes": 16328,
+      "sha256": "db2de0f3d29b7729776a91e923c9c83801298f5ad8e88fe44570045fbefcc248",
+      "fetchedAt": "2026-10-19T07:41:48.385332+00:00"
+    },
+    {
+      "id": "scientific-agent-skills--skills--scientific-critical-thinking--SKILL.md",
+      "url": "https://raw.githubusercontent.com/K-Dense-AI/scientific-agent-skills/a1043ef544e3a100c28e70a736b6cf32554d0677/skills/scientific-critical-thinking/SKILL.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/K-Dense-AI/scientific-agent-skills/a1043ef544e3a100c28e70a736b6cf32554d0677/skills/scientific-critical-thinking/SKILL.md",
+      "status": 200,
+      "bytes": 13146,
+      "sha256": "563af70571b7dcd6a96bf2e303bedfdcba623b4e9f082d58f04aacbc961fdae4",
+      "fetchedAt": "2026-10-19T07:41:48.966126+00:00"
+    },
+    {
+      "id": "scientific-agent-skills--skills--statistical-analysis--SKILL.md",
+      "url": "https://raw.githubusercontent.com/K-Dense-AI/scientific-agent-skills/a1043ef544e3a100c28e70a736b6cf32554d0677/skills/statistical-analysis/SKILL.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/K-Dense-AI/scientific-agent-skills/a1043ef544e3a100c28e70a736b6cf32554d0677/skills/statistical-analysis/SKILL.md",
+      "status": 200,
+      "bytes": 23585,
+      "sha256": "e112848726b3713267cac65e4e2c15491a0a26ee1ed628db01195f7e43f97997",
+      "fetchedAt": "2026-10-19T07:41:49.081549+00:00"
+    },
+    {
+      "id": "scientific-agent-skills--skills--uncertainty-and-units--SKILL.md",
+      "url": "https://raw.githubusercontent.com/K-Dense-AI/scientific-agent-skills/a1043ef544e3a100c28e70a736b6cf32554d0677/skills/uncertainty-and-units/SKILL.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/K-Dense-AI/scientific-agent-skills/a1043ef544e3a100c28e70a736b6cf32554d0677/skills/uncertainty-and-units/SKILL.md",
+      "status": 200,
+      "bytes": 21731,
+      "sha256": "caaafa079a4eaac6012717bcf705dec0417b5434f5dbd1af934a3a36ad375722",
+      "fetchedAt": "2026-10-19T07:41:49.317754+00:00"
+    },
+    {
+      "id": "scientific-agent-skills--skills--scientific-visualization--SKILL.md",
+      "url": "https://raw.githubusercontent.com/K-Dense-AI/scientific-agent-skills/a1043ef544e3a100c28e70a736b6cf32554d0677/skills/scientific-visualization/SKILL.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/K-Dense-AI/scientific-agent-skills/a1043ef544e3a100c28e70a736b6cf32554d0677/skills/scientific-visualization/SKILL.md",
+      "status": 200,
+      "bytes": 15478,
+      "sha256": "8cbde7cdc10d959cf72cfd08335cc8ce996247eee6ebdb900eb64a4cb0ff34a3",
+      "fetchedAt": "2026-10-19T07:41:49.137395+00:00"
+    },
+    {
+      "id": "scientific-agent-skills--skills--citation-management--SKILL.md",
+      "url": "https://raw.githubusercontent.com/K-Dense-AI/scientific-agent-skills/a1043ef544e3a100c28e70a736b6cf32554d0677/skills/citation-management/SKILL.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/K-Dense-AI/scientific-agent-skills/a1043ef544e3a100c28e70a736b6cf32554d0677/skills/citation-management/SKILL.md",
+      "status": 200,
+      "bytes": 16630,
+      "sha256": "dc79fe1e8438dcf598040615d5323360c6a7ed0b868fc3ffc82512c871a1e3ff",
+      "fetchedAt": "2026-10-19T07:41:49.327016+00:00"
+    },
+    {
+      "id": "scientific-agent-skills--skills--sympy--SKILL.md",
+      "url": "https://raw.githubusercontent.com/K-Dense-AI/scientific-agent-skills/a1043ef544e3a100c28e70a736b6cf32554d0677/skills/sympy/SKILL.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/K-Dense-AI/scientific-agent-skills/a1043ef544e3a100c28e70a736b6cf32554d0677/skills/sympy/SKILL.md",
+      "status": 200,
+      "bytes": 13293,
+      "sha256": "bb97087bdddccc845401737ddc7f7a8da1c14ced5e8d40da01271c991ac46e23",
+      "fetchedAt": "2026-10-19T07:41:49.352415+00:00"
+    },
+    {
+      "id": "scientific-agent-skills--skills--scientific-writing--SKILL.md",
+      "url": "https://raw.githubusercontent.com/K-Dense-AI/scientific-agent-skills/a1043ef544e3a100c28e70a736b6cf32554d0677/skills/scientific-writing/SKILL.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/K-Dense-AI/scientific-agent-skills/a1043ef544e3a100c28e70a736b6cf32554d0677/skills/scientific-writing/SKILL.md",
+      "status": 200,
+      "bytes": 14897,
+      "sha256": "511a2096bebecd8cf0f8212b9d262d37154ae1ba566eb385d93ac968682edbd1",
+      "fetchedAt": "2026-10-19T07:41:49.322298+00:00"
+    },
+    {
+      "id": "registry--docs--modelcontextprotocol-io--faq.mdx",
+      "url": "https://raw.githubusercontent.com/modelcontextprotocol/registry/11b7b0e274d518b6f449c5ee3518a6151d9848b9/docs/modelcontextprotocol-io/faq.mdx",
+      "resolvedUrl": "https://raw.githubusercontent.com/modelcontextprotocol/registry/11b7b0e274d518b6f449c5ee3518a6151d9848b9/docs/modelcontextprotocol-io/faq.mdx",
+      "status": 200,
+      "bytes": 2904,
+      "sha256": "405c38692ad5dc971baef29143d867961f1e00dc7515765014ce699b888b1188",
+      "fetchedAt": "2026-10-19T07:41:49.544957+00:00"
+    },
+    {
+      "id": "registry--README.md",
+      "url": "https://raw.githubusercontent.com/modelcontextprotocol/registry/11b7b0e274d518b6f449c5ee3518a6151d9848b9/README.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/modelcontextprotocol/registry/11b7b0e274d518b6f449c5ee3518a6151d9848b9/README.md",
+      "status": 200,
+      "bytes": 8490,
+      "sha256": "b3c9172e5aca1118ab371af0cd48eccfe7f621019561e90d5e11466c57490701",
+      "fetchedAt": "2026-10-19T07:41:50.038460+00:00"
+    },
+    {
+      "id": "deeptutor-quiz",
+      "url": "https://raw.githubusercontent.com/HKUDS/DeepTutor/a053fecf6eeca51ded680de8b8fc41ef63857b11/deeptutor/learning/question_card.py",
+      "resolvedUrl": "https://raw.githubusercontent.com/HKUDS/DeepTutor/a053fecf6eeca51ded680de8b8fc41ef63857b11/deeptutor/learning/question_card.py",
+      "status": 200,
+      "bytes": 4701,
+      "sha256": "18c756f708f35200dbc66bf8e5fbaf74f6e662b62987a6e5abfef4cc2c0cc7f2",
+      "fetchedAt": "2026-10-19T07:41:50.127293+00:00"
+    },
+    {
+      "id": "anthropics-skills-readme",
+      "url": "https://raw.githubusercontent.com/anthropics/skills/dbd4588f9e1033efb41dad4bef2f7947c8993d44/README.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/anthropics/skills/dbd4588f9e1033efb41dad4bef2f7947c8993d44/README.md",
+      "status": 200,
+      "bytes": 5552,
+      "sha256": "2fb9c4cc026366ea6e21c60cb23c908a4d27c62071819cc06beffaac102d0694",
+      "fetchedAt": "2026-10-19T07:46:15.776413+00:00"
+    },
+    {
+      "id": "anthropics-mcp-builder-license",
+      "url": "https://raw.githubusercontent.com/anthropics/skills/dbd4588f9e1033efb41dad4bef2f7947c8993d44/skills/mcp-builder/LICENSE.txt",
+      "resolvedUrl": "https://raw.githubusercontent.com/anthropics/skills/dbd4588f9e1033efb41dad4bef2f7947c8993d44/skills/mcp-builder/LICENSE.txt",
+      "status": 200,
+      "bytes": 11345,
+      "sha256": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362",
+      "fetchedAt": "2026-10-19T07:46:20.952673+00:00"
+    },
+    {
+      "id": "openai-pdf-license",
+      "url": "https://raw.githubusercontent.com/openai/skills/49f948faa9258a0c61caceaf225e179651397431/skills/.curated/pdf/LICENSE.txt",
+      "resolvedUrl": "https://raw.githubusercontent.com/openai/skills/49f948faa9258a0c61caceaf225e179651397431/skills/.curated/pdf/LICENSE.txt",
+      "status": 200,
+      "bytes": 10776,
+      "sha256": "4dd13869245e356246a5b770723247bbb80a8f07a181d1d3d873a1734297cdb9",
+      "fetchedAt": "2026-10-19T07:46:21.818202+00:00"
+    },
+    {
+      "id": "openmaic-planner",
+      "url": "https://raw.githubusercontent.com/THU-MAIC/OpenMAIC/ecb940c136cc5b4ea56dc81b2505e64eff1dea29/lib/pbl/v2/agents/planner.ts",
+      "resolvedUrl": "https://raw.githubusercontent.com/THU-MAIC/OpenMAIC/ecb940c136cc5b4ea56dc81b2505e64eff1dea29/lib/pbl/v2/agents/planner.ts",
+      "status": 200,
+      "bytes": 34892,
+      "sha256": "2be35fca76ded4cd8643026efff0eeacc63b3a0a67170cbb303a8ba27c894469",
+      "fetchedAt": "2026-10-19T07:46:22.917943+00:00"
+    },
+    {
+      "id": "openmaic-license",
+      "url": "https://raw.githubusercontent.com/THU-MAIC/OpenMAIC/ecb940c136cc5b4ea56dc81b2505e64eff1dea29/LICENSE",
+      "resolvedUrl": "https://raw.githubusercontent.com/THU-MAIC/OpenMAIC/ecb940c136cc5b4ea56dc81b2505e64eff1dea29/LICENSE",
+      "status": 200,
+      "bytes": 1065,
+      "sha256": "ba252563743227138231604c9138dd400faca5a10c3cf206b466e5466c565a19",
+      "fetchedAt": "2026-10-19T07:46:23.743787+00:00"
+    },
+    {
+      "id": "deeptutor-license",
+      "url": "https://raw.githubusercontent.com/HKUDS/DeepTutor/a053fecf6eeca51ded680de8b8fc41ef63857b11/LICENSE",
+      "resolvedUrl": "https://raw.githubusercontent.com/HKUDS/DeepTutor/a053fecf6eeca51ded680de8b8fc41ef63857b11/LICENSE",
+      "status": 200,
+      "bytes": 11408,
+      "sha256": "cd2f54e1e5066644023203dcbd956776a9f4ef6eb8b6225afe1ffa2d380fede4",
+      "fetchedAt": "2026-10-19T07:46:24.598175+00:00"
+    },
+    {
+      "id": "openstax-single-slit",
+      "url": "https://openstax.org/books/university-physics-volume-3/pages/4-1-single-slit-diffraction",
+      "resolvedUrl": "https://openstax.org/books/university-physics-volume-3/pages/4-1-single-slit-diffraction",
+      "status": 200,
+      "bytes": 298266,
+      "sha256": "499b45f73b447cd3ec24d9b25e0383f869af74d9dc37add867930f700700bbd3",
+      "fetchedAt": "2026-10-19T07:46:26.067194+00:00"
+    },
+    {
+      "id": "openai-plugins--README.md",
+      "url": "https://raw.githubusercontent.com/openai/plugins/0722921d5542fc593105c27bd52630babd8b8c2a/README.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/openai/plugins/0722921d5542fc593105c27bd52630babd8b8c2a/README.md",
+      "status": 200,
+      "bytes": 1283,
+      "sha256": "b3681ebd15797bdee1d638c6520c7ba10a36e676760ea5c251530f53f843c852",
+      "fetchedAt": "2026-10-19T07:46:47.151235+00:00"
+    },
+    {
+      "id": "openai-plugins--plugins--data-analytics--skills--jupyter-notebooks--SKILL.md",
+      "url": "https://raw.githubusercontent.com/openai/plugins/0722921d5542fc593105c27bd52630babd8b8c2a/plugins/data-analytics/skills/jupyter-notebooks/SKILL.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/openai/plugins/0722921d5542fc593105c27bd52630babd8b8c2a/plugins/data-analytics/skills/jupyter-notebooks/SKILL.md",
+      "status": 200,
+      "bytes": 7642,
+      "sha256": "8303d33041a5d5ccbfbb5addbb60bd8b0559027f01a586f98b7728e58c4127ed",
+      "fetchedAt": "2026-10-19T07:46:58.865096+00:00"
+    },
+    {
+      "id": "learning-commons-org-agent-skills--skills-k12-check-for-understanding-SKILL-md",
+      "url": "https://raw.githubusercontent.com/learning-commons-org/agent-skills/5894a3c9dcda8d4499bb73fad85b2b11a2b78344/skills/k12-check-for-understanding/SKILL.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/learning-commons-org/agent-skills/5894a3c9dcda8d4499bb73fad85b2b11a2b78344/skills/k12-check-for-understanding/SKILL.md",
+      "status": 200,
+      "bytes": 8286,
+      "sha256": "343a07f69c2b1f5007ad37d19831f27f9dffbbc08872348102785137005c44d3",
+      "fetchedAt": "2026-10-19T17:20:29.873+00:00"
+    },
+    {
+      "id": "learning-commons-org-agent-skills--LICENSE",
+      "url": "https://raw.githubusercontent.com/learning-commons-org/agent-skills/5894a3c9dcda8d4499bb73fad85b2b11a2b78344/LICENSE",
+      "resolvedUrl": "https://raw.githubusercontent.com/learning-commons-org/agent-skills/5894a3c9dcda8d4499bb73fad85b2b11a2b78344/LICENSE",
+      "status": 200,
+      "bytes": 10173,
+      "sha256": "c4a2cd14eb3abe621891b235bbe2cfd65f1f71afcfcd5c9b691bb016387dfe88",
+      "fetchedAt": "2026-10-19T17:20:30.762+00:00"
+    },
+    {
+      "id": "savvides-idstack--skills-assessment-design-SKILL-md",
+      "url": "https://raw.githubusercontent.com/savvides/idstack/1767027166aeeae1c64c21925b01a9c848abcf99/skills/assessment-design/SKILL.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/savvides/idstack/1767027166aeeae1c64c21925b01a9c848abcf99/skills/assessment-design/SKILL.md",
+      "status": 200,
+      "bytes": 76326,
+      "sha256": "a60b9aff47b24dd8d54cd4dda19d5ed97f10a5ac63ca0a63f6f7e5c796e0ff7d",
+      "fetchedAt": "2026-10-19T17:20:30.981+00:00"
+    },
+    {
+      "id": "savvides-idstack--skills-accessibility-review-SKILL-md",
+      "url": "https://raw.githubusercontent.com/savvides/idstack/1767027166aeeae1c64c21925b01a9c848abcf99/skills/accessibility-review/SKILL.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/savvides/idstack/1767027166aeeae1c64c21925b01a9c848abcf99/skills/accessibility-review/SKILL.md",
+      "status": 200,
+      "bytes": 67384,
+      "sha256": "e63aea6739c659c87a2a8a87695f786ed91641fb8f6f21df630cd29c641f3773",
+      "fetchedAt": "2026-10-19T17:20:31.461+00:00"
+    },
+    {
+      "id": "savvides-idstack--LICENSE",
+      "url": "https://raw.githubusercontent.com/savvides/idstack/1767027166aeeae1c64c21925b01a9c848abcf99/LICENSE",
+      "resolvedUrl": "https://raw.githubusercontent.com/savvides/idstack/1767027166aeeae1c64c21925b01a9c848abcf99/LICENSE",
+      "status": 200,
+      "bytes": 1077,
+      "sha256": "eb97ca0d7841016928dd0f81bec640814c292d1d9afca0995abd964524b87e58",
+      "fetchedAt": "2026-10-19T17:20:31.736+00:00"
+    },
+    {
+      "id": "bstellato-ai-teaching-skills--ai-socratic-tutor-SKILL-md",
+      "url": "https://raw.githubusercontent.com/bstellato/ai-teaching-skills/6d3f85726e7b0fedacc8a078e174161293777044/ai-socratic-tutor/SKILL.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/bstellato/ai-teaching-skills/6d3f85726e7b0fedacc8a078e174161293777044/ai-socratic-tutor/SKILL.md",
+      "status": 200,
+      "bytes": 4020,
+      "sha256": "90e62cff194687baea2392304a84a62bd835b4627d19393806b3053ecbb29d07",
+      "fetchedAt": "2026-10-19T17:20:31.931+00:00"
+    },
+    {
+      "id": "bstellato-ai-teaching-skills--LICENSE",
+      "url": "https://raw.githubusercontent.com/bstellato/ai-teaching-skills/6d3f85726e7b0fedacc8a078e174161293777044/LICENSE",
+      "resolvedUrl": "https://raw.githubusercontent.com/bstellato/ai-teaching-skills/6d3f85726e7b0fedacc8a078e174161293777044/LICENSE",
+      "status": 200,
+      "bytes": 1076,
+      "sha256": "b6f81aea546a126222fcc866caf8bb11c28938a0faacafe523987fce2c9cb88b",
+      "fetchedAt": "2026-10-19T17:20:32.120+00:00"
+    },
+    {
+      "id": "KreerC-ACCESSIBILITY-md--accessibility-SKILL-md",
+      "url": "https://raw.githubusercontent.com/KreerC/ACCESSIBILITY.md/2bf8ddcf87e09dd0caac609abb979cc19aca2555/accessibility/SKILL.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/KreerC/ACCESSIBILITY.md/2bf8ddcf87e09dd0caac609abb979cc19aca2555/accessibility/SKILL.md",
+      "status": 200,
+      "bytes": 9773,
+      "sha256": "a3f7d8bc4c91ee81f5a20b9fbab7d059d245815ce953d49ec5559ad5ec094976",
+      "fetchedAt": "2026-10-19T17:20:32.304+00:00"
+    },
+    {
+      "id": "KreerC-ACCESSIBILITY-md--LICENSE-md",
+      "url": "https://raw.githubusercontent.com/KreerC/ACCESSIBILITY.md/2bf8ddcf87e09dd0caac609abb979cc19aca2555/LICENSE.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/KreerC/ACCESSIBILITY.md/2bf8ddcf87e09dd0caac609abb979cc19aca2555/LICENSE.md",
+      "status": 200,
+      "bytes": 1071,
+      "sha256": "abc17bdeb06efc67c4e19e961ead7c407936abf161a2a2fad25e0865d52c14f2",
+      "fetchedAt": "2026-10-19T17:20:32.494+00:00"
+    },
+    {
+      "id": "gcmdnt90-Jack_Skills--ai-literacy-course-SKILL-md",
+      "url": "https://raw.githubusercontent.com/gcmdnt90/Jack_Skills/a0258db8c5b84df385f2a75a47990681658bfda1/skills/ai-literacy-course/SKILL.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/gcmdnt90/Jack_Skills/a0258db8c5b84df385f2a75a47990681658bfda1/skills/ai-literacy-course/SKILL.md",
+      "status": 200,
+      "bytes": 9479,
+      "sha256": "fb08139acac479a4a0d334fc472a86c6b7f281b360d949b4af81a97184e339b2",
+      "fetchedAt": "2026-10-19T18:29:37.9833617+00:00"
+    },
+    {
+      "id": "gcmdnt90-Jack_Skills--LICENSE",
+      "url": "https://raw.githubusercontent.com/gcmdnt90/Jack_Skills/a0258db8c5b84df385f2a75a47990681658bfda1/LICENSE",
+      "resolvedUrl": "https://raw.githubusercontent.com/gcmdnt90/Jack_Skills/a0258db8c5b84df385f2a75a47990681658bfda1/LICENSE",
+      "status": 200,
+      "bytes": 1072,
+      "sha256": "c5509b9045492655679c049e71f2ced12efaa0bd04f77d2a8b311e7153c54f3b",
+      "fetchedAt": "2026-10-19T18:29:38.1895201+00:00"
+    },
+    {
+      "id": "Kirisame1969-dsh-project-based-learning--SKILL-md",
+      "url": "https://raw.githubusercontent.com/Kirisame1969/dsh-project-based-learning/2e0d8d1942e84221c514d455016c5ea402447cec/skills/dsh-project-based-learning/SKILL.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/Kirisame1969/dsh-project-based-learning/2e0d8d1942e84221c514d455016c5ea402447cec/skills/dsh-project-based-learning/SKILL.md",
+      "status": 200,
+      "bytes": 8503,
+      "sha256": "36902d35f13aa30363e7c675566b36cf6897bb38187fa5e79b5b88b3b0cb2787",
+      "fetchedAt": "2026-10-19T18:32:29.1593693+00:00"
+    },
+    {
+      "id": "Kirisame1969-dsh-project-based-learning--LICENSE",
+      "url": "https://raw.githubusercontent.com/Kirisame1969/dsh-project-based-learning/2e0d8d1942e84221c514d455016c5ea402447cec/LICENSE",
+      "resolvedUrl": "https://raw.githubusercontent.com/Kirisame1969/dsh-project-based-learning/2e0d8d1942e84221c514d455016c5ea402447cec/LICENSE",
+      "status": 200,
+      "bytes": 1069,
+      "sha256": "202f9ef29d5911bf86dedd57f9d12d99ca8a5de0353d259449e33a7cb5548372",
+      "fetchedAt": "2026-10-19T18:32:29.4699984+00:00"
+    },
+    {
+      "id": "full-stack-skills-teaching-skills--learning-assessor-SKILL-md",
+      "url": "https://raw.githubusercontent.com/full-stack-skills/teaching-skills/97d1da15c82b1131011f90011c19f91e323d39b3/skills/learning-assessor/SKILL.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/full-stack-skills/teaching-skills/97d1da15c82b1131011f90011c19f91e323d39b3/skills/learning-assessor/SKILL.md",
+      "status": 200,
+      "bytes": 2707,
+      "sha256": "297ccdb261db2677239536365eeb8461539ecb687484deb6c2c97bc3b5137ec7",
+      "fetchedAt": "2026-10-19T18:32:29.7362794+00:00"
+    },
+    {
+      "id": "full-stack-skills-teaching-skills--LICENSE",
+      "url": "https://raw.githubusercontent.com/full-stack-skills/teaching-skills/97d1da15c82b1131011f90011c19f91e323d39b3/LICENSE",
+      "resolvedUrl": "https://raw.githubusercontent.com/full-stack-skills/teaching-skills/97d1da15c82b1131011f90011c19f91e323d39b3/LICENSE",
+      "status": 200,
+      "bytes": 11339,
+      "sha256": "9788c988b60209ecf085939b225ef19f4b0313b35df22c230469d4ced2061938",
+      "fetchedAt": "2026-10-19T18:32:30.0412810+00:00"
+    },
+    {
+      "id": "JcDizzy-teaching-programming--SKILL-md",
+      "url": "https://raw.githubusercontent.com/JcDizzy/teaching-programming/b4cd31cf427a1013db5bd88e8e3cce54bde8a54c/SKILL.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/JcDizzy/teaching-programming/b4cd31cf427a1013db5bd88e8e3cce54c/SKILL.md",
+      "status": 200,
+      "bytes": 16073,
+      "sha256": "77990349be5286037767cd6a622ea283368687c0ac3989c3136fa882605f86f6",
+      "fetchedAt": "2026-10-19T18:32:30.4156368+00:00"
+    },
+    {
+      "id": "JcDizzy-teaching-programming--LICENSE",
+      "url": "https://raw.githubusercontent.com/JcDizzy/teaching-programming/b4cd31cf427a1013db5bd88e8e3cce54bde8a54c/LICENSE",
+      "resolvedUrl": "https://raw.githubusercontent.com/JcDizzy/teaching-programming/b4cd31cf427a1013db5bd88e8e3cce54c/LICENSE",
+      "status": 200,
+      "bytes": 1063,
+      "sha256": "41f3a939666c0e7d01a063dde76c81433cbb3ffa19a12df263c4f12570431eec",
+      "fetchedAt": "2026-10-19T18:32:30.7342380+00:00"
+    },
+    {
+      "id": "GarethManning-education-agent-skills--metacognitive-monitoring-SKILL-md",
+      "url": "https://raw.githubusercontent.com/GarethManning/education-agent-skills/6bbbce418f82e11044009c9f3b7373a354de5bd0/skills/ai-learning-science/metacognitive-monitoring-ai-contexts/SKILL.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/GarethManning/education-agent-skills/6bbbce418f82e11044009c9f3b7373a354de5bd0/skills/ai-learning-science/metacognitive-monitoring-ai-contexts/SKILL.md",
+      "status": 200,
+      "bytes": 25813,
+      "sha256": "3dcd03b8b6ce52d5e7156d7f39a5cb6940676db303cb0d357aa2d27351ed1f03",
+      "fetchedAt": "2026-10-19T21:55:48.1652377+00:00"
+    },
+    {
+      "id": "GarethManning-education-agent-skills--LICENSE",
+      "url": "https://raw.githubusercontent.com/GarethManning/education-agent-skills/6bbbce418f82e11044009c9f3b7373a354de5bd0/LICENSE",
+      "resolvedUrl": "https://raw.githubusercontent.com/GarethManning/education-agent-skills/6bbbce418f82e11044009c9f3b7373a354de5bd0/LICENSE",
+      "status": 200,
+      "bytes": 1263,
+      "sha256": "fd2d4edff5962de6bdc16677ff79c4bf8feb1c29c23ff31978154b7dbc313596",
+      "fetchedAt": "2026-10-19T22:25:33.6766321+00:00"
+    },
+    {
+      "id": "eiainano-understanding-coach-SKILL--SKILL-md",
+      "url": "https://raw.githubusercontent.com/eiainano/understanding-coach-SKILL/a217857c4a6f0a9d9aeca9ee88e96c5df3b017f5/SKILL.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/eiainano/understanding-coach-SKILL/a217857c4a6f0a9d9aeca9ee88e96c5df3b017f5/SKILL.md",
+      "status": 200,
+      "bytes": 10462,
+      "sha256": "1f9897806caf10f7cccd0ba60406545fba0386a090eab5dc3f60151946cf785e",
+      "fetchedAt": "2026-10-20T01:20:36+00:00"
+    },
+    {
+      "id": "eiainano-understanding-coach-SKILL--LICENSE",
+      "url": "https://raw.githubusercontent.com/eiainano/understanding-coach-SKILL/a217857c4a6f0a9d9aeca9ee88e96c5df3b017f5/LICENSE",
+      "resolvedUrl": "https://raw.githubusercontent.com/eiainano/understanding-coach-SKILL/a217857c4a6f0a9d9aeca9ee88e96c5df3b017f5/LICENSE",
+      "status": 200,
+      "bytes": 1067,
+      "sha256": "c807e6052c4feaaf9d2e5964ffa5aa498dfdaad08ff78cebc83a8df7afa6fefd",
+      "fetchedAt": "2026-10-20T01:20:36+00:00"
+    }
+  ],
+  "repositories": [
+    {
+      "repository": "anthropics/skills",
+      "commit": "dbd4588f9e1033efb41dad4bef2f7947c8993d44",
+      "licenseMetadata": null,
+      "treeTruncated": false
+    },
+    {
+      "repository": "openai/skills",
+      "commit": "49f948faa9258a0c61caceaf225e179651397431",
+      "licenseMetadata": null,
+      "treeTruncated": false
+    },
+    {
+      "repository": "K-Dense-AI/scientific-agent-skills",
+      "commit": "a1043ef544e3a100c28e70a736b6cf32554d0677",
+      "licenseMetadata": {
+        "key": "mit",
+        "name": "MIT License",
+        "spdx_id": "MIT",
+        "url": "https://api.github.com/licenses/mit",
+        "node_id": "MDc6TGljZW5zZTEz"
+      },
+      "treeTruncated": false
+    },
+    {
+      "repository": "modelcontextprotocol/registry",
+      "commit": "11b7b0e274d518b6f449c5ee3518a6151d9848b9",
+      "licenseMetadata": {
+        "key": "other",
+        "name": "Other",
+        "spdx_id": "NOASSERTION",
+        "url": null,
+        "node_id": "MDc6TGljZW5zZTA="
+      },
+      "treeTruncated": false
+    },
+    {
+      "repository": "agentskills/agentskills",
+      "commit": "69ef37e9424c0a7ea9dd2293b559e43ec8176379",
+      "licenseMetadata": {
+        "key": "apache-2.0",
+        "name": "Apache License 2.0",
+        "spdx_id": "Apache-2.0",
+        "url": "https://api.github.com/licenses/apache-2.0",
+        "node_id": "MDc6TGljZW5zZTI="
+      },
+      "treeTruncated": false
+    },
+    {
+      "repository": "openai/plugins",
+      "commit": "0722921d5542fc593105c27bd52630babd8b8c2a",
+      "licenseMetadata": null,
+      "treeTruncated": false
+    },
+    {
+      "repository": "learning-commons-org/agent-skills",
+      "commit": "5894a3c9dcda8d4499bb73fad85b2b11a2b78344",
+      "licenseMetadata": {
+        "key": "apache-2.0",
+        "name": "Apache License 2.0",
+        "spdx_id": "Apache-2.0",
+        "url": "https://api.github.com/licenses/apache-2.0",
+        "node_id": "MDc6TGljZW5zZTI="
+      },
+      "treeTruncated": false
+    },
+    {
+      "repository": "savvides/idstack",
+      "commit": "1767027166aeeae1c64c21925b01a9c848abcf99",
+      "licenseMetadata": {
+        "key": "mit",
+        "name": "MIT License",
+        "spdx_id": "MIT",
+        "url": "https://api.github.com/licenses/mit",
+        "node_id": "MDc6TGljZW5zZTEz"
+      },
+      "treeTruncated": false
+    },
+    {
+      "repository": "bstellato/ai-teaching-skills",
+      "commit": "6d3f85726e7b0fedacc8a078e174161293777044",
+      "licenseMetadata": {
+        "key": "mit",
+        "name": "MIT License",
+        "spdx_id": "MIT",
+        "url": "https://api.github.com/licenses/mit",
+        "node_id": "MDc6TGljZW5zZTEz"
+      },
+      "treeTruncated": false
+    },
+    {
+      "repository": "KreerC/ACCESSIBILITY.md",
+      "commit": "2bf8ddcf87e09dd0caac609abb979cc19aca2555",
+      "licenseMetadata": {
+        "key": "mit",
+        "name": "MIT License",
+        "spdx_id": "MIT",
+        "url": "https://api.github.com/licenses/mit",
+        "node_id": "MDc6TGljZW5zZTEz"
+      },
+      "treeTruncated": false
+    },
+    {
+      "repository": "gcmdnt90/Jack_Skills",
+      "commit": "a0258db8c5b84df385f2a75a47990681658bfda1",
+      "licenseMetadata": {
+        "key": "mit",
+        "name": "MIT License",
+        "spdx_id": "MIT",
+        "url": "https://api.github.com/licenses/mit",
+        "node_id": "MDc6TGljZW5zZTEz"
+      },
+      "treeTruncated": false
+    },
+    {
+      "repository": "Kirisame1969/dsh-project-based-learning",
+      "commit": "2e0d8d1942e84221c514d455016c5ea402447cec",
+      "licenseMetadata": {
+        "key": "mit",
+        "name": "MIT License",
+        "spdx_id": "MIT",
+        "url": "https://api.github.com/licenses/mit",
+        "node_id": "MDc6TGljZW5zZTEz"
+      },
+      "treeTruncated": false
+    },
+    {
+      "repository": "full-stack-skills/teaching-skills",
+      "commit": "97d1da15c82b1131011f90011c19f91e323d39b3",
+      "licenseMetadata": {
+        "key": "apache-2.0",
+        "name": "Apache License 2.0",
+        "spdx_id": "Apache-2.0",
+        "url": "https://api.github.com/licenses/apache-2.0",
+        "node_id": "MDc6TGljZW5zZTI="
+      },
+      "treeTruncated": false
+    },
+    {
+      "repository": "JcDizzy/teaching-programming",
+      "commit": "b4cd31cf427a1013db5bd88e8e3cce54bde8a54c",
+      "licenseMetadata": {
+        "key": "mit",
+        "name": "MIT License",
+        "spdx_id": "MIT",
+        "url": "https://api.github.com/licenses/mit",
+        "node_id": "MDc6TGljZW5zZTEz"
+      },
+      "treeTruncated": false
+    },
+    {
+      "repository": "GarethManning/education-agent-skills",
+      "commit": "6bbbce418f82e11044009c9f3b7373a354de5bd0",
+      "licenseMetadata": {
+        "key": "cc-by-sa-4.0",
+        "name": "Other",
+        "spdx_id": "CC-BY-SA-4.0",
+        "url": null,
+        "node_id": null
+      },
+      "treeTruncated": false
+    },
+    {
+      "repository": "eiainano/understanding-coach-SKILL",
+      "commit": "a217857c4a6f0a9d9aeca9ee88e96c5df3b017f5",
+      "licenseMetadata": {
+        "key": "mit",
+        "name": "MIT License",
+        "spdx_id": "MIT",
+        "url": "https://api.github.com/licenses/mit",
+        "node_id": "MDc6TGljZW5zZTEz"
+      },
+      "treeTruncated": false
+    }
+  ],
+  "grokSearches": [
+    {
+      "sessionId": "31c80cb2cbb4",
+      "sourcesCount": 0,
+      "sourceListCount": 0,
+      "decision": "Excluded as evidence"
+    },
+    {
+      "sessionId": "273fcc94d77a",
+      "sourcesCount": 0,
+      "sourceListCount": 0,
+      "decision": "Excluded as evidence"
+    },
+    {
+      "sessionId": "bd101ce178fb",
+      "sourcesCount": 0,
+      "sourceListCount": 0,
+      "decision": "Excluded as evidence"
+    },
+    {
+      "sessionId": "2839b8829307",
+      "sourcesCount": 0,
+      "sourceListCount": 0,
+      "decision": "Excluded as evidence"
+    },
+    {
+      "sessionId": "170b7711b624",
+      "sourcesCount": 0,
+      "sourceListCount": 0,
+      "decision": "Excluded as evidence"
+    },
+    {
+      "sessionId": "8ff2182fd113",
+      "sourcesCount": 0,
+      "sourceListCount": 0,
+      "decision": "Excluded as evidence"
+    },
+    {
+      "sessionId": "479a4fd721b2",
+      "sourcesCount": 0,
+      "sourceListCount": 0,
+      "decision": "Excluded as evidence",
+      "reason": "Excluded as evidence; discovery lead only"
+    },
+    {
+      "sessionId": "5387ad0ce3d6",
+      "sourcesCount": 0,
+      "sourceListCount": 0,
+      "decision": "Excluded as evidence",
+      "reason": "Excluded as evidence; discovery lead only"
+    },
+    {
+      "sessionId": "85be27f0143b",
+      "sourcesCount": 4,
+      "sourceListCount": 4,
+      "decision": "Excluded as evidence; returned citations were unrelated and the result described a hypothetical repository"
+    },
+    {
+      "sessionId": "37fbbe968e3f",
+      "sourcesCount": 0,
+      "sourceListCount": 0,
+      "decision": "Excluded as evidence",
+      "reason": "Excluded as evidence; discovery lead only"
+    },
+    {
+      "sessionId": "5304b0750cb1",
+      "sourcesCount": 0,
+      "sourceListCount": 0,
+      "decision": "Excluded as evidence",
+      "reason": "Excluded as evidence; discovery lead only"
+    },
+    {
+      "sessionId": "55216a0e45bf",
+      "sourcesCount": 0,
+      "sourceListCount": 0,
+      "decision": "Excluded as evidence",
+      "reason": "Excluded as evidence; discovery lead only"
+    },
+    {
+      "sessionId": "ee5da45dfecc",
+      "sourcesCount": 0,
+      "sourceListCount": 0,
+      "decision": "Excluded as evidence",
+      "reason": "Excluded as evidence; generated inventory text without source verification"
+    },
+    {
+      "sessionId": "97458841ef42",
+      "sourcesCount": 0,
+      "sourceListCount": 0,
+      "decision": "Excluded as evidence",
+      "reason": "Excluded as evidence; discovery lead only"
+    },
+    {
+      "sessionId": "106b14751608",
+      "sourcesCount": 0,
+      "sourceListCount": 0,
+      "decision": "Excluded as evidence",
+      "reason": "Excluded as evidence; generated hypothetical inventory without repository verification"
+    },
+    {
+      "sessionId": "cd2f7a8b9c81",
+      "sourcesCount": 0,
+      "sourceListCount": 0,
+      "decision": "Excluded as evidence",
+      "reason": "Excluded as evidence; search returned no source-backed repository facts"
+    },
+    {
+      "sessionId": "27d7ecc49afe",
+      "sourcesCount": 0,
+      "sourceListCount": 0,
+      "decision": "Excluded as evidence",
+      "reason": "Excluded as evidence; search returned no source-backed repository facts"
+    }
+  ],
+  "limitations": [
+    "HTTP 200/hash proves fetched bytes, not content safety, permission to copy, server availability, reproducible model output or learning effectiveness.",
+    "Skill bodies and cited licenses selectively read; resources/scripts/dependencies not exhaustively audited.",
+    "No upstream full text is stored in this repository.",
+    "The 2026-10-20 Grok searches included one result with four unrelated citations and multiple sources_count: 0 responses; all were excluded as evidence. Candidate facts were checked against GitHub API and pinned raw files.",
+    "Grok planning session 29fe8679925a lacked exposed complexity_assessment phase; searches ran and returned no sources.",
+    "The 2026-10-20 Grok sessions 106b14751608, cd2f7a8b9c81 and 27d7ecc49afe returned no source-backed facts; the eiainano candidate was verified independently through GitHub API commit/tree/blob endpoints."
+  ],
+  "initialGroundingBaseline": "8409043a76d44ff0bfef2d58af085e2e1d992071",
+  "implementationReuse": {
+    "checkedOn": "2026-10-19",
+    "refetched": false,
+    "meaning": "M1 source implementation and offline verification reused these historical fetch records. No new network success, teaching Skill publication, package installation or production deployment is asserted."
+  }
+}

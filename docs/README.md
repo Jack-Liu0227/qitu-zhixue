@@ -1,6 +1,6 @@
 # 启途智学文档总入口
 
-> 文档校验基线：`2026-10-19`，版本标识：`v2026.10.19`。
+> 文档校验基线：`2026-10-26`，版本标识：`v2026.10.26`。
 > 核心定位：**项目式学习（PBL）驱动的 AI 育人共成长**，以真实任务挑战、探究证据链与人机协同育人为核心。
 >
 > 当前实现：NestJS 模块化单体 + PostgreSQL + Redis/Worker + 一个公开官网/登录应用 + 四个角色应用。
@@ -30,7 +30,7 @@
 | `sdk/`     | Agent Runtime、Team Runtime、领域 Facade、浏览器客户端和记忆 | [`sdk/overview.md`](./sdk/overview.md)                           |
 | `design/`  | 学生端 AI 搭档工作区、知识中心、PBL 动态交互设计与问题引擎决策| [`design/20261018-tutor-workspace-interaction-contract.md`](./design/20261018-tutor-workspace-interaction-contract.md) ; [`design/20261018-knowledge-center-deeptutor-reference.md`](./design/20261018-knowledge-center-deeptutor-reference.md) ; [`design/20261018-pbl-dynamic-interaction-openmaic.md`](./design/20261018-pbl-dynamic-interaction-openmaic.md) |
 | `plan/`    | 项目实施计划、规范设计与发布台账（权威基线：`plan/codex/`）  | [`plan/README.md`](./plan/README.md) / [`plan/codex/README.md`](./plan/codex/README.md) |
-| `archive/` | 2026-10-18 之前的历史规划、诊断报告与对比草案归档            | [`archive/pre-20261018/`](./archive/pre-20261018/)              |
+| `archive/` | 按日期保存的历史规划、诊断、旧入口与原始稿件归档            | [`archive/pre-20261018/`](./archive/pre-20261018/)              |
 
 `aboutus/` 是产品叙事目录，不是新的运行时责任域；接口、状态机和权限合同仍以对应平台文档和代码为准。
 
@@ -86,5 +86,8 @@ Team Runtime 的真实协同链路是：Leader 创建 run → 服务端 route �
 - 新增页面、API、错误码、迁移、权限或异步任务时更新对应目录和本文件索引。
 - 当前合同保留在责任域目录；2026-10-18 前的历史规划与诊断材料统一进入 [`archive/pre-20261018/README.md`](./archive/pre-20261018/README.md)，不得把归档材料当作当前实现或另建平行事实源。
 - 所有 `@see docs/...` 和 Markdown 相对链接必须指向真实文件。
+- `.codex-tasks/`、`.tmp/`、`.runtime/` 和本机临时目录不能作为长期文档的文件链接目标；验收证据应使用已脱敏的受控资产或明确的私有归档说明。
 - 文档只读校验：`python tooling/validate-docs.py`；校验器回归：`python tooling/validate-docs.test.py`。覆盖当前 Markdown 的本地目标、退役截图引用及归档索引覆盖率；不验证历史快照正文、远程 URL 或锚点内容。
 - 校验命令：`pnpm typecheck`、`pnpm test`、`pnpm build`、`pnpm check:basepath`。
+
+- [2026-10-26 仓库整理与验证](./issues/20261026-repository-cleanup.md)；[本轮历史资料](./archive/repository-cleanup-20261026/README.md)。

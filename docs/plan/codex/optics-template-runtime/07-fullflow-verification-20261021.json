@@ -1,0 +1,261 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-21",
+  "scope": "optics-v3-source-and-isolated-verification",
+  "productionDeployment": false,
+  "configuratorSkillChanged": false,
+  "sourceVerification": {
+    "command": "node tooling/verify-pbl-capability.mjs --optics",
+    "passed": true,
+    "startedAt": "2026-10-20T21:37:42.088Z",
+    "finishedAt": "2026-10-20T21:38:22.217Z",
+    "apiBehaviorTests": 596,
+    "apiBehaviorPassed": 596,
+    "apiBehaviorFailed": 0,
+    "steps": [
+      {
+        "name": "build-contracts",
+        "exitCode": 0
+      },
+      {
+        "name": "contracts-esm-extensions",
+        "exitCode": 0
+      },
+      {
+        "name": "build-database",
+        "exitCode": 0
+      },
+      {
+        "name": "build-infra",
+        "exitCode": 0
+      },
+      {
+        "name": "build-agent-memory",
+        "exitCode": 0
+      },
+      {
+        "name": "build-ai-client",
+        "exitCode": 0
+      },
+      {
+        "name": "build-model-runtime",
+        "exitCode": 0
+      },
+      {
+        "name": "build-api",
+        "exitCode": 0
+      },
+      {
+        "name": "api-behavior-tests",
+        "exitCode": 0
+      },
+      {
+        "name": "ai-client-assertions",
+        "exitCode": 0
+      },
+      {
+        "name": "build-student-center-types",
+        "exitCode": 0
+      },
+      {
+        "name": "build-teacher-workspace-types",
+        "exitCode": 0
+      }
+    ],
+    "dependencyResolution": "isolated per-run package outputs via test-only registerHooks and declaration paths; installed snapshots and ordinary dist unchanged",
+    "excludes": [
+      "admin-copilot tests owned by the separate Skill task",
+      "whole-repository documentation audit"
+    ]
+  },
+  "sixteenLessonOwnerFlow": {
+    "passed": true,
+    "test": "services/api/src/modules/learning-plan/optics-fullflow.test.ts",
+    "storage": "isolated in-memory implementations",
+    "realOwners": [
+      "frozen teaching bundle",
+      "formal pending question and grading",
+      "mastery",
+      "experiment actions and observations",
+      "Works immutable inline content",
+      "Teacher review decision",
+      "Works publication",
+      "session completion",
+      "project and plan completion"
+    ],
+    "syntheticBoundaries": [
+      "catalog",
+      "users and mentor relation",
+      "test storage",
+      "server-side answer oracle"
+    ],
+    "injectedMasteryOrApprovalOrStage": false,
+    "teamRuntimeDatabaseBridgeVerified": false
+  },
+  "postgresqlConfirmation": {
+    "passed": true,
+    "checks": [
+      "all-journal-migrations-including-0044-and-0045",
+      "AppModule-Nest-starts-with-real-PostgreSQL",
+      "v3-template-pilot-binding-compile-validate-activate",
+      "exploration-before-confirmation-has-no-formal-project-or-plan",
+      "confirmIntent-freezes-and-attaches-active-sixteen-session-plan-before-first-Tutor-read",
+      "confirmation-same-and-different-key-replay-does-not-create-second-plan",
+      "first-lesson-remains-uncompleted-without-evidence-and-denies-other-student",
+      "failure-after-freeze-and-plan-insert-rolls-back-project-snapshot-plan-sessions-mappings-and-attach-audit",
+      "failed-confirmation-retries-with-original-idempotency-key",
+      "concurrent-confirmations-have-one-project-one-plan",
+      "confirmPlan-alternative-freezes-same-governed-curriculum-and-replays",
+      "no-orphan-or-injected-mastery-facts"
+    ],
+    "migrationCount": 46,
+    "finalCounts": {
+      "projects": 4,
+      "snapshots": 4,
+      "plans": 4,
+      "sessions": 64,
+      "mappings": 48
+    },
+    "orphans": {
+      "plans": 0,
+      "snapshots": 0,
+      "sessions": 0,
+      "mastery_records": 0,
+      "mastery_events": 0
+    },
+    "cleanup": {
+      "databaseDropped": true,
+      "tunnelStopped": true,
+      "fixtureDatabaseRemainingCount": 0
+    },
+    "validation": {
+      "apiTypeScriptExitCode": 0,
+      "command": "pnpm exec tsc -p services/api/tsconfig.json --outDir services/api/.tmp/optics-confirmation-pg-dist"
+    },
+    "providerCalls": false,
+    "masteryOrPracticeStageInjection": false,
+    "script": "tooling/test-optics-confirmation-postgres.cjs"
+  },
+  "frontendBehavior": {
+    "passed": true,
+    "targetedTests": 11,
+    "storage": "synthetic HTTP contract fixtures"
+  },
+  "browser": {
+    "passed": true,
+    "fixtureOnly": true,
+    "checks": [
+      {
+        "name": "lost response retry",
+        "result": "pass",
+        "evidence": "The synthetic API persisted the response then disconnected. Retry produced two POST attempts with the same idempotency key and exactly one stored proof."
+      },
+      {
+        "name": "stored response reload",
+        "result": "pass",
+        "evidence": "After browser reload, GET lesson evidence restored the proof; selecting it fetched the stored inline body and displayed the exact synthetic lesson 12 response."
+      },
+      {
+        "name": "full schedule",
+        "result": "pass",
+        "evidence": "The existing project sidebar displayed all 16 server-supplied sessions and completed/current/locked labels."
+      },
+      {
+        "name": "lesson 11 to 12 scope",
+        "result": "pass",
+        "evidence": "Completion POST targeted session 11 with planRevision 1 and a selected server proof, then reconcile and context refresh updated lesson 12. Old unsaved draft, assessment result, and selected proofs cleared. Session 12 evidence was loaded; the next response POST targeted session 12. Tutor session reads stayed at the two initial reads throughout assessment, publish, completion and response saves; no session recreation occurred."
+      },
+      {
+        "name": "formal assessment feedback",
+        "result": "pass",
+        "evidence": "The formal assessment form loaded an owner-shaped synthetic question, submitted the learner response to the answers route, and displayed the returned full explanation and result. The fixture deliberately kept TheoryMastered false."
+      },
+      {
+        "name": "experiment fullscreen and parameter preview",
+        "result": "pass",
+        "evidence": "The registered optics component entered native fullscreen (document.fullscreenElement and is-fullscreen class confirmed). Increasing slit width from 50 to 55 micrometers changed the model-computed central width from 25.31 to 23.01 mm. Preview did not issue an evidence-save request."
+      },
+      {
+        "name": "teacher immutable version review",
+        "result": "pass",
+        "evidence": "Existing student detail drawer showed bound version 1 text and excluded a later version 2. Decision stayed disabled until the read checkbox was checked. The UI submitted the existing review decision route with a stable key and displayed the read-back approved state."
+      },
+      {
+        "name": "student publish after teacher approval",
+        "result": "pass",
+        "evidence": "Reading an approved but submitted report exposed Publish reviewed work. The UI called the existing artifact publish route, refreshed proofs, called reconcile, and displayed published plus approved proof state."
+      }
+    ],
+    "boundaries": [
+      "No production API, database, model, credentials, or real learner data were used.",
+      "These results do not verify model quality, owner authorization, mastery grading, or production readiness. Backend owner tests are reported separately by the parent agent.",
+      "Synthetic assessment and report approval receipts were explicit fixtures, not real AI judgments or teacher records.",
+      "Existing binary UI assets were copied for local execution only; they are not implementation changes.",
+      "Agent-browser required scrolling controls into the nested chat viewport before coordinate clicks. Initial offscreen clicks did not submit requests.",
+      "One synthetic fixture reused a report reference for submitted and approved proof, causing a React duplicate-key warning; the real owner uses distinct task_submission and artifact references. This does not represent a backend acceptance test."
+    ],
+    "cleanup": "Both named agent-browser sessions closed; this run's student/teacher dev-server and synthetic-API exec sessions stopped. Ports 34115, 34116 and 34119 verified with no listeners. Existing integration servers were not touched.",
+    "screenshots": [
+      "fullflow-experiment-fullscreen.png",
+      "fullflow-assessment-feedback.png",
+      "fullflow-lesson12.png",
+      "fullflow-teacher-review.png",
+      "fullflow-saved-response.png"
+    ]
+  },
+  "remainingActivation": [
+    "production migration 0045",
+    "governed new v3 template and Teaching Bundle activation",
+    "real model and current runtime skill/tool grants",
+    "project-scoped IMA resources and retrieval",
+    "production student/teacher flow and team-runtime database bridge acceptance"
+  ],
+  "postIntegrationApiTypecheck": {
+    "passed": true,
+    "command": "pnpm --filter @qitu/api exec tsc --noEmit",
+    "note": "After merging concurrent comment/document edits and reusing canonical evidence contract types."
+  },
+  "originalWorkspaceVerification": {
+    "command": "node tooling/verify-pbl-capability.mjs --optics",
+    "passed": false,
+    "failedStep": "build-api",
+    "startedAt": "2026-10-20T21:43:36.161Z",
+    "finishedAt": "2026-10-20T21:46:02.360Z",
+    "errors": [
+      {
+        "file": "services/api/src/modules/feishu/feishu-socket.factory.ts",
+        "line": 2,
+        "code": "TS2307",
+        "detail": "Installed UNC dependency snapshot cannot resolve @larksuiteoapi/node-sdk; the updated package manifest already declares it."
+      },
+      {
+        "file": "services/api/src/modules/platform-registry/platform-registry.service.ts",
+        "lines": [
+          1180,
+          1181,
+          1182,
+          1183
+        ],
+        "code": "TS2769",
+        "detail": "Concurrent source passes readonly string[] into Drizzle inArray, whose installed declaration requires a mutable array."
+      }
+    ],
+    "policy": "Do not overwrite the separate configurator/Feishu work or claim a full original-workspace build passed.",
+    "unmodifiedPaths": [
+      ".agents/skills/qitu-project-configurator",
+      "services/api/src/modules/feishu",
+      "services/api/src/modules/platform-registry/platform-registry.service.ts",
+      "node_modules"
+    ]
+  },
+  "delivery": {
+    "filesCopiedAndReadBack": 102,
+    "concurrentConflicts": 0,
+    "preserved": [
+      "existing migration 0044 journal entry",
+      "team HUD history/avatar changes",
+      "concurrent documentation and contract comments"
+    ],
+    "gitCommitCreatedInOriginalRepository": false
+  }
+}

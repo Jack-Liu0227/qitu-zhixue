@@ -1,0 +1,241 @@
+{
+  "schemaVersion": 1,
+  "checkedOn": "2026-10-19",
+  "codeBaseline": "0b07929d06f88a947090e4cd080698bb43012776",
+  "scope": "M1 source slices deployed; full frozen teaching capability chain and live teaching acceptance remain incomplete",
+  "skillInventory": {
+    "existingSourceCount": 1,
+    "firstBatchCandidateCount": 8,
+    "laterCandidateCount": 6,
+    "newPublishedCount": 0
+  },
+  "milestones": [
+    {
+      "id": "M0",
+      "status": "partial",
+      "evidenceIds": [
+        "source-audit"
+      ],
+      "remaining": "Characterization and all-owner behavioral coverage are not complete."
+    },
+    {
+      "id": "M1-contract",
+      "status": "implemented",
+      "evidenceIds": [
+        "m1-contract-source",
+        "m1-focused-pre-final",
+        "m1-full-first-failure",
+        "optics-16-full-worktree"
+      ],
+      "remaining": "Linux API 1040/1040 passed and migration 0036 applied. Profile/content digests and capability references are not persisted/frozen. Default legacy v1 remains unchanged; 16-session bootstrap not activated."
+    },
+    {
+      "id": "M1-compiler",
+      "status": "implemented",
+      "evidenceIds": [
+        "m1-compiler-source",
+        "m1-focused-pre-final",
+        "m1-full-first-failure",
+        "optics-16-full-worktree"
+      ],
+      "remaining": "Full offline worktree run passed; pure payload/digest only, no artifact persistence, activation or confirmation wiring."
+    },
+    {
+      "id": "M1-runtime-identity",
+      "status": "implemented",
+      "evidenceIds": [
+        "m1-runtime-source",
+        "m1-focused-pre-final",
+        "m1-full-first-failure",
+        "optics-16-full-worktree"
+      ],
+      "remaining": "Full offline worktree run passed; current Admin assistant source is transitional, not global agent_configs migration or frozen historical capabilities. Worker closures and project IMA provenance remain absent."
+    },
+    {
+      "id": "M1-docs",
+      "status": "verified",
+      "evidenceIds": [
+        "codex-docs-check",
+        "codex-docs-self-test",
+        "all-current-docs-check",
+        "docs-validator-regression"
+      ],
+      "remaining": "Business verification results must be appended after the implementation tests; documentation checks do not verify product behavior."
+    },
+    {
+      "id": "M2",
+      "status": "planned",
+      "evidenceIds": [],
+      "remaining": "Immutable artifact persistence and existing Admin binding activation."
+    },
+    {
+      "id": "M3",
+      "status": "planned",
+      "evidenceIds": [],
+      "remaining": "Atomic artifact freeze in both confirmations and explicit legacy resolution."
+    },
+    {
+      "id": "M4",
+      "status": "planned",
+      "evidenceIds": [],
+      "remaining": "Complete frozen runtime, authoritative assistant configuration and worker closures."
+    },
+    {
+      "id": "M5",
+      "status": "planned",
+      "evidenceIds": [],
+      "remaining": "Project-scoped IMA four-tool enforcement and document provenance."
+    },
+    {
+      "id": "M6",
+      "status": "planned",
+      "evidenceIds": [],
+      "remaining": "Isolated pilot, rollout, deployment verification and rollback."
+    }
+  ],
+  "evidence": [
+    {
+      "id": "source-audit",
+      "level": "source",
+      "status": "recorded",
+      "record": "docs/plan/codex/gap-audit-20261019.md",
+      "description": "Baseline source findings, not proof of current configuration or production behavior."
+    },
+    {
+      "id": "m1-contract-source",
+      "level": "source",
+      "status": "recorded",
+      "record": "packages/contracts/src/pbl-learning.ts",
+      "description": "Single template theme/curriculum profiles and strict parser; separate v2-16s content/bootstrap/new-slug generator consumers; session titles and activity guidance have persistence/readback source; migration 0036 deployment and immutable profile freeze remain incomplete."
+    },
+    {
+      "id": "m1-compiler-source",
+      "level": "source",
+      "status": "recorded",
+      "record": "services/api/src/modules/templates/teaching-bundle.compiler.ts",
+      "description": "Pure compiler validates actual template/profile, real members, model pairs, precise Skill pins, tool schemas and KB ceilings; no storage or production binding invocation."
+    },
+    {
+      "id": "m1-runtime-source",
+      "level": "source",
+      "status": "recorded",
+      "record": "services/api/src/modules/platform-registry/platform-registry.service.ts",
+      "description": "Current getAssistantRuntime reads Admin assistant fields for Tutor/SDK; SDK re-reads identity/hash/model pair. Runtime-only getAgentRuntime remains; no frozen project artifact runtime."
+    },
+    {
+      "id": "m1-focused-pre-final",
+      "level": "behavior",
+      "status": "recorded",
+      "record": "docs/plan/codex/validation-20261019.md",
+      "command": "node tooling/verify-pbl-capability.mjs --focused",
+      "exitCode": 0,
+      "result": "Pre-final run: six workspace builds, API compile, 352 API tests, 19 suites, zero failures, ai-client assertions and documentation; 11 steps. Not the final corrected full run."
+    },
+    {
+      "id": "m1-full-first-failure",
+      "level": "behavior",
+      "status": "failed",
+      "record": "docs/plan/codex/validation-20261019.md",
+      "command": "node tooling/verify-pbl-capability.mjs",
+      "exitCode": 1,
+      "result": "1026 tests, 1025 passed, one growth.controller.readonly.test failure caused by root cwd instead of services/api. Corrected runner/fresh package outputs require a new complete run."
+    },
+    {
+      "id": "optics-16-full-worktree",
+      "level": "behavior",
+      "status": "passed",
+      "record": "docs/plan/codex/validation-20261019.md",
+      "command": "node tooling/verify-pbl-capability.mjs",
+      "executedAt": "2026-10-19T12:59:40.180Z",
+      "exitCode": 0,
+      "result": "Current full worktree including optics-16 changes: six workspace builds, API compile, 1040 API tests / 78 suites / zero failures, ai-client assertions and documentation; 11 steps. Real PostgreSQL integration and migration not run. No production bootstrap, activation, push or deployment."
+    },
+    {
+      "id": "codex-docs-check",
+      "level": "documentation",
+      "status": "passed",
+      "record": "docs/plan/codex/validation-20261019.md",
+      "command": "node tooling/check-codex-plan.mjs",
+      "executedAt": "2026-10-19T10:06:13.988Z",
+      "exitCode": 0,
+      "result": "12 current/index documents, 74 local links, 2 JSON files, 1 manifest, 9 archive hashes, 0 problems."
+    },
+    {
+      "id": "codex-docs-self-test",
+      "level": "documentation",
+      "status": "passed",
+      "record": "docs/plan/codex/validation-20261019.md",
+      "command": "node tooling/check-codex-plan.mjs --self-test",
+      "executedAt": "2026-10-19T10:06:13.988Z",
+      "exitCode": 0,
+      "result": "11 tests passed; no files written."
+    },
+    {
+      "id": "all-current-docs-check",
+      "level": "documentation",
+      "status": "passed",
+      "record": "docs/plan/codex/validation-20261019.md",
+      "command": "python tooling/validate-docs.py",
+      "executedAt": "2026-10-19T10:06:13.988Z",
+      "exitCode": 0,
+      "result": "67 current/index documents, 298 local links, 0 issues; historical snapshot bodies, URLs and anchors excluded."
+    },
+    {
+      "id": "docs-validator-regression",
+      "level": "documentation",
+      "status": "passed",
+      "record": "docs/plan/codex/validation-20261019.md",
+      "command": "python tooling/validate-docs.test.py",
+      "executedAt": "2026-10-19T10:06:13.988Z",
+      "exitCode": 0,
+      "result": "11 tests passed."
+    },
+    {
+      "id": "main-linux-release",
+      "level": "release",
+      "status": "passed",
+      "record": "docs/admin/release-20261019-main.md",
+      "command": "isolated frozen-lockfile build, migrate, six-unit activation and .release-audit/verify.py",
+      "executedAt": "2026-10-19T13:42:25.442Z",
+      "exitCode": 0,
+      "artifactCommit": "63e3be882f1b1d7ccfbc0122bc14bf0b354785e3",
+      "result": "Six main services active on one release; migration 0036 applied; 1547 source blobs verified; 12 routes / 145 static references pass; live database and Redis ok; anonymous protected API 401. Not full teaching acceptance; historical assistant Skill bindings remain incompatible."
+    },
+    {
+      "id": "main-push",
+      "level": "push",
+      "status": "passed",
+      "record": "docs/admin/release-20261019-main.md",
+      "command": "git push origin main; release ref push and server git merge --ff-only",
+      "executedAt": "2026-10-19T13:38:55Z",
+      "exitCode": 0,
+      "artifactCommit": "63e3be882f1b1d7ccfbc0122bc14bf0b354785e3",
+      "result": "GitHub and server main include both code commits. Two independent server preferences edits retain identical SHA256 and remain uncommitted."
+    },
+    {
+      "id": "copilot-catalog-browser",
+      "level": "behavior",
+      "status": "passed",
+      "record": "docs/admin/release-20261019-main.md",
+      "command": "Linux tsx --test tooling/copilot-catalog.test.mjs and authenticated Playwright read-only catalog checks",
+      "executedAt": "2026-10-19T13:42:39.034Z",
+      "exitCode": 0,
+      "artifactCommit": "63e3be882f1b1d7ccfbc0122bc14bf0b354785e3",
+      "result": "Six catalog cases passed; real dropdown reflects one optical team and existing standalone assistants. Browser fixtures verify stale cache, offline/recovery, 403/retry, deleted selection and team group removal. No production registry mutation or runtime model probe."
+    }
+  ],
+  "production": {
+    "deployed": true,
+    "pushed": true,
+    "evidenceIds": [
+      "main-linux-release",
+      "main-push",
+      "copilot-catalog-browser"
+    ],
+    "remoteUserChanges": "Two existing preferences edits are preserved byte-for-byte and remain uncommitted. Only six main services restarted; independent test sites and shared IMA/embedding not changed.",
+    "artifactCommit": "63e3be882f1b1d7ccfbc0122bc14bf0b354785e3",
+    "activatedAt": "2026-10-19T21:39:47+08:00"
+  },
+  "historicalDeliveryBaseline": "43a0307eb776185d7561f213d75b3d7312616aa9",
+  "baselineNote": "Document source baseline aligned with source-lock.json. Historical milestone, publication and deployment evidence retain their original artifactCommit and dates; this metadata alignment does not certify a new deployment."
+}

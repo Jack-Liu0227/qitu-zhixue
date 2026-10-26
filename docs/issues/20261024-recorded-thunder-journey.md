@@ -101,7 +101,7 @@ Windows、Python 3.13.5、pygame 2.6.1。普通 KEYDOWN/KEYUP/QUIT 事件队列�
 | 11 | 87秒完成7/8；第8课板书、回顾和理论；329秒progress401；356秒主动停录 | `segment11/video/fc79b78c3f87ff131e4ea510fc00bf9f.webm` |
 | 12 | 恢复核对已保存理论；答辩检查、最终反思；178秒8/8及项目完成，188秒停录 | `segment12/video/cc2c3ecb839850aba184ba2faff8e344.webm` |
 
-原始根目录：`C:/Users/HK/AppData/Local/Temp/qitu-thunder-journey-20261024/`。相对录像路径、起止时间、HTTP 失败见 [.codex-tasks 录制清单](../../.codex-tasks/20261024-thunder-journey/recording-manifest.json)；各段 `journey.json` 是动作到截图/秒数索引。脚本和教学作品在同任务目录。
+原始根目录：`C:/Users/HK/AppData/Local/Temp/qitu-thunder-journey-20261024/`。相对录像路径、起止时间、HTTP 失败原记录指向临时任务目录中的 `recording-manifest.json`；2026-10-26 核查时该文件未入库且远端缺失，当前不能据此复核清单；各段 `journey.json` 是动作到截图/秒数索引。脚本和教学作品在同任务目录。
 
 ### 最终重启后只读复验
 

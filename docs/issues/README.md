@@ -1,36 +1,36 @@
-# Qitu Zhixue Issue Register
+# 问题与验证记录
 
-Audit baseline: `origin/main` at `b1612f6` on 2026-10-12. An item is closed only when its stated scope has code or verification evidence. UI-only work does not prove the backend data loop.
+索引更新：2026-10-26。以下是仓库内记录，不代表 GitHub Issue 的实时状态；完成与限制以各文档的日期和证据为准。
 
-## Completed And Closed
+[本轮仓库整理](./20261026-repository-cleanup.md) · [原 2026-10-12 Issue 台账](../archive/repository-cleanup-20261026/snapshot/issue-register-20261012.md)
 
-| Issue | Scope | Evidence |
-| --- | --- | --- |
-| [#41](https://github.com/Jack-Liu0227/qitu-zhixue/issues/41) | Public home and unified login code | `0952b4a`, `2751160`, `57bacd3` |
-| [#46](https://github.com/Jack-Liu0227/qitu-zhixue/issues/46) | Admin AI resource CRUD and team/template management | `7aac299`, `2f36605`, `49758c8`, `1ce2a5b`, `b05f5de` |
-| [#47](https://github.com/Jack-Liu0227/qitu-zhixue/issues/47) | Model sync, MCP JSON workbench and capability matrix | `cce6974`, `334c4d4`, `0afaa51` |
-| [#48](https://github.com/Jack-Liu0227/qitu-zhixue/issues/48) | AI conversation layout, Markdown/math and responsive interaction | `193ac97`, `568f579`, `89a4a82`, `0afaa51`, `b1612f6` |
+## 按记录日期查阅
 
-## Current Open Work (Nine New Issues)
-
-| Issue | Scope |
-| --- | --- |
-| [#49](https://github.com/Jack-Liu0227/qitu-zhixue/issues/49) | Knowledge base upload, classification, team/assistant authorization and real retrieval |
-| [#50](https://github.com/Jack-Liu0227/qitu-zhixue/issues/50) | Plugin framework: MCP/built-in tool manifest, lifecycle, authorization and audit |
-| [#51](https://github.com/Jack-Liu0227/qitu-zhixue/issues/51) | Qitu Copilot server sessions and real SDK execution |
-| [#52](https://github.com/Jack-Liu0227/qitu-zhixue/issues/52) | study-remote production E2E, direct access and four-platform data consistency |
-| [#53](https://github.com/Jack-Liu0227/qitu-zhixue/issues/53) | Agent SDK runtime resolver, team orchestration and tool/MCP execution |
-| [#54](https://github.com/Jack-Liu0227/qitu-zhixue/issues/54) | PBL templates, recommendations, intent confirmation, team binding and stage gates |
-| [#55](https://github.com/Jack-Liu0227/qitu-zhixue/issues/55) | Student-isolated sessions, memory, profile and growth data foundation |
-| [#56](https://github.com/Jack-Liu0227/qitu-zhixue/issues/56) | Unified four-platform theme, density, login entry and mobile acceptance |
-| [#57](https://github.com/Jack-Liu0227/qitu-zhixue/issues/57) | Admin AI configuration center: models, assistants, teams, Skills, tools and MCP governance |
-
-## Closed Legacy Backlog
-
-The existing legacy backlog issues #2-#11, #14-#30, #34 and #45 were closed per the product owner's request. Their remaining implementation scope was moved into #49-#56; closing the legacy records does not remove those acceptance criteria. Existing #39 and #41 are also closed.
-
-## Operating Rules
-
-- Cross-platform data, permissions and minor-data isolation stay open until server-side evidence exists.
-- `study-remote` and Clash direct-access settings are deployment/environment records; no personal proxy configuration or credentials belong in git.
-- The full pnpm check must run from a mapped/local filesystem path because Windows CMD cannot use the current UNC path as a working directory.
+- [2026-10-26 分支、工作副本与文档整理](./20261026-repository-cleanup.md)
+- [AI搭档课时推进、课件与登录复核](./20261024-tutor-lesson-progression.md)
+- [自由探索在首次发送时创建](./20261024-tutor-lazy-exploration.md)
+- [两模板逐课工具、课件和问答重测（2026-10-24）](./20261024-tools-courseware-full-retest.md)
+- [理论答题完成后实验仍被拦截](./20261024-theory-gate-sync.md)
+- [归档课程恢复与继续编辑](./20261024-template-archive-restore.md)
+- [雷霆战机：真实学生流程录屏审计](./20261024-recorded-thunder-journey.md)
+- [光学逐课真实界面录屏明细](./20261024-recorded-optics-journey.md)
+- [光学与雷霆战机逐课录屏验收](./20261024-recorded-journeys.md)
+- [两项目录屏验收：视觉与交互独立审计](./20261024-recorded-journey-visual-audit.md)
+- [两项目录屏：去重问题登记表](./20261024-recorded-journey-issue-registry.md)
+- [线上双项目逐课自动化验收（2026-10-24）](./20261024-live-two-projects-fullflow.md)
+- [两个模板的自然学习链路复核（2026-10-24）](./20261024-learning-chain-gap-audit.md)
+- [四端界面审查与部署记录](./20261024-interface-review.md)
+- [项目问答与课件交互风险复核（2026-10-24 晚间）](./20261024-interaction-risk-audit.md)
+- [灵感空间八类项目与通用作品证据](./20261024-inspiration-eight-projects.md)
+- [家校反馈私有附件](./20261024-feedback-attachments.md)
+- [探索记录与教学工具接入](./20261024-exploration-tools-integration.md)
+- [已保存的动态光学实验恢复可见](./20261024-dynamic-experiment-visibility.md)
+- [课件重复演示修复（2026-10-24）](./20261024-courseware-replay.md)
+- [自主学习评价与教师只读](./20261024-autonomous-learning.md)
+- [光学与雷霆战机自主学习全流程线上验收](./20261024-autonomous-fullflow-live.md)
+- [零基础教学与课件资产实施](./20261023-zero-base-courseware.md)
+- [模板绑定与逐课教学者配置](./20261023-template-session-bindings.md)
+- [移除独立历史团队版本资源与管家恢复](./20261023-remove-team-version-resource.md)
+- [三端学习数据与家长模块接入](./20261023-family-learning-integration.md)
+- [两个光学模板的学生端全流程验证](./20261023-dual-optics-student-e2e.md)
+- [VISUAL-20261019: Four-Surface Density And Companion Refresh](./20261019-visual-density.md)

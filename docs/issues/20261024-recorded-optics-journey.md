@@ -99,4 +99,6 @@ O5定位：29秒8/8；40秒最终反思；42秒旧实验；43秒退出全屏按�
 
 主agent随后发布作品代码块与HTTP复制修复，版本 `9IcCodMhOwGIQro8Vce57`，15服务于01:17:56–58 CST再次统一重启。O6于01:19开始，仅同device正常认证一次并共享私有state给战机验收，然后通过原项目界面核对完成状态：`auth/me=200`，当前Chrome会话一项，项目completed100%、课时8/8，截图 `part6-final-artifact-fix-eight-of-eight.png` 在第26秒。`result-p6-01.json`记录本次实验action写入0；没有发送新聊天或重交学习证据。O5的全屏与模型验证仍属于其原版本，本段不冒称重复执行了那些检查。
 
-复制代码块的flex布局另经修复和战机真实复制验证后，最终版本 `qHOvk6OE_mu5uH9HMW_rF` 的15服务于01:29:26–28 CST统一重启。O7于01:30开始，仅同device正常认证一次（Chrome当前会话一项），`result-p7-01.json`再次确认auth200、completed100%、8课completed及实验action写入0；第25秒[原始截图](../../.codex-tasks/20261024-recorded-journeys/review/images/optics-part7-final-artifact-fix-eight-of-eight.png)显示“完成”和“已完成 8 / 8 课时”。本段没有新聊天、实验或学习提交，已封装；O5其他行为验证继续保留原版本归属。
+复制代码块的flex布局另经修复和战机真实复制验证后，最终版本 `qHOvk6OE_mu5uH9HMW_rF` 的15服务于01:29:26–28 CST统一重启。O7于01:30开始，仅同device正常认证一次（Chrome当前会话一项），`result-p7-01.json`再次确认auth200、completed100%、8课completed及实验action写入0；第25秒[原始截图](./20261026-repository-cleanup.md)显示“完成”和“已完成 8 / 8 课时”。本段没有新聊天、实验或学习提交，已封装；O5其他行为验证继续保留原版本归属。
+
+> 2026-10-26 归档说明：原临时证据 `review/images/optics-part7-final-artifact-fix-eight-of-eight.png` 随录屏任务归档至服务器私有清理备份；上方链接现指向归档说明，不是可公开访问的原始证据。

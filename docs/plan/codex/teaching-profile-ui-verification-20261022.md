@@ -1,3 +1,5 @@
+> 状态：原日期的方案或验证记录；2026-10-26 整理仅补充分类与引用，不新增功能完成或生产验收结论。
+
 # Teaching arrangement and six-dimension profile checkpoint
 
 Date: 2026-10-22, Asia/Shanghai.
