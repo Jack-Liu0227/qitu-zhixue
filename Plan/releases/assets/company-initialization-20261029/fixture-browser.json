@@ -1,0 +1,14 @@
+{
+  "passed": true,
+  "synthetic": true,
+  "checks": [
+    "initialization checklist reports configured and unconfigured capabilities separately",
+    "unconfigured department cannot submit work and links to setup",
+    "update binding preserves enabled state and refreshes confirmed revision",
+    "explicit disable preserves existing binding",
+    "failed readback never shows successful activation",
+    "mobile initialization checklist fits 390px",
+    "offline state disables refresh"
+  ],
+  "browserErrors": []
+}

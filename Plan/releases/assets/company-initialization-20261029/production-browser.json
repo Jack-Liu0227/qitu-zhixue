@@ -1,0 +1,22 @@
+{
+  "passed": true,
+  "target": "http://122.51.130.204",
+  "checkedAt": "2026-10-28T21:32:02.963Z",
+  "checks": [
+    "12 enabled Company departments use dedicated Admin-governed assistants excluded from teaching selection",
+    "live overview displays actual initialization and execution state",
+    "all team bindings are visible with separate update and disable actions",
+    "actual startup work succeeded and has persisted model-generated results",
+    "operating knowledge guide persisted and visible",
+    "payment setup links to the existing operations page",
+    "live mobile overview fits 390px",
+    "initialization leaves sales, subscription enforcement and unconfigured merchant unchanged"
+  ],
+  "browserErrors": [],
+  "enabledDepartments": 12,
+  "actualModelWorkSucceeded": true,
+  "salesEnabled": false,
+  "subscriptionPolicyEnabled": false,
+  "paymentConfigured": false,
+  "externalMessagesSent": false
+}

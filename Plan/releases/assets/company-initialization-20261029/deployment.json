@@ -1,0 +1,9 @@
+{
+  "ready": true,
+  "buildId": "77mfOvFnVWWNzq__RaYcn",
+  "head": "3f672b1dd4fdbef7b8ac107d1877833706fc8934",
+  "service": "qitu-company",
+  "apiRestarted": false,
+  "databaseMigration": false,
+  "backup": "/root/qitu-backups/company-initialization-20261029/company-before-setup-panel"
+}

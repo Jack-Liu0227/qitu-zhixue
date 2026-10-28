@@ -1,0 +1,27 @@
+[
+  {
+    "step": "format",
+    "exit_code": 0,
+    "seconds": 1.4
+  },
+  {
+    "step": "contracts",
+    "exit_code": 0,
+    "seconds": 2.6
+  },
+  {
+    "step": "types",
+    "exit_code": 0,
+    "seconds": 3.8
+  },
+  {
+    "step": "lint",
+    "exit_code": 0,
+    "seconds": 0.8
+  },
+  {
+    "step": "build",
+    "exit_code": 0,
+    "seconds": 25.1
+  }
+]
