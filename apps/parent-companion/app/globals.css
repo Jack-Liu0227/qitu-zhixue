@@ -116,6 +116,14 @@ body {
   font-size: 0.78rem;
   font-weight: 700;
 }
+.home-purchase-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-left: auto;
+  font-size: 13px;
+}
+.home-purchase-links a { color: #25776b; text-underline-offset: 4px; }
 .home-welcome {
   display: flex;
   justify-content: space-between;

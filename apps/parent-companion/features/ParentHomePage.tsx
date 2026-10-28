@@ -92,6 +92,10 @@ export default function HomePage() {
             }}
           />
         </div>
+        <div className="home-purchase-links">
+          <a href="#subscriptions">套餐与权益</a>
+          <a href="#purchase-orders">我的订单</a>
+        </div>
       </div>
 
       <ProjectPurchases studentId={childId} />

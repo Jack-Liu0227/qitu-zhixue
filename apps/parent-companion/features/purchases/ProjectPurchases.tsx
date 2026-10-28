@@ -150,7 +150,11 @@ export function ProjectPurchases({ studentId }: { studentId: string }) {
   const disabled = busy || loading || !online;
   return (
     <section className={styles.section} aria-labelledby="purchases-title">
-      <SubscriptionPurchases studentId={studentId} onOrderCreated={() => load()} refreshToken={orders.map(o => `${o.id}:${o.status}`).join('|')} />
+      <SubscriptionPurchases
+        studentId={studentId}
+        onOrderCreated={() => load()}
+        refreshToken={orders.map((o) => `${o.id}:${o.status}`).join('|')}
+      />
       <div className={styles.heading}>
         <div>
           <small>项目学习服务</small>
@@ -317,135 +321,138 @@ export function ProjectPurchases({ studentId }: { studentId: string }) {
               </button>
             </div>
           )}
-          {orders.length > 0 && (
-            <div className={styles.orderList}>
-              <h3>当前孩子的课程订单</h3>
-              {orders.map((order) => (
-                <article key={order.id} className={styles.order}>
-                  <div className={styles.heading}>
-                    <div>
-                      <h4>{order.subscription?.product.title ?? order.offer?.title ?? '历史课程'}</h4>
-                      <small>{order.id}</small>
-                    </div>
-                    <span className={styles.tag}>
-                      {businessOrderLabel(order.status)} · {formatBusinessMoney(order.amountFen)}
-                    </span>
+          <div id="purchase-orders" className={styles.orderList}>
+            <h3>当前孩子的套餐与课程订单</h3>
+            {!orders.length && (
+              <p className={styles.empty}>
+                {studentId
+                  ? '暂无订单。完成购买后，可在这里扫码、查询开通状态和申请退款。'
+                  : '选择已绑定的孩子后查看订单。'}
+              </p>
+            )}
+            {orders.map((order) => (
+              <article key={order.id} className={styles.order}>
+                <div className={styles.heading}>
+                  <div>
+                    <h4>{order.subscription?.product.title ?? order.offer?.title ?? '历史课程'}</h4>
+                    <small>{order.id}</small>
                   </div>
-                  {order.status === 'pending' && new Date(order.checkoutExpiresAt) > new Date() && (
-                    <div className={styles.payment}>
-                      {order.checkoutUrl ? (
-                        <>
-                          <PaymentCode value={order.checkoutUrl} />
-                          <div>
-                            <strong>请使用微信扫码</strong>
-                            <p>
-                              支付有效至 {new Date(order.checkoutExpiresAt).toLocaleString('zh-CN')}
-                              。
-                            </p>
-                            <p>付款后点击查询，平台核验后会显示开通结果。</p>
-                          </div>
-                        </>
-                      ) : (
-                        <button
-                          className={styles.primary}
-                          disabled={disabled}
-                          onClick={() =>
-                            void act(`checkout:${order.id}`, (key) =>
-                              businessRequest(`parent/orders/${order.id}/checkout`, {
-                                method: 'POST',
-                                key,
-                              }),
-                            )
-                          }
-                        >
-                          获取支付二维码
-                        </button>
-                      )}
-                    </div>
-                  )}
-                  {order.status === 'paid' && (
-                    <p className={styles.notice}>
-                      课程已开通，有效至{' '}
-                      {order.accessUntil
-                        ? new Date(order.accessUntil).toLocaleDateString('zh-CN')
-                        : '待核实'}
-                      。请由孩子进入 AI搭档选择此课程并确认项目。
-                    </p>
-                  )}
-                  {order.status === 'pending' &&
-                    new Date(order.checkoutExpiresAt) <= new Date() && (
-                      <p className={styles.muted}>
-                        支付时间已过，请先查询付款状态；核清并关闭原订单后才能重新下单。
-                      </p>
+                  <span className={styles.tag}>
+                    {businessOrderLabel(order.status)} · {formatBusinessMoney(order.amountFen)}
+                  </span>
+                </div>
+                {order.status === 'pending' && new Date(order.checkoutExpiresAt) > new Date() && (
+                  <div className={styles.payment}>
+                    {order.checkoutUrl ? (
+                      <>
+                        <PaymentCode value={order.checkoutUrl} />
+                        <div>
+                          <strong>请使用微信扫码</strong>
+                          <p>
+                            支付有效至 {new Date(order.checkoutExpiresAt).toLocaleString('zh-CN')}。
+                          </p>
+                          <p>付款后点击查询，平台核验后会显示开通结果。</p>
+                        </div>
+                      </>
+                    ) : (
+                      <button
+                        className={styles.primary}
+                        disabled={disabled}
+                        onClick={() =>
+                          void act(`checkout:${order.id}`, (key) =>
+                            businessRequest(`parent/orders/${order.id}/checkout`, {
+                              method: 'POST',
+                              key,
+                            }),
+                          )
+                        }
+                      >
+                        获取支付二维码
+                      </button>
                     )}
-                  <details>
-                    <summary>查看下单时的服务约定</summary>
-                    <p className={styles.terms}>{order.terms.termsText}</p>
-                    <p className={styles.terms}>{order.terms.refundText}</p>
-                    <p className={styles.muted}>
-                      {order.terms.operatorName} · {order.terms.supportEmail}
-                    </p>
-                  </details>
-                  <div className={styles.actions}>
+                  </div>
+                )}
+                {order.status === 'paid' && (
+                  <p className={styles.notice}>
+                    {order.subscription ? '套餐权益已开通' : '课程已开通'}，有效至{' '}
+                    {order.accessUntil
+                      ? new Date(order.accessUntil).toLocaleDateString('zh-CN')
+                      : '待核实'}
+                    。请由孩子进入 AI搭档选择已开放课程并确认项目。
+                  </p>
+                )}
+                {order.status === 'pending' && new Date(order.checkoutExpiresAt) <= new Date() && (
+                  <p className={styles.muted}>
+                    支付时间已过，请先查询付款状态；核清并关闭原订单后才能重新下单。
+                  </p>
+                )}
+                <details>
+                  <summary>查看下单时的服务约定</summary>
+                  <p className={styles.terms}>{order.terms.termsText}</p>
+                  <p className={styles.terms}>{order.terms.refundText}</p>
+                  <p className={styles.muted}>
+                    {order.terms.operatorName} · {order.terms.supportEmail}
+                  </p>
+                </details>
+                <div className={styles.actions}>
+                  <button
+                    className={styles.secondary}
+                    disabled={disabled}
+                    onClick={() =>
+                      void act(`reconcile:${order.id}`, () =>
+                        businessRequest(`parent/orders/${order.id}/reconcile`, {
+                          method: 'POST',
+                        }),
+                      )
+                    }
+                  >
+                    查询付款与退款状态
+                  </button>
+                  {order.status === 'paid' && (
                     <button
                       className={styles.secondary}
                       disabled={disabled}
-                      onClick={() =>
-                        void act(`reconcile:${order.id}`, () =>
-                          businessRequest(`parent/orders/${order.id}/reconcile`, {
-                            method: 'POST',
-                          }),
-                        )
-                      }
-                    >
-                      查询付款与退款状态
-                    </button>
-                    {order.status === 'paid' && (
-                      <button
-                        className={styles.secondary}
-                        disabled={disabled}
-                        onClick={() => {
-                          setRefundOrder(order.id);
-                          setReason('');
-                        }}
-                      >
-                        申请退款
-                      </button>
-                    )}
-                  </div>
-                  {refundOrder === order.id && (
-                    <form
-                      className={styles.refund}
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        void act(`refund:${order.id}:${reason}`, (key) =>
-                          businessRequest(`parent/orders/${order.id}/refund`, {
-                            method: 'POST',
-                            key,
-                            body: { reason },
-                          }),
-                        );
+                      onClick={() => {
+                        setRefundOrder(order.id);
+                        setReason('');
                       }}
                     >
-                      <label>
-                        退款原因
-                        <textarea
-                          required
-                          maxLength={300}
-                          rows={2}
-                          value={reason}
-                          onChange={(e) => setReason(e.target.value)}
-                        />
-                      </label>
-                      <button className={styles.secondary} disabled={disabled || !reason.trim()}>
-                        提交退款申请
-                      </button>
-                    </form>
+                      申请退款
+                    </button>
                   )}
-                </article>
-              ))}
-            </div>
-          )}
+                </div>
+                {refundOrder === order.id && (
+                  <form
+                    className={styles.refund}
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      void act(`refund:${order.id}:${reason}`, (key) =>
+                        businessRequest(`parent/orders/${order.id}/refund`, {
+                          method: 'POST',
+                          key,
+                          body: { reason },
+                        }),
+                      );
+                    }}
+                  >
+                    <label>
+                      退款原因
+                      <textarea
+                        required
+                        maxLength={300}
+                        rows={2}
+                        value={reason}
+                        onChange={(e) => setReason(e.target.value)}
+                      />
+                    </label>
+                    <button className={styles.secondary} disabled={disabled || !reason.trim()}>
+                      提交退款申请
+                    </button>
+                  </form>
+                )}
+              </article>
+            ))}
+          </div>
           {catalog.operator.supportEmail && (
             <p className={styles.muted}>
               服务提供方：{catalog.operator.operatorName} · 客服{' '}

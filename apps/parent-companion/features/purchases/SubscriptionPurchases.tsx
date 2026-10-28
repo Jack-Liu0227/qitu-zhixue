@@ -7,6 +7,7 @@ import {
   type CommerceAccount,
   type CommerceCatalog,
   type CommerceProduct,
+  type BusinessOrder,
 } from '@qitu/contracts';
 import styles from './subscriptions.module.css';
 
@@ -33,6 +34,7 @@ export function SubscriptionPurchases({
   const version = useRef(0),
     currentStudent = useRef(studentId),
     locked = useRef(false),
+    requestedPlan = useRef(''),
     keys = useRef(new Map<string, string>());
   currentStudent.current = studentId;
   const load = useCallback(
@@ -64,6 +66,8 @@ export function SubscriptionPurchases({
       } catch (e) {
         if (generation === version.current && !signal?.aborted) {
           setAccount(null);
+          setCatalog(null);
+          setTerms(null);
           setError(e instanceof Error ? e.message : '权益信息读取失败');
         }
         return false;
@@ -74,18 +78,47 @@ export function SubscriptionPurchases({
     [studentId],
   );
   useEffect(() => {
-    const abort = new AbortController();
     setAccount(null);
     setSelected(null);
     setAgreed(false);
     setConsent(false);
     setNotice('');
+  }, [studentId]);
+  useEffect(() => {
+    const abort = new AbortController();
     void load(abort.signal);
     return () => {
       ++version.current;
       abort.abort();
     };
   }, [load, refreshToken]);
+  useEffect(() => {
+    const plan = new URLSearchParams(window.location.search).get('plan');
+    if (!plan || requestedPlan.current === plan || loading || !studentId || !catalog || !account)
+      return;
+    requestedPlan.current = plan;
+    const product = catalog.products.find((p) => p.id === plan);
+    if (!product || !['trial', 'month'].includes(product.id)) return;
+    const included =
+      product.id === 'trial' &&
+      (account.trialPurchased ||
+        account.entitlements.some((e) => ['month', 'year'].includes(e.source)));
+    if (product.status !== 'published' || !catalog.purchasing.available || included) {
+      setNotice(
+        included
+          ? '当前孩子已购买体验课或已由会员包含，请查看已有权益。'
+          : '所选套餐尚未开放购买，请查看当前开放安排。',
+      );
+      return;
+    }
+    setSelected(product);
+    setAgreed(false);
+    setConsent(false);
+  }, [loading, studentId, catalog, account]);
+  useEffect(() => {
+    if (selected)
+      document.getElementById('subscription-confirm')?.scrollIntoView({ block: 'center' });
+  }, [selected]);
   useEffect(() => {
     const update = () => setOnline(navigator.onLine);
     update();
@@ -97,7 +130,19 @@ export function SubscriptionPurchases({
     };
   }, []);
   async function buy() {
-    if (!selected || !catalog || !studentId || !agreed || !consent || locked.current || !online)
+    if (
+      !selected ||
+      !catalog?.purchasing.available ||
+      !account ||
+      !studentId ||
+      !agreed ||
+      !consent ||
+      locked.current ||
+      !online ||
+      loading ||
+      selected.status !== 'published' ||
+      !['trial', 'month'].includes(selected.id)
+    )
       return;
     const child = studentId,
       product = selected;
@@ -110,7 +155,7 @@ export function SubscriptionPurchases({
     setNotice('');
     let committed = false;
     try {
-      await businessRequest('parent/subscriptions/orders', {
+      const order = await businessRequest<BusinessOrder>('parent/subscriptions/orders', {
         method: 'POST',
         key,
         body: {
@@ -124,11 +169,27 @@ export function SubscriptionPurchases({
       });
       committed = true;
       if (currentStudent.current !== child) return;
+      let paymentReady = false;
+      try {
+        await businessRequest(`parent/orders/${order.id}/checkout`, {
+          method: 'POST',
+          key: `checkout-${key}`,
+        });
+        paymentReady = true;
+      } catch {
+        // The committed order remains available for checkout retry below.
+      }
+      if (currentStudent.current !== child) return;
       if ((await onOrderCreated()) === false) throw new Error('订单回读失败');
       if (currentStudent.current !== child) return;
       keys.current.delete(identity);
       setSelected(null);
-      setNotice('订单已创建，请在下方订单列表打开微信付款码。付款核实后开通权益。');
+      setNotice(
+        paymentReady
+          ? '订单已创建，请在下方订单列表使用微信扫码。付款后查询状态，核实后开通权益。'
+          : '订单已创建，付款码暂未获取。请在下方订单列表点击「获取支付二维码」重试，无需再次下单。',
+      );
+      document.getElementById('purchase-orders')?.scrollIntoView({ block: 'start' });
     } catch (e) {
       if (currentStudent.current === child)
         setError(
@@ -185,8 +246,12 @@ export function SubscriptionPurchases({
               <h3>基础版</h3>
               <div className={styles.price}>免费</div>
               <ul>
-                <li>灵感浏览与 1 个入门体验</li>
-                <li>每天 10 次基础 AI 问答</li>
+                <li>灵感浏览与入门体验</li>
+                <li>
+                  {catalog.policy.enabled
+                    ? '每天 10 次基础 AI 问答'
+                    : '课程体验范围以平台当前开放内容为准'}
+                </li>
                 <li>已有作品与基础成长记录</li>
               </ul>
               <span className={styles.badge}>随个人账号使用</span>
@@ -236,7 +301,9 @@ export function SubscriptionPurchases({
                     disabled={
                       disabled ||
                       !studentId ||
+                      !account ||
                       !catalog.purchasing.available ||
+                      p.id === 'year' ||
                       p.status !== 'published' ||
                       (p.id === 'trial' && (!!account?.trialPurchased || !!member))
                     }
@@ -246,15 +313,17 @@ export function SubscriptionPurchases({
                       setConsent(false);
                     }}
                   >
-                    {p.status !== 'published'
+                    {p.id === 'year' || p.status !== 'published'
                       ? '待开放'
-                      : p.id === 'trial' && member
-                        ? '会员已包含'
-                        : p.id === 'trial' && account?.trialPurchased
-                          ? '已购买体验课'
-                          : p.id === 'month' && member
-                            ? '手动续费'
-                            : '查看并购买'}
+                      : !catalog.purchasing.available
+                        ? '暂未开放购买'
+                        : p.id === 'trial' && member
+                          ? '会员已包含'
+                          : p.id === 'trial' && account?.trialPurchased
+                            ? '已购买体验课'
+                            : p.id === 'month' && member
+                              ? '手动续费'
+                              : '查看并购买'}
                   </button>
                 </article>
               ))}
@@ -274,7 +343,7 @@ export function SubscriptionPurchases({
         </>
       )}
       {selected && terms && (
-        <section className={styles.confirm} aria-label="确认订阅购买">
+        <section id="subscription-confirm" className={styles.confirm} aria-label="确认订阅购买">
           <div className={styles.heading}>
             <h3>确认 {selected.title}</h3>
             <button className={styles.secondary} disabled={busy} onClick={() => setSelected(null)}>
@@ -315,7 +384,7 @@ export function SubscriptionPurchases({
             我有权为当前孩子购买并授权提供上述服务
           </label>
           <button disabled={disabled || !agreed || !consent} onClick={() => void buy()}>
-            创建订单 · {money(selected.priceFen - discount)}
+            {busy ? '正在准备付款码…' : `创建订单并支付 · ${money(selected.priceFen - discount)}`}
           </button>
         </section>
       )}
@@ -324,6 +393,9 @@ export function SubscriptionPurchases({
           <h3>当前孩子的权益与用量</h3>
           {!account.enabled && (
             <p className={styles.note}>新订阅策略尚未启用，已有项目包按原规则提供服务。</p>
+          )}
+          {account.enabled && !account.entitlements.length && (
+            <p className={styles.note}>当前孩子暂无已开通权益，请查看上方套餐。</p>
           )}
           {account.entitlements.map((e) => (
             <article key={e.id}>

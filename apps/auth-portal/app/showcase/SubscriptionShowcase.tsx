@@ -93,7 +93,7 @@ export async function SubscriptionShowcase({ home = false }: { home?: boolean })
                         className={`home-btn ${available ? 'home-btn--primary' : 'home-btn--outline'}`}
                         href={
                           available
-                            ? '/login?role=parent&next=%2Fparent%23subscriptions'
+                            ? `/login?role=parent&next=${encodeURIComponent(`/parent?plan=${p.id}#subscriptions`)}`
                             : '/contact'
                         }
                       >
