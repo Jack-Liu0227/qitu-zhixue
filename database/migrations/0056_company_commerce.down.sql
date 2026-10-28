@@ -5,6 +5,16 @@ DECLARE
   relation_name text;
   has_records boolean;
 BEGIN
+  LOCK TABLE business_orders IN ACCESS EXCLUSIVE MODE;
+  FOREACH relation_name IN ARRAY ARRAY[
+    'company_messages', 'company_channels', 'company_work', 'company_knowledge',
+    'company_teams', 'company_members', 'commerce_usage', 'commerce_project_access',
+    'commerce_grants', 'commerce_organizations', 'commerce_policies', 'commerce_products'
+  ] LOOP
+    IF to_regclass(relation_name) IS NOT NULL THEN
+      EXECUTE format('LOCK TABLE %I IN ACCESS EXCLUSIVE MODE', relation_name);
+    END IF;
+  END LOOP;
   FOREACH relation_name IN ARRAY ARRAY[
     'company_messages', 'company_channels', 'company_work', 'company_knowledge',
     'company_teams', 'company_members', 'commerce_usage', 'commerce_project_access',

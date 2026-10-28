@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
+import { setTimeout } from 'node:timers/promises';
 
 const require = createRequire(new URL('../services/api/package.json', import.meta.url));
 const { Client } = require('pg');
@@ -37,6 +38,28 @@ try {
   await refusesWithoutLoss('existing Company records block rollback atomically');
   assert.equal((await client.query('SELECT count(*)::int AS count FROM company_members')).rows[0].count, 1);
   await client.query('DELETE FROM company_members');
+  const writer = new Client({ connectionString: url.href });
+  await writer.connect();
+  try {
+    await writer.query('BEGIN');
+    await writer.query("INSERT INTO company_members (user_id, role) VALUES ('synthetic-owner', 'owner')");
+    const rollback = assert.rejects(client.query(down), /Cannot roll back 0056/);
+    let waiting = false;
+    for (let attempt = 0; attempt < 100 && !waiting; attempt++) {
+      waiting = (await writer.query('SELECT EXISTS (SELECT 1 FROM pg_locks WHERE pid = $1 AND NOT granted) AS waiting', [client.processID])).rows[0].waiting;
+      if (!waiting) await setTimeout(10);
+    }
+    await writer.query('COMMIT');
+    await rollback;
+    await client.query('ROLLBACK');
+    assert.ok(waiting, 'rollback waits for the concurrent writer before checking records');
+    assert.equal((await client.query('SELECT count(*)::int AS count FROM company_members')).rows[0].count, 1);
+    await client.query('DELETE FROM company_members');
+    console.log('PASS concurrent Company writes cannot pass the rollback guard');
+  } finally {
+    await writer.query('ROLLBACK').catch(() => {});
+    await writer.end();
+  }
   await client.query("INSERT INTO business_orders (id, amount_fen, subscription) VALUES ('subscription', 990, '{}')");
   await refusesWithoutLoss('subscription orders block rollback atomically');
   assert.equal((await client.query("SELECT count(*)::int AS count FROM business_orders WHERE id = 'subscription'")).rows[0].count, 1);
