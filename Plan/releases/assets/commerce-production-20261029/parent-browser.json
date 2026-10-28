@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "synthetic": true,
+  "actualPayments": false,
+  "checks": [
+    "homepage plan preserved; no automatic order; consent required",
+    "single idempotent order creates payment QR automatically",
+    "checkout failure retains order and retries payment without duplicate order",
+    "child switch clears purchase confirmation",
+    "offline disables purchase",
+    "390px layout and purchase shortcuts",
+    "permission failure clears stale entitlements and purchase controls"
+  ],
+  "browserErrors": []
+}

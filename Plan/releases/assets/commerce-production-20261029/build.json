@@ -1,0 +1,67 @@
+[
+  {
+    "name": "format",
+    "exit_code": 0,
+    "seconds": 1.6
+  },
+  {
+    "name": "dependencies",
+    "exit_code": 0,
+    "seconds": 76.3
+  },
+  {
+    "name": "lint",
+    "exit_code": 0,
+    "seconds": 19.8
+  },
+  {
+    "name": "types",
+    "exit_code": 0,
+    "seconds": 125.0
+  },
+  {
+    "name": "build-auth-portal",
+    "exit_code": 0,
+    "seconds": 32.0
+  },
+  {
+    "name": "build-parent-companion",
+    "exit_code": 0,
+    "seconds": 29.2
+  },
+  {
+    "name": "build-company-console",
+    "exit_code": 0,
+    "seconds": 24.2
+  },
+  {
+    "name": "build-admin-console",
+    "exit_code": 0,
+    "seconds": 49.9
+  },
+  {
+    "name": "build-student-center",
+    "exit_code": 0,
+    "seconds": 141.1
+  },
+  {
+    "name": "build-teacher-workspace",
+    "exit_code": 0,
+    "seconds": 35.6
+  },
+  {
+    "name": "docs",
+    "exit_code": 0,
+    "seconds": 0.6
+  },
+  {
+    "name": "docs-tests",
+    "exit_code": 0,
+    "seconds": 0.1
+  },
+  {
+    "name": "plan",
+    "exit_code": 0,
+    "seconds": 0.3
+  }
+]

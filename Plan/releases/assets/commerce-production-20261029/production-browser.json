@@ -1,0 +1,36 @@
+{
+  "passed": true,
+  "target": "http://122.51.130.204",
+  "checkedAt": "2026-10-28T19:50:25.776Z",
+  "checks": [
+    "production API readiness: database and Redis ready",
+    "real public catalog available, unconfigured sales remain disabled",
+    "real homepage shows four plans and Company login destination",
+    "anonymous Company requires login",
+    "existing administrator is authorized for Company",
+    "Company / loads authorized server data",
+    "Company /work loads authorized server data",
+    "Company /teams loads authorized server data",
+    "Company /customers loads authorized server data",
+    "Company /products loads authorized server data",
+    "Company /finance loads authorized server data",
+    "Company /data loads authorized server data",
+    "Company /knowledge loads authorized server data",
+    "Company /integrations loads authorized server data",
+    "existing parent test account sees plans, child entitlements, order section and disabled unpublished purchases",
+    "real parent mobile layout fits 390px",
+    "Company denies student and unassigned parent accounts at API",
+    "existing role routes and hashed assets return 200"
+  ],
+  "browserErrors": [],
+  "actualPayments": false,
+  "actualRefunds": false,
+  "actualFeishuMessages": false,
+  "configurationChanged": false,
+  "payment": {
+    "configured": false,
+    "reason": "微信支付商户尚未配置完整"
+  },
+  "salesEnabled": false,
+  "policyEnabled": false
+}

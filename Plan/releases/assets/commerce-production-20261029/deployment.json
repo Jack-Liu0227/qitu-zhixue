@@ -1,0 +1,28 @@
+{
+  "head": "f5b6c7bd273c72552b40c0d1f1b3889988e34fa9",
+  "backup": "/root/qitu-backups/commerce-release-20261029",
+  "started_utc": "2026-10-28T19:49:37.014133+00:00",
+  "sales_changed": false,
+  "actual_payments": false,
+  "passed": true,
+  "migration": "0056_company_commerce",
+  "seconds": 13.8,
+  "services": {
+    "qitu-api": "active",
+    "qitu-workers": "active",
+    "qitu-auth": "active",
+    "qitu-student": "active",
+    "qitu-parent": "active",
+    "qitu-teacher": "active",
+    "qitu-admin": "active",
+    "qitu-company": "active"
+  },
+  "build_ids": {
+    "apps/auth-portal": "rkBpwF7nAprkIPaTw3Tkx",
+    "apps/student-center": "v0EFjxM_fD0E0_Vc7UCAW",
+    "apps/teacher-workspace": "syma2EWcb-KR4vJM0QC3h",
+    "apps/parent-companion": "PWKIqrjpvInI-5VNe70mj",
+    "apps/company-console": "w6Nc1rP9a69Hzxcdhy6Ak",
+    "apps/admin-console": "WIyJGbC9VbRYNWiVnYOXz"
+  }
+}
