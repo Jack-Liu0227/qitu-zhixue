@@ -8,7 +8,7 @@
     "build": "next build",
     "lint": "node ../../tooling/lint-baseline.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "tsc -p tsconfig.test.json && tsx --tsconfig tsconfig.test.json --require ../../tooling/register-test-assets.cjs --test \".tmp/test-dist/**/*.test.js\" && node --test ../../tooling/test-tutor-live-boundary.mjs"
+    "test": "tsc -p tsconfig.test.json && tsx --tsconfig ../../tooling/tsconfig.component-tests.json --require ../../tooling/register-test-assets.cjs --test \".tmp/test-dist/**/*.test.js\" && node --test ../../tooling/test-tutor-live-boundary.mjs"
   },
   "dependencies": {
     "@qitu/ai-client": "workspace:*",
