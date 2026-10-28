@@ -1,0 +1,53 @@
+{
+  "scope": "Git-tracked source and documentation; credentials, dependencies, generated builds and ignored runtime files are excluded",
+  "verified_utc": "2026-10-28T18:38:12.862466+00:00",
+  "head": "7920bfdad3c8b74aa2346a6d2d6e49c551020b53",
+  "tree": "bf517967436ec94468917af6fcdbe99d1b2fffd3",
+  "tracked_files": 3463,
+  "local_study_remote_byte_mismatches": 0,
+  "raw_files_match_git": true,
+  "manifest_sha256": "34c184fad776e8c8288d5e6b86731cfc588689e65d5ea434daef28e6be7b61e1",
+  "github_main": "7920bfdad3c8b74aa2346a6d2d6e49c551020b53",
+  "study_remote_main": "7920bfdad3c8b74aa2346a6d2d6e49c551020b53",
+  "local_main": "7920bfdad3c8b74aa2346a6d2d6e49c551020b53",
+  "backup": "/root/qitu-backups/source-sync-20261028T173938Z",
+  "preserved_remote_stash": "7036715925ab9be5a1b429e286b81a887a847f8c",
+  "existing_runtime_build_hashes_unchanged": true,
+  "health_before": {
+    "status": 200,
+    "body": {
+      "service": "qitu-zhixue-api",
+      "status": "ready",
+      "version": "0.1.0",
+      "checkedAt": "2026-10-28T18:35:37.180Z",
+      "dataMode": "live",
+      "dependencies": {
+        "database": {
+          "status": "ok"
+        },
+        "redis": {
+          "status": "ok"
+        }
+      }
+    }
+  },
+  "health_after": {
+    "status": 200,
+    "body": {
+      "service": "qitu-zhixue-api",
+      "status": "ready",
+      "version": "0.1.0",
+      "checkedAt": "2026-10-28T18:35:41.006Z",
+      "dataMode": "live",
+      "dependencies": {
+        "database": {
+          "status": "ok"
+        },
+        "redis": {
+          "status": "ok"
+        }
+      }
+    }
+  },
+  "manifest_format": "SHA-256 of UTF-8 json.dumps(files, sort_keys=True, separators=(comma,colon), ensure_ascii=False); each path has sha256, bytes, mode and Git blob hash"
+}

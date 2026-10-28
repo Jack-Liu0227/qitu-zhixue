@@ -1,0 +1,120 @@
+{
+  "head": "7920bfdad3c8b74aa2346a6d2d6e49c551020b53",
+  "checks": [
+    {
+      "app": "auth-portal",
+      "route": "/",
+      "status": 200,
+      "final_path": "/",
+      "assets": [
+        {
+          "path": "/_next/static/chunks/webpack-174ab5274ac68d0f.js",
+          "status": 200,
+          "bytes": 3444
+        },
+        {
+          "path": "/_next/static/css/2c6fb923c5ac6c85.css",
+          "status": 200,
+          "bytes": 61807
+        }
+      ],
+      "build_id": "3wTMF2u3HiXfYIl-v-eKR"
+    },
+    {
+      "app": "student-center",
+      "route": "/student",
+      "status": 200,
+      "final_path": "/student",
+      "assets": [
+        {
+          "path": "/student/_next/static/chunks/webpack-17e7e1e90c5ebb27.js",
+          "status": 200,
+          "bytes": 5356
+        },
+        {
+          "path": "/student/_next/static/css/ea27a8b0b05da1da.css",
+          "status": 200,
+          "bytes": 26603
+        }
+      ],
+      "build_id": "cD9OyScsaU0Ac0AUQrunX"
+    },
+    {
+      "app": "parent-companion",
+      "route": "/parent",
+      "status": 200,
+      "final_path": "/parent",
+      "assets": [
+        {
+          "path": "/parent/_next/static/chunks/webpack-382f792c96f3eefb.js",
+          "status": 200,
+          "bytes": 3431
+        },
+        {
+          "path": "/parent/_next/static/css/447c9e8fc6ac963e.css",
+          "status": 200,
+          "bytes": 79051
+        }
+      ],
+      "build_id": "1d8gU8XZqxEZuZ-z7L3L_"
+    },
+    {
+      "app": "teacher-workspace",
+      "route": "/teacher",
+      "status": 200,
+      "final_path": "/teacher/dashboard",
+      "assets": [
+        {
+          "path": "/teacher/_next/static/chunks/webpack-ee196a2d0f618fe1.js",
+          "status": 200,
+          "bytes": 3422
+        },
+        {
+          "path": "/teacher/_next/static/css/7631beb64079797c.css",
+          "status": 200,
+          "bytes": 73855
+        }
+      ],
+      "build_id": "V2erR8SovcSVuMb5OZem-"
+    },
+    {
+      "app": "admin-console",
+      "route": "/admin",
+      "status": 200,
+      "final_path": "/admin",
+      "assets": [
+        {
+          "path": "/admin/_next/static/chunks/webpack-c4794e5627287d59.js",
+          "status": 200,
+          "bytes": 3633
+        },
+        {
+          "path": "/admin/_next/static/css/a7557663c4edafc0.css",
+          "status": 200,
+          "bytes": 26483
+        }
+      ],
+      "build_id": "hmkpTz0_DLNDkNFDWnUKb"
+    },
+    {
+      "app": "company-console",
+      "route": "/company",
+      "status": 200,
+      "final_path": "/company",
+      "assets": [
+        {
+          "path": "/company/_next/static/chunks/webpack-dda6bf23d7afacdb.js",
+          "status": 200,
+          "bytes": 3410
+        },
+        {
+          "path": "/company/_next/static/css/d01ac921de9aa3e9.css",
+          "status": 200,
+          "bytes": 12651
+        }
+      ],
+      "build_id": "Mk4F9am9J7VlkstzThpaJ"
+    }
+  ],
+  "passed": true
+}

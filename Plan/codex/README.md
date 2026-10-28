@@ -4,7 +4,7 @@
 
 ## 当前规则与近期实施
 
-- [study-remote 文件差异与同步方案](./study-remote-sync-plan-20261029.md)：逐字节清单、docs/Plan 迁移映射、远端保护范围及同步验收流程；[旧文档整理已完成](../releases/remote-document-cleanup-20261029.md)，业务代码整体同步尚未执行。
+- [study-remote 文件差异与同步方案](./study-remote-sync-plan-20261029.md)：逐字节清单、docs/Plan 迁移映射、远端保护范围及同步验收流程；[旧文档整理](../releases/remote-document-cleanup-20261029.md)与[源码提交、服务器测试及三端同步](../releases/three-way-sync-20261029.md)均已完成。
 - [公司化经营规划](./company-operations-plan-20261028.md)。
 
 学习阶段、评价、作品与成长事实由服务端 owner 写入，Admin 统一控制运行时。当前产品合同先读 [文档总入口](../../docs/README.md)、[自主学习与教师只读](../issues/20261024-autonomous-learning.md)、[AI搭档](../../docs/student/tutor.md) 和 [平台治理](../../docs/admin/platform-governance.md)。

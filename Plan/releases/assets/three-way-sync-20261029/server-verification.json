@@ -1,0 +1,658 @@
+{
+  "head": "7920bfdad3c8b74aa2346a6d2d6e49c551020b53",
+  "started_utc": "2026-10-28T18:29:56.780282+00:00",
+  "checkout": "/root/qitu-verification/sync-20261028T174926Z",
+  "steps": [
+    {
+      "name": "dependency-build",
+      "command": [
+        "pnpm",
+        "exec",
+        "turbo",
+        "run",
+        "build",
+        "--filter=./packages/*",
+        "--filter=./services/*",
+        "--concurrency=1"
+      ],
+      "exit_code": 0,
+      "seconds": 0.97,
+      "log": "/root/qitu-verification/sync-20261028T174926Z-results/dependency-build.log",
+      "test_summaries": [],
+      "reused_from_head": "705d7ed13b3568730718a909633a27e47d4b3262",
+      "reuse_reason": "Only PostgreSQL fixture scripts changed; build and unit-test source inputs are unchanged",
+      "log_sha256": "eb4225be28d38f3b044b727be2cdbf42b9030469cf7c32ac2da557109b3a3640"
+    },
+    {
+      "name": "typecheck",
+      "command": [
+        "pnpm",
+        "exec",
+        "turbo",
+        "run",
+        "typecheck",
+        "--concurrency=1"
+      ],
+      "exit_code": 0,
+      "seconds": 0.92,
+      "log": "/root/qitu-verification/sync-20261028T174926Z-results/typecheck.log",
+      "test_summaries": [],
+      "reused_from_head": "705d7ed13b3568730718a909633a27e47d4b3262",
+      "reuse_reason": "Only PostgreSQL fixture scripts changed; build and unit-test source inputs are unchanged",
+      "log_sha256": "424f752046f32aa5297d759e0e0029d99272f44546a14d2a2ff6a815b845b34b"
+    },
+    {
+      "name": "api-test-compile",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@qitu/api",
+        "exec",
+        "tsc",
+        "-p",
+        "tsconfig.json",
+        "--outDir",
+        ".tmp/test-dist"
+      ],
+      "exit_code": 0,
+      "seconds": 25.74,
+      "log": "/root/qitu-verification/sync-20261028T174926Z-results/api-test-compile.log",
+      "test_summaries": [],
+      "reused_from_head": "705d7ed13b3568730718a909633a27e47d4b3262",
+      "reuse_reason": "Only PostgreSQL fixture scripts changed; build and unit-test source inputs are unchanged",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "api-startup-and-export",
+      "command": [
+        "node",
+        "--test",
+        "services/api/.tmp/test-dist/app.bootstrap.test.js",
+        "services/api/.tmp/test-dist/modules/works/artifact-format.test.js"
+      ],
+      "exit_code": 0,
+      "seconds": 2.77,
+      "log": "/root/qitu-verification/sync-20261028T174926Z-results/api-startup-and-export.log",
+      "test_summaries": [
+        "# tests 3",
+        "# suites 0",
+        "# pass 3",
+        "# fail 0",
+        "# skipped 0"
+      ],
+      "reused_from_head": "705d7ed13b3568730718a909633a27e47d4b3262",
+      "reuse_reason": "Only PostgreSQL fixture scripts changed; build and unit-test source inputs are unchanged",
+      "log_sha256": "12d9cb54b800cc541655b8c8fbc13e75c20e81234545ee4a7798aa5c279c13d1"
+    },
+    {
+      "name": "workspace-tests",
+      "command": [
+        "pnpm",
+        "exec",
+        "turbo",
+        "run",
+        "test",
+        "--concurrency=1"
+      ],
+      "exit_code": 0,
+      "seconds": 0.97,
+      "log": "/root/qitu-verification/sync-20261028T174926Z-results/workspace-tests.log",
+      "test_summaries": [
+        "@qitu/infra:test: # tests 36",
+        "@qitu/infra:test: # suites 0",
+        "@qitu/infra:test: # pass 36",
+        "@qitu/infra:test: # fail 0",
+        "@qitu/infra:test: # skipped 0",
+        "@qitu/model-runtime:test: # tests 49",
+        "@qitu/model-runtime:test: # suites 0",
+        "@qitu/model-runtime:test: # pass 49",
+        "@qitu/model-runtime:test: # fail 0",
+        "@qitu/model-runtime:test: # skipped 0",
+        "@qitu/ui:test: # tests 4",
+        "@qitu/ui:test: # suites 0",
+        "@qitu/ui:test: # pass 4",
+        "@qitu/ui:test: # fail 0",
+        "@qitu/ui:test: # skipped 0",
+        "@qitu/workers:test: # tests 39",
+        "@qitu/workers:test: # suites 1",
+        "@qitu/workers:test: # pass 39",
+        "@qitu/workers:test: # fail 0",
+        "@qitu/workers:test: # skipped 0",
+        "@qitu/api:test: # tests 1516",
+        "@qitu/api:test: # suites 75",
+        "@qitu/api:test: # pass 1505",
+        "@qitu/api:test: # fail 0",
+        "@qitu/api:test: # skipped 11",
+        "@qitu/student-center:test: # tests 70",
+        "@qitu/student-center:test: # suites 0",
+        "@qitu/student-center:test: # pass 70",
+        "@qitu/student-center:test: # fail 0",
+        "@qitu/student-center:test: # skipped 0",
+        "@qitu/student-center:test: # tests 8",
+        "@qitu/student-center:test: # suites 0",
+        "@qitu/student-center:test: # pass 8",
+        "@qitu/student-center:test: # fail 0",
+        "@qitu/student-center:test: # skipped 0"
+      ],
+      "reused_from_head": "705d7ed13b3568730718a909633a27e47d4b3262",
+      "reuse_reason": "Only PostgreSQL fixture scripts changed; build and unit-test source inputs are unchanged",
+      "log_sha256": "ff997272f473aba018578decfd5291154fdeccec7d301c11aca5f80af978ce25"
+    },
+    {
+      "name": "company-dialogue-regression",
+      "command": [
+        "node",
+        "tooling/verify-company-commerce.mjs"
+      ],
+      "exit_code": 0,
+      "seconds": 152.21,
+      "log": "/root/qitu-verification/sync-20261028T174926Z-results/company-dialogue-regression.log",
+      "test_summaries": [],
+      "reused_from_head": "705d7ed13b3568730718a909633a27e47d4b3262",
+      "reuse_reason": "Only PostgreSQL fixture scripts changed; build and unit-test source inputs are unchanged",
+      "log_sha256": "5a72c5267fede5e7097849c765023023e6b4d31e2ec068f5ca60bef5e86fe34a"
+    },
+    {
+      "name": "install",
+      "command": [
+        "pnpm",
+        "install",
+        "--frozen-lockfile"
+      ],
+      "exit_code": 0,
+      "seconds": 1.77,
+      "log": "/root/qitu-verification/sync-20261028T174926Z-results/install.log",
+      "test_summaries": [],
+      "log_sha256": "e9b81d841c05b8b9952e92080ec19775bbffbf9137b0b16f98f8755f30dd9953"
+    },
+    {
+      "name": "artifact-python-env",
+      "command": [
+        "python3",
+        "-m",
+        "venv",
+        "/root/qitu-verification/sync-20261028T174926Z-results/artifact-python"
+      ],
+      "exit_code": 0,
+      "seconds": 1.47,
+      "log": "/root/qitu-verification/sync-20261028T174926Z-results/artifact-python-env.log",
+      "test_summaries": [],
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "artifact-python-dependencies",
+      "command": [
+        "/root/qitu-verification/sync-20261028T174926Z-results/artifact-python/bin/python",
+        "-m",
+        "pip",
+        "install",
+        "-r",
+        "tooling/artifact-renderer-requirements.txt"
+      ],
+      "exit_code": 0,
+      "seconds": 0.57,
+      "log": "/root/qitu-verification/sync-20261028T174926Z-results/artifact-python-dependencies.log",
+      "test_summaries": [],
+      "log_sha256": "2d3a1e4d5f502636edf3e677b5260959f19f278bc55a7a7f3a4c06844f219bec"
+    },
+    {
+      "name": "documentation",
+      "command": [
+        "python3",
+        "-B",
+        "tooling/validate-docs.py"
+      ],
+      "exit_code": 0,
+      "seconds": 0.42,
+      "log": "/root/qitu-verification/sync-20261028T174926Z-results/documentation.log",
+      "test_summaries": [],
+      "log_sha256": "f59402bdad06d42fd87956828071a419fc4ad77a316d55d3e6d9b3f302779608"
+    },
+    {
+      "name": "documentation-tests",
+      "command": [
+        "python3",
+        "-B",
+        "tooling/validate-docs.test.py"
+      ],
+      "exit_code": 0,
+      "seconds": 0.11,
+      "log": "/root/qitu-verification/sync-20261028T174926Z-results/documentation-tests.log",
+      "test_summaries": [],
+      "log_sha256": "c57890dbaf36c948c4bcced09ece7b5452aa24a34e6934b018cb9f801b105c79"
+    },
+    {
+      "name": "archive-integrity",
+      "command": [
+        "node",
+        "tooling/check-codex-plan.mjs"
+      ],
+      "exit_code": 0,
+      "seconds": 0.31,
+      "log": "/root/qitu-verification/sync-20261028T174926Z-results/archive-integrity.log",
+      "test_summaries": [],
+      "log_sha256": "ef52dafaa44d9edf8bb13292932658d3c6ce3f1f5225032e7a51b8b68bf36400"
+    },
+    {
+      "name": "archive-checker-tests",
+      "command": [
+        "node",
+        "tooling/check-codex-plan.mjs",
+        "--self-test"
+      ],
+      "exit_code": 0,
+      "seconds": 0.16,
+      "log": "/root/qitu-verification/sync-20261028T174926Z-results/archive-checker-tests.log",
+      "test_summaries": [],
+      "log_sha256": "8379a1fc6b680f9e6c7feee4057a94cf7dba2716c4b83174d0332a4f995827a6"
+    },
+    {
+      "name": "startup-script-tests",
+      "command": [
+        "bash",
+        "tooling/start-qitu-services.test.sh"
+      ],
+      "exit_code": 0,
+      "seconds": 0.21,
+      "log": "/root/qitu-verification/sync-20261028T174926Z-results/startup-script-tests.log",
+      "test_summaries": [],
+      "log_sha256": "b4e418cce3aea9d6f257fb552c1d63cca103e225d22d2ac3a43d80c38975c7bd"
+    },
+    {
+      "name": "lint",
+      "command": [
+        "pnpm",
+        "exec",
+        "turbo",
+        "run",
+        "lint",
+        "--concurrency=1"
+      ],
+      "exit_code": 0,
+      "seconds": 0.92,
+      "log": "/root/qitu-verification/sync-20261028T174926Z-results/lint.log",
+      "test_summaries": [],
+      "log_sha256": "1ff556a60f5bfd5d9c0c8cc614f1a90d1d1ac6ae0d10fcbe542d3ebad508cfdb"
+    },
+    {
+      "name": "lint-workspace",
+      "command": [
+        "node",
+        "tooling/lint-baseline.mjs",
+        "--workspace"
+      ],
+      "exit_code": 0,
+      "seconds": 0.77,
+      "log": "/root/qitu-verification/sync-20261028T174926Z-results/lint-workspace.log",
+      "test_summaries": [],
+      "log_sha256": "77bcdf5b06a8e0ccf3c04d3171b725d3444208872b29a94f6ad423f412786203"
+    },
+    {
+      "name": "fixture-init",
+      "command": [
+        "runuser",
+        "-u",
+        "postgres",
+        "--",
+        "/usr/lib/postgresql/18/bin/initdb",
+        "-D",
+        "/tmp/qitu-fixture-sync-20261028T174926Z/data",
+        "-A",
+        "trust",
+        "-U",
+        "postgres",
+        "--no-instructions"
+      ],
+      "exit_code": 0,
+      "seconds": 0.52,
+      "log": "/root/qitu-verification/sync-20261028T174926Z-results/fixture-init.log",
+      "test_summaries": [],
+      "log_sha256": "593954a518fa37a7135d11b264fd4597c33b1a3e41db164641579dc88bb118d3"
+    },
+    {
+      "name": "fixture-start",
+      "command": [
+        "runuser",
+        "-u",
+        "postgres",
+        "--",
+        "/usr/lib/postgresql/18/bin/pg_ctl",
+        "-D",
+        "/tmp/qitu-fixture-sync-20261028T174926Z/data",
+        "-l",
+        "/tmp/qitu-fixture-sync-20261028T174926Z/postgres.log",
+        "-o",
+        "-h 127.0.0.1 -p 59061 -k /tmp/qitu-fixture-sync-20261028T174926Z -c shared_buffers=32MB -c max_connections=40",
+        "-w",
+        "start"
+      ],
+      "exit_code": 0,
+      "seconds": 0.11,
+      "log": "/root/qitu-verification/sync-20261028T174926Z-results/fixture-start.log",
+      "test_summaries": [],
+      "log_sha256": "66afd0411ccc09366e99fdd99b85f21899c8d2d064f5835126859618802153ad"
+    },
+    {
+      "name": "company-postgres",
+      "command": [
+        "node",
+        "tooling/test-company-postgres.mjs"
+      ],
+      "exit_code": 0,
+      "seconds": 3.28,
+      "log": "/root/qitu-verification/sync-20261028T174926Z-results/company-postgres.log",
+      "test_summaries": [],
+      "log_sha256": "2396e86e0872b76919c960e4ebbbcb1dfbe6c1a6d6661d54398dce608dde9124"
+    },
+    {
+      "name": "company-migration-rollback",
+      "command": [
+        "node",
+        "tooling/test-company-migration-postgres.mjs"
+      ],
+      "exit_code": 0,
+      "seconds": 0.32,
+      "log": "/root/qitu-verification/sync-20261028T174926Z-results/company-migration-rollback.log",
+      "test_summaries": [],
+      "log_sha256": "e7689dc1d738dd750a31753b5ab102d70105351d7d11ff41cfb32afd0a450d90"
+    },
+    {
+      "name": "create-qitu_tool_migration_fixture_sync",
+      "command": [
+        "/usr/lib/postgresql/18/bin/createdb",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "59061",
+        "-U",
+        "postgres",
+        "qitu_tool_migration_fixture_sync"
+      ],
+      "exit_code": 0,
+      "seconds": 0.03,
+      "log": "/root/qitu-verification/sync-20261028T174926Z-results/create-qitu_tool_migration_fixture_sync.log",
+      "test_summaries": [],
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "create-qitu_feishu_fixture",
+      "command": [
+        "/usr/lib/postgresql/18/bin/createdb",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "59061",
+        "-U",
+        "postgres",
+        "qitu_feishu_fixture"
+      ],
+      "exit_code": 0,
+      "seconds": 0.03,
+      "log": "/root/qitu-verification/sync-20261028T174926Z-results/create-qitu_feishu_fixture.log",
+      "test_summaries": [],
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "create-qitu_restore_fixture_sync",
+      "command": [
+        "/usr/lib/postgresql/18/bin/createdb",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "59061",
+        "-U",
+        "postgres",
+        "qitu_restore_fixture_sync"
+      ],
+      "exit_code": 0,
+      "seconds": 0.03,
+      "log": "/root/qitu-verification/sync-20261028T174926Z-results/create-qitu_restore_fixture_sync.log",
+      "test_summaries": [],
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "full-fixture-migrations",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@qitu/database",
+        "migrate"
+      ],
+      "exit_code": 0,
+      "seconds": 2.07,
+      "log": "/root/qitu-verification/sync-20261028T174926Z-results/full-fixture-migrations.log",
+      "test_summaries": [],
+      "log_sha256": "ed07a4c87dcfc62fc04a5629ed521b1109c236c212444926933e43ec2f8ad1d6"
+    },
+    {
+      "name": "postgres-integrations",
+      "command": [
+        "node",
+        "--test",
+        "--test-concurrency=1",
+        "services/api/.tmp/test-dist/common/idempotency/idempotency.integration.test.js",
+        "services/api/.tmp/test-dist/modules/feishu/feishu-message.integration.test.js",
+        "services/api/.tmp/test-dist/modules/model-registry/manual-model.integration.test.js",
+        "services/api/.tmp/test-dist/modules/model-registry/model-registry.integration.test.js",
+        "services/api/.tmp/test-dist/modules/platform-registry/tool-binding-migration.integration.test.js",
+        "services/api/.tmp/test-dist/modules/templates/templates-restore.postgres.test.js"
+      ],
+      "exit_code": 0,
+      "seconds": 5.48,
+      "log": "/root/qitu-verification/sync-20261028T174926Z-results/postgres-integrations.log",
+      "test_summaries": [
+        "# tests 45",
+        "# suites 3",
+        "# pass 45",
+        "# fail 0",
+        "# skipped 0"
+      ],
+      "log_sha256": "f6d339643ab0817d538f34e7f5997fe1a52c5791d7df8c4d9b57f89e7453a317"
+    },
+    {
+      "name": "build-auth-portal",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@qitu/auth-portal",
+        "build"
+      ],
+      "exit_code": 0,
+      "seconds": 32.16,
+      "log": "/root/qitu-verification/sync-20261028T174926Z-results/build-auth-portal.log",
+      "test_summaries": [],
+      "log_sha256": "afad8301ab73cfa2a03227cd9e7c504e478e589f2e76d3a112722053806f8b13"
+    },
+    {
+      "name": "build-student-center",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@qitu/student-center",
+        "build"
+      ],
+      "exit_code": 0,
+      "seconds": 108.48,
+      "log": "/root/qitu-verification/sync-20261028T174926Z-results/build-student-center.log",
+      "test_summaries": [],
+      "log_sha256": "4d003bfa7b16406dcfaec164738f74b02b8576a9c981d8d4b215161ef5118391"
+    },
+    {
+      "name": "build-parent-companion",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@qitu/parent-companion",
+        "build"
+      ],
+      "exit_code": 0,
+      "seconds": 29.88,
+      "log": "/root/qitu-verification/sync-20261028T174926Z-results/build-parent-companion.log",
+      "test_summaries": [],
+      "log_sha256": "4503657655cea9f57992cebbcff02e5cca089df661046f7551f27c16cb9d5c9e"
+    },
+    {
+      "name": "build-teacher-workspace",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@qitu/teacher-workspace",
+        "build"
+      ],
+      "exit_code": 0,
+      "seconds": 33.14,
+      "log": "/root/qitu-verification/sync-20261028T174926Z-results/build-teacher-workspace.log",
+      "test_summaries": [],
+      "log_sha256": "4c76de3ae094fa2f9672ecf086d6558f4c4dae85747851da614bd1bd5bcfaabd"
+    },
+    {
+      "name": "build-admin-console",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@qitu/admin-console",
+        "build"
+      ],
+      "exit_code": 0,
+      "seconds": 49.37,
+      "log": "/root/qitu-verification/sync-20261028T174926Z-results/build-admin-console.log",
+      "test_summaries": [],
+      "log_sha256": "97edf9f08eeaee6debb6bfa47df4c050c173defffb96a6cdb557dfc836e07b53"
+    },
+    {
+      "name": "build-company-console",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@qitu/company-console",
+        "build"
+      ],
+      "exit_code": 0,
+      "seconds": 23.98,
+      "log": "/root/qitu-verification/sync-20261028T174926Z-results/build-company-console.log",
+      "test_summaries": [],
+      "log_sha256": "7648bac906054c2221b017c10fe02c39fc1397e49e4c877f6f7a227ba13c8273"
+    }
+  ],
+  "completed_utc": "2026-10-28T18:34:45.680050+00:00",
+  "passed": true,
+  "fixture_stopped": true,
+  "fixture_removed": true,
+  "checkout_status": "",
+  "versions": {
+    "node": "v22.22.1",
+    "pnpm": "10.10.0",
+    "python": "Python 3.14.4"
+  },
+  "database_checks": {
+    "company-postgres": [
+      "settings revision, published offer and current template binding",
+      "orders enforce guardian ownership, frozen price and durable idempotency",
+      "only matching signed-payment facts grant access, duplicate receipts audit once",
+      "refunds remain processing until verified, then revoke new-project access",
+      "revoked guardian link denies read immediately",
+      "expired orders block replacements until merchant closure is verified",
+      "operating checks persist one task per reference and lead handling resolves it",
+      "cost ledger is idempotent and never invents profitability or learning completions",
+      "individual registration creates one account without invitations, purchases, projects or guardian links",
+      "registration replay and lost idempotency receipt do not duplicate accounts",
+      "independent parent and student authenticate; sessions survive restart and revoke on logout",
+      "existing accounts, privileged roles, family injection and stale policy cannot create or change users",
+      "concurrent registrations sharing an email have one atomic winner",
+      "SMS replay sends once, binds number, and enforces shared cooldown",
+      "five wrong codes persist across service restarts; expired and mismatched codes fail",
+      "phone registration is atomic, authenticates both number formats and hides directory phones",
+      "audit failure rolls back user and SMS consumption; concurrent code reuse creates one account",
+      "provider failure never reports success or retries sending with the same key",
+      "subscriptions stay disabled until explicitly configured; conditional annual products cannot publish",
+      "trial purchase validates guardian; concurrent keys allocate only one pending order",
+      "trial discount is server computed, charged once, and blocks independent source refund",
+      "manual renewal queues after current service end and never reuses trial discount",
+      "free quota enforces 10 under concurrency and failed turns release a reservation",
+      "free project allowance is consumed once inside the project transaction",
+      "parallel project transactions with student foreign keys serialize without lock upgrade deadlocks",
+      "organization payment creates 30-seat contract and student quota does not combine with personal quota",
+      "company object permissions, durable tasks, actual completion and cancellation",
+      "partial refund validates refunded fen and revokes only the corresponding grant",
+      "Feishu group routing binds app, group, sender and department; message retries create one task and receipt"
+    ],
+    "company-migration-rollback": [
+      "existing Company records block rollback atomically",
+      "concurrent Company writes cannot pass the rollback guard",
+      "subscription orders block rollback atomically",
+      "empty migration rolls back without changing legacy orders",
+      "rollback is repeatable and the migration can be reapplied"
+    ]
+  },
+  "company_dialogue": {
+    "runId": "run-1793211949273-382424",
+    "directory": "/root/qitu-verification/sync-20261028T174926Z/services/api/.tmp/pbl-capability/run-1793211949273-382424",
+    "steps": [
+      {
+        "name": "build-contracts",
+        "exitCode": 0
+      },
+      {
+        "name": "contracts-esm",
+        "exitCode": 0
+      },
+      {
+        "name": "build-database",
+        "exitCode": 0
+      },
+      {
+        "name": "build-infra",
+        "exitCode": 0
+      },
+      {
+        "name": "build-agent-memory",
+        "exitCode": 0
+      },
+      {
+        "name": "build-ai-client",
+        "exitCode": 0
+      },
+      {
+        "name": "build-model-runtime",
+        "exitCode": 0
+      },
+      {
+        "name": "api",
+        "exitCode": 0
+      },
+      {
+        "name": "types-company-console",
+        "exitCode": 0
+      },
+      {
+        "name": "types-admin-console",
+        "exitCode": 0
+      },
+      {
+        "name": "types-parent-companion",
+        "exitCode": 0
+      },
+      {
+        "name": "types-auth-portal",
+        "exitCode": 0
+      },
+      {
+        "name": "types-student-center",
+        "exitCode": 0
+      },
+      {
+        "name": "behavior",
+        "exitCode": 0
+      }
+    ],
+    "resolution": "Current source packages, isolated outputs; copied UNC installation unchanged",
+    "behavior_summary": [
+      "# tests 195",
+      "# suites 7",
+      "# pass 195",
+      "# fail 0",
+      "# skipped 0"
+    ],
+    "behavior_log_sha256": "49455270d41c463b19214acec9078b5eb9516b40ec668ccf3cb124f693d84953"
+  }
+}
