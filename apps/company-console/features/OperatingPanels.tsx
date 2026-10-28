@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { COMPANY_DEPARTMENTS, type CompanyTeam, type CompanyWork } from '@qitu/contracts';
 import type { PanelProps } from './CompanyWorkspace';
 import { date, money } from './api';
+import { SetupPanel } from './SetupPanel';
 const state: Record<CompanyWork['status'], string> = {
   queued: '等待执行',
   running: '正在执行',
@@ -21,6 +22,7 @@ export function OverviewPanel({ data }: PanelProps) {
   });
   return (
     <>
+      <SetupPanel data={data} />
       <div className="metrics-strip">
         {[
           ['累计实收', money(m.revenueFen), '已验证支付回执'],
@@ -139,10 +141,13 @@ function WorkTable({ work }: { work: CompanyWork[] }) {
   );
 }
 export function WorkPanel({ data, act, busy }: PanelProps) {
-  const [department, setDepartment] = useState('management'),
+  const [department, setDepartment] = useState<string>(
+      data.teams.find((t) => t.enabled && t.assistantId)?.department ?? 'management',
+    ),
     [title, setTitle] = useState(''),
     [brief, setBrief] = useState('');
   const canOperate = ['owner', 'operator'].includes(data.role);
+  const ready = data.teams.some((t) => t.department === department && t.enabled && t.assistantId);
   return (
     <>
       <section className="panel">
@@ -153,7 +158,7 @@ export function WorkPanel({ data, act, busy }: PanelProps) {
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            void act('company/work', { department, title, brief });
+            if (ready) void act('company/work', { department, title, brief });
           }}
           className="work-form"
         >
@@ -193,8 +198,13 @@ export function WorkPanel({ data, act, busy }: PanelProps) {
             <small>
               每 24 小时最多 50 个任务，每项最多 3 次执行。对外发布和资金操作仍由你处理。
             </small>
-            <button disabled={busy || !canOperate}>委派工作 ↗</button>
+            <button disabled={busy || !canOperate || !ready}>委派工作 ↗</button>
           </div>
+          {!ready && (
+            <p className="muted wide" role="status">
+              当前部门尚未配置助手。<Link href="/teams">前往绑定并启用 →</Link>
+            </p>
+          )}
         </form>
       </section>
       <section className="work-list">
@@ -261,7 +271,7 @@ export function TeamsPanel(props: PanelProps) {
       <div className="department-grid">
         {COMPANY_DEPARTMENTS.map((d, i) => (
           <TeamCard
-            key={d.id}
+            key={`${d.id}:${props.data.teams.find((t) => t.department === d.id)?.revision}`}
             {...props}
             team={props.data.teams.find((t) => t.department === d.id)!}
             index={i}
@@ -308,7 +318,7 @@ function TeamCard({
             <small>版本 {team.revision}</small>
             <button
               className="secondary"
-              disabled={busy || (!assistant && !team.enabled)}
+              disabled={busy || !assistant}
               onClick={() =>
                 void act(
                   'company/teams',
@@ -316,14 +326,34 @@ function TeamCard({
                     department: team.department,
                     revision: team.revision,
                     assistantId: assistant || null,
-                    enabled: !team.enabled,
+                    enabled: true,
                   },
                   'PATCH',
                 )
               }
             >
-              {team.enabled ? '停用' : '绑定并启用'}
+              {team.enabled ? '更新绑定' : '绑定并启用'}
             </button>
+            {team.enabled && (
+              <button
+                className="text-button"
+                disabled={busy}
+                onClick={() =>
+                  void act(
+                    'company/teams',
+                    {
+                      department: team.department,
+                      revision: team.revision,
+                      assistantId: team.assistantId,
+                      enabled: false,
+                    },
+                    'PATCH',
+                  )
+                }
+              >
+                停用
+              </button>
+            )}
           </div>
         </>
       ) : (

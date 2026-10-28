@@ -977,6 +977,30 @@ summary small {
     left: 20px;
   }
 }
+.setup-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 20px;
+  list-style: none;
+  padding: 0;
+  margin: 22px 0 0;
+}
+.setup-list li {
+  border-top: 1px solid #dce6df;
+  padding-top: 16px;
+}
+.setup-list strong {
+  font-size: 14px;
+}
+.setup-list p {
+  font-size: 12px;
+  line-height: 1.8;
+  color: #62766d;
+}
+.setup-list a {
+  font-size: 12px;
+  text-underline-offset: 3px;
+}
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
