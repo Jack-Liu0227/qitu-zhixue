@@ -2,6 +2,7 @@
 
 [返回计划总入口](../README.md)。以下内容保留各自记录日期与验证范围，不代表当前线上状态。
 
+- [Company 内部运营自动配置（2026-10-29）](./company-auto-config-20261029.md)
 - [Company 初始化与现场验证（2026-10-29）](./company-initialization-20261029.md)
 
 - [收费与 Company 主站发布（2026-10-29）](./commerce-production-20261029.md)

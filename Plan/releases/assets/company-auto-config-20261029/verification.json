@@ -1,0 +1,50 @@
+{
+  "startedAt": "2026-10-28T22:33:42.319784+00:00",
+  "automationEnabled": true,
+  "settingsRevision": 1,
+  "followupHours": 24,
+  "inactivityDays": 7,
+  "intervalMinutes": 5,
+  "manualChecks": [
+    {
+      "created": 0,
+      "skipped": false,
+      "checkedAt": "2026-10-28T22:33:42.992Z"
+    },
+    {
+      "created": 0,
+      "skipped": false,
+      "checkedAt": "2026-10-28T22:33:43.057Z"
+    }
+  ],
+  "lastRunAt": "2026-10-28T22:33:43.057Z",
+  "openTaskCount": 0,
+  "salesEnabled": false,
+  "subscriptionPolicyEnabled": false,
+  "externalMessagesSent": false,
+  "operatorInformationChanged": false,
+  "priceOrEntitlementChanged": false,
+  "automaticRunObservedAt": "2026-10-28T22:39:45.315Z",
+  "observedAt": "2026-10-28T22:40:06.282246+00:00",
+  "automaticSchedulerVerified": true,
+  "automaticCheckAudit": [
+    {
+      "at": "2026-10-28T22:39:45.314Z",
+      "action": "business.automation.checked",
+      "detail": {
+        "manual": false,
+        "created": 0,
+        "candidates": 0
+      }
+    },
+    {
+      "at": "2026-10-28T22:34:45.314Z",
+      "action": "business.automation.checked",
+      "detail": {
+        "manual": false,
+        "created": 0,
+        "candidates": 0
+      }
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "target": "http://122.51.130.204",
+  "checkedAt": "2026-10-28T22:39:31.619Z",
+  "checks": [
+    "automatic internal checks enabled with existing 24-hour and 7-day thresholds",
+    "operations page shows saved automation settings",
+    "three operational configuration guides are visible in Company",
+    "sales and subscription enforcement remain disabled pending real prerequisites"
+  ],
+  "browserErrors": []
+}

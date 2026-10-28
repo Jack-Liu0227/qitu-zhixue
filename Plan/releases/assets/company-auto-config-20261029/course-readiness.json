@@ -1,0 +1,264 @@
+{
+  "templateCounts": {
+    "draft": 8,
+    "piloting": 11,
+    "published": 1
+  },
+  "reviewedPublishedOrPilotingVersions": 12,
+  "sellableVersions": 0,
+  "trialSuitableVersions": 0,
+  "versions": [
+    {
+      "templateId": "tpl-04bd8624-c1c4-41de-97de-318d055038e4",
+      "title": "光为什么会出现明暗条纹？干涉与衍射探究 · 从基础开始",
+      "templateStatus": "piloting",
+      "versionId": "tplv-1331db5c-8525-40ca-8b37-ddee040ef12f",
+      "version": "v1",
+      "versionStatus": "piloting",
+      "activeBindings": 0,
+      "scheduleProfiles": [
+        {
+          "lessonCount": 8,
+          "lessonMinutes": 60
+        },
+        {
+          "lessonCount": 8,
+          "lessonMinutes": 60
+        }
+      ],
+      "sellable": false,
+      "trialSuitable": false
+    },
+    {
+      "templateId": "tpl-04bd8624-c1c4-41de-97de-318d055038e4",
+      "title": "光为什么会出现明暗条纹？干涉与衍射探究 · 从基础开始",
+      "templateStatus": "piloting",
+      "versionId": "tplv-e6e78f26-9943-4450-adb7-67a9f288cc40",
+      "version": "v2",
+      "versionStatus": "piloting",
+      "activeBindings": 1,
+      "scheduleProfiles": [
+        {
+          "lessonCount": 8,
+          "lessonMinutes": 60
+        },
+        {
+          "lessonCount": 8,
+          "lessonMinutes": 60
+        }
+      ],
+      "sellable": false,
+      "trialSuitable": false
+    },
+    {
+      "templateId": "tpl-9e0535b3-72ad-4224-8b66-bfc147f1b58c",
+      "title": "雷霆战机",
+      "templateStatus": "piloting",
+      "versionId": "tplv-65948f14-7ca0-4d1c-aa32-967651196399",
+      "version": "v1",
+      "versionStatus": "piloting",
+      "activeBindings": 1,
+      "scheduleProfiles": [
+        {
+          "lessonCount": 8,
+          "lessonMinutes": 60
+        },
+        {
+          "lessonCount": 8,
+          "lessonMinutes": 60
+        }
+      ],
+      "sellable": false,
+      "trialSuitable": false
+    },
+    {
+      "templateId": "tpl-04b9e2e4-7765-4b11-a58d-3409940ed743",
+      "title": "一颗种子的七天日记",
+      "templateStatus": "piloting",
+      "versionId": "tplv-fe026fa0-e286-46a6-941c-1f6b014a1809",
+      "version": "v1",
+      "versionStatus": "piloting",
+      "activeBindings": 1,
+      "scheduleProfiles": [
+        {
+          "lessonCount": 8,
+          "lessonMinutes": 60
+        },
+        {
+          "lessonCount": 8,
+          "lessonMinutes": 60
+        }
+      ],
+      "sellable": false,
+      "trialSuitable": false
+    },
+    {
+      "templateId": "tpl-0549a310-6a7b-4383-bb29-66e32fa7d50d",
+      "title": "让一周的包装少一点",
+      "templateStatus": "piloting",
+      "versionId": "tplv-59d87e0f-86ae-4ccb-87c2-0f42d46d697f",
+      "version": "v1",
+      "versionStatus": "piloting",
+      "activeBindings": 1,
+      "scheduleProfiles": [
+        {
+          "lessonCount": 8,
+          "lessonMinutes": 60
+        },
+        {
+          "lessonCount": 8,
+          "lessonMinutes": 60
+        }
+      ],
+      "sellable": false,
+      "trialSuitable": false
+    },
+    {
+      "templateId": "tpl-5b8f6ebc-1e2b-4c8d-8a2b-440ca171d3cc",
+      "title": "给图书角做一次数据诊断",
+      "templateStatus": "piloting",
+      "versionId": "tplv-6f1085df-ff34-4855-aec3-7ef116f61117",
+      "version": "v1",
+      "versionStatus": "piloting",
+      "activeBindings": 1,
+      "scheduleProfiles": [
+        {
+          "lessonCount": 8,
+          "lessonMinutes": 60
+        },
+        {
+          "lessonCount": 8,
+          "lessonMinutes": 60
+        }
+      ],
+      "sellable": false,
+      "trialSuitable": false
+    },
+    {
+      "templateId": "tpl-9b9d1c54-f365-48f4-b21e-72d79cae0955",
+      "title": "让第一次来的人也能找到路",
+      "templateStatus": "piloting",
+      "versionId": "tplv-5d37b83e-17c9-4e14-ade4-77aad826fd7d",
+      "version": "v1",
+      "versionStatus": "piloting",
+      "activeBindings": 1,
+      "scheduleProfiles": [
+        {
+          "lessonCount": 8,
+          "lessonMinutes": 60
+        },
+        {
+          "lessonCount": 8,
+          "lessonMinutes": 60
+        }
+      ],
+      "sellable": false,
+      "trialSuitable": false
+    },
+    {
+      "templateId": "tpl-784a87af-94cb-4377-91ac-b17f96a91272",
+      "title": "给一件老物件办微型展览",
+      "templateStatus": "piloting",
+      "versionId": "tplv-70fc5796-7695-4003-bd3d-115b7a672cfd",
+      "version": "v1",
+      "versionStatus": "piloting",
+      "activeBindings": 1,
+      "scheduleProfiles": [
+        {
+          "lessonCount": 8,
+          "lessonMinutes": 60
+        },
+        {
+          "lessonCount": 8,
+          "lessonMinutes": 60
+        }
+      ],
+      "sellable": false,
+      "trialSuitable": false
+    },
+    {
+      "templateId": "tpl-3bcc7672-2a29-4a4a-b1f9-c23770168f8d",
+      "title": "一个选择，两种结局",
+      "templateStatus": "piloting",
+      "versionId": "tplv-02ffab8c-5149-4f8a-863b-5fa8ab738fa7",
+      "version": "v1",
+      "versionStatus": "piloting",
+      "activeBindings": 1,
+      "scheduleProfiles": [
+        {
+          "lessonCount": 8,
+          "lessonMinutes": 60
+        },
+        {
+          "lessonCount": 8,
+          "lessonMinutes": 60
+        }
+      ],
+      "sellable": false,
+      "trialSuitable": false
+    },
+    {
+      "templateId": "tpl-d1c7e101-3bd0-4540-ad98-5e752c1364db",
+      "title": "为一条流传说法做核验",
+      "templateStatus": "piloting",
+      "versionId": "tplv-8c717bf9-4149-453a-904d-106ac5005ea8",
+      "version": "v1",
+      "versionStatus": "piloting",
+      "activeBindings": 1,
+      "scheduleProfiles": [
+        {
+          "lessonCount": 8,
+          "lessonMinutes": 60
+        },
+        {
+          "lessonCount": 8,
+          "lessonMinutes": 60
+        }
+      ],
+      "sellable": false,
+      "trialSuitable": false
+    },
+    {
+      "templateId": "tpl-d8875d5b-a8dc-4829-b9de-ad48cb8bbf11",
+      "title": "用一百元设计一次文创试售",
+      "templateStatus": "piloting",
+      "versionId": "tplv-c127d7ee-8ec3-488c-8544-745313a56d13",
+      "version": "v1",
+      "versionStatus": "piloting",
+      "activeBindings": 1,
+      "scheduleProfiles": [
+        {
+          "lessonCount": 8,
+          "lessonMinutes": 60
+        },
+        {
+          "lessonCount": 8,
+          "lessonMinutes": 60
+        }
+      ],
+      "sellable": false,
+      "trialSuitable": false
+    },
+    {
+      "templateId": "tpl-f950fdce-fbfb-44b1-b140-c85f66aae25b",
+      "title": "光为什么会出现明暗条纹？问答探究",
+      "templateStatus": "piloting",
+      "versionId": "tplv-55d940f7-24f8-4740-b5ff-258259b3d3bf",
+      "version": "v1",
+      "versionStatus": "piloting",
+      "activeBindings": 1,
+      "scheduleProfiles": [
+        {
+          "lessonCount": 8,
+          "lessonMinutes": 60
+        },
+        {
+          "lessonCount": 8,
+          "lessonMinutes": 60
+        }
+      ],
+      "sellable": false,
+      "trialSuitable": false
+    }
+  ]
+}
