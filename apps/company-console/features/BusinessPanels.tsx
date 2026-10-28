@@ -50,7 +50,7 @@ export function ProductsPanel(props: PanelProps) {
           </select>
         </label>
         <div className="form-footer">
-          <a href="/admin/business">经营主体与支付配置 ↗</a>
+          <a href="/admin/settings/ops">经营主体与支付配置 ↗</a>
           <button
             disabled={busy || !data.actor.admin}
             onClick={() =>

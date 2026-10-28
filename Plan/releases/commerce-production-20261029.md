@@ -35,6 +35,8 @@
 
 ## 收款开放条件
 
+后续后台核查发现 Company 产品页的经营配置链接仍指向不存在的 `/admin/business`，已修正为实际入口 `/admin/settings/ops`。本项只修复跳转，不启用订阅策略、销售或公司助手。
+
 生产实际读取为 `salesEnabled=false`、订阅策略 `enabled=false`、微信商户 `configured=false`。因此当前展示套餐和经营管理，按钮明确显示待开放/咨询；本次没有收款、退款、发送飞书消息或修改学习事实。
 
 正式售卖还需在 Admin 补齐微信商户与经营条款，在 Company 绑定有效课程、发布体验课/月会员并启用订阅策略和销售开关。年卡继续保持条件性方案。操作方法见[Company 使用说明](../../docs/company/README.md)与[家长首页](../../docs/parent/home.md)。账号密码不写入仓库，测试账号可从主站登录页自动填入。
