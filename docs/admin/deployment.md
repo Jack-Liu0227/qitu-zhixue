@@ -72,6 +72,17 @@ bash tooling/start-qitu-services.sh build     # 强制重建 runtime 包 + 前�
 Graphiti 相关操作见 `tooling/qitu-graphiti.sh`（默认 `QITU_GRAPHITI_ENABLED` 关闭，
 `services/graphiti` 是可重建投影桥，不是聊天记忆）。
 
+### 2.1 作品导出依赖
+
+作品的 Word、PPT、Excel 与 PDF 导出由固定 Python 渲染器提供。部署时在独立虚拟环境安装 [渲染依赖](../../tooling/artifact-renderer-requirements.txt)，并将 API 的 `QITU_ARTIFACT_PYTHON` 配置为该环境中 Python 的绝对路径；运行 API 的账号需要有执行权限。示例：
+
+```bash
+python3 -m venv /opt/qitu-artifact-venv
+/opt/qitu-artifact-venv/bin/python -m pip install -r tooling/artifact-renderer-requirements.txt
+```
+
+依赖缺失时导出返回明确的不可用错误，不产生文件成功回执。CI 同样安装该清单，以实际生成四种文件格式进行测试。
+
 ## 3. 与 study-remote 同步
 
 同步脚本只操作远程主工作树 `/root/qitu-zhixue`，不会触碰角色工作树：

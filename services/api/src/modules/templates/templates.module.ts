@@ -44,7 +44,7 @@ import { ProjectBindingRecoveryController } from './project-binding-recovery.con
  * PostgreSQL 实现，未配置数据库时 fail fast。
  */
 @Module({
-  imports: [AuthModule, PlatformRegistryModule, ModelRegistryModule, forwardRef(() => KnowledgeModule)],
+  imports: [AuthModule, forwardRef(() => PlatformRegistryModule), ModelRegistryModule, forwardRef(() => KnowledgeModule)],
   controllers: [TemplatesController, TemplateGovernanceController, TemplateDeletionController, TemplateBindingController, ProjectBindingRecoveryController],
   providers: [
     TeachingBundleCatalog,
