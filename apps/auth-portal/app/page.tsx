@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { BrandLogo } from '@qitu/ui';
 
 import type { PublicHomeTemplate } from '@qitu/contracts';
@@ -12,6 +13,7 @@ import { ReactBitsBackground } from './home/react-bits-background';
 import { ScrollReveal } from './home/scroll-reveal';
 import { COMPETENCIES, PBL_STEPS } from './public-content';
 import { FALLBACK_STATS, loadHomeView } from './public-data';
+import { SubscriptionShowcase, SubscriptionShowcaseLoading } from './showcase/SubscriptionShowcase';
 
 export const revalidate = 60;
 
@@ -51,73 +53,77 @@ export default async function HomePage() {
         <section className="home-hero react-bits-hero-wrapper home-section--fullscreen">
           <ScrollReveal>
             <div className="home-shell home-hero-grid">
-            <div className="home-hero-copy">
-              <p className="home-badge react-bits-badge">
-                <span className="react-bits-badge-glow" />
-                <span className="home-badge-pill">NEW</span>
-                <span className="react-bits-badge-text">AI 驱动的项目式学习平台</span>
-                <span className="react-bits-badge-arrow">✨</span>
-              </p>
-              <h1 className="home-hero-title">
-                <span className="home-title-phrase">一个问题，</span><span className="react-bits-shiny-text home-title-phrase">长成一件作品</span>
-              </h1>
-              <p className="home-hero-sub">与 AI 共成长，启发真实世界新思维</p>
-              <p className="home-hero-lead">
-                从真实问题出发，与 AI
-                导师一起研究、实践和复盘，把灵感变成作品，也把过程沉淀为可追溯的成长证据。
-              </p>
-              <div className="home-hero-actions">
-                <Link
-                  className="home-btn home-btn--primary home-btn--lg react-bits-star-border-btn"
-                  href="/login?next=%2Fstudent%2Ftutor"
-                >
-                  <span className="react-bits-btn-glow" />
-                  <span className="react-bits-btn-content">
-                    进入学习空间 <Icon name="arrowRight" size={18} />
-                  </span>
-                </Link>
-                <DemoModal
-                  label="进入项目式学习"
-                  variant="outline"
-                  icon="play"
-                  className="home-btn--lg react-bits-glass-btn"
-                  destination="/learning"
-                />
-              </div>
-              <p className="home-account-hint">开启你的自主探究 · <Link href="/login?mode=register">创建个人账号</Link> · <Link href="/login">已有账号登录</Link></p>
-              <p className="home-trust">
-                <span>
-                  <Icon name="school" size={16} /> 校本课程与项目模板
-                </span>
-                <span>
-                  <Icon name="brain" size={16} /> 苏格拉底式启发提问
-                </span>
-                <span>
-                  <Icon name="bolt" size={16} /> 理论达标再进入实践
-                </span>
-              </p>
-              {degraded ? (
-                <p className="home-data-note" role="status">
-                  <Icon name="sensors" size={18} /> 实时数据暂时不可用，统计显示为
-                  —。你仍可直接登录查看自己的项目数据。
+              <div className="home-hero-copy">
+                <p className="home-badge react-bits-badge">
+                  <span className="react-bits-badge-glow" />
+                  <span className="home-badge-pill">NEW</span>
+                  <span className="react-bits-badge-text">AI 驱动的项目式学习平台</span>
+                  <span className="react-bits-badge-arrow">✨</span>
                 </p>
-              ) : null}
-              <dl className="home-hero-stats">
-                {heroStats.map((item) => (
-                  <div className="home-stat" key={item.label}>
-                    <dt>
-                      <Icon name={item.icon} size={16} /> {item.label}
-                    </dt>
-                    <dd>
-                      <strong>{degraded ? '—' : item.value}</strong>
-                      <span>{item.hint}</span>
-                    </dd>
-                  </div>
-                ))}
-              </dl>
+                <h1 className="home-hero-title">
+                  <span className="home-title-phrase">一个问题，</span>
+                  <span className="react-bits-shiny-text home-title-phrase">长成一件作品</span>
+                </h1>
+                <p className="home-hero-sub">与 AI 共成长，启发真实世界新思维</p>
+                <p className="home-hero-lead">
+                  从真实问题出发，与 AI
+                  导师一起研究、实践和复盘，把灵感变成作品，也把过程沉淀为可追溯的成长证据。
+                </p>
+                <div className="home-hero-actions">
+                  <Link
+                    className="home-btn home-btn--primary home-btn--lg react-bits-star-border-btn"
+                    href="/login?next=%2Fstudent%2Ftutor"
+                  >
+                    <span className="react-bits-btn-glow" />
+                    <span className="react-bits-btn-content">
+                      进入学习空间 <Icon name="arrowRight" size={18} />
+                    </span>
+                  </Link>
+                  <DemoModal
+                    label="进入项目式学习"
+                    variant="outline"
+                    icon="play"
+                    className="home-btn--lg react-bits-glass-btn"
+                    destination="/learning"
+                  />
+                </div>
+                <p className="home-account-hint">
+                  开启你的自主探究 · <Link href="/login?mode=register">创建个人账号</Link> ·{' '}
+                  <Link href="/login">已有账号登录</Link>
+                </p>
+                <p className="home-trust">
+                  <span>
+                    <Icon name="school" size={16} /> 校本课程与项目模板
+                  </span>
+                  <span>
+                    <Icon name="brain" size={16} /> 苏格拉底式启发提问
+                  </span>
+                  <span>
+                    <Icon name="bolt" size={16} /> 理论达标再进入实践
+                  </span>
+                </p>
+                {degraded ? (
+                  <p className="home-data-note" role="status">
+                    <Icon name="sensors" size={18} /> 实时数据暂时不可用，统计显示为
+                    —。你仍可直接登录查看自己的项目数据。
+                  </p>
+                ) : null}
+                <dl className="home-hero-stats">
+                  {heroStats.map((item) => (
+                    <div className="home-stat" key={item.label}>
+                      <dt>
+                        <Icon name={item.icon} size={16} /> {item.label}
+                      </dt>
+                      <dd>
+                        <strong>{degraded ? '—' : item.value}</strong>
+                        <span>{item.hint}</span>
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+              <HeroTutorDemo />
             </div>
-            <HeroTutorDemo />
-          </div>
           </ScrollReveal>
         </section>
 
@@ -161,7 +167,10 @@ export default async function HomePage() {
                 <p className="home-section-lead">
                   每一次提问、判断、协作和迭代，都会成为成长档案的一部分。
                 </p>
-                <Link className="home-btn home-btn--ghost react-bits-glass-btn" href="/competencies">
+                <Link
+                  className="home-btn home-btn--ghost react-bits-glass-btn"
+                  href="/competencies"
+                >
                   查看六维能力体系 <Icon name="arrowRight" size={18} />
                 </Link>
               </div>
@@ -202,6 +211,10 @@ export default async function HomePage() {
             </div>
           </ScrollReveal>
         </section>
+
+        <Suspense fallback={<SubscriptionShowcaseLoading />}>
+          <SubscriptionShowcase home />
+        </Suspense>
 
         {/* 第 5 屏：交大团队背景与核心优势数据（全屏沉浸 + 每次翻阅均触发渐入） */}
         <section className="home-section home-section--fullscreen is-deep" id="about">
@@ -298,7 +311,10 @@ export default async function HomePage() {
                 <p className="home-section-lead">
                   学校、家庭和研学团队可以通过合作联系提交真实需求。
                 </p>
-                <Link className="home-btn home-btn--primary react-bits-star-border-btn" href="/contact">
+                <Link
+                  className="home-btn home-btn--primary react-bits-star-border-btn"
+                  href="/contact"
+                >
                   前往合作联系 <Icon name="arrowRight" size={18} />
                 </Link>
               </div>
@@ -333,6 +349,9 @@ export default async function HomePage() {
                 <li>
                   <Link href="/showcase">项目展厅</Link>
                 </li>
+                <li>
+                  <Link href="/#membership">会员方案</Link>
+                </li>
               </ul>
             </nav>
             <nav className="home-footer-col" aria-label="了解更多">
@@ -347,11 +366,16 @@ export default async function HomePage() {
                 <li>
                   <Link href="/login">进入系统</Link>
                 </li>
+                <li>
+                  <a href="/login?role=admin&next=%2Fcompany">公司管理</a>
+                </li>
               </ul>
             </nav>
           </div>
           <div className="home-footer-bottom">
-            <p className="home-copyright">© {new Date().getFullYear()} 启途智学科技有限公司. All rights reserved.</p>
+            <p className="home-copyright">
+              © {new Date().getFullYear()} 启途智学科技有限公司. All rights reserved.
+            </p>
           </div>
         </div>
       </footer>

@@ -1,0 +1,54 @@
+{
+  "passed": true,
+  "fixture": true,
+  "target": "http://127.0.0.1:33825",
+  "checks": [
+    {
+      "name": "Draft catalog shows real prices and no purchase action"
+    },
+    {
+      "name": "Responsive membership layout",
+      "width": 1440,
+      "cards": 4
+    },
+    {
+      "name": "Responsive membership layout",
+      "width": 1024,
+      "cards": 4
+    },
+    {
+      "name": "Responsive membership layout",
+      "width": 390,
+      "cards": 4
+    },
+    {
+      "name": "Responsive membership layout",
+      "width": 320,
+      "cards": 4
+    },
+    {
+      "name": "Mobile navigation opens the homepage membership section"
+    },
+    {
+      "name": "Company entry preserves administrator login and Company destination"
+    },
+    {
+      "name": "Only open trial/month products lead to the parent membership area; annual remains unavailable"
+    },
+    {
+      "name": "Empty paid catalog preserves free registration and an explicit empty state"
+    },
+    {
+      "name": "Offline retry is disabled and recovers with the network"
+    },
+    {
+      "name": "Unavailable catalog has a real reload action that recovers after service restoration"
+    },
+    {
+      "name": "Homepage and showcase share the catalog with a visible loading state"
+    },
+    {
+      "name": "No browser page errors"
+    }
+  ]
+}

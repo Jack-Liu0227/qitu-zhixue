@@ -1,0 +1,89 @@
+{
+  "source_hashes": {
+    "apps/auth-portal/app/home/site-nav.tsx": "a03dd08c9212b8732e619ee129312ce0a7c160e38fde04a4edb6fd8566e41a3b",
+    "apps/auth-portal/app/page.tsx": "8f6cec95ffc7067a28f2fcffb6c41bf967985f87e752d6af4c43f269bc6ef3f3",
+    "apps/auth-portal/app/showcase/MembershipRetry.tsx": "7a2d03d2b164e6b49020503f41cb74eb5efcbfe218868847d6c291e54ff8f13b",
+    "apps/auth-portal/app/showcase/SubscriptionShowcase.tsx": "cdf3e279a8ccc34d2e89d19580f5d06e1c158f00e6cdb2ca6b4d75a5981cbf9f",
+    "apps/auth-portal/app/showcase/offers.module.css": "f7879e5b178cad272450c9769acb988ea226f539c00ad4f636c88d0e1dff7fe0",
+    "apps/auth-portal/app/showcase/page.tsx": "ee514329dd4eba34c51c3b1337674bd8bc45697b9b1902549b7b001868155714",
+    "apps/parent-companion/features/purchases/SubscriptionPurchases.tsx": "d016b0a136c33831602a865d78293f9b72764078fd64550f0370e2cb91349cd1"
+  },
+  "initial_build": {
+    "steps": [
+      {
+        "name": "types",
+        "command": [
+          "pnpm",
+          "exec",
+          "turbo",
+          "run",
+          "typecheck",
+          "--filter=@qitu/auth-portal",
+          "--filter=@qitu/parent-companion",
+          "--concurrency=1"
+        ],
+        "exit_code": 0,
+        "seconds": 12.75
+      },
+      {
+        "name": "lint",
+        "command": [
+          "node",
+          "tooling/lint-baseline.mjs",
+          "--workspace"
+        ],
+        "exit_code": 0,
+        "seconds": 0.69
+      },
+      {
+        "name": "build-auth",
+        "command": [
+          "pnpm",
+          "--filter",
+          "@qitu/auth-portal",
+          "build"
+        ],
+        "exit_code": 0,
+        "seconds": 24.67
+      },
+      {
+        "name": "build-parent",
+        "command": [
+          "pnpm",
+          "--filter",
+          "@qitu/parent-companion",
+          "build"
+        ],
+        "exit_code": 0,
+        "seconds": 22.72
+      }
+    ],
+    "passed": true
+  },
+  "final_auth_checks": {
+    "types-retry": {
+      "log_sha256": "ea51f2c5428c1f9b417aacefb44a39208c922abc97fdfb7b6d45926f979408cc",
+      "tail": [
+        "",
+        "> @qitu/auth-portal@0.1.0 typecheck /root/qitu-verification/sync-20261028T174926Z/apps/auth-portal",
+        "> tsc --noEmit",
+        ""
+      ]
+    },
+    "build-auth-retry": {
+      "log_sha256": "c98beb9b817de082c3fcdabe936ab210ada9c031f01f6fd7ae07d7b5ec7b6f90",
+      "tail": [
+        "",
+        "",
+        "○  (Static)   prerendered as static content",
+        "ƒ  (Dynamic)  server-rendered on demand",
+        ""
+      ]
+    }
+  },
+  "base_commit": "ebfb7d0750e27e3d7d1d195a1860db2c498cd888",
+  "checked_utc": "2026-10-28T19:15:30.741704+00:00",
+  "source_matches_tested_checkout": true,
+  "browser_check_count": 13,
+  "production_deployed": false
+}

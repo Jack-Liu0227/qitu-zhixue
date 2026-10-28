@@ -3,6 +3,7 @@
 [返回计划总入口](../README.md)。以下内容保留各自记录日期与验证范围，不代表当前线上状态。
 
 - [本地、study-remote 与 GitHub 同步（2026-10-29）](./three-way-sync-20261029.md)
+- [收费与 Company 入口发布准备（2026-10-29）](./commerce-access-20261029.md)
 - [study-remote 旧文档整理与清理（2026-10-29）](./remote-document-cleanup-20261029.md)
 - [知识中心配置与助手矩阵发布记录](./knowledge-matrix-release-20261022.md)
 - [主站统一发布与管家目录修复](./release-20261019-main.md)

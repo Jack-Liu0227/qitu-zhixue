@@ -147,7 +147,7 @@ export function SubscriptionPurchases({
     member = account?.entitlements.some((e) => ['month', 'year'].includes(e.source));
   const discount = selected?.id === 'month' ? (account?.trialDiscountFen ?? 0) : 0;
   return (
-    <section className={styles.section} aria-labelledby="subscriptions-title">
+    <section id="subscriptions" className={styles.section} aria-labelledby="subscriptions-title">
       <div className={styles.heading}>
         <div>
           <small>让每一次好奇持续生长</small>

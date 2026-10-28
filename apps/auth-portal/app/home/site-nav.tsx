@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { path: '/', label: '首页' },
   { path: '/learning', label: '项目式学习' },
   { path: '/competencies', label: '能力体系' },
+  { path: '/#membership', label: '会员方案' },
   { path: '/about', label: '关于我们' },
   { path: '/contact', label: '合作联系' },
 ] as const;
