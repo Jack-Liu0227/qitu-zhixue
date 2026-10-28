@@ -36,14 +36,24 @@ test('narrative covers engineering, robotics and high-school optics', () => {
   assert.match(story.scenes[8].description, /散射/);
 });
 
-test('all five app roots import the shared brand layer after their base styles', () => {
+test('app roots load base styles before the brand layer and page refinements after it', () => {
+  const pageRefinements = {
+    'student-center': ['../styles/tutor-welcome.css', '../styles/learning-polish.css'],
+    'teacher-workspace': ['./issues-polish.css'],
+    'admin-console': ['./detail-polish.css'],
+  };
   for (const app of ['auth-portal', 'student-center', 'parent-companion', 'teacher-workspace', 'admin-console']) {
     const layout = read(`apps/${app}/app/layout.tsx`);
     const cssImports = [...layout.matchAll(/import\s+['"]([^'"]+\.css)['"]/g)].map((match) => match[1]);
     const brandIndex = cssImports.indexOf('@qitu/ui/brand.css');
     assert.equal(cssImports.filter((path) => path === '@qitu/ui/brand.css').length, 1, app);
+    const refinements = pageRefinements[app] ?? [];
+    for (const path of refinements) {
+      assert.equal(cssImports.filter((item) => item === path).length, 1, `${app}: ${path}`);
+      assert.ok(cssImports.indexOf(path) > brandIndex, `${app}: ${path} must follow the shared brand layer`);
+    }
     for (const [index, path] of cssImports.entries()) {
-      if (path === '@qitu/ui/brand.css' || path.endsWith('/ui-remediation.css')) continue;
+      if (path === '@qitu/ui/brand.css' || path.endsWith('/ui-remediation.css') || refinements.includes(path)) continue;
       assert.ok(index < brandIndex, `${app}: ${path} must precede the shared brand layer`);
     }
   }
