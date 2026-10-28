@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
+
+const require = createRequire(new URL('../services/api/package.json', import.meta.url));
 
 /** Runs only inside test-business-postgres's disposable, loopback-only database. */
 export async function verifyCompanyCommerce({ db, client, store, business, orders, payment, audit, load, check, admin, parent, other }) {
@@ -76,7 +79,7 @@ export async function verifyCompanyCommerce({ db, client, store, business, order
   await check('parallel project transactions with student foreign keys serialize without lock upgrade deadlocks', async () => {
     await client.query(`ALTER TABLE projects ADD CONSTRAINT fixture_projects_student_fk FOREIGN KEY(student_user_id) REFERENCES users(id);
       INSERT INTO users(id,email,display_name,role,password_hash) VALUES ('free-racer','race-free@example.test','合成并发学生','student','fixture');`);
-    const { sql } = await import('drizzle-orm');
+    const { sql } = require('drizzle-orm');
     const results = await Promise.allSettled([0, 1].map(i => db.transaction(async tx => {
       const projectId = `parallel-free-${i}`;
       await tx.execute(sql`INSERT INTO projects(id, student_user_id, template_version_id, status) VALUES (${projectId}, 'free-racer', 'short-version', 'active')`);

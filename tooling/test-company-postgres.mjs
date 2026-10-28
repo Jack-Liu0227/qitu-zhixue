@@ -323,8 +323,8 @@ try {
       "INSERT INTO consultation_requests(id,name,phone,identity,status,created_at,message) VALUES ('preview-lead','合成体验咨询','13800000001','parent','received',now()-interval '2 days','希望了解光学项目的学习安排')",
     );
     await automation.run(true, admin);
-    const { NestFactory } = await import('@nestjs/core');
-    const { Module } = await import('@nestjs/common');
+    const { NestFactory } = require('@nestjs/core');
+    const { Module } = require('@nestjs/common');
     const { DatabaseModule } = await import(
       pathToFileURL(join(report.directory, 'dist/database/index.js')).href
     );
