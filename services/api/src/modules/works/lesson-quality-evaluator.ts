@@ -12,7 +12,7 @@ export interface LessonEvaluationInput {
   activity?: NonNullable<PblTemplateSession['activityRequirements']>[number];
   kind: string;
   content: string;
-  criteria: readonly { id: string; description: string }[];
+  criteria: readonly { id: string; description: string; required?: boolean }[];
   evidence: readonly { ref: string; content: string }[];
 }
 export interface LessonEvaluationCandidate {

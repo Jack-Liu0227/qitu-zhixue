@@ -286,7 +286,7 @@ export const PBL_GATE_SOURCE_WHITELIST: Record<string, readonly string[]> = {
   student_confirmed_intent: ['projects.confirm-intent', 'mentor_review', 'server_backfill'],
   TheoryMastered: ['learning-plan.theory-mastered', 'mentor_review', 'server_backfill'],
   code_playable_run_verified: ['mentor_review', 'runner', 'server_backfill'],
-  review_completed_and_archived: ['works.publish-approved', 'mentor_review', 'server_backfill'],
+  review_completed_and_archived: ['works.publish-approved', 'projects.learning-completed', 'mentor_review', 'server_backfill'],
   ...Object.fromEntries(
     Object.entries(GATE_CONDITION_REGISTRY)
       .filter(([gate]) => !(gate in { student_confirmed_intent: 1, TheoryMastered: 1, code_playable_run_verified: 1, review_completed_and_archived: 1 }))

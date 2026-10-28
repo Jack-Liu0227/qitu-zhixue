@@ -60,12 +60,7 @@ Team Leader 与子 Agent 的通信使用版本化的 `TeamRun`、`TeamTask`、`T
   不放入只保留类型合同的 `packages/contracts`。
 - 模型只能提出动作；人格、记忆或模型输出均不能绕过 `TheoryMastered`。
 
-## 5. 未决事项
-
-- [ ] 真实 runtime resolver、capability 配置持久化。
-- [ ] tool execution owner。
-- [ ] 候选投影的领域 owner 接受、审核和正式写入流程。
-- [ ] 把 Tutor provider executor 接入新 runtime。
+[相关计划与执行记录](../../Plan/maintenance/usage-records-20261028.md)。
 
 ## 6. 相关文档
 

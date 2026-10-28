@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import type { AdminFeishuSettings, AdminFeishuSettingsPatch, CurrentUser, FeishuDeviceAuthorization, FeishuQrSession, FeishuReportDocument } from '@qitu/contracts';
-import { adminAssistants, feishuAdminBindings, feishuBots, feishuQrSessions, users, type Database, withTransaction } from '@qitu/database';
+import { adminAssistants, companyChannels, companyMembers, feishuAdminBindings, feishuBots, feishuQrSessions, users, type Database, withTransaction } from '@qitu/database';
 import { and, eq, gt, isNull } from 'drizzle-orm';
 import { randomBytes, randomUUID, createHash } from 'node:crypto';
 import { DATABASE_TOKEN } from '../../database';
@@ -332,6 +332,20 @@ export class FeishuService {
       .where(and(eq(users.id, binding.adminUserId), eq(users.role, 'admin'), isNull(users.disabledAt)));
     if (!user || user.role !== 'admin') throw new ForbiddenException({ code: 'FEISHU_ADMIN_REVOKED', message: 'Platform administrator is unavailable' });
     return { ...user, role: 'admin' };
+  }
+
+  async sendCompanyStatus(channelId: string, text: string, idempotencyKey: string) {
+    const db = this.database();
+    const [channel] = await db.select().from(companyChannels).where(and(eq(companyChannels.id, channelId), eq(companyChannels.active, true)));
+    if (!channel) throw new ForbiddenException('Company group binding unavailable');
+    const [user] = await db.select({ role: users.role }).from(users).where(and(eq(users.id, channel.userId), isNull(users.disabledAt)));
+    const [member] = await db.select().from(companyMembers).where(and(eq(companyMembers.userId, channel.userId), eq(companyMembers.active, true)));
+    if (!user || (user.role !== 'admin' && !['owner', 'operator'].includes(member?.role ?? ''))) throw new ForbiddenException('Company operator unavailable');
+    await this.requireAssistant(channel.assistantId);
+    const [bot] = await db.select().from(feishuBots).where(eq(feishuBots.assistantId, channel.assistantId));
+    if (!bot?.enabled || !bot.inboundEnabled || bot.appId !== channel.appId || !bot.appSecretEncrypted) throw new ForbiddenException('Company bot binding changed');
+    return sendFeishuText({ appId: channel.appId, appSecret: decryptModelSecret(bot.appSecretEncrypted, requireSecretKey()), domain: bot.domain === 'lark' ? 'lark' : 'feishu',
+      recipient: channel.chatId, recipientType: 'chat_id', text, uuid: messageUuid(`company:${channel.id}:${idempotencyKey}`) });
   }
 
   async sendText(assistantId: string, recipient: string, text: string, idempotencyKey: string, expectedAppId?: string) {

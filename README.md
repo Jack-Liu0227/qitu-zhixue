@@ -9,9 +9,10 @@
 ## 从这里开始
 
 1. [`AGENTS.md`](./AGENTS.md)：工程协作、安全和领域硬规则。
-2. [`docs/README.md`](./docs/README.md)：架构、责任域、阅读顺序和文档规则。
+2. [`docs/README.md`](./docs/README.md)：项目使用说明、角色操作、部署配置和 SDK 接入。
 3. [`docs/aboutus/README.md`](./docs/aboutus/README.md)：产品定位、主页信息和 AI 与人共成长的教育理念。
-4. 按责任域阅读：
+4. [`Plan/README.md`](./Plan/README.md)：研究、设计、实施计划、Issue、发布验收记录和历史归档。
+5. 按责任域阅读：
    - 管理端：[`docs/admin/platform-governance.md`](./docs/admin/platform-governance.md)
    - 学生端：[`docs/student/today.md`](./docs/student/today.md)
    - 班主任端：[`docs/teacher/dashboard.md`](./docs/teacher/dashboard.md)
@@ -36,7 +37,8 @@ packages/   contracts、api-client、ai-client、auth、database、model-runtime
 services/   api（模块化单体）、workers、realtime-gateway、graphiti（可选投影）
 database/   migrations、seeds、fixtures
 tooling/    启动、同步、端口和部署辅助脚本
-docs/       产品、平台、SDK 和运行维护事实文档
+docs/       项目使用说明、角色操作、部署配置和 SDK/API 接入
+Plan/       研究设计、实施计划、Issue、发布验收与历史归档
 ```
 
 应用之间不互相导入业务代码；跨端共享只通过 `packages/*`。浏览器只能提交 API 合同允许的输入，不能直接写项目状态、AI 决策、成长档案或审计日志。
@@ -69,7 +71,8 @@ Windows UNC 工作目录可能导致 pnpm shim 无法切换到固定 pnpm 版本
 
 ## 文档规则
 
-- 文档只描述当前代码事实，规划内容必须明确标为 planned 或未决事项。
+- `docs/` 只存储项目使用说明；所有计划、研究、设计、Issue、发布及验收记录统一存放于根目录 `Plan/`。
 - 公开产品叙事放在 `docs/aboutus/`；责任域合同放在 `docs/admin/`、`docs/student/`、`docs/teacher/`、`docs/parent/`、`docs/sdk/`。
 - 新增接口、权限、错误码、迁移或异步流程时，同时更新对应责任域文档和验证说明。
+- 功能落地后更新 `docs/` 中的实际操作说明；实施过程与验证结果写入 `Plan/`，维护两侧索引和链接。目录与链接检查：`python -B tooling/validate-docs.py`。
 - 不提交 `.env`、API Key、Token、密码、OAuth 文件、私钥和未脱敏的未成年人原始数据。

@@ -58,7 +58,7 @@ export async function ProjectOfferShowcase() {
                     </div>
                     <Link
                       className="home-btn home-btn--primary"
-                      href={catalog.purchasing.available ? '/login' : '/contact'}
+                      href={catalog.purchasing.available ? '/login?role=parent&next=%2Fparent' : '/contact'}
                     >
                       {catalog.purchasing.available ? '家长登录后开通' : '咨询项目安排'}
                     </Link>

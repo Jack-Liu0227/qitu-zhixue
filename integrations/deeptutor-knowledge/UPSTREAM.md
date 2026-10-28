@@ -30,7 +30,7 @@ Note on test hygiene: the runtime boundary assertion checks the absolute state o
 
 This boundary prevents the skill hub from becoming a second writable source of truth. `services/knowledge/` is not version-controlled, so skill-hub changes would have no diff, review, or rollback path. DeepTutor's authorization granularity is user/workspace, which does not match Qitu's school/mentor/student and object-level permission model. A resident Python service would also impose avoidable memory pressure for this per-operation adapter.
 
-If sandbox support is needed in the future, it must be an independent sidecar exposing only sandbox capabilities. Skill packages must still be published through git/DB and loaded only after publication. This is conditional on the reproducible-build requirements below being complete; see `docs/plan/20261018-skill-tool-governance-and-assignment.md`, section 9.
+If sandbox support is needed in the future, it must be an independent sidecar exposing only sandbox capabilities. Skill packages must still be published through git/DB and loaded only after publication. This is conditional on the reproducible-build requirements below being complete; see `Plan/20261018-skill-tool-governance-and-assignment.md`, section 9.
 
 ## Extended engine process
 

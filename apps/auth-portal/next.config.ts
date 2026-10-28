@@ -5,11 +5,11 @@ const apiOrigin = process.env.QITU_API_ORIGIN ?? 'http://127.0.0.1:4100';
 
 const nextConfig: NextConfig = {
   webpack(config) {
-    config.resolve.alias = { ...config.resolve.alias, '@qitu/contracts$': resolve(__dirname, '../../packages/contracts/src/index.ts') };
+    config.resolve.alias = { ...config.resolve.alias, '@qitu/contracts$': resolve(__dirname, '../../packages/contracts/src/index.ts'), '@qitu/api-client$': resolve(__dirname, '../../packages/api-client/src/index.ts'), '@qitu/auth$': resolve(__dirname, '../../packages/auth/src/index.tsx') };
     config.resolve.extensionAlias = { ...config.resolve.extensionAlias, '.js': ['.ts', '.tsx', '.js'] };
     return config;
   },
-  transpilePackages: ['@qitu/auth', '@qitu/contracts', '@qitu/design-tokens', '@qitu/ui'],
+  transpilePackages: ['@qitu/auth', '@qitu/contracts', '@qitu/api-client', '@qitu/design-tokens', '@qitu/ui'],
   async rewrites() {
     return [
       {

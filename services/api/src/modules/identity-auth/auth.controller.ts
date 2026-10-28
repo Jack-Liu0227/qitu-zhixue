@@ -113,7 +113,7 @@ export class AuthController {
     if (!body || typeof body.email !== 'string' || !body.email.trim()) {
       throw new UnauthorizedException({
         code: 'INVALID_CREDENTIALS',
-        message: '请输入邮箱和密码',
+        message: '请输入手机号或邮箱，以及密码',
       });
     }
     return body.email.trim().toLowerCase();

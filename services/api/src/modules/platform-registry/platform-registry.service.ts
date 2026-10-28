@@ -64,7 +64,7 @@ type MemberRow = typeof adminTeamMembers.$inferSelect;
  *
  * ⚠ 这是一份**人工同步的副本**，已经漂移过一次（skills 曾长期写着不存在的
  * 'guided'/'planning'/'escalation'）。去重（导出并 import ai-client 的常量）
- * 登记在 docs/plan/20261018-skill-tool-governance-and-assignment.md 的 P1-b。
+ * 登记在 Plan/20261018-skill-tool-governance-and-assignment.md 的 P1-b。
  */
 /**
  * migration `0015_agent_runtime_bindings.sql:71-75` 给 `qitu-learning-partner` seed 的

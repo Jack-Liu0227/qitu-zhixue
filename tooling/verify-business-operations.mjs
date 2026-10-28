@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const require = createRequire(import.meta.url);
+const registrationOnly = process.argv.includes('--registration-only');
 const resume = process.argv.find((s) => s.startsWith('--resume='))?.slice(9);
 if (resume && !/^run-\d+-\d+$/.test(resume)) throw new Error('Invalid verification run');
 const runId = resume ?? `run-${Date.now()}-${process.pid}`;
@@ -97,7 +98,11 @@ for (const name of packages) {
 compile('api', join(root, 'services/api/tsconfig.json'), {
   outDir: join(directory, 'dist'),
   declaration: false,
-});
+}, registrationOnly ? { include: [
+  'modules/business/**/*.ts', 'modules/identity-auth/**/*.ts', 'modules/directory/account*.ts',
+  'common/audit/audit.module.ts', 'common/idempotency/idempotency.module.ts',
+  'common/redis/redis.module.ts', 'health/health.module.ts',
+].map(pattern => `../../../src/${pattern}`) } : {});
 const sourcePaths = {
   ...paths,
   '@qitu/contracts': [join(root, 'packages/contracts/src/index.ts')],
@@ -120,18 +125,20 @@ for (const app of ['admin-console', 'parent-companion', 'auth-portal']) {
   });
 }
 if (!process.argv.includes('--types-only')) {
-  const tests = [
+  const tests = (registrationOnly ? ['business', 'identity-auth', 'directory'] : [
     'business',
     'projects',
     'learning-plan',
     'identity-auth',
+    'directory',
     'model-registry',
-  ].flatMap((module) => {
+  ]).flatMap((module) => {
     const folder = join(directory, 'dist/modules', module);
     return readdirSync(folder)
       .filter(
         (s) =>
-          s.endsWith('.test.js') && (module !== 'model-registry' || s.startsWith('model-gateway.')),
+          s.endsWith('.test.js') && (module !== 'model-registry' || s.startsWith('model-gateway.')) &&
+          (module !== 'directory' || s.startsWith('account-registration.')),
       )
       .map((s) => join(folder, s));
   });

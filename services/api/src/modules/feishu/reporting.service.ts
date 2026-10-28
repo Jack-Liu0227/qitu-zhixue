@@ -20,7 +20,7 @@ export class ReportingService {
 
   async buildReport(actor: CurrentUser, assistantId = 'feishu-reporting-assistant', options: ReportOptions = {}): Promise<FeishuReportDocument> {
     if (assistantId !== 'feishu-reporting-assistant') throw new ForbiddenException({ code: 'FEISHU_REPORTING_UNSUPPORTED', message: 'Reporting is not supported for this assistant' });
-    // D1（docs/plan/20261018-issue-digest-feishu-assistant.md）：
+    // D1（Plan/20261018-issue-digest-feishu-assistant.md）：
     // 管理员按全局/显式名单生成；班主任只能看到当前所带学生的范围，
     // 范围由服务端从 mentor_assignments 重新解析，不信任请求体字段。
     if (actor.role !== 'admin' && actor.role !== 'teacher') throw new ForbiddenException('问题总结与学情汇报仅向管理员与班主任开放');

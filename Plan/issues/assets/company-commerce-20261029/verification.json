@@ -1,0 +1,97 @@
+{
+  "runId": "run-1793206235944-4328",
+  "steps": [
+    {
+      "name": "build-contracts",
+      "exitCode": 0
+    },
+    {
+      "name": "contracts-esm",
+      "exitCode": 0
+    },
+    {
+      "name": "build-database",
+      "exitCode": 0
+    },
+    {
+      "name": "build-infra",
+      "exitCode": 0
+    },
+    {
+      "name": "build-agent-memory",
+      "exitCode": 0
+    },
+    {
+      "name": "build-ai-client",
+      "exitCode": 0
+    },
+    {
+      "name": "build-model-runtime",
+      "exitCode": 0
+    },
+    {
+      "name": "api",
+      "exitCode": 0
+    },
+    {
+      "name": "types-company-console",
+      "exitCode": 0
+    },
+    {
+      "name": "types-admin-console",
+      "exitCode": 0
+    },
+    {
+      "name": "types-parent-companion",
+      "exitCode": 0
+    },
+    {
+      "name": "types-auth-portal",
+      "exitCode": 0
+    },
+    {
+      "name": "types-student-center",
+      "exitCode": 0
+    }
+  ],
+  "resolution": "Current source packages, isolated outputs; copied UNC installation unchanged",
+  "behavior": {
+    "runId": "run-1793205427132-70500",
+    "tests": 195,
+    "pass": 195,
+    "fail": 0,
+    "suites": 7
+  },
+  "productionBuild": {
+    "application": "company-console",
+    "success": true
+  },
+  "startupScript": {
+    "tests": 9,
+    "pass": 9
+  },
+  "actualPayments": false,
+  "actualFeishuMessages": false,
+  "deployed": false,
+  "syntheticBrowser": true,
+  "finalRuleTests": {
+    "tests": 3,
+    "pass": 3,
+    "fail": 0
+  },
+  "docs": {
+    "documents": 240,
+    "links": 1737,
+    "issues": 0,
+    "tests": 18,
+    "pass": 18
+  },
+  "plan": {
+    "documents": 76,
+    "links": 490,
+    "jsonFiles": 19,
+    "archiveManifests": 2,
+    "archiveHashes": 15,
+    "issues": 0
+  }
+}

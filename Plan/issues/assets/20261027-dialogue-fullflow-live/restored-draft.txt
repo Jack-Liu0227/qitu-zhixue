@@ -1,0 +1,19 @@
+第 1 课：条纹从哪里来？
+两种图样都有明暗相间的条纹。单缝的中央亮带较宽，两侧较弱；双缝能看到更细密的明暗条纹。我想比较：保持波长和屏距不变，只改变缝的宽度，中央亮带会怎样变化？
+
+第 3 课已保存的模拟观察引用：
+experiment_observation:obs-dd1017f5b4583a1a78c1c464adeb81ce
+
+第 4 课已保存的模拟观察引用：
+experiment_observation:obs-b62a83fc85b88ed11f01af10ad8bba0b
+experiment_observation:obs-5026960f5b1be87d8b093f0d1b84a966
+
+第 5 课已保存的模拟观察引用：
+experiment_observation:obs-ad936960bab8cfaa3719ba9c84429409
+
+第 6 课已保存的模拟观察引用：
+experiment_observation:obs-fff5781978cf1d431153270c5a50996d
+experiment_observation:obs-946a3e802e6c01d96b7e1d36e1d51ff6
+
+第 7 课：干涉与衍射怎样联系？
+两种图样都来自波的叠加。我的双缝观察中，只把d从150改为300μm，λ=550nm、a=20μm、L=2m不变，细纹间距由7.33变为3.67mm，而中央包络仍约110.04mm。单缝观察只把a从20减为10μm，中央亮带由110.04变为220.33mm。d控制双缝细纹，a控制衍射包络，有限宽双缝同时有两种结构。我把“单缝和双缝没有差别”修订为两者都叠加，但图样结构不同。结论仅适用于本次单色相干、远场模型和保存的参数，不是真实测量，也不能据此比较绝对亮度。

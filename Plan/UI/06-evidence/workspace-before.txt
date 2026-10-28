@@ -1,0 +1,49 @@
+﻿ M apps/admin-console/app/(console)/copilot/page.tsx
+ M apps/admin-console/app/(console)/settings/skills/page.tsx
+ M Plan/codex/README.md
+ M Plan/codex/optics-template-runtime/01-admin-teaching-bundle.md
+ M Plan/codex/optics-template-runtime/02-student-pbl-runtime.md
+ M Plan/codex/optics-template-runtime/03-optics-experiment-protocol.md
+ M Plan/codex/optics-template-runtime/04-verification.md
+ M Plan/codex/optics-template-runtime/05-student-tutor-flow-qa.md
+ M Plan/codex/optics-template-runtime/README.md
+ M Plan/codex/optics-template-runtime/TODO.csv
+ M Plan/codex/profile-growth-projection/01-evidence-contract.md
+ M Plan/codex/profile-growth-projection/02-owner-acceptance.md
+ M Plan/codex/profile-growth-projection/03-profile-read-model.md
+ M Plan/codex/profile-growth-projection/04-verification.md
+ M Plan/codex/profile-growth-projection/README.md
+ M Plan/codex/profile-growth-projection/TODO.csv
+ M packages/contracts/src/admin.ts
+ M packages/contracts/src/index.ts
+ M services/api/src/app.module.ts
+ M services/api/src/common/tutor-runtime/runtime-source.test.ts
+ M services/api/src/common/tutor-runtime/runtime-source.ts
+ M services/api/src/modules/platform-registry/assistant-runtime.test.ts
+ M services/api/src/modules/platform-registry/platform-registry.service.test.ts
+ M services/api/src/modules/platform-registry/platform-registry.service.ts
+?? .agents/skills/qitu-project-configurator/
+?? apps/admin-console/lib/api/copilot.ts
+?? apps/admin-console/lib/copilot/use-project-catalog.ts
+?? Plan/UI/
+?? Plan/codex/agent-driven-pbl-requirements-20261021.md
+?? Plan/codex/optics-template-runtime/00-completion-audit.md
+?? Plan/codex/optics-template-runtime/06-copilot-skill-design.md
+?? Plan/codex/optics-template-runtime/07-remaining-tasks.md
+?? Plan/codex/optics-template-runtime/08-validation-20261021.md
+?? Plan/codex/optics-template-runtime/09-copilot-implementation-20261021.md
+?? Plan/codex/optics-template-runtime/10-template-team-assistant-knowledge-architecture.md
+?? Plan/codex/optics-template-runtime/11-copilot-verification-20261021.md
+?? Plan/codex/profile-growth-projection/00-completion-audit.md
+?? Plan/codex/profile-growth-projection/05-evidence-routing-design.md
+?? Plan/codex/profile-growth-projection/06-remaining-tasks.md
+?? Plan/codex/profile-growth-projection/07-validation-20261021.md
+?? Plan/codex/skills-mcp-tools-sdk-audit-20261021.md
+?? packages/contracts/src/admin-copilot.ts
+?? services/api/src/modules/admin-copilot/
+?? snap.bat
+?? test_courseware.bat
+?? test_tutor_chat.bat
+?? tooling/verify-admin-copilot.mjs
+?? trigger_tutor_experiment.bat
+?? view_theory.bat

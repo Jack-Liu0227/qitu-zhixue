@@ -263,7 +263,7 @@ export class ProjectsService {
             },
             // 正式项目与冻结团队绑定必须在同一事务内成立。
             commit: async (projectId, tx) => {
-              await this.businessAccess?.assertCanStart(studentId, templateVersionId, tx);
+              await this.businessAccess?.assertCanStart(studentId, templateVersionId, tx, projectId);
               const outcome = await this.templateBindings?.freezeProjectBinding({
                 projectId, templateVersionId, boundAt: now, tx,
               });

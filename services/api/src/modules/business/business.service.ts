@@ -291,7 +291,7 @@ export class BusinessService {
     });
   }
 
-  private async assertSellableVersion(versionId: string, tx: BusinessTransaction) {
+  async assertSellableVersion(versionId: string, tx: BusinessTransaction) {
     const [version] = await tx
       .select({ id: projectTemplateVersions.id })
       .from(projectTemplateVersions)

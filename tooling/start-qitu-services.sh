@@ -28,6 +28,7 @@ QITU_STUDENT_PORT="${QITU_STUDENT_PORT:-3101}"
 QITU_PARENT_PORT="${QITU_PARENT_PORT:-3102}"
 QITU_TEACHER_PORT="${QITU_TEACHER_PORT:-3103}"
 QITU_ADMIN_PORT="${QITU_ADMIN_PORT:-3104}"
+QITU_COMPANY_PORT="${QITU_COMPANY_PORT:-3105}"
 QITU_API_PORT="${QITU_API_PORT:-4100}"
 
 # 前端跑 dev 还是生产构建。`next dev` 每个常驻 ≈450 MB（webpack 缓存 + 增量编译），
@@ -50,6 +51,7 @@ app_dir_for() {
     parent) echo apps/parent-companion ;;
     teacher) echo apps/teacher-workspace ;;
     admin) echo apps/admin-console ;;
+    company) echo apps/company-console ;;
   esac
 }
 
@@ -61,6 +63,7 @@ service_filter() {
     parent) echo '@qitu/parent-companion' ;;
     teacher) echo '@qitu/teacher-workspace' ;;
     admin) echo '@qitu/admin-console' ;;
+    company) echo '@qitu/company-console' ;;
     workers) echo '@qitu/workers' ;;
   esac
 }
@@ -340,6 +343,7 @@ port_for() {
     parent) echo "$QITU_PARENT_PORT" ;;
     teacher) echo "$QITU_TEACHER_PORT" ;;
     admin) echo "$QITU_ADMIN_PORT" ;;
+    company) echo "$QITU_COMPANY_PORT" ;;
   esac
 }
 
@@ -353,6 +357,7 @@ probe_path_for() {
     parent) echo "/parent" ;;
     teacher) echo "/teacher/dashboard" ;;
     admin) echo "/admin" ;;
+    company) echo "/company" ;;
   esac
 }
 
@@ -532,7 +537,7 @@ ensure_frontend_builds() {
     return 0
   fi
   local name
-  for name in auth student parent teacher admin; do
+  for name in auth student parent teacher admin company; do
     build_frontend "$name"
   done
   return 0
@@ -548,6 +553,7 @@ start_spec_for() {
     parent) echo "$QITU_PARENT_PORT|@qitu/parent-companion|next" ;;
     teacher) echo "$QITU_TEACHER_PORT|@qitu/teacher-workspace|next" ;;
     admin) echo "$QITU_ADMIN_PORT|@qitu/admin-console|next" ;;
+    company) echo "$QITU_COMPANY_PORT|@qitu/company-console|next" ;;
     *) return 1 ;;
   esac
 }
@@ -597,6 +603,7 @@ start_all() {
   try_start parent "$QITU_PARENT_PORT" '@qitu/parent-companion' next
   try_start teacher "$QITU_TEACHER_PORT" '@qitu/teacher-workspace' next
   try_start admin "$QITU_ADMIN_PORT" '@qitu/admin-console' next
+  try_start company "$QITU_COMPANY_PORT" '@qitu/company-console' next
   if [[ -n "$START_FAILED" ]]; then
     echo "warning: 未启动的服务：$START_FAILED" >&2
   fi
@@ -657,7 +664,7 @@ case "${1:-status}" in
   status)
     status_failed=0
     echo "mode: frontends=$QITU_FRONTEND_MODE api=watch"
-    for svc in ${2:-api workers auth student parent teacher admin}; do
+    for svc in ${2:-api workers auth student parent teacher admin company}; do
       status_one "$svc" || status_failed=1
     done
     leaked="$(orphan_watcher_pids | tr '\n' ' ')"

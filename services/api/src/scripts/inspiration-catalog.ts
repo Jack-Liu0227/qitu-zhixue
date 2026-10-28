@@ -18,6 +18,7 @@ import { TemplateBindingService } from '../modules/templates/templates-binding.s
 import { TemplateGovernanceService } from '../modules/templates/templates-governance.service';
 import { configureInspirationCatalog } from '../modules/templates/inspiration-catalog-bootstrap';
 import { INSPIRATION_COURSES } from '../modules/templates/content/inspiration';
+import { INSPIRATION_DIALOGUE_COURSES } from '../modules/templates/content/inspiration/dialogue-courses';
 
 @Module({ imports: [DatabaseModule, AuditModule, AccessModule, IdempotencyModule, TemplatesModule, PlatformRegistryModule] })
 export class InspirationCatalogModule {}
@@ -28,6 +29,9 @@ async function main() {
   if (!adminId) throw new Error('Explicit --admin-user-id is required');
   const mode = option('--mode') ?? 'draft';
   if (!['draft', 'pilot'].includes(mode)) throw new Error('Mode must be draft or pilot');
+  const progression = option('--progression') ?? 'guided';
+  if (progression !== 'guided' && progression !== 'dialogue') throw new Error('Progression must be guided or dialogue');
+  const catalog = progression === 'dialogue' ? INSPIRATION_DIALOGUE_COURSES : INSPIRATION_COURSES;
   const app = await NestFactory.createApplicationContext(InspirationCatalogModule, { logger: ['error', 'warn'] });
   try {
     const db = app.get<Database>(DATABASE_TOKEN);
@@ -45,10 +49,10 @@ async function main() {
     if (process.argv.includes('--inspect')) {
       return { readOnly: true, modelPair: selection, modelAvailable: registry.isModelAvailable(selection),
         existingTemplates: before.map(item => ({ id: item.id, slug: item.slug, status: item.status })),
-        plannedProjects: INSPIRATION_COURSES.map(course => ({ slug: course.slug, title: course.spec.title, teamId: course.teamId, lessons: 8 })) };
+        plannedProjects: catalog.map(course => ({ slug: course.slug, title: course.spec.title, teamId: course.teamId, lessons: 8 })) };
     }
     const preserved = new Map<string, string>();
-    for (const template of before.filter(item => !INSPIRATION_COURSES.some(course => course.slug === item.slug))) {
+    for (const template of before.filter(item => !catalog.some(course => course.slug === item.slug))) {
       for (const version of await templates.listVersions(template.id)) {
         const binding = await bindingStore.findActiveBinding(version.id);
         preserved.set(version.id, JSON.stringify({ status: version.status, content: version.content, binding }));
@@ -56,7 +60,7 @@ async function main() {
     }
     const report = await configureInspirationCatalog({ registry, templates, bindingStore,
       governance: app.get(TemplateGovernanceService), bindings: app.get(TemplateBindingService) },
-    { actor, model: selection, mode: mode === 'pilot' ? 'pilot' : 'draft', projects: option('--projects')?.split(',') });
+    { actor, model: selection, mode: mode === 'pilot' ? 'pilot' : 'draft', projects: option('--projects')?.split(','), progression });
     for (const [id, expected] of preserved) {
       const version = await templates.findVersion(id), binding = await bindingStore.findActiveBinding(id);
       if (JSON.stringify({ status: version?.status, content: version?.content, binding }) !== expected) throw new Error('HISTORICAL_TEMPLATE_OR_BINDING_CHANGED');

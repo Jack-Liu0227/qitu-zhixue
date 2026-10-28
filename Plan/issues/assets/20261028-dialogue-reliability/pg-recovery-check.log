@@ -1,0 +1,1 @@
+{"passed":true,"database":"disposable","checks":["deduplicated enqueue","bounded backoff","exclusive claim","expired lease recovery","stale lease cannot acknowledge","three-attempt terminal failure","replay cannot reset retry budget"]}

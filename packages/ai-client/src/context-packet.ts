@@ -4,6 +4,7 @@ import type { TutorLessonProgram } from '@qitu/contracts';
 export function serializeTutorLessonProgram(program: TutorLessonProgram): string {
   return JSON.stringify({
     ...program,
+    ...(program.progression === 'dialogue.v1' ? { interactionGuidance: '教学活动是安排，不是五道提交门槛。围绕当前必要目标灵活讲解、举例、提问和反馈；学生直接在对话回答，服务端适配器自动留证并判断下一课。不要要求打开右侧、勾选证据、另贴答案或逐页签收。求助不记错；只认 owner 回执，不自行宣布掌握、完成或批准。正式作品仅在最后一课由学生确认交付；此前保留过程草稿。必要目标之外的提升建议不阻塞。仿真必须运行并保存观察，不把聊天描述当实验事实。若当前课已改变，简短衔接前课再引导新任务。' } : {}),
     learningGoal: program.learningGoal.slice(0, 2000),
     activities: program.activities.slice(0, 5).map(activity => ({ ...activity, guidance: activity.guidance.slice(0, 2400) })),
     evidenceRequirements: program.evidenceRequirements.slice(0, 16).map(value => value.slice(0, 600)),
@@ -19,7 +20,7 @@ export function serializeTutorContext(packet: TutorContextPacket): string {
     runtime === undefined ? '' : `全局策略版本：${runtime.policyVersion}`,
     runtime === undefined ? '' : `Agent 定义：${boundedDefinition(runtime.agentDefinition)}`,
     ...(runtime?.skills ?? []).map((skill) => `Skill ${skill.id}（${skill.version ?? 'unknown'}）：${boundedDefinition(skill.content)}`),
-    ...(runtime?.tools ?? []).map((tool) => `可用工具：${tool.id}（风险 ${tool.riskLevel}）`),
+    ...(runtime?.tools ?? []).map((tool) => `授权工具目录上限：${tool.id}（风险 ${tool.riskLevel}；本轮是否提供以实际调用清单为准）`),
     ...(runtime?.mcpServers ?? []).map((server) => `可用 MCP：${server.serverId}（${server.label}，工具 ${server.toolIds.join(', ') || '无'}）`),
     `伙伴：${packet.partner.displayName}`,
     `伙伴职责定义：${boundedDefinition(packet.partner.roleDefinition)}`,

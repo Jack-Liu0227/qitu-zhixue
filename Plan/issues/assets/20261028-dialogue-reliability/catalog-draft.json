@@ -1,0 +1,273 @@
+{
+  "mode": "draft",
+  "success": true,
+  "results": [
+    {
+      "status": "configured",
+      "resource": {
+        "slug": "seed-observation-inquiry-dialogue",
+        "title": "\u4e00\u9897\u79cd\u5b50\u7684\u4e03\u5929\u65e5\u8bb0\u00b7\u95ee\u7b54\u7248",
+        "templateId": "tpl-7a27d251-98a9-410e-ac0d-7bb4e8745113",
+        "templateVersionId": "tplv-922f736b-36aa-4779-87ce-8de2b68936e3",
+        "templateStatus": "draft",
+        "versionStatus": "draft",
+        "teamId": "team-seed-observation-inquiry-dialogue",
+        "assistantIds": [
+          "seed-observation-inquiry-dialogue-concept",
+          "seed-observation-inquiry-dialogue-practice",
+          "seed-observation-inquiry-dialogue-review"
+        ],
+        "bindingId": "bnd-bbf724eddcc29b61",
+        "bindingStatus": "draft",
+        "bindingHash": "408baf9fefe5ccfcd5feb9b22ccefc5bbc5fc9c487adefcb8610238f451e3fa2",
+        "bundleDigest": null,
+        "lessonCount": 8,
+        "liveRequestVerified": false,
+        "classroomValidated": false
+      }
+    },
+    {
+      "status": "configured",
+      "resource": {
+        "slug": "packaging-reduction-action-dialogue",
+        "title": "\u8ba9\u4e00\u5468\u7684\u5305\u88c5\u5c11\u4e00\u70b9\u00b7\u95ee\u7b54\u7248",
+        "templateId": "tpl-fe5c757c-ef8e-4ad2-b251-0fcecfb174c1",
+        "templateVersionId": "tplv-1c77e5a8-415b-491f-af8c-498eaf278a2e",
+        "templateStatus": "draft",
+        "versionStatus": "draft",
+        "teamId": "team-packaging-reduction-action-dialogue",
+        "assistantIds": [
+          "packaging-reduction-action-dialogue-concept",
+          "packaging-reduction-action-dialogue-practice",
+          "packaging-reduction-action-dialogue-review"
+        ],
+        "bindingId": "bnd-0900ebbab02549ac",
+        "bindingStatus": "draft",
+        "bindingHash": "12bc16a28d59b536830faa0d48b5fb94c781ca6b10806e37c9ae47921376b9a4",
+        "bundleDigest": null,
+        "lessonCount": 8,
+        "liveRequestVerified": false,
+        "classroomValidated": false
+      }
+    },
+    {
+      "status": "configured",
+      "resource": {
+        "slug": "library-data-inquiry-dialogue",
+        "title": "\u7ed9\u56fe\u4e66\u89d2\u505a\u4e00\u6b21\u6570\u636e\u8bca\u65ad\u00b7\u95ee\u7b54\u7248",
+        "templateId": "tpl-e9a01dd1-4637-4f2b-9cdd-8094381ec053",
+        "templateVersionId": "tplv-d249c67a-af80-4529-a22c-56771e16fd76",
+        "templateStatus": "draft",
+        "versionStatus": "draft",
+        "teamId": "team-library-data-inquiry-dialogue",
+        "assistantIds": [
+          "library-data-inquiry-dialogue-concept",
+          "library-data-inquiry-dialogue-practice",
+          "library-data-inquiry-dialogue-review"
+        ],
+        "bindingId": "bnd-3c371e00c576ada7",
+        "bindingStatus": "draft",
+        "bindingHash": "746ae6b083a5736778fa762acb9f6b04fbf956c1df88641a3e2ab1d82d5da933",
+        "bundleDigest": null,
+        "lessonCount": 8,
+        "liveRequestVerified": false,
+        "classroomValidated": false
+      }
+    },
+    {
+      "status": "configured",
+      "resource": {
+        "slug": "inclusive-wayfinding-design-dialogue",
+        "title": "\u8ba9\u7b2c\u4e00\u6b21\u6765\u7684\u4eba\u4e5f\u80fd\u627e\u5230\u8def\u00b7\u95ee\u7b54\u7248",
+        "templateId": "tpl-3c69acd7-9a1a-4a0c-ae72-209c8700d70a",
+        "templateVersionId": "tplv-b734cfab-d89c-4516-87b4-3410d664d8dd",
+        "templateStatus": "draft",
+        "versionStatus": "draft",
+        "teamId": "team-inclusive-wayfinding-design-dialogue",
+        "assistantIds": [
+          "inclusive-wayfinding-design-dialogue-concept",
+          "inclusive-wayfinding-design-dialogue-practice",
+          "inclusive-wayfinding-design-dialogue-review"
+        ],
+        "bindingId": "bnd-0c18e0b17da19912",
+        "bindingStatus": "draft",
+        "bindingHash": "2a69b27b07b4e7c0277d70738e88301d3b21d9414262a3ed155ffded31570517",
+        "bundleDigest": null,
+        "lessonCount": 8,
+        "liveRequestVerified": false,
+        "classroomValidated": false
+      }
+    },
+    {
+      "status": "configured",
+      "resource": {
+        "slug": "object-history-exhibition-dialogue",
+        "title": "\u7ed9\u4e00\u4ef6\u8001\u7269\u4ef6\u529e\u5fae\u578b\u5c55\u89c8\u00b7\u95ee\u7b54\u7248",
+        "templateId": "tpl-193b3d51-74d5-4763-9534-9b0c38e25a1b",
+        "templateVersionId": "tplv-24e6b2c4-10f9-4897-8073-c926256fa9ba",
+        "templateStatus": "draft",
+        "versionStatus": "draft",
+        "teamId": "team-object-history-exhibition-dialogue",
+        "assistantIds": [
+          "object-history-exhibition-dialogue-concept",
+          "object-history-exhibition-dialogue-practice",
+          "object-history-exhibition-dialogue-review"
+        ],
+        "bindingId": "bnd-bc3f634333402488",
+        "bindingStatus": "draft",
+        "bindingHash": "bc9c8caf8cab8377db29bb2185d76aeff21bc2c96b72e5846063c9dc6f7f7bcb",
+        "bundleDigest": null,
+        "lessonCount": 8,
+        "liveRequestVerified": false,
+        "classroomValidated": false
+      }
+    },
+    {
+      "status": "configured",
+      "resource": {
+        "slug": "choice-story-studio-dialogue",
+        "title": "\u4e00\u4e2a\u9009\u62e9\uff0c\u4e24\u79cd\u7ed3\u5c40\u00b7\u95ee\u7b54\u7248",
+        "templateId": "tpl-a9384835-36a5-4709-9755-a81655c2e2cf",
+        "templateVersionId": "tplv-60fb07e2-bd97-43d0-b34c-6289d43df5c3",
+        "templateStatus": "draft",
+        "versionStatus": "draft",
+        "teamId": "team-choice-story-studio-dialogue",
+        "assistantIds": [
+          "choice-story-studio-dialogue-concept",
+          "choice-story-studio-dialogue-practice",
+          "choice-story-studio-dialogue-review"
+        ],
+        "bindingId": "bnd-4e22348616004b18",
+        "bindingStatus": "draft",
+        "bindingHash": "bd3658e84932149c0aa546d5942a6ea32c2136f2d6d864cb80c2a24b46e2dceb",
+        "bundleDigest": null,
+        "lessonCount": 8,
+        "liveRequestVerified": false,
+        "classroomValidated": false
+      }
+    },
+    {
+      "status": "configured",
+      "resource": {
+        "slug": "claim-verification-lab-dialogue",
+        "title": "\u4e3a\u4e00\u6761\u6d41\u4f20\u8bf4\u6cd5\u505a\u6838\u9a8c\u00b7\u95ee\u7b54\u7248",
+        "templateId": "tpl-5678f62c-e9b1-4658-af97-bbad2a50cad4",
+        "templateVersionId": "tplv-2507da7f-855f-4b39-b836-8aec560a1bc3",
+        "templateStatus": "draft",
+        "versionStatus": "draft",
+        "teamId": "team-claim-verification-lab-dialogue",
+        "assistantIds": [
+          "claim-verification-lab-dialogue-concept",
+          "claim-verification-lab-dialogue-practice",
+          "claim-verification-lab-dialogue-review"
+        ],
+        "bindingId": "bnd-231f914e2c4c8543",
+        "bindingStatus": "draft",
+        "bindingHash": "1bf1e76a685949778e582569e5c69291c610fde2865df1e9e0e7be1c3ab96db3",
+        "bundleDigest": null,
+        "lessonCount": 8,
+        "liveRequestVerified": false,
+        "classroomValidated": false
+      }
+    },
+    {
+      "status": "configured",
+      "resource": {
+        "slug": "creative-market-budget-dialogue",
+        "title": "\u7528\u4e00\u767e\u5143\u8bbe\u8ba1\u4e00\u6b21\u6587\u521b\u8bd5\u552e\u00b7\u95ee\u7b54\u7248",
+        "templateId": "tpl-c5adace7-9ed7-4295-92bd-f2428f9e0858",
+        "templateVersionId": "tplv-e7aadab4-9416-4628-956c-96e017681dab",
+        "templateStatus": "draft",
+        "versionStatus": "draft",
+        "teamId": "team-creative-market-budget-dialogue",
+        "assistantIds": [
+          "creative-market-budget-dialogue-concept",
+          "creative-market-budget-dialogue-practice",
+          "creative-market-budget-dialogue-review"
+        ],
+        "bindingId": "bnd-107322500dcbf9a4",
+        "bindingStatus": "draft",
+        "bindingHash": "597ae220d374c11849d2e4201707c0dfd5109735f77f009ae16357d1c03b6f38",
+        "bundleDigest": null,
+        "lessonCount": 8,
+        "liveRequestVerified": false,
+        "classroomValidated": false
+      }
+    }
+  ],
+  "preservedHistoricalVersions": 12,
+  "visibleTemplates": [
+    {
+      "id": "tpl-04bd8624-c1c4-41de-97de-318d055038e4",
+      "slug": "wave-interference-diffraction-8s-zero-base",
+      "title": "\u5149\u4e3a\u4ec0\u4e48\u4f1a\u51fa\u73b0\u660e\u6697\u6761\u7eb9\uff1f\u5e72\u6d89\u4e0e\u884d\u5c04\u63a2\u7a76 \u00b7 \u4ece\u57fa\u7840\u5f00\u59cb",
+      "status": "piloting"
+    },
+    {
+      "id": "tpl-9e0535b3-72ad-4224-8b66-bfc147f1b58c",
+      "slug": "thunder-fighter-zero-base",
+      "title": "\u96f7\u9706\u6218\u673a",
+      "status": "piloting"
+    },
+    {
+      "id": "tpl-04b9e2e4-7765-4b11-a58d-3409940ed743",
+      "slug": "seed-observation-inquiry",
+      "title": "\u4e00\u9897\u79cd\u5b50\u7684\u4e03\u5929\u65e5\u8bb0",
+      "status": "piloting"
+    },
+    {
+      "id": "tpl-0549a310-6a7b-4383-bb29-66e32fa7d50d",
+      "slug": "packaging-reduction-action",
+      "title": "\u8ba9\u4e00\u5468\u7684\u5305\u88c5\u5c11\u4e00\u70b9",
+      "status": "piloting"
+    },
+    {
+      "id": "tpl-5b8f6ebc-1e2b-4c8d-8a2b-440ca171d3cc",
+      "slug": "library-data-inquiry",
+      "title": "\u7ed9\u56fe\u4e66\u89d2\u505a\u4e00\u6b21\u6570\u636e\u8bca\u65ad",
+      "status": "piloting"
+    },
+    {
+      "id": "tpl-9b9d1c54-f365-48f4-b21e-72d79cae0955",
+      "slug": "inclusive-wayfinding-design",
+      "title": "\u8ba9\u7b2c\u4e00\u6b21\u6765\u7684\u4eba\u4e5f\u80fd\u627e\u5230\u8def",
+      "status": "piloting"
+    },
+    {
+      "id": "tpl-784a87af-94cb-4377-91ac-b17f96a91272",
+      "slug": "object-history-exhibition",
+      "title": "\u7ed9\u4e00\u4ef6\u8001\u7269\u4ef6\u529e\u5fae\u578b\u5c55\u89c8",
+      "status": "piloting"
+    },
+    {
+      "id": "tpl-3bcc7672-2a29-4a4a-b1f9-c23770168f8d",
+      "slug": "choice-story-studio",
+      "title": "\u4e00\u4e2a\u9009\u62e9\uff0c\u4e24\u79cd\u7ed3\u5c40",
+      "status": "piloting"
+    },
+    {
+      "id": "tpl-d1c7e101-3bd0-4540-ad98-5e752c1364db",
+      "slug": "claim-verification-lab",
+      "title": "\u4e3a\u4e00\u6761\u6d41\u4f20\u8bf4\u6cd5\u505a\u6838\u9a8c",
+      "status": "piloting"
+    },
+    {
+      "id": "tpl-d8875d5b-a8dc-4829-b9de-ad48cb8bbf11",
+      "slug": "creative-market-budget",
+      "title": "\u7528\u4e00\u767e\u5143\u8bbe\u8ba1\u4e00\u6b21\u6587\u521b\u8bd5\u552e",
+      "status": "piloting"
+    },
+    {
+      "id": "tpl-f950fdce-fbfb-44b1-b140-c85f66aae25b",
+      "slug": "wave-interference-diffraction-8s-dialogue",
+      "title": "\u5149\u4e3a\u4ec0\u4e48\u4f1a\u51fa\u73b0\u660e\u6697\u6761\u7eb9\uff1f\u95ee\u7b54\u63a2\u7a76",
+      "status": "piloting"
+    },
+    {
+      "id": "tpl-curriculum-plan",
+      "slug": "curriculum-plan",
+      "title": "\u6309\u8bfe\u65f6\u5b66\u4e60\u8ba1\u5212\u8bfe\u7a0b\u6a21\u677f",
+      "status": "published"
+    }
+  ]
+}

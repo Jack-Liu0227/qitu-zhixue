@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "3bd71540de672f338227a8c4f5a56d146d45aed4",
+  "entries": [
+    {
+      "original": "docs/plan/codex/README.md",
+      "archived": "Plan/archive/repository-cleanup-20261026/snapshot/codex-index-before.md",
+      "replacement": "Plan/codex/README.md",
+      "sha256": "deb62712db1049b0acdfb087fd79d7c02e8369745629dd15dc42cd25292e0414"
+    },
+    {
+      "original": "docs/issues/README.md",
+      "archived": "Plan/archive/repository-cleanup-20261026/snapshot/issue-register-20261012.md",
+      "replacement": "Plan/issues/README.md",
+      "sha256": "7f690cb2f20213ca22b0755a79749c0e3b48402048896ba27fc103d5123d4db1"
+    },
+    {
+      "original": "doc/e2e-dual-template-testing-v1.0.md",
+      "archived": "Plan/archive/repository-cleanup-20261026/snapshot/legacy-e2e/e2e-dual-template-testing-v1.0.md",
+      "replacement": "Plan/issues/20261023-dual-optics-student-e2e.md",
+      "sha256": "8ff62d8b90a8c6b9733c958c32f85181b908ed0a23888324056feaf1f3beb825"
+    },
+    {
+      "original": "doc/e2e-dual-template-testing-v1.1.md",
+      "archived": "Plan/archive/repository-cleanup-20261026/snapshot/legacy-e2e/e2e-dual-template-testing-v1.1.md",
+      "replacement": "Plan/issues/20261023-dual-optics-student-e2e.md",
+      "sha256": "9fbba5c3d7fa3c445e949696ae7d02a5cb677ff561070aa5855278fa7a4f1756"
+    },
+    {
+      "original": "启途智学作品介绍_详细参赛修订版.docx",
+      "archived": "Plan/archive/repository-cleanup-20261026/snapshot/submission-drafts/启途智学作品介绍_详细参赛修订版.docx",
+      "replacement": "docs/aboutus/README.md",
+      "sha256": "553cb01ece259974b288721917426a2da8e5755f09de6d224be0a9b084d32653"
+    },
+    {
+      "original": "新启途智学作品介绍_详细参赛修订版.docx",
+      "archived": "Plan/archive/repository-cleanup-20261026/snapshot/submission-drafts/新启途智学作品介绍_详细参赛修订版.docx",
+      "replacement": "docs/aboutus/README.md",
+      "sha256": "50d98f00c891539520364370209982093bc124c07251eaa14ca977672d5f0f22"
+    }
+  ]
+}

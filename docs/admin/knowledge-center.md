@@ -2,7 +2,7 @@
 
 ## 配置与矩阵工作区（2026-10-22）
 
-管理员已确认采用[配置与助手矩阵方案](../plan/codex/knowledge-center-config-matrix-20261022.md)。保留知识库和知识引擎页签；知识库页上方配置资源，下方以助手为行、知识库为列维护逐库检索授权。按 2026-10-23 用户追加要求，知识库卡片将查看和配置合并为一个「查看与编辑」按钮，进入同一路径内的详情工作区。面板对齐 DeepTutor：顶部库信息和页签，文件页左侧目录、右侧预览；本地库提供文件、添加文档、关联文件夹、GitHub、网络、索引版本、设置，关联库提供文件和设置。助手授权仍通过返回列表后的统一矩阵编辑。
+管理员已确认采用[配置与助手矩阵方案](../../Plan/codex/knowledge-center-config-matrix-20261022.md)。保留知识库和知识引擎页签；知识库页上方配置资源，下方以助手为行、知识库为列维护逐库检索授权。按 2026-10-23 用户追加要求，知识库卡片将查看和配置合并为一个「查看与编辑」按钮，进入同一路径内的详情工作区。面板对齐 DeepTutor：顶部库信息和页签，文件页左侧目录、右侧预览；本地库提供文件、添加文档、关联文件夹、GitHub、网络、索引版本、设置，关联库提供文件和设置。助手授权仍通过返回列表后的统一矩阵编辑。
 
 详情工作区内切换页签保留文档选择、配置草稿及上传队列；配置保存中、配置结果待核验及上传运行中阻止页签切换和返回列表。未确认的配置请求使用相同幂等键恢复；已收到写入回执但回读失败时，仅重试读取。配置只有服务端回读完成才显示保存成功。远端文件仍由原服务维护，本地文件操作仍调用既有 Admin owner。原分离式文件弹窗和配置抽屉退出此入口。
 
@@ -24,14 +24,7 @@
 
 账号/连接编辑增量验证：12 项浏览器交互检查、原有 27 项文件工作区回归、6 项新增后端行为测试通过；Admin typecheck、Admin/API lint 通过。新增测试位于 `knowledge-connection-edit.test.ts`，覆盖字段与地址、凭证拒绝、失败保留、证据失效、IMA 目录验证、幂等回放、并发冲突和 Admin 权限。UNC 验证显式构建 contracts/database/ai-client 并解析工作区产物；连接模块独立编译通过。本地全量 API 检查当时发现并行 `tutor-courseware-activity.ts` 的两处类型错误，未修改或纳入本次提交；正式发布源码的全量编译与回归结果如下。
 
-#### 账号与连接编辑发布回执
-
-2026-10-23 16:57（Asia/Shanghai），`970ef40567cd218873cad0a38352d384210795b1` 已合入 `study-remote/main` 并在正式目录发布，Admin build ID 为 `0xaG8eb2Wclpn6Lqm0b83`。远端按 API/Admin 依赖图构建，API 全量类型编译、知识模块 106 项测试、Admin typecheck、双方 lint 与生产构建全部通过。
-
-- 已发布页面使用隔离合成 API 通过 12 项账号/连接检查及 27 项文件工作区回归，浏览器异常为 0。全部配置写入均由浏览器拦截，不修改真实账号或知识库；此结果不代表真实外部账号的连接验收。
-- 静态资源检查通过，匿名连接编辑 API 返回 401，API readiness 为 live/ready，database、redis 为 ok。Admin PID `2269676 → 2277765`，API PID `2259330 → 2277389`，其余八个受检服务 PID 未变化；没有数据库迁移。
-- 合并前后已有远端修改与脚本 SHA-256 一致，构建过程中相关源码哈希无变化。备份 `/root/qitu-backups/knowledge-connections-20261023T085417Z/` 保存旧 Admin `.next`、API `dist`、构建/测试日志、服务与源码快照、浏览器脚本和验收结果。
-- 本地并行课件、课时绑定、Tutor、知识检索及其合同/数据库修改均未纳入本次提交；`knowledge.module.ts`、`knowledge-retrieval.service.ts`、知识中心 `page.tsx` 等并行文件未覆盖。本次发布保留远端已有 Admin/学生页面修改；这些工作独立于本次知识连接验收。
+[相关计划与执行记录](../../Plan/maintenance/usage-records-20261028.md)。
 
 ### 统一查看与编辑面板（2026-10-23）
 
@@ -39,16 +32,7 @@
 
 验证：Admin 类型检查及 lint 通过，隔离浏览器运行真实组件通过 27 项检查，包含原有本地/云端浏览能力、PDF 页码和设置草稿跨页签保留、来源草稿独立、嵌套目录与移动、上传刷新、移除成员后留在详情、删除库后返回列表、键盘切换、390px 布局，以及写入期间导航锁定、响应丢失时同键重试、写成功后回读 403 仅重试 GET。浏览器异常为 0；11 次写入全部由隔离合成 API 拦截，没有修改真实知识库。API 与数据库合同未改动，继续沿用此前已通过的知识模块 100 项测试。
 
-#### 统一面板发布回执
-
-2026-10-23 16:31（Asia/Shanghai），`eb67b1db8449c549dd844db0b35b3ea250b171af` 已合入 `study-remote/main`，正式目录 `/root/qitu-zhixue` 的 Admin build ID 为 `96EhqhJO3TqL4PcLvqO28`。Linux 依赖图构建、Admin typecheck、lint 和生产 build 全部通过，构建期间源码哈希无变化。
-
-- 已发布页面配合隔离合成 API 通过 27 项交互检查，浏览器异常为 0；PDF 翻页额外确认画布像素变化。认证、教材和 11 次写入均为测试拦截响应，不代表真实管理员账号及真实云端原文验收。
-- `/admin/settings/knowledge` 的 14 个 CSS/JS 引用和 `/admin/login` 的 11 个引用通过检查；匿名知识库 API 为 401，API readiness 为 live/ready，database、redis 均为 ok。
-- 只重建并启动 `qitu-admin`，PID `2259259 → 2269676`；API、官网/认证、学生、家长、教师、IMA MCP、embedding、workers、profile-growth 的 PID 未变化。未执行数据库迁移或生产知识库写操作。
-- 远端已有未提交改动，因此先推送临时分支，再快进合入 main；未使用 reset、stash 或覆盖同步。独立校验合并前后既有修改及未跟踪脚本的 SHA-256，一致。原运行产物、构建日志、源码快照、服务快照和浏览器脚本/结果保存在 `/root/qitu-backups/knowledge-workspace-20261023T083009Z/`。
-
-并行修改未纳入本次提交：Admin 的 `settings/assistants/page.tsx`、`settings/teams/page.tsx`、`settings/templates/page.tsx`、`TemplateTeamBindingPanel.tsx`、`teaching-binding/TeachingRoleInspector.tsx`；学生端的 `TutorPage.tsx`、`LessonAssessmentCard.tsx`、`LessonLearningDock.tsx`；`docs/plan/codex/README.md`、课程团队方案的 `05`、`06`、`07` 和 `README.md`，以及 `docs/student/template-session-openings-plan.md`、`docs/student/tutor.md`、`doc/e2e-dual-template-testing-v1.1.md`。本次只验证其内容被保留及 Admin 构建兼容，不将知识中心交互测试作为这些功能的验收。
+[相关计划与执行记录](../../Plan/maintenance/usage-records-20261028.md)。
 
 ### 已有文件查看（2026-10-23 首版，布局已被上节替代）
 
@@ -63,15 +47,7 @@
 
 UNC `node_modules` 为旧安装快照，先构建 contracts、database、ai-client、infra、agent-memory、model-runtime；验证时将 `@qitu/*` 指向本次构建或实际源码，并在本机临时目录安装已声明的 PDF/飞书 SDK 依赖，没有替换共享安装快照。浏览器脚本与结果在执行机 `%TEMP%/qitu-knowledge-file-review/`；知识模块可通过 `node --import ./tooling/verify-workspace-source.mjs --test "services/api/.tmp/test-dist/modules/knowledge/*.test.js"` 复核。隔离验证不代表已读取真实云端文件；实际发布回执如下。
 
-#### 发布回执
-
-2026-10-23 按用户要求同步至 `study-remote` 的 `main`，正式目录 `/root/qitu-zhixue`。Admin 运行构建包含 `06ad5df7f139da47bf5ad9c24f66e63980707dce`，Next build ID 为 `iBYLpIVv7O8smkABNac1x`。
-
-- Linux 按依赖图构建 Admin 依赖，Admin typecheck、lint、生产 build 通过；先停止 `qitu-admin` 再构建，启动后为 active。
-- 线上 `/admin/settings/knowledge` 的 14 个 CSS/JS 引用、`/admin/login` 的 11 个引用通过检查。匿名知识库 API 返回 401；API readiness 为 live/ready，database 和 redis 均为 ok。
-- 已发布页面配合隔离合成 API，再次通过上述 16 项浏览器检查，页面异常为 0。生产 HTML、JavaScript、CSS 和 PDF worker/font 资源均实际加载；认证与教材内容是测试拦截响应，不代表真实管理员登录或云端原文验收。
-- 只重建并启动 Admin。API、官网/认证、学生、家长、教师、IMA MCP、embedding、workers、profile-growth 的服务 PID 未变化；没有数据库迁移或知识库/助手授权写操作。
-- 旧 Admin `.next`、发布日志、服务前后 PID 和浏览器回执保存在 `/root/qitu-backups/knowledge-files-20261023T074118Z/`。远程未跟踪的测试脚本及本地并行编辑的助手/团队/教学文档未纳入本次提交；并行修改的 `test_bindings.mjs` 保持其当前版本，没有用备份覆盖。
+[相关计划与执行记录](../../Plan/maintenance/usage-records-20261028.md)。
 
 ## 管理与授权
 
@@ -152,4 +128,4 @@ location ~ ^/api/v1/admin/knowledge/bases/[^/]+/uploads/?$ {
 - Python ima 适配集中于 `integrations/deeptutor-knowledge/ima_runtime.py`。所选库 ID 优先于引擎默认库，桥接入口允许目录/文档只读操作。
 - 稳定错误码区分 `IMA_CREDENTIALS_REJECTED`、`IMA_RATE_LIMITED`、`IMA_TIMEOUT`、`IMA_UNREACHABLE`、`IMA_UPSTREAM_INVALID_RESPONSE`、`IMA_KB_ID_IS_CLIENT_ID` 和 `REMOTE_RESOURCE_NOT_FOUND`。不向网页返回原始上游异常或凭证。
 
-验收：知识模块 89 项测试、适配运行时 14 项测试通过，API 与管理员端 lint/typecheck/build 通过；真实 ima 四库列举、连接预检、隔离数据库关联及目录读取通过，桌面/390px 移动端和请求状态竞态检查通过。正式环境仅进行只读列库与预检，不创建验收库或改动现有助手绑定。
+历史回执见 [计划与执行记录](../../Plan/maintenance/usage-records-20261028.md)。

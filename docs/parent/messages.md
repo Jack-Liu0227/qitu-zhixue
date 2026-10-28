@@ -39,11 +39,7 @@ POST /api/v1/parent/feedback/:ticketId/confirm     确认（幂等）
 | offline | 只读；禁止提交，保留草稿 |
 | permission-denied | 403 页面 |
 
-## 5. 未决事项
-
-- [ ] 通知渠道（站内 / 邮件 / 其他）与偏好设置。
-- [ ] 消息模板与班主任发送入口。
-- [ ] 工单 SLA 与升级规则。
+[相关计划与执行记录](../../Plan/maintenance/usage-records-20261028.md)。
 
 ## 6. 相关文档
 

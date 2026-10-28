@@ -1,0 +1,226 @@
+{
+  "items": [
+    {
+      "id": "growth-b9b6ba1f5219dbfcb1b6913d",
+      "type": "project_stage_completed",
+      "occurredAt": "2026-10-28T13:56:40.170Z",
+      "title": "项目阶段完成",
+      "summaryStudent": "已完成“反思完善”阶段。",
+      "projectId": "proj-f79d78b3-833a-48e4-a1b0-f4ae1d32bde7",
+      "projectTitle": "光为什么会出现明暗条纹？问答探究",
+      "stage": "reflection",
+      "artifactRef": null,
+      "objectiveTitles": [],
+      "icon": "stage",
+      "encouragement": null,
+      "evidenceIds": [
+        "project_event:563f9832ed3f17e53618cd385125de40333e3f2ea770eeeab32a7e6571e958f3"
+      ],
+      "observationState": "observed"
+    },
+    {
+      "id": "growth-6b6b4e273b6462911744470b",
+      "type": "project_stage_completed",
+      "occurredAt": "2026-10-28T13:56:40.170Z",
+      "title": "项目完成",
+      "summaryStudent": "项目已由服务端确认为完成。",
+      "projectId": "proj-f79d78b3-833a-48e4-a1b0-f4ae1d32bde7",
+      "projectTitle": "光为什么会出现明暗条纹？问答探究",
+      "stage": "completed",
+      "artifactRef": null,
+      "objectiveTitles": [],
+      "icon": "stage",
+      "encouragement": null,
+      "evidenceIds": [
+        "project_event:0bc296e87df6051a65cbe0476b7620fee0c76eca5b9c76859c4d6055cc1f1188"
+      ],
+      "observationState": "observed"
+    },
+    {
+      "id": "growth-bd7eb917561525b37c037be4",
+      "type": "reflection_created",
+      "occurredAt": "2026-10-28T13:56:35.533Z",
+      "title": "学习反思已保存",
+      "summaryStudent": "已保存一份有课时和作品版本依据的学习反思。",
+      "projectId": "proj-f79d78b3-833a-48e4-a1b0-f4ae1d32bde7",
+      "projectTitle": "光为什么会出现明暗条纹？问答探究",
+      "stage": null,
+      "artifactRef": "art-0521cd69-cd33-4f54-b0dd-ebfcf9285727",
+      "objectiveTitles": [],
+      "icon": "reflection",
+      "encouragement": null,
+      "evidenceIds": [
+        "reflection:aacf5ac2b91ae9bd001413c32572fec30f23d1535b0f9a2175f858f25070cc3e"
+      ],
+      "observationState": "observed"
+    },
+    {
+      "id": "growth-eb8849b6239664cb359dae91",
+      "type": "project_stage_completed",
+      "occurredAt": "2026-10-28T13:56:22.593Z",
+      "title": "项目阶段完成",
+      "summaryStudent": "已完成“作品待反馈”阶段。",
+      "projectId": "proj-f79d78b3-833a-48e4-a1b0-f4ae1d32bde7",
+      "projectTitle": "光为什么会出现明暗条纹？问答探究",
+      "stage": "artifact_review",
+      "artifactRef": null,
+      "objectiveTitles": [],
+      "icon": "stage",
+      "encouragement": null,
+      "evidenceIds": [
+        "project_event:5a732893ee10877f77b26dfd7b6455fe448102ae70567689842a281c8cd39e6f"
+      ],
+      "observationState": "observed"
+    },
+    {
+      "id": "growth-56044cea03271272c8d410c8",
+      "type": "project_stage_completed",
+      "occurredAt": "2026-10-28T13:52:11.092Z",
+      "title": "项目阶段完成",
+      "summaryStudent": "已完成“实践制作”阶段。",
+      "projectId": "proj-f79d78b3-833a-48e4-a1b0-f4ae1d32bde7",
+      "projectTitle": "光为什么会出现明暗条纹？问答探究",
+      "stage": "practice_building",
+      "artifactRef": null,
+      "objectiveTitles": [],
+      "icon": "stage",
+      "encouragement": null,
+      "evidenceIds": [
+        "project_event:37916a4503f51ee120b7d3da0e0d7735ec0b68b79a408c43676dc1f350872692"
+      ],
+      "observationState": "observed"
+    },
+    {
+      "id": "growth-afea864113243dec258db57b",
+      "type": "project_stage_completed",
+      "occurredAt": "2026-10-28T13:49:18.116Z",
+      "title": "项目阶段完成",
+      "summaryStudent": "已完成“理解检查”阶段。",
+      "projectId": "proj-f79d78b3-833a-48e4-a1b0-f4ae1d32bde7",
+      "projectTitle": "光为什么会出现明暗条纹？问答探究",
+      "stage": "theory_check",
+      "artifactRef": null,
+      "objectiveTitles": [],
+      "icon": "stage",
+      "encouragement": null,
+      "evidenceIds": [
+        "project_event:497b6298175ff9d0481bf7590b9c62434d13305c3683eac83fa4ebdf40e62512"
+      ],
+      "observationState": "observed"
+    },
+    {
+      "id": "growth-200bbceaab70330320315ff1",
+      "type": "project_stage_completed",
+      "occurredAt": "2026-10-28T13:49:18.116Z",
+      "title": "项目阶段完成",
+      "summaryStudent": "已完成“准备实践”阶段。",
+      "projectId": "proj-f79d78b3-833a-48e4-a1b0-f4ae1d32bde7",
+      "projectTitle": "光为什么会出现明暗条纹？问答探究",
+      "stage": "practice_ready",
+      "artifactRef": null,
+      "objectiveTitles": [],
+      "icon": "stage",
+      "encouragement": null,
+      "evidenceIds": [
+        "project_event:2fca3015b5fc525d5aad3f8e711b6f2198f205b6bbf9ae55179e6162ed4dc390"
+      ],
+      "observationState": "observed"
+    },
+    {
+      "id": "growth-144d3fc736de02a931a06732",
+      "type": "objective_mastered",
+      "occurredAt": "2026-10-28T13:49:17.634Z",
+      "title": "目标掌握已核验",
+      "summaryStudent": "一项学习目标已达到服务端正式评估的掌握标准。",
+      "projectId": "proj-f79d78b3-833a-48e4-a1b0-f4ae1d32bde7",
+      "projectTitle": "光为什么会出现明暗条纹？问答探究",
+      "stage": null,
+      "artifactRef": null,
+      "objectiveTitles": [
+        "受控比较与模型边界"
+      ],
+      "icon": "objective",
+      "encouragement": null,
+      "evidenceIds": [
+        "mastery_event:ab3e343176adb1681a1f44b556985229482aaaa84563a1880e446576368c46c4"
+      ],
+      "observationState": "observed"
+    },
+    {
+      "id": "growth-0841016b2be857218a51a0ce",
+      "type": "objective_mastered",
+      "occurredAt": "2026-10-28T13:49:06.543Z",
+      "title": "目标掌握已核验",
+      "summaryStudent": "一项学习目标已达到服务端正式评估的掌握标准。",
+      "projectId": "proj-f79d78b3-833a-48e4-a1b0-f4ae1d32bde7",
+      "projectTitle": "光为什么会出现明暗条纹？问答探究",
+      "stage": null,
+      "artifactRef": null,
+      "objectiveTitles": [
+        "稳定相干条件的准备理解"
+      ],
+      "icon": "objective",
+      "encouragement": null,
+      "evidenceIds": [
+        "mastery_event:907975030535e3fc37584ffb85990e8c3915690454954218801ec8decc923345"
+      ],
+      "observationState": "observed"
+    },
+    {
+      "id": "growth-77081311673a56eb8087621a",
+      "type": "objective_mastered",
+      "occurredAt": "2026-10-28T13:41:04.161Z",
+      "title": "目标掌握已核验",
+      "summaryStudent": "一项学习目标已达到服务端正式评估的掌握标准。",
+      "projectId": "proj-f79d78b3-833a-48e4-a1b0-f4ae1d32bde7",
+      "projectTitle": "光为什么会出现明暗条纹？问答探究",
+      "stage": null,
+      "artifactRef": null,
+      "objectiveTitles": [
+        "波叠加的准备理解"
+      ],
+      "icon": "objective",
+      "encouragement": null,
+      "evidenceIds": [
+        "mastery_event:59dd11d3bc8bad3d754f8dfd2a58958a29321880d2585febcf35759a31fe5a46"
+      ],
+      "observationState": "observed"
+    },
+    {
+      "id": "growth-eb8a704ce5f65e4816e74dbc",
+      "type": "project_stage_completed",
+      "occurredAt": "2026-10-28T13:38:45.945Z",
+      "title": "项目阶段完成",
+      "summaryStudent": "已完成“理论探究”阶段。",
+      "projectId": "proj-f79d78b3-833a-48e4-a1b0-f4ae1d32bde7",
+      "projectTitle": "光为什么会出现明暗条纹？问答探究",
+      "stage": "theory_learning",
+      "artifactRef": null,
+      "objectiveTitles": [],
+      "icon": "stage",
+      "encouragement": null,
+      "evidenceIds": [
+        "project_event:3b65e9dc3525302c23e4f0d4800662ece99d267d5a79ad576abd6642f1052ee9"
+      ],
+      "observationState": "observed"
+    },
+    {
+      "id": "growth-733a3d33293484d81f39e71d",
+      "type": "project_stage_completed",
+      "occurredAt": "2026-10-28T13:38:45.945Z",
+      "title": "项目阶段完成",
+      "summaryStudent": "已完成“项目已确认”阶段。",
+      "projectId": "proj-f79d78b3-833a-48e4-a1b0-f4ae1d32bde7",
+      "projectTitle": "光为什么会出现明暗条纹？问答探究",
+      "stage": "intent_confirmed",
+      "artifactRef": null,
+      "objectiveTitles": [],
+      "icon": "stage",
+      "encouragement": null,
+      "evidenceIds": [
+        "project_event:ce88188135e574c7a05a22d82ff099cdb6b77c0e12b17388ce35053db466ccd5"
+      ],
+      "observationState": "observed"
+    }
+  ]
+}

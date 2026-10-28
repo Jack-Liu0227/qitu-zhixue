@@ -298,11 +298,11 @@ python3 tooling/check-frontend-assets.py --route /login --route /student/today
 **回滚**：当时的独立产物、`activate-rollback.sh` 和 `.release-unit-backup/` 位于已删除的 release 目录，不能再执行。
 当前回滚只能在主工作树检出已验证提交后重新安装、构建并逐服务重启，见 §3.7。
 
-API Linux 测试日志、运行复核和受限审计脚本曾位于 release 的 `.release-api-test.log`、`.release-live-verification.json`、`.release-audit/`，现随 release 删除。完整结果和验证限制见 [接管修复与发布记录](../plan/codex/takeover-validation-20261019.md)。本轮没有真实模型/IMA 请求或登录后完整 16 课时验收，不能据此宣布全动态 PBL 完成；HTTP 冒烟也不是 TLS/生产隐私安全认证。
+API Linux 测试日志、运行复核和受限审计脚本曾位于 release 的 `.release-api-test.log`、`.release-live-verification.json`、`.release-audit/`，现随 release 删除。完整结果和验证限制见 [接管修复与发布记录](../../Plan/codex/takeover-validation-20261019.md)。本轮没有真实模型/IMA 请求或登录后完整 16 课时验收，不能据此宣布全动态 PBL 完成；HTTP 冒烟也不是 TLS/生产隐私安全认证。
 
 ### 3.6 主站 main 统一发布与管家目录修复（2026-10-19 晚间）
 
-生产代码 follow-up release 为 `c899f498d9abb2cfad79763aebd3dfbd5fc416a7`（代码变更 `19fc1a7`），用于修复管家助手/团队目录显示契约；六个正式单元当时已完成隔离构建和统一切换。此前 `63e3be882f1b1d7ccfbc0122bc14bf0b354785e3` 的生产切换、0036 迁移和服务器两处 preferences 保留事实仍由 [历史发布记录](./release-20261019-main.md) 记录。本节仅保留历史；独立 release 目录、launcher 和 drop-in 已删除。
+生产代码 follow-up release 为 `c899f498d9abb2cfad79763aebd3dfbd5fc416a7`（代码变更 `19fc1a7`），用于修复管家助手/团队目录显示契约；六个正式单元当时已完成隔离构建和统一切换。此前 `63e3be882f1b1d7ccfbc0122bc14bf0b354785e3` 的生产切换、0036 迁移和服务器两处 preferences 保留事实仍由 [历史发布记录](../../Plan/releases/release-20261019-main.md) 记录。本节仅保留历史；独立 release 目录、launcher 和 drop-in 已删除。
 
 ### 3.7 主工作树统一运行（2026-10-20）
 

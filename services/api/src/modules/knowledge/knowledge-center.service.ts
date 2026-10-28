@@ -548,7 +548,7 @@ export class KnowledgeCenterService {
   }
 
   /**
-   *   * 知识库↔助手绑定（docs/design/20261018-knowledge-center-deeptutor-reference.md §2）：
+   *   * 知识库↔助手绑定（Plan/design/20261018-knowledge-center-deeptutor-reference.md §2）：
    * 知识库检索工具绑定到哪些助手。只读目录 + 聚焦写入；
    * 保存复用 platform-config 的 expectedRevision 并发控制、幂等与审计事务。
    */

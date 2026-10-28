@@ -1,0 +1,22 @@
+{
+  "at": "2026-10-23T19:03:59.731205+00:00",
+  "level": 1,
+  "python": "3.13.5",
+  "pygame": "2.6.1",
+  "videoDriver": "windows",
+  "sourceSha256": "00c72821d34fb50570301173dd45cb598424e6596388a768a18cc4ff7188111e",
+  "integerPositionRegression": {
+    "oldIntegerDistance": 120,
+    "expectedDistance": 130,
+    "actualFloatDistance": 130.0
+  },
+  "checks": [
+    "actual event queue moves player right",
+    "floating position fixes reproduced integer truncation",
+    "key release stops movement",
+    "left screen boundary clamps player",
+    "window quit ends loop"
+  ],
+  "passed": true,
+  "scope": "real Pygame window, synthetic event-queue input; not an automated production container runner"
+}

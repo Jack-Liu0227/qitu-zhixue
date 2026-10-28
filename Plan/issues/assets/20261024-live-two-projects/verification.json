@@ -1,0 +1,697 @@
+{
+  "checkedAt": "2026-10-23T19:35:06.530Z",
+  "environment": "production synthetic demo learner; real browser and owner APIs",
+  "projects": [
+    {
+      "target": "zero8",
+      "url": "http://122.51.130.204/student/tutor/proj-27f87104-2a45-4890-b7f0-00fb97a14322",
+      "stage": "completed",
+      "planId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9",
+      "planRevision": 1,
+      "lessons": [
+        {
+          "lesson": 1,
+          "title": "条纹从哪里来？",
+          "completedAt": "2026-10-23T18:13:24.284Z",
+          "visible": true,
+          "responses": 2,
+          "observations": 0,
+          "reflections": 0,
+          "approvedArtifacts": 1,
+          "proofRefs": [
+            "task_submission:learning-d33750cdd31acd1f6d110ec5f0f876cf542ad38879e92f201327557841d30b05",
+            "task_submission:learning-8859a1987d630719c4add176ec43cfd56ff0c39db4ee9ac86c0b03236c58c13e"
+          ],
+          "artifacts": [
+            {
+              "artifactId": "art-711c666f-98a2-447c-9cf8-3473d0634fbe",
+              "versionId": "artv-76d6b9e2-53d0-46db-a82b-72af26e15c62",
+              "contentSha256": "05dbcddb9ce1d830bd047008b9cef365dde841f25206cbd18d6bebe927f4c2b8"
+            },
+            {
+              "artifactId": "art-fc75b0b5-6480-4fa7-99ab-f4e5e87ae426",
+              "versionId": "artv-0a8030c6-932f-4999-ad17-b3e4634f30d7",
+              "contentSha256": "d93fdfb15a2053f281b15e0d98209e49bbd46f712727d778eeabd076a5bc11a5"
+            }
+          ]
+        },
+        {
+          "lesson": 2,
+          "title": "两列波相遇会怎样？",
+          "completedAt": "2026-10-23T18:26:58.547Z",
+          "visible": true,
+          "responses": 1,
+          "observations": 0,
+          "reflections": 0,
+          "approvedArtifacts": 1,
+          "proofRefs": [
+            "task_submission:learning-28d237df7b902d036dcf674c0ec3d702c0fb8507b4102bffab04c469be8b1b05"
+          ],
+          "artifacts": [
+            {
+              "artifactId": "art-91c9daa9-0932-4636-9479-b5a41a28f3d1",
+              "versionId": "artv-cf08d7ca-c167-4f9d-a9c6-67fe64b1a1b3",
+              "contentSha256": "6384adafc5081cb1cf7025fdcaa0f74dc466a64aaad4872f3605d2c196b43904"
+            }
+          ]
+        },
+        {
+          "lesson": 3,
+          "title": "双缝为什么出现明暗？",
+          "completedAt": "2026-10-23T18:30:09.317Z",
+          "visible": true,
+          "responses": 2,
+          "observations": 1,
+          "reflections": 0,
+          "approvedArtifacts": 1,
+          "proofRefs": [
+            "task_submission:learning-759b8bf9416e2f43234766a173537281e4ba7beb55743b9d9fd29e81a2ea6b2b",
+            "task_submission:learning-0687daba3b2f99b6b7c15469f951685f9ed1f6f2c0b3bfb50e7ea0c541d4defb",
+            "experiment_observation:obs-304de77d9e7fc596181f28364514a999"
+          ],
+          "artifacts": [
+            {
+              "artifactId": "art-9572e9bd-d251-4a17-8b60-4118ef1ca901",
+              "versionId": "artv-db5964a7-dd4a-447d-8007-81e1a6d70de2",
+              "contentSha256": "f8703518ee6af427c71d497ad2f8b70942a76089bb65309a4bd16fbc46df2611"
+            },
+            {
+              "artifactId": "art-637cbf0a-d9cb-463f-a775-2bd36ba25d9a",
+              "versionId": "artv-dfc4b905-fbb3-4c56-b705-6e5eb0317a5c",
+              "contentSha256": "a9f6bb3b1ae326a77043e6b88d3ab3e7d5dd2f10ce30b3e225252f589fd40ea7"
+            }
+          ]
+        },
+        {
+          "lesson": 4,
+          "title": "怎样改变干涉条纹间距？",
+          "completedAt": "2026-10-23T18:33:36.850Z",
+          "visible": true,
+          "responses": 2,
+          "observations": 2,
+          "reflections": 0,
+          "approvedArtifacts": 1,
+          "proofRefs": [
+            "task_submission:learning-f963419f86c92b71cb33facbaa2e008289b78ec693e7f70ecdee65c83c294536",
+            "task_submission:learning-5d24416e46cc6c73a0eb7af25f93a5342d83ab9a6c42774a3783b679f7c8367e",
+            "experiment_observation:obs-5ab7e91c890498ebb636503359d2be82",
+            "experiment_observation:obs-e1ad07837ee928f0a3874a6f618fc8c0"
+          ],
+          "artifacts": [
+            {
+              "artifactId": "art-bad5f8e8-c1b4-40ca-9fd5-48cf1090162c",
+              "versionId": "artv-aadf75ea-bc6f-43af-ac0e-0e5d458c7680",
+              "contentSha256": "968a05048ee1dcc5fcab1b9bfd4c0e6e59a5ce95422bffe85da744601b413908"
+            },
+            {
+              "artifactId": "art-c1946ddd-f0df-4afe-9755-9ad056c651d4",
+              "versionId": "artv-7a5cc14b-0231-4716-921b-03203b730da8",
+              "contentSha256": "2ffdb600f4257138d86fba724748d78d1fb2718704177903e2fc9c796ccacc00"
+            }
+          ]
+        },
+        {
+          "lesson": 5,
+          "title": "一条缝为什么仍有条纹？",
+          "completedAt": "2026-10-23T18:38:00.214Z",
+          "visible": true,
+          "responses": 2,
+          "observations": 1,
+          "reflections": 0,
+          "approvedArtifacts": 1,
+          "proofRefs": [
+            "task_submission:learning-91617d226536c446f5eb4642e150ed3871e9907c6f908dfb9c8501a719c9f0a8",
+            "task_submission:learning-9a97a3cd011eeae2e38e8a18e50a1f3bc99e4b7f2c7bc39c8d1b9028785f43de",
+            "experiment_observation:obs-ce766ad08992f5f89e8271e0de1f880c"
+          ],
+          "artifacts": [
+            {
+              "artifactId": "art-08033046-780b-434a-9795-49fe93a60fc0",
+              "versionId": "artv-4490fdc9-7987-4c25-afbf-87828c491b6e",
+              "contentSha256": "83c854d0e26c5bbca4b3ce47fdcdd2be6b97e2f15b79c42aa0a5f69afe275b6d"
+            },
+            {
+              "artifactId": "art-face63a1-f2f0-48eb-8132-db4deeb8fe35",
+              "versionId": "artv-693c5c51-4974-42ca-835d-7d0c76660400",
+              "contentSha256": "e411b97f56bfeec8deeb51dc36613555f3fefe6276bd15f9705150a42c40ce24"
+            }
+          ]
+        },
+        {
+          "lesson": 6,
+          "title": "缝变窄，图样怎样变化？",
+          "completedAt": "2026-10-23T18:41:27.700Z",
+          "visible": true,
+          "responses": 2,
+          "observations": 2,
+          "reflections": 0,
+          "approvedArtifacts": 1,
+          "proofRefs": [
+            "task_submission:learning-f3a4242e693a8f2bd4b36c303153fd7cf7250e81fcd919facb8ebf25af9e2a31",
+            "task_submission:learning-da32da34d66b4cf8e9129ecc3038ef6e06e056ceaf298b0c3d1a2db09dd959cb",
+            "experiment_observation:obs-9b757530e3de450d236ae106e3b20e53",
+            "experiment_observation:obs-a4a89061308456e9f09b3ee1ebe4d1c2"
+          ],
+          "artifacts": [
+            {
+              "artifactId": "art-029214bb-341b-43cd-a22c-d1234190e818",
+              "versionId": "artv-d91f61ec-8c21-4697-b9ed-a5bdc9bb67f2",
+              "contentSha256": "ba562e9b558b7ee7de2e6726d18a9c5cd7d0d2d355ea6ed88aeaac8d654cbdf2"
+            },
+            {
+              "artifactId": "art-ca477e1a-9b13-45f2-b88a-77a782b0b195",
+              "versionId": "artv-99a6fcf1-205c-4317-b108-efc62fc93889",
+              "contentSha256": "f4b7a36d843da0143707f0eeb82d8e83d3a642b0521f718bc43525b0220ad95a"
+            }
+          ]
+        },
+        {
+          "lesson": 7,
+          "title": "干涉与衍射怎样联系？",
+          "completedAt": "2026-10-23T18:50:45.079Z",
+          "visible": true,
+          "responses": 2,
+          "observations": 1,
+          "reflections": 0,
+          "approvedArtifacts": 1,
+          "proofRefs": [
+            "task_submission:learning-796ab3435b01dfc62842bb5e3a97cdb0917440e9da5ee6d7f3603f44175ff9e2",
+            "task_submission:learning-ae46007253334cadd4f47f71ae637f843c613cb1bcf78affd8c159a3dc633d29",
+            "experiment_observation:obs-9fa349e5bba6aeff5372df75c40d80c4"
+          ],
+          "artifacts": [
+            {
+              "artifactId": "art-a26c9696-0f11-4e42-a663-8c1c9cfc7ba2",
+              "versionId": "artv-e35927df-d4e1-4979-94c1-b0701ffc6198",
+              "contentSha256": "fce09dd73462165853165db1a5c438d16310d9eb453b1e6cd767d6e02e38e16c"
+            },
+            {
+              "artifactId": "art-a211ad67-de2c-4de8-98db-50eb1d080325",
+              "versionId": "artv-c6d7ff53-88eb-478b-9cf8-60a3cdc9e051",
+              "contentSha256": "4a9defdd8e5819dc5ec59bb3106da27f3afccb97fdc4781d463fd3fc466cbed1"
+            }
+          ]
+        },
+        {
+          "lesson": 8,
+          "title": "别人能复核我的探究吗？",
+          "completedAt": "2026-10-23T18:56:40.644Z",
+          "visible": true,
+          "responses": 1,
+          "observations": 0,
+          "reflections": 1,
+          "approvedArtifacts": 1,
+          "proofRefs": [
+            "task_submission:learning-2af4b95951b524e46fdc747cb9812ae26cb549ed8abfed134b4a00121db096a6",
+            "reflection:learning-7c1505fe4ef48eb0895660f73dea413b73a9bd2585788d06d07959e52937f316"
+          ],
+          "artifacts": [
+            {
+              "artifactId": "art-2a76022d-2332-40bd-b429-a0b5fabfbf50",
+              "versionId": "artv-c4bfc2a6-be5d-4e7a-94b6-ab0f1dd490c9",
+              "contentSha256": "6c41ec0e174aadecfd50608390a31785029eb43adf50dd3204394c1a4f7bbaaf"
+            },
+            {
+              "artifactId": "art-8448bcab-78c5-41a2-8328-1a7fde0ddd25",
+              "versionId": "artv-cb8dc326-3b53-44e5-82dd-204f7af0b852",
+              "contentSha256": "daca330c20c41588a228c26b2695ccff7e3df6d585f1e38cf9d96be95172340d"
+            }
+          ]
+        }
+      ],
+      "offlineRecovery": true,
+      "reloadPersisted": true
+    },
+    {
+      "target": "thunder",
+      "url": "http://122.51.130.204/student/tutor/proj-4bd46027-66e2-4137-8ab4-a753782fb59c",
+      "stage": "completed",
+      "planId": "plan-7581e5b2-d9c2-4712-a1a4-4688740c7a41",
+      "planRevision": 1,
+      "lessons": [
+        {
+          "lesson": 1,
+          "title": "我的战机游戏怎么玩？",
+          "completedAt": "2026-10-23T18:58:20.990Z",
+          "visible": true,
+          "responses": 4,
+          "observations": 0,
+          "reflections": 0,
+          "approvedArtifacts": 1,
+          "proofRefs": [
+            "task_submission:learning-c596a47eb408a069b4f4db0565a600af110b53565ec9b117a280a5bf2b53d21a",
+            "task_submission:learning-52e3b00367eee26d8c03116ee70ef844db53027efa39b7a5262cc88f37115c69",
+            "task_submission:learning-edc165513c18cd60370fc5559b4a8355c551c1d99bead0b2db90b0c391ab5f77",
+            "task_submission:learning-80b9ca9e3ec058282061d12ade064bbce42d0d9d9761cf28463e4837088b9e93"
+          ],
+          "artifacts": [
+            {
+              "artifactId": "art-43295d69-68ff-41a7-b601-87289166fe76",
+              "versionId": "artv-84876fbb-94c6-471f-933a-57e6c160264c",
+              "contentSha256": "c110318478338ceaee35e8634583f17536848286fec92cbe9407e7e00056ce7d"
+            },
+            {
+              "artifactId": "art-71061c18-b36f-4bbf-b004-675a07c7d30d",
+              "versionId": "artv-f60e32fc-d2b3-4547-b577-0cfd2d830364",
+              "contentSha256": "f4da11f266058601c0daf369e64b83082172276cb3cf79cc8c6a1bd58fcdbe80"
+            },
+            {
+              "artifactId": "art-f3e9c745-bc67-4f78-b3bc-01fc3f747814",
+              "versionId": "artv-442b6de4-cb96-42e3-919b-eae92531fe89",
+              "contentSha256": "f2dedcaaebedbacf8bee2ab5a6caf372394ff894d281e9114ce83cb1dd19fd65"
+            },
+            {
+              "artifactId": "art-e1a986f8-2b64-4269-8e44-9f52504eee3d",
+              "versionId": "artv-d4126730-d8d5-4000-afe7-fedb6642b8c8",
+              "contentSha256": "d9715bda7985aa0945f739f4988bd924a6b3ea2b9f6af44456c991abae414f15"
+            }
+          ]
+        },
+        {
+          "lesson": 2,
+          "title": "画面为什么会动？循环与坐标",
+          "completedAt": "2026-10-23T19:02:43.226Z",
+          "visible": true,
+          "responses": 3,
+          "observations": 0,
+          "reflections": 0,
+          "approvedArtifacts": 1,
+          "proofRefs": [
+            "task_submission:learning-67ef0030ccc011c0e291110deac27a3cd4ba3852bcf581e736297f468c012937",
+            "task_submission:learning-c22e876bf7b0f49df1c55f62178dd0014aaadd7e783bd543ded9fe6bb5b0c065",
+            "task_submission:learning-e0c7e9aa8d5115dbcc4bb4aab8ac74e956352aadd9f074731eef59a357b43e5e"
+          ],
+          "artifacts": [
+            {
+              "artifactId": "art-bbc5f65f-90a1-4405-89e4-c9c3fe328451",
+              "versionId": "artv-b613a9d1-9818-4300-b1cb-e3181ba178f0",
+              "contentSha256": "c179651faaabe86c00fea90c3a89ea6372106d38dcac72d7404ac84a3e195030"
+            },
+            {
+              "artifactId": "art-c1bdd60f-7c18-4b52-bd4b-03d5687738d7",
+              "versionId": "artv-af53c4ff-411f-492e-ba6e-6eba0ff7d3c5",
+              "contentSha256": "1b3a9e0fe85ec9b1603ac596b4b3bcbcd070849106f10fac613a01748079e2c6"
+            },
+            {
+              "artifactId": "art-49457322-b1af-4b88-b34e-bb0b153ce29f",
+              "versionId": "artv-80745491-8dc6-4050-8fc9-159b1f18eb56",
+              "contentSha256": "b73570907191b6fdfb572deb7246bc71cb8d17bbe2277d5039b28bb7ec1b6c47"
+            }
+          ]
+        },
+        {
+          "lesson": 3,
+          "title": "按键与碰撞怎样变成规则？",
+          "completedAt": "2026-10-23T19:03:56.011Z",
+          "visible": true,
+          "responses": 3,
+          "observations": 0,
+          "reflections": 0,
+          "approvedArtifacts": 1,
+          "proofRefs": [
+            "task_submission:learning-ef8b53338a2fd48dde6a827b35fd3ba7ac452f366efc9c66996964e4bbd7c2b0",
+            "task_submission:learning-6db6766d6fa9a02400b3448fd80cf6dce3cb47bbde557d3da3a11b7c117e38b7",
+            "task_submission:learning-c0d064ce9a9f8e99ba7f827a8b73f0cd4e9d199709f2bd096ea19ccbbb9235d5"
+          ],
+          "artifacts": [
+            {
+              "artifactId": "art-03d21878-de09-4d92-aff8-6db8df049517",
+              "versionId": "artv-93d539bd-8b00-476c-b362-a26ac1e59d55",
+              "contentSha256": "94bd3b082c6ffd108f6989d82d521789f1b07f66ee905e2844f960524807dfde"
+            },
+            {
+              "artifactId": "art-62c2e9bd-cb71-49cb-8ef1-c7a891bc10f4",
+              "versionId": "artv-d4601663-4105-42eb-9422-b0a5d39342ab",
+              "contentSha256": "7ebd392ec866a0e772e99b68e926999226135c604eb363a5732298ac91d76303"
+            },
+            {
+              "artifactId": "art-6920dbc2-8ef0-41fc-861f-c7f361c55b33",
+              "versionId": "artv-96c84bc7-e7f6-4da3-b254-596719f17efb",
+              "contentSha256": "174a3fec5c1cb88fe11da8f42e53273fd014919afaf2cc9e53eb028202038df8"
+            }
+          ]
+        },
+        {
+          "lesson": 4,
+          "title": "让第一架战机动起来",
+          "completedAt": "2026-10-23T19:05:06.122Z",
+          "visible": true,
+          "responses": 5,
+          "observations": 0,
+          "reflections": 0,
+          "approvedArtifacts": 1,
+          "proofRefs": [
+            "task_submission:learning-b17d248f4ac60b0724f9d8e76c1bcc7e8f8c13815f07cacc3c079d2e76721fde",
+            "task_submission:learning-19ffc17d2798380d10cab3d7c770b8b14803c4b259f5914d890c89ca7b4cd274",
+            "task_submission:learning-3322d251ec09f85d9278f9570f457f7182b3bbd1c70e9635e197f7d63858f0af",
+            "task_submission:learning-e55d03f1a2e98b5551cc28f37b8829ae22e668ffc3aad471c6cee5a76cb682a2",
+            "task_submission:learning-6704d27ba22ba3bda0ae2ff1381f0128d1f920c25c4e6f216116bc74e2c9dc77"
+          ],
+          "artifacts": [
+            {
+              "artifactId": "art-216bdc0d-4ca2-4b8c-921e-9fd746139816",
+              "versionId": "artv-e252d2fd-25c5-46bd-9634-fda6d1986a23",
+              "contentSha256": "4724ccb655d629ca36b5ff8435a1cf40849a55f49466840387a5763f8e498ba1"
+            },
+            {
+              "artifactId": "art-cd45cc1f-19dc-4332-a9d6-89a05be3dbb1",
+              "versionId": "artv-ccb486c5-37b8-4b1e-a8fa-52281092dec7",
+              "contentSha256": "7a9da29ed20bf0074b73dba7fdffd14fa81a87c9e22ab10091b281569e4a30ca"
+            },
+            {
+              "artifactId": "art-bfd414bf-2aef-49ea-9109-aa531cffbd13",
+              "versionId": "artv-81bd685b-5b47-463b-82f2-fee6499f9e94",
+              "contentSha256": "8e701b0d75cf348955a1ef24acfb794cd478dbcfca12e68c0e82b1f37dbb9532"
+            },
+            {
+              "artifactId": "art-37c2a9fe-2007-4768-b193-a24548048b92",
+              "versionId": "artv-bbf01e4e-53bf-4f10-b2b0-83c135b4f0eb",
+              "contentSha256": "ccec69dbe006f7fc1e4d7c871d967f234f65640ef173a604d241f6afda1fd591"
+            },
+            {
+              "artifactId": "art-e8757942-dc47-4fc5-81f1-76ccfdcdb2f7",
+              "versionId": "artv-0f99f3a9-75a1-401f-83a5-197762b701d7",
+              "contentSha256": "623367b1b18539ef042df88e892a52a6aa8df4bba61fc40ed140b79d5b9db609"
+            }
+          ]
+        },
+        {
+          "lesson": 5,
+          "title": "加入子弹与敌机",
+          "completedAt": "2026-10-23T19:06:27.784Z",
+          "visible": true,
+          "responses": 5,
+          "observations": 0,
+          "reflections": 0,
+          "approvedArtifacts": 1,
+          "proofRefs": [
+            "task_submission:learning-a7cb83cbe520159f24243e15539c7f84976e7a11f1dd9484febd35c4e20f310d",
+            "task_submission:learning-e3e4507c97dec8a920d375ea77fc168f28f1b749a70cd06f9b318bdc40ea15d9",
+            "task_submission:learning-a8d9b65c5cd0a488c922b1d5f5045569ba5debc2a9b3b4e93181c63cd1d02951",
+            "task_submission:learning-5841253796c8661783523d1a49d04b2bcecd0c87ed2a58d82edd17e6da564201",
+            "task_submission:learning-ae2b1802879f4c3b218eaeba31e526d71d9f17ebe13efe85d0d383744fd9d768"
+          ],
+          "artifacts": [
+            {
+              "artifactId": "art-99aa463d-8852-46b0-830c-e3da4a520122",
+              "versionId": "artv-61c6948c-8191-4682-bc2b-a30942b22113",
+              "contentSha256": "c0ba4fd3e3ce09fba8cda502bea59eafb56a1c6af220d5509bfa98ac4d7c4d4f"
+            },
+            {
+              "artifactId": "art-34f02c6c-2b16-46ce-a938-0e22b12987a6",
+              "versionId": "artv-3631e40d-f209-4002-b7d4-a572b0d086af",
+              "contentSha256": "35cbe2d5b086a207438e396ade534c67ce585db6ef436e4d212e7d8ed98361d5"
+            },
+            {
+              "artifactId": "art-2fdd4e01-1de1-4bff-8a0e-ed3901997eb3",
+              "versionId": "artv-e3c07978-e5bb-4fd2-813f-fcd34ace4b1f",
+              "contentSha256": "54082c2b7a20f64ecc3f15d6fbd83c1cdeb0a6f5ee9b6ef655a5257724a7fef7"
+            },
+            {
+              "artifactId": "art-af74d6cc-3d1d-46fb-8c66-5c61a05e01c2",
+              "versionId": "artv-b075af95-17db-4faa-97cd-6fb126fa2ae5",
+              "contentSha256": "92d0866a4a3a03fb31c7e0478114a2e0062a1eda3e8b316f9119b1f0c1cfb1e2"
+            },
+            {
+              "artifactId": "art-8820a899-aac3-41dd-93a0-b0e2aa428323",
+              "versionId": "artv-9354f7a0-2ca2-44b5-8c40-c6dc80c9d7ea",
+              "contentSha256": "c33614f6c6e8ee56e6688b3f04a420ae7cab87394d6de804bd405c148a82ab1f"
+            }
+          ]
+        },
+        {
+          "lesson": 6,
+          "title": "完成得分、生命和重新开始",
+          "completedAt": "2026-10-23T19:09:21.910Z",
+          "visible": true,
+          "responses": 5,
+          "observations": 0,
+          "reflections": 0,
+          "approvedArtifacts": 1,
+          "proofRefs": [
+            "task_submission:learning-4c650731e8b9cae4ea64b432ed404caf6906530550a4b34a2827637a416045aa",
+            "task_submission:learning-0d0ba7579841674723c287294f48bae383c47e90c30ee1035457403bd6b54b70",
+            "task_submission:learning-446aee2f4b67854afad378198e2785dfbba586aed77033b01b7887b09917267e",
+            "task_submission:learning-065653fd8f435bccdca58a4fbb382fbf027bd3b11188ce148f1df40f967914ec",
+            "task_submission:learning-327ed1728db61c646f35acdc986f9e5e5b53c254b93877a84fe724cd0b94eddf"
+          ],
+          "artifacts": [
+            {
+              "artifactId": "art-c93857fb-500c-4ead-bc48-d8d63e98cc97",
+              "versionId": "artv-74ab3373-61d1-4db8-8a49-9ad96e93e817",
+              "contentSha256": "2b94d5fdb3211373cc5a9a64abccfcf8d236067550a99007c76f5b6cc5490bb9"
+            },
+            {
+              "artifactId": "art-0a562e6c-9e1e-4d49-a668-dd3a1c412877",
+              "versionId": "artv-33706a24-c5cc-4629-9243-167ab96352f3",
+              "contentSha256": "f2b7d0db0c80cb0bc4342a74ebf3cd8233c2242945da0e6a9e6d909d8b5f723d"
+            },
+            {
+              "artifactId": "art-7ccb23ba-ae32-43c8-9f7b-2ca397d0d77b",
+              "versionId": "artv-01323cf9-2bf6-4ae1-8bdb-3b2a1ad0264f",
+              "contentSha256": "897087d72059ae41dca189ed607ea342afd6bfdb43694b1a391bda3e68c8ac49"
+            },
+            {
+              "artifactId": "art-2833f0dc-f186-4676-b854-60da4daa3321",
+              "versionId": "artv-2e0df47b-c9b8-47b2-8b23-993d33fa9248",
+              "contentSha256": "70cd7061958f959e8eb40751faa3fe5519b4ae371b223525c7ce52ec4d244445"
+            },
+            {
+              "artifactId": "art-224b99f3-9e3a-4ba4-8ccb-d7a8269cab13",
+              "versionId": "artv-4b33879f-22eb-42a7-9767-3f73bcd06d3b",
+              "contentSha256": "a8b08f8e793ed5cc0150320f9722617dac41275e30fa77f251f2abd056768eef"
+            }
+          ]
+        },
+        {
+          "lesson": 7,
+          "title": "测试并交付可玩的游戏",
+          "completedAt": "2026-10-23T19:10:50.081Z",
+          "visible": true,
+          "responses": 5,
+          "observations": 0,
+          "reflections": 0,
+          "approvedArtifacts": 1,
+          "proofRefs": [
+            "task_submission:learning-14efc49174caa6fb2073eb8d8beca337c2eee68de85d97fe110b8231f7cd7bfe",
+            "task_submission:learning-7230d0850ec7c5248c0e3c3c67af5ebeb5eafc789afeefd921ee411cbfce37dd",
+            "task_submission:learning-3737117979a44811129152f7f2297909dc16cae86b98e980829071f42ce85fe0",
+            "task_submission:learning-35727500bb82a90508210e8d6d0454ee5a9681ad3adbba2f7a5431c0c1c78f24",
+            "task_submission:learning-74aac19845a6aa96857bb8af1949e902f0d5121f37351676ebc4e028989f55e8"
+          ],
+          "artifacts": [
+            {
+              "artifactId": "art-4777c56c-0706-4f59-aa3a-65e1a467d8d7",
+              "versionId": "artv-7b21fa47-1dc8-4836-9550-3fa1ce970f2e",
+              "contentSha256": "109186012a769065e85296328381db361250b83bab33119b51cbfaa924f9d470"
+            },
+            {
+              "artifactId": "art-9a4af0ec-996c-4fcc-b398-9d82dba7efd1",
+              "versionId": "artv-be45afc3-c49b-4712-a9ff-908473b2ffbc",
+              "contentSha256": "a80aeda1bd896443c67afae9e4b5eb773c965a16d6d8688b80772bddbe8dba76"
+            },
+            {
+              "artifactId": "art-95407880-87b4-4d8c-925e-7593b99f781b",
+              "versionId": "artv-62d4ab7b-ad31-442e-bfc5-ab597d5a7c7b",
+              "contentSha256": "bf85df2028431bcb036ba42f53b206bef6975ab66a9fe485948c53ec8b069422"
+            },
+            {
+              "artifactId": "art-04f62080-86eb-4e21-bc82-b493bfd38b04",
+              "versionId": "artv-f8fbf179-a6ff-4ce4-94c2-229ccfc69810",
+              "contentSha256": "8f62ede65bf72315ec07286caac43cdb352c38e65c2875f0ef9c16498be05991"
+            },
+            {
+              "artifactId": "art-1ff76bd1-e354-4308-aedf-310b8acf39b8",
+              "versionId": "artv-175a7b69-74aa-48ce-8343-68521ab87285",
+              "contentSha256": "f8f223cc3150d1e67e53dda00d6dec9ecb76d421e739590656d542d51f61bdb9"
+            }
+          ]
+        },
+        {
+          "lesson": 8,
+          "title": "展示作品，解释我的设计",
+          "completedAt": "2026-10-23T19:11:57.386Z",
+          "visible": true,
+          "responses": 3,
+          "observations": 0,
+          "reflections": 1,
+          "approvedArtifacts": 1,
+          "proofRefs": [
+            "task_submission:learning-4d7d916d9c95cac1c0928660510f757d28d190d401b7f3bdc7d4b13aa4723d15",
+            "task_submission:learning-9ff2e4a11a20a8e7dff22c473aefd1d2bc91da6ee58e385ddfafd3710188726c",
+            "task_submission:learning-87a2a4d8b8799cea791768d65a338b01712bbd7b4a5612ec46ddb3206b8812b9",
+            "reflection:learning-da059230e8a257f2febc0fa12ec015e3a0334bc961be68489c8dd295d35484fd"
+          ],
+          "artifacts": [
+            {
+              "artifactId": "art-ee173cfc-7195-4151-a7d2-b4b2c2260dfe",
+              "versionId": "artv-1d88d3b4-f288-4fe2-a98a-b72472ce85d5",
+              "contentSha256": "e959ff77f423d1db670ed0cb28a35ecd9576a550ceee2547ff9b935f6aa04e56"
+            },
+            {
+              "artifactId": "art-21e2b7a6-dafb-462d-9471-0ed4c9cc5fb0",
+              "versionId": "artv-859118c8-c100-4609-9ac6-41da3d369aac",
+              "contentSha256": "d116dc9e3600bd44152eb00ae7427f91ff9a5b0533699806ae0c31d2a3999d2d"
+            },
+            {
+              "artifactId": "art-c6111fb3-a318-4f00-9674-05aef0ed6ad8",
+              "versionId": "artv-1e96c398-1d0c-43a2-9a17-c9bba0dc7db4",
+              "contentSha256": "54a29c7178bf6c9662e7c8bcf596da7c4035aa7ab6339ea305f22222cdbb01c4"
+            },
+            {
+              "artifactId": "art-c22c45de-489a-447c-bb93-f4173fe2c39b",
+              "versionId": "artv-9b924aa5-cf82-466b-b8a1-f1f9045e68e3",
+              "contentSha256": "d790d942e213ed5bbb30db21f247675d7e212b5652515de57191d939a1f5c137"
+            }
+          ]
+        }
+      ],
+      "playableArtifactSourceVerified": true,
+      "offlineRecovery": true,
+      "reloadPersisted": true
+    }
+  ],
+  "visibleTemplates": 2,
+  "negative": {
+    "zero8": {
+      "pendingReload": true,
+      "wrongAnswer": true,
+      "answerReplay": true
+    },
+    "thunder": {
+      "pendingReload": true,
+      "wrongAnswer": true,
+      "answerReplay": true
+    }
+  },
+  "gameRuns": {
+    "4": {
+      "at": "2026-10-23T19:03:59.731205+00:00",
+      "level": 1,
+      "python": "3.13.5",
+      "pygame": "2.6.1",
+      "videoDriver": "windows",
+      "sourceSha256": "00c72821d34fb50570301173dd45cb598424e6596388a768a18cc4ff7188111e",
+      "integerPositionRegression": {
+        "oldIntegerDistance": 120,
+        "expectedDistance": 130,
+        "actualFloatDistance": 130.0
+      },
+      "checks": [
+        "actual event queue moves player right",
+        "floating position fixes reproduced integer truncation",
+        "key release stops movement",
+        "left screen boundary clamps player",
+        "window quit ends loop"
+      ],
+      "passed": true,
+      "scope": "real Pygame window, synthetic event-queue input; not an automated production container runner"
+    },
+    "5": {
+      "at": "2026-10-23T19:05:09.593886+00:00",
+      "level": 2,
+      "python": "3.13.5",
+      "pygame": "2.6.1",
+      "videoDriver": "windows",
+      "sourceSha256": "00c72821d34fb50570301173dd45cb598424e6596388a768a18cc4ff7188111e",
+      "integerPositionRegression": {
+        "oldIntegerDistance": 120,
+        "expectedDistance": 130,
+        "actualFloatDistance": 130.0
+      },
+      "checks": [
+        "actual event queue moves player right",
+        "floating position fixes reproduced integer truncation",
+        "key release stops movement",
+        "left screen boundary clamps player",
+        "space input produces moving bullets",
+        "timer produces descending enemies",
+        "offscreen objects are removed",
+        "window quit ends loop"
+      ],
+      "passed": true,
+      "scope": "real Pygame window, synthetic event-queue input; not an automated production container runner"
+    },
+    "6": {
+      "at": "2026-10-23T19:06:31.869236+00:00",
+      "level": 3,
+      "python": "3.13.5",
+      "pygame": "2.6.1",
+      "videoDriver": "windows",
+      "sourceSha256": "00c72821d34fb50570301173dd45cb598424e6596388a768a18cc4ff7188111e",
+      "integerPositionRegression": {
+        "oldIntegerDistance": 120,
+        "expectedDistance": 130,
+        "actualFloatDistance": 130.0
+      },
+      "checks": [
+        "actual event queue moves player right",
+        "floating position fixes reproduced integer truncation",
+        "key release stops movement",
+        "left screen boundary clamps player",
+        "space input produces moving bullets",
+        "timer produces descending enemies",
+        "offscreen objects are removed",
+        "bullet hit increases score once",
+        "same hit cannot award score twice",
+        "three collisions produce game over",
+        "R restarts score life and object state",
+        "window quit ends loop"
+      ],
+      "passed": true,
+      "scope": "real Pygame window, synthetic event-queue input; not an automated production container runner"
+    },
+    "7": {
+      "at": "2026-10-23T19:09:26.553758+00:00",
+      "level": 3,
+      "python": "3.13.5",
+      "pygame": "2.6.1",
+      "videoDriver": "windows",
+      "sourceSha256": "00c72821d34fb50570301173dd45cb598424e6596388a768a18cc4ff7188111e",
+      "integerPositionRegression": {
+        "oldIntegerDistance": 120,
+        "expectedDistance": 130,
+        "actualFloatDistance": 130.0
+      },
+      "checks": [
+        "actual event queue moves player right",
+        "floating position fixes reproduced integer truncation",
+        "key release stops movement",
+        "left screen boundary clamps player",
+        "space input produces moving bullets",
+        "timer produces descending enemies",
+        "offscreen objects are removed",
+        "bullet hit increases score once",
+        "same hit cannot award score twice",
+        "three collisions produce game over",
+        "R restarts score life and object state",
+        "window quit ends loop"
+      ],
+      "passed": true,
+      "scope": "real Pygame window, synthetic event-queue input; not an automated production container runner"
+    }
+  },
+  "sourceArtifactVerified": true,
+  "runtimeTests": 21,
+  "apiTests": 28,
+  "services": 18,
+  "httpChecks": 14,
+  "studentBuildId": "Y7zLlIUBhWAWmP0GQF-AH",
+  "knowledgeChecks": [
+    {
+      "knowledgeBaseId": "kb-192b86fcb801b0eec090c75afb55f9e0",
+      "remoteKnowledgeBaseId": "ima_kb_Gw2JH9RH",
+      "status": "ready",
+      "ok": true,
+      "errorCode": null
+    },
+    {
+      "knowledgeBaseId": "kb-c3dc56541854ff370d4ee6fd7216a1fb",
+      "remoteKnowledgeBaseId": "ima_kb_SZTyv4SF",
+      "status": "ready",
+      "ok": true,
+      "errorCode": null
+    }
+  ],
+  "reloginRequiredAfterRestart": true
+}

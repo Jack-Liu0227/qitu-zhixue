@@ -1,0 +1,58 @@
+{
+  "runId": "run-1793028433363-59380",
+  "steps": [
+    {
+      "name": "build-contracts",
+      "exitCode": 0
+    },
+    {
+      "name": "contracts-esm",
+      "exitCode": 0
+    },
+    {
+      "name": "build-database",
+      "exitCode": 0
+    },
+    {
+      "name": "build-infra",
+      "exitCode": 0
+    },
+    {
+      "name": "build-agent-memory",
+      "exitCode": 0
+    },
+    {
+      "name": "build-ai-client",
+      "exitCode": 0
+    },
+    {
+      "name": "build-model-runtime",
+      "exitCode": 0
+    },
+    {
+      "name": "api",
+      "exitCode": 0
+    },
+    {
+      "name": "types-admin-console",
+      "exitCode": 0
+    },
+    {
+      "name": "types-auth-portal",
+      "exitCode": 0
+    },
+    {
+      "name": "behavior",
+      "exitCode": 0
+    }
+  ],
+  "behaviorTests": 22,
+  "behaviorPassed": 22,
+  "behaviorFailed": 0,
+  "basePath": {
+    "apps": 4,
+    "files": 465
+  },
+  "unrelatedFullTypecheck": "Blocked by concurrently edited ai-tutor/tutor-learning-reply.service.ts; focused registration dependency checks pass",
+  "actualPayments": false
+}

@@ -1,0 +1,52 @@
+{
+  "status": "passed",
+  "files": [
+    {
+      "path": "apps/auth-portal/app/login/AuthFrame.tsx",
+      "matches": true
+    },
+    {
+      "path": "apps/auth-portal/app/login/auth.module.css",
+      "matches": true
+    },
+    {
+      "path": "apps/auth-portal/app/login/RegistrationPassword.tsx",
+      "matches": true
+    },
+    {
+      "path": "apps/auth-portal/app/login/page.tsx",
+      "matches": true
+    },
+    {
+      "path": "apps/auth-portal/app/login/AccountRegistration.tsx",
+      "matches": true
+    },
+    {
+      "path": "apps/auth-portal/app/login/RegistrationPhoneFields.tsx",
+      "matches": true
+    },
+    {
+      "path": "apps/auth-portal/app/login/registration.module.css",
+      "matches": true
+    },
+    {
+      "path": "apps/auth-portal/app/login/layout.tsx",
+      "matches": true
+    },
+    {
+      "path": "Plan/issues/20261027-auth-ui.md",
+      "matches": true
+    }
+  ],
+  "services": {
+    "qitu-auth": "active",
+    "qitu-api": "active",
+    "qitu-parent": "active",
+    "qitu-student": "active",
+    "qitu-teacher": "active",
+    "qitu-admin": "active",
+    "qitu-workers": "active",
+    "qitu-profile-growth": "active"
+  },
+  "buildId": "NP4yf0mlLFeoJFHHFhteK"
+}

@@ -114,6 +114,18 @@ export class TeachingBundleCatalog {
     }
     const template = parseProjectTemplateSpec(version.content.pbl);
     const runtime = loadTutorRuntimeSource();
+    // Published teams without a legacy workflow take their gates from the frozen
+    // template. An explicitly stored workflow must still agree with that contract.
+    if (template.lessonPolicy === 'lesson-dialogue.v1'
+      && (team.pblSpec.phases !== undefined || team.pblSpec.teamVersionPublication === undefined)) {
+      const phases = team.pblSpec.phases;
+      if (!Array.isArray(phases) || template.phases.some(phase => !phases.some(raw => raw && typeof raw === 'object'
+        && (raw as Record<string, unknown>).phase === phase.phase
+        && (raw as Record<string, unknown>).gateCondition === phase.gateCondition
+        && ((raw as Record<string, unknown>).evidenceProfile ?? null) === (phase.evidenceProfile ?? null)))) {
+        reject('DIALOGUE_TEAM_GATES_MISMATCH', 'team.pblSpec.phases');
+      }
+    }
     if (runtime.policy.status !== 'ready' || runtime.skillsSource?.status !== 'ready') {
       throw new ServiceUnavailableException({ code: 'BUNDLE_CATALOG_UNAVAILABLE', message: '教学策略或技能目录不可用' });
     }

@@ -1,0 +1,112 @@
+{
+  "buildIds": {
+    "student-center": "eObdp_d_v3TEMV_z97ly0",
+    "admin-console": "5_3CWbMP42UKkdqWSmWvV"
+  },
+  "concurrentCommit": "59bee84806b7f22ee816eb8e29a48779f97beb64",
+  "verifiedConcurrentArtifactDifferences": [
+    "services/api/dist/modules/platform-registry/legacy-mcp-catalog.js",
+    "services/api/dist/modules/platform-registry/platform-registry.service.js",
+    "services/api/dist/modules/knowledge/knowledge-tool-catalog.service.js",
+    "services/api/dist/modules/knowledge/knowledge-center.service.js"
+  ],
+  "unexpectedArtifactMismatch": [],
+  "checkedAt": "2026-10-26T17:18:21.266438+00:00",
+  "sourceFilesChecked": 52,
+  "sourceMismatch": [],
+  "runtimeArtifactsChecked": 703,
+  "artifactMismatch": [
+    "services/api/dist/modules/platform-registry/legacy-mcp-catalog.js",
+    "services/api/dist/modules/platform-registry/platform-registry.service.js",
+    "services/api/dist/modules/knowledge/knowledge-tool-catalog.service.js",
+    "services/api/dist/modules/knowledge/knowledge-center.service.js"
+  ],
+  "services": [
+    {
+      "service": "api",
+      "ActiveState": "active",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    {
+      "service": "student",
+      "ActiveState": "active",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    {
+      "service": "admin",
+      "ActiveState": "active",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    {
+      "service": "auth",
+      "ActiveState": "active",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    {
+      "service": "parent",
+      "ActiveState": "active",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    {
+      "service": "teacher",
+      "ActiveState": "active",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    {
+      "service": "workers",
+      "ActiveState": "active",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    {
+      "service": "profile-growth",
+      "ActiveState": "active",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    }
+  ],
+  "readinessStatus": 200,
+  "readiness": {
+    "service": "qitu-zhixue-api",
+    "status": "ready",
+    "version": "0.1.0",
+    "checkedAt": "2026-10-26T17:18:21.107Z",
+    "dataMode": "live",
+    "dependencies": {
+      "database": {
+        "status": "ok"
+      },
+      "redis": {
+        "status": "ok"
+      }
+    }
+  },
+  "pages": [
+    {
+      "path": "/student/inspiration",
+      "status": 200
+    },
+    {
+      "path": "/student/tutor",
+      "status": 200
+    },
+    {
+      "path": "/admin/settings/templates",
+      "status": 200
+    },
+    {
+      "path": "/login",
+      "status": 200
+    },
+    {
+      "path": "/parent",
+      "status": 200
+    },
+    {
+      "path": "/teacher/dashboard",
+      "status": 200
+    }
+  ],
+  "staticResourcesChecked": 80,
+  "failedResources": [],
+  "anonymousTutorStatus": 401,
+  "newLearningProjectsCreated": false
+}

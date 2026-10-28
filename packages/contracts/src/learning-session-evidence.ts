@@ -37,6 +37,7 @@ export interface LessonQualityStatus {
   status: 'pending' | 'accepted' | 'needs_revision' | 'stale';
   subjectDigest: string;
   feedback: readonly { criterionId: string; meets: boolean; feedback: string }[];
+  recovery?: { status: 'scheduled' | 'retrying' | 'failed'; attempts: number; maxAttempts: number; nextAttemptAt: string | null };
 }
 
 export interface LessonQualityDecision {

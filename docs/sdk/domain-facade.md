@@ -80,4 +80,4 @@ await sdk.profile.get();
 
 `RUNTIME_TOOL_CATALOG` 是 canonical 定义来源；领域服务描述、SDK 只读接口与模型工具有不同调用入口。目录中有名称不表示已授予模型执行权限，领域服务绑定不能停用服务端门禁。API factory 的 `mastery_query` 与 `student_profile_get` 复用现有 owner；知识搜索/读取经 Tutor 的受控 closure 执行。
 
-完整边界与验证见 [本次优化报告](../plan/codex/runtime-governance-optimization-20261021.md)。
+完整边界与验证见 [本次优化报告](../../Plan/codex/runtime-governance-optimization-20261021.md)。

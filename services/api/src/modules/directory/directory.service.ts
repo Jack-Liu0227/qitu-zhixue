@@ -281,6 +281,7 @@ export class DirectoryService {
   async findCredentialByEmail(
     email: string,
   ): Promise<{ user: DirectoryPersonRef; passwordHash: string } | null> {
+    if (!email.includes('@')) return null;
     if (this.db) {
       // 邮箱唯一索引建在 lower(email) 上，所以这里也用 lower() 比较，
       // 否则大小写不同的输入会绕开索引。
@@ -294,6 +295,14 @@ export class DirectoryService {
       return { user: this.toPersonRef(row), passwordHash: row.passwordHash };
     }
     return this.memory.findCredentialByEmail(email);
+  }
+
+  /** Only authentication may read phone credentials; general directory projections omit phones. */
+  async findCredentialByPhone(phone: string): Promise<{ user: DirectoryPersonRef; passwordHash: string } | null> {
+    if (!this.db || !/^\+861[3-9]\d{9}$/.test(phone)) return null;
+    const [row] = await this.db.select().from(users).where(eq(users.phone, phone)).limit(1);
+    if (!row || !row.phoneVerifiedAt || row.disabledAt) return null;
+    return { user: this.toPersonRef(row), passwordHash: row.passwordHash };
   }
 
   async studentsOfMentor(mentorId: string): Promise<DirectoryPersonRef[]> {

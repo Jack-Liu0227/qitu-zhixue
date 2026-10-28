@@ -1,0 +1,145 @@
+[
+  {
+    "path": "apps/admin-console/styles/eyecare-night.css",
+    "replacements": [
+      {
+        "old": "docs/eyecare-rules.md",
+        "new": "Plan/design/eyecare-rules.md"
+      }
+    ],
+    "before_sha256": "87e76e18ad35a5235de450845c424b8499830539d68319578a4f3d6d6b430858",
+    "after_sha256": "3d297364b7a9e481ee0655d32ccecd3e54c0a7759113655bb3b8daac0fccd54c"
+  },
+  {
+    "path": "apps/parent-companion/styles/eyecare-night.css",
+    "replacements": [
+      {
+        "old": "docs/eyecare-rules.md",
+        "new": "Plan/design/eyecare-rules.md"
+      }
+    ],
+    "before_sha256": "0b3a555740c43a08b7cabbbdb894df4de020bd07e1e45c5fe486b2aa52d8c274",
+    "after_sha256": "a94caf694f566956421ff0c08c91ea10e6196faea70829d1529e96203ab16ec0"
+  },
+  {
+    "path": "apps/teacher-workspace/styles/eyecare-night.css",
+    "replacements": [
+      {
+        "old": "docs/eyecare-rules.md",
+        "new": "Plan/design/eyecare-rules.md"
+      }
+    ],
+    "before_sha256": "0660eac3db9095d78a7e81bac825eb6319a5fdef979cbd778c582839d3128c0b",
+    "after_sha256": "8da4fd63b918a253906353e9a62e7c5625b99924fd4f484e31f46b6a9f21c46c"
+  },
+  {
+    "path": "apps/student-center/styles/tutor.css",
+    "replacements": [
+      {
+        "old": "docs/design/20261018-tutor-workspace-interaction-contract.md",
+        "new": "Plan/design/20261018-tutor-workspace-interaction-contract.md"
+      }
+    ],
+    "before_sha256": "e97eb47480e343c6f7e4dc587de4b6fda342fc68c713409cfaef3ed8c4165319",
+    "after_sha256": "bd11dbfe58fd526dca3451c8018e03ba4163c384cc6d88090e0f73ebd18d6b49"
+  },
+  {
+    "path": "packages/contracts/src/admin.ts",
+    "replacements": [
+      {
+        "old": "docs/plan/20261018-skill-tool-governance-and-assignment.md",
+        "new": "Plan/20261018-skill-tool-governance-and-assignment.md"
+      }
+    ],
+    "before_sha256": "574975db5665a2f02822cab09f2dfc416222d0b1b0ed5300e8cf7207b1906114",
+    "after_sha256": "c6f341d3769c48b084fc90e7c2c296cdd5260bc02e6b0a0bdf1b02a2572d19d1"
+  },
+  {
+    "path": "services/api/src/modules/ai-tutor/tutor.service.ts",
+    "replacements": [
+      {
+        "old": "docs/design/20261018-tutor-workspace-interaction-contract.md",
+        "new": "Plan/design/20261018-tutor-workspace-interaction-contract.md"
+      }
+    ],
+    "before_sha256": "eef3f5acbbb14ede9a564bbfe9b975babfa1e686c9c9eff569eb4170c78d7d44",
+    "after_sha256": "c093dc6df49e799d7f4fae928016a692310a336980438a5a81b175231c0bc57f"
+  },
+  {
+    "path": "services/api/src/modules/feishu/reporting.service.ts",
+    "replacements": [
+      {
+        "old": "docs/plan/20261018-issue-digest-feishu-assistant.md",
+        "new": "Plan/20261018-issue-digest-feishu-assistant.md"
+      }
+    ],
+    "before_sha256": "57cc59e7e2bf71b4c7ca8880d8e949f9e954196a4c7ad302cdc0ba6820ea26b5",
+    "after_sha256": "5ebbc48811fafeb3663180ad1fb8ebf75e1c0650898707bae99b2e8eaed5aa4f"
+  },
+  {
+    "path": "services/api/src/modules/knowledge/knowledge-center.config.ts",
+    "replacements": [
+      {
+        "old": "docs/design/20261018-knowledge-center-deeptutor-reference.md",
+        "new": "Plan/design/20261018-knowledge-center-deeptutor-reference.md"
+      }
+    ],
+    "before_sha256": "ca73c0628da6caee38bbfacbd3964c6620fb262469d3ac65ebc29fd75e4c3ac0",
+    "after_sha256": "66917fed725066b34d7132fdb8040ac777c7c6009f7f2b440b9e087ea22f8e6c"
+  },
+  {
+    "path": "services/api/src/modules/knowledge/knowledge-center.service.ts",
+    "replacements": [
+      {
+        "old": "docs/design/20261018-knowledge-center-deeptutor-reference.md",
+        "new": "Plan/design/20261018-knowledge-center-deeptutor-reference.md"
+      }
+    ],
+    "before_sha256": "d800406be2fb98eaf51dd2358d29bca2cb7affbc96a3254ccf907c2c8e98877e",
+    "after_sha256": "a3a11752c22647bb9e3a4e069ca5b4a60f1daa6c6b72db143c9e046e60af6777"
+  },
+  {
+    "path": "services/api/src/modules/platform-registry/platform-registry.service.ts",
+    "replacements": [
+      {
+        "old": "docs/plan/20261018-skill-tool-governance-and-assignment.md",
+        "new": "Plan/20261018-skill-tool-governance-and-assignment.md"
+      }
+    ],
+    "before_sha256": "264784d685b95de3e9bc495585778e979437f0c7e72f4d5ee74a47ba115adce2",
+    "after_sha256": "cdf82d6d99a40b63e7cef155632f8ef97a433e6f59d49466040cbcff85153be5"
+  },
+  {
+    "path": "services/api/src/modules/works/assessor/code-static-check-producer.ts",
+    "replacements": [
+      {
+        "old": "docs/sdk/pbl-gate-producers.md",
+        "new": "Plan/research/pbl-gate-producers.md"
+      }
+    ],
+    "before_sha256": "d0d1649056910d353033494df1b337bf050828cc319d3726550f9a9b6ea00fac",
+    "after_sha256": "5ea2924590769793176b9f545507dc1ebb4c877416d6d09a1a77b2bab6f6ae44"
+  },
+  {
+    "path": "services/api/src/scripts/optics-template-bootstrap.ts",
+    "replacements": [
+      {
+        "old": "docs/pedagogy/optics-pbl.md",
+        "new": "Plan/pedagogy/optics-pbl.md"
+      }
+    ],
+    "before_sha256": "55c294cdac7e694a9b33ec7c2aafd96bbaf0ead9bae55587583e6919b35e556c",
+    "after_sha256": "d7bf04ba99f42e9c810748d5fbdfe77c096e7f845481edde5a8568ca54e1c6bb"
+  },
+  {
+    "path": "integrations/deeptutor-knowledge/UPSTREAM.md",
+    "replacements": [
+      {
+        "old": "docs/plan/20261018-skill-tool-governance-and-assignment.md",
+        "new": "Plan/20261018-skill-tool-governance-and-assignment.md"
+      }
+    ],
+    "before_sha256": "96ecfebc89e94daf50fe74106ae55be660a443e2995398947f53d9ad7b03fb90",
+    "after_sha256": "f2ea4b8a41e546966e4c44a4e39e50eaee49db6734e1e98dbfb18bf118cc7c68"
+  }
+]

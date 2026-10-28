@@ -10,6 +10,7 @@ import {
   type ProjectOffer,
 } from '@qitu/contracts';
 import styles from './purchases.module.css';
+import { SubscriptionPurchases } from './SubscriptionPurchases';
 
 function PaymentCode({ value }: { value: string }) {
   const code = useMemo(() => {
@@ -149,6 +150,7 @@ export function ProjectPurchases({ studentId }: { studentId: string }) {
   const disabled = busy || loading || !online;
   return (
     <section className={styles.section} aria-labelledby="purchases-title">
+      <SubscriptionPurchases studentId={studentId} onOrderCreated={() => load()} refreshToken={orders.map(o => `${o.id}:${o.status}`).join('|')} />
       <div className={styles.heading}>
         <div>
           <small>项目学习服务</small>
@@ -322,7 +324,7 @@ export function ProjectPurchases({ studentId }: { studentId: string }) {
                 <article key={order.id} className={styles.order}>
                   <div className={styles.heading}>
                     <div>
-                      <h4>{order.offer.title}</h4>
+                      <h4>{order.subscription?.product.title ?? order.offer?.title ?? '历史课程'}</h4>
                       <small>{order.id}</small>
                     </div>
                     <span className={styles.tag}>

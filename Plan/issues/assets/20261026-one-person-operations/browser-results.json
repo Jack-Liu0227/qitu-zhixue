@@ -1,0 +1,18 @@
+{
+  "success": true,
+  "fixtureOnly": true,
+  "actualPayments": false,
+  "pageErrors": [],
+  "adminOverflow": false,
+  "checks": [
+    "admin desktop/mobile",
+    "public desktop/mobile",
+    "admin creates family invitation",
+    "signed invitation opens independent accounts",
+    "invitation fragment removed",
+    "guardian checkout QR",
+    "verified query opens access",
+    "parent cannot read admin",
+    "offline write disabled"
+  ]
+}

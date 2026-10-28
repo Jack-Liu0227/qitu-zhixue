@@ -4,15 +4,25 @@
 
 - 产品名称：启途智学
 - 核心定位：**项目式学习（PBL）驱动的 AI 育人共成长**，以真实任务挑战、探究证据链与人机协同育人为核心。
-- 主要开发文档：`docs/README.md`；按责任域阅读 `docs/admin/platform-governance.md`、`docs/student/today.md`、`docs/teacher/dashboard.md`、`docs/parent/home.md`、`docs/sdk/overview.md`。
+- 项目使用说明入口：`docs/README.md`；按责任域阅读 `docs/admin/platform-governance.md`、`docs/student/today.md`、`docs/teacher/dashboard.md`、`docs/parent/home.md`、`docs/sdk/overview.md`。研究、设计与实施计划入口：`Plan/README.md`。
 - 代码结构采用 Monorepo（`apps/`、`packages/`、`services/`）。
 - 学生端核心交互：对话入口集中于学生端的 **AI搭档（`/student/tutor`）**，并保留 **灵感空间（`/student/inspiration`）** 的探索与项目详情跳转入口。
 - 四个平台共享认证、API 合同、权限和数据模型。
 - 首期采用模块化单体后端与异步任务，不提前拆分大量微服务。
 
+## 文档存放规则（2026-10-28）
+
+- 所有计划文档统一写入仓库根目录 `Plan/`（大小写固定），包括需求分析、研究、架构/交互设计、实施方案、任务拆解、Issue、进度、发布记录、测试验收及历史归档；关联证据随文档存放。不得在 `docs/` 或其他目录另建计划入口。
+- `docs/` 只能存储项目使用说明：产品介绍、各角色操作手册、安装部署、配置运维、SDK/API 使用说明及这些说明直接引用的必要资源。产品功能“学习计划”的使用说明仍为 `docs/student/learning-plan.md`。
+- 规划与使用说明分开维护：方案及执行记录进入 `Plan/`，功能落地后将实际操作方式同步到 `docs/`；不能把未实施方案、发布日志或验收报告当作使用说明。
+- 教学法、课程内容设计、题库设计、教学试点与模板实施材料存入 `Plan/pedagogy/`；按正文用途分类，不能仅因标题含“手册”就放入 `docs/`。
+- `Plan/README.md` 为计划总入口；专题方案在 `Plan/codex/`、设计在 `Plan/design/`、Issue 在 `Plan/issues/`、发布记录在 `Plan/releases/`、历史资料在 `Plan/archive/`。新增文档同步维护相应索引。
+- 移动文档时同步修正 Markdown、源码注释、脚本、结构化清单及 CI 中的引用；保留未提交内容和历史快照正文，不通过复制旧目录或目录链接维持两套入口。
+- 提交前运行 `python -B tooling/validate-docs.py` 与 `python -B tooling/validate-docs.test.py`；涉及历史清单时同时运行 `node tooling/check-codex-plan.mjs`，核对归档路径和摘要。
+
 ## 必须遵守
 
-- 2026-10-24 产品修订：学习全过程由学生与 AI 自主完成。教师对学习记录、评价和问题只读，不得人工放行活动、批准作品或阻塞课时；服务端按 `autonomous-learning.v1` 自动评价真实证据，保留理论门禁与质量要求。历史 `current_teacher` 执行角色由该显式平台策略替代，冻结内容、标准与已有完成记录不改写。见 `docs/issues/20261024-autonomous-learning.md`。
+- 2026-10-24 产品修订：学习全过程由学生与 AI 自主完成。教师对学习记录、评价和问题只读，不得人工放行活动、批准作品或阻塞课时；服务端按 `autonomous-learning.v1` 自动评价真实证据，保留理论门禁与质量要求。历史 `current_teacher` 执行角色由该显式平台策略替代，冻结内容、标准与已有完成记录不改写。见 `Plan/issues/20261024-autonomous-learning.md`。
 
 - 不改变已经冻结的产品导航和 UI 信息架构，除非先更新产品文档并通过评审。
 - 后台控制权全在 Admin：所有模型底座与提供商（Model Providers / Model Gateway）、运行时技能、项目与课程模板、知识库范围和全局教学策略均由 Admin 后台统一控制，客户端不得自行路由或越权覆盖。
@@ -73,7 +83,7 @@
 - 家长端切换学生时采用“最新请求优先”：旧的 home/progress/messages 响应不能覆盖当前学生；涉及异步加载的页面应保留同样的 request identity/abort 约束。
 - 开始修改前先检查 `git status` 和目标文件 diff；发现不属于当前任务的用户修改时不得回滚或覆盖，需在结果中列出并单独验证。
 - 跨 workspace 类型检查先按依赖顺序构建 `@qitu/contracts`、`@qitu/database`、`@qitu/ai-client` 等包，再运行 API/应用测试；不能把依赖快照不一致导致的全量 typecheck 错误当作业务修复完成。
-- 研究、架构和实施文档入口为 `docs/plan/codex/README.md`；光学领域细节见 `docs/plan/codex/optics-scattering-diffraction-analysis.md`。文档中的效果数字必须有可复核来源，Grok MCP 返回 `sources_count: 0` 时只能记录为检索线索。
+- 研究、架构和实施文档入口为 `Plan/codex/README.md`；光学领域细节见 `Plan/codex/optics-scattering-diffraction-analysis.md`。文档中的效果数字必须有可复核来源，Grok MCP 返回 `sources_count: 0` 时只能记录为检索线索。
 
 ## Theme-Session-Team-IMA 实施约束（2026-10-19）
 
@@ -91,7 +101,7 @@
 - 学生适配器只调用 server-owned plan/answer/action/evidence/artifact 合同；session/task 完成不误用项目 advance，stage index 不当 session index。未支持 reflection/action 明确显示，跨请求证据写入可恢复且幂等。
 - Admin enabledSkills 仅存 runtime catalog canonical ID；旧名规范化，目录不全/不可用阻止全数组 PATCH，不静默删未知绑定。批量按真实回读显示部分成功/失败，草稿不等于发布。
 - 模型选择保留 (modelProviderId, modelId)，目录不可用 fail closed，不只传同名裸 ID；模板不另存供应商密钥/路由 URL。
-- docs/plan/codex 为当前方案入口；antigravity/combined 只作历史比较，不引入平行 PBL/binding/plan/mastery 状态库。
+- Plan/codex 为当前方案入口；antigravity/combined 只作历史比较，不引入平行 PBL/binding/plan/mastery 状态库。
 - Grok MCP 记录 session ID/sources_count；来源为 0 仅记线索/失败，不引用其摘要为论文、学习效果或法律结论。所有效果数字须可复核来源。
 - UNC node_modules 可能是安装快照，按真实依赖图构建并记录解析。旧错误未复现应修正文档，但 typecheck 不替代行为测试/生产验收。
 - 手工 SQL/Node 造数、TheoryMastered/mastery 注入、provider 批改/密钥解密探测只限可丢弃隔离 fixture；不进生产迁移、不制造验收成功、不提交秘密或原始学生数据。

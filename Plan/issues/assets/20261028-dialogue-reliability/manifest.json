@@ -1,0 +1,102 @@
+[
+  {
+    "path": "api-tests-summary.json",
+    "sha256": "c14ff74dca796b9aa64c128e8ffd172caef7a12ce5676c6e7fcf1bc5b3be0ded",
+    "bytes": 46
+  },
+  {
+    "path": "build-api-followup.json",
+    "sha256": "cbd6486640cd5bc86e2848411c2e8377262a083ddb344fbc6fb13af24241e8b0",
+    "bytes": 174
+  },
+  {
+    "path": "build-report.json",
+    "sha256": "af04acc30cbfa180c7b8d70a202a9872b9c36a509b8e5b2bb7240d693c20e172",
+    "bytes": 514
+  },
+  {
+    "path": "catalog-draft.json",
+    "sha256": "6c41434f18fb71765c8d00e64eed646095d14c8bc0de352f0a288dbba36add95",
+    "bytes": 10819
+  },
+  {
+    "path": "completed-progress.png",
+    "sha256": "90e6563e7e6dfdb92bf4187fc4f7f16ff7c12d06d87b753af99115c90c33ca02",
+    "bytes": 231701
+  },
+  {
+    "path": "final-artifact.txt",
+    "sha256": "8a008c1819c3549e8297f78d621d0461e554ec618fe7d026c337829ea941eeae",
+    "bytes": 2266
+  },
+  {
+    "path": "final-audit.json",
+    "sha256": "268c8406bd369f0fee975556bd72259ad3593a434f37f6ba5b64740bf45e9424",
+    "bytes": 1918
+  },
+  {
+    "path": "final-mobile.png",
+    "sha256": "c04801ba8ac51566ce77c438ae0287122c88ff82ed237dbaef8446fad3d619fe",
+    "bytes": 64496
+  },
+  {
+    "path": "final-readback.json",
+    "sha256": "4aaf9bfe4202ac0261318b58748057a75e784e3d0182803722873e1204bd04cf",
+    "bytes": 69694
+  },
+  {
+    "path": "growth-readback.json",
+    "sha256": "d3635fbfe639ace67b6595229c59174acca1e19ade1a5857216c052aa04068fb",
+    "bytes": 8513
+  },
+  {
+    "path": "journey-final.json",
+    "sha256": "17d3bd4675fe82c46b97193ef4b57fd125eb22022ffb5f18907d6a05eed29c98",
+    "bytes": 125760
+  },
+  {
+    "path": "journey-initial.json",
+    "sha256": "c8311b6428449b3f6a0db0a091e60fc4a4eb133bb7238b09e54efcef25a230bc",
+    "bytes": 106973
+  },
+  {
+    "path": "journey-summary.json",
+    "sha256": "5848d6ab8e0c1a065107313231db4e69173422f028917fab86f862b47a3b1ea4",
+    "bytes": 3907
+  },
+  {
+    "path": "pg-recovery-check.log",
+    "sha256": "4e64475ffd390746651d67c25e34714f748b87bc7d2810bf2721643e5814e27a",
+    "bytes": 236
+  },
+  {
+    "path": "release-final.json",
+    "sha256": "49b751b039f363299e095a3b6498e7475a33f4888602199cb6d19ecf447beafe",
+    "bytes": 5178
+  },
+  {
+    "path": "release-initial.json",
+    "sha256": "8fce1634559cf1f4eb9d48d84455a21bc2b6dcdc8e40030780eeec662f332244",
+    "bytes": 9414
+  },
+  {
+    "path": "release.patch",
+    "sha256": "f9be60aa3791d75874296b2d8e5be23c32caa8149bcee202c4a50b42cfc6eea3",
+    "bytes": 86543
+  },
+  {
+    "path": "scope-switch.png",
+    "sha256": "20f1c86070d82fa0c7ae2918dd146958ee87760bbf67efcae21e5e0379015738",
+    "bytes": 177928
+  },
+  {
+    "path": "validation-initial.json",
+    "sha256": "08743cee840e89575a7ef1808bb3248474034a586e73a75e7c1f6df3593687b7",
+    "bytes": 15804
+  },
+  {
+    "path": "validation.json",
+    "sha256": "c2d865aef574e2c3be22514b900907eb6dbdec914a914c01ffc5312a9a7f4f00",
+    "bytes": 15570
+  }
+]

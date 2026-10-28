@@ -27,6 +27,7 @@ import { StudentHistoryCleanupService } from './student-history-cleanup.service'
 import { ProjectCoversService } from './project-covers.service';
 import { VisualAssetsModule } from '../visual-assets/visual-assets.module';
 import { ProjectTeachingPlanRecoveryService } from './project-teaching-plan-recovery.service';
+import { LessonEvaluationRecoveryService } from './lesson-evaluation-recovery.service';
 
 /**
  * 探索 / 意图确认模块（T6）。
@@ -54,6 +55,7 @@ import { ProjectTeachingPlanRecoveryService } from './project-teaching-plan-reco
     StudentHistoryCleanupService,
     ProjectCoversService,
     ProjectTeachingPlanRecoveryService,
+    LessonEvaluationRecoveryService,
     { provide: ProjectHistoryStore, inject: [DATABASE_TOKEN], useFactory: (db: Database | null) => db ? new PostgresProjectHistoryStore(db) : null },
     {
       provide: ExplorationStore,

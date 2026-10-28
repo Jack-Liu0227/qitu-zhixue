@@ -1,0 +1,11 @@
+{
+  "status": "passed",
+  "origin": "http://127.0.0.1:3710",
+  "checks": [
+    "320/390/768/1440 layouts without horizontal overflow; role headings stay horizontal and descriptions sit below",
+    "mismatched passwords blocked locally; accessible labels, visibility toggle, pending navigation lock and server error recovery"
+  ],
+  "pageErrors": [],
+  "actualSms": false,
+  "productionWrites": false
+}

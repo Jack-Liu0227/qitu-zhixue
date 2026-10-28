@@ -1,0 +1,18 @@
+{
+  "independentReview": true,
+  "source": "copy-final",
+  "method": "read already-recorded live DOM and post-click clipboard export; no OS clipboard access by reviewing agent",
+  "displayedAstValid": true,
+  "copiedAstValid": true,
+  "sourceLines": 125,
+  "copiedEqualsDisplayed": true,
+  "normalizedEqualsNative": true,
+  "nativeSha256": "61c87df3c9d1742f171b94cad81ee54e99f1579a42f6787f4e5a9560d05fe1b3",
+  "trailingNarrativeOutsideCode": true,
+  "capabilities": {
+    "origin": "http://122.51.130.204",
+    "isSecureContext": false,
+    "clipboardAvailable": false,
+    "clipboardWriteAvailable": false
+  }
+}

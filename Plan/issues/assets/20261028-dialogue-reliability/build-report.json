@@ -1,0 +1,20 @@
+[
+  {
+    "name": "api",
+    "exitCode": 0,
+    "origin": "isolated-local-WSL-Ubuntu",
+    "at": "2026-10-28T13:29:14.930709+00:00",
+    "log": "build-api-followup.log"
+  },
+  {
+    "name": "student",
+    "exitCode": 0,
+    "origin": "isolated-local-WSL-Ubuntu",
+    "at": "2026-10-28T13:36:12.020402+00:00",
+    "node": "v24.15.0",
+    "pnpm": "10.10.0",
+    "next": "15.5.26",
+    "log": "build-student-followup.log",
+    "artifactSha256": "3c27464bce5ea078221506de0024314ce35a910e31bd93acd30fc8363dc839fb"
+  }
+]

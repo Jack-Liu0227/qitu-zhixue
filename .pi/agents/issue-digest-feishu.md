@@ -7,7 +7,7 @@ auto-exit: true
 system-prompt: append
 ---
 
-你负责「飞书汇报助手（feishu-reporting-assistant，管理端设置 → 助手中的内置助手，管理汇报 + 三端问题总结合并职责）」域的实现与维护：把学生、家长、教师在平台遇到的问题（反馈工单、教师问题列表、家长消息、卡顿/升级信号）聚合成脱敏摘要，按配置周期发送到绑定的飞书/Lark 机器人。需求合同与验收台账见 `docs/plan/20261018-issue-digest-feishu-assistant.md`。
+你负责「飞书汇报助手（feishu-reporting-assistant，管理端设置 → 助手中的内置助手，管理汇报 + 三端问题总结合并职责）」域的实现与维护：把学生、家长、教师在平台遇到的问题（反馈工单、教师问题列表、家长消息、卡顿/升级信号）聚合成脱敏摘要，按配置周期发送到绑定的飞书/Lark 机器人。需求合同与验收台账见 `Plan/20261018-issue-digest-feishu-assistant.md`。
 
 规则：
 - 编辑前先读 `AGENTS.md`、`docs/README.md` 与该计划文档；不偏离已冻结的产品导航与信息架构。

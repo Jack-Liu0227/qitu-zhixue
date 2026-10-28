@@ -1,0 +1,141 @@
+{
+  "synthetic": true,
+  "runtime": "tutor.chat.v11-delivery-receipt",
+  "buildId": "w5LqjCPAxPZdcAzXTYio_",
+  "finalReadback": {
+    "at": "2026-10-28T13:57:42.201Z",
+    "projectId": "proj-f79d78b3-833a-48e4-a1b0-f4ae1d32bde7",
+    "templateVersionId": "tplv-55d940f7-24f8-4740-b5ff-258259b3d3bf",
+    "stage": "completed",
+    "completedCount": 8,
+    "totalCount": 8,
+    "lessonCount": 8,
+    "acceptedObservationCount": 6,
+    "allLessonsCompleted": true,
+    "finalArtifact": {
+      "id": "art-e31b7165-6572-4cea-97a3-96758c2f139c",
+      "status": "published",
+      "versionId": "artv-072be859-9ffa-40a9-967e-554c451accc5",
+      "approvedVersionId": "artv-072be859-9ffa-40a9-967e-554c451accc5",
+      "exactContentMatched": true,
+      "contentSha256": "8a008c1819c3549e8297f78d621d0461e554ec618fe7d026c337829ea941eeae"
+    },
+    "manualLessonCompletionRequests": 0,
+    "fileUploadRequests": 0,
+    "teacherMutationRequests": 0
+  },
+  "fileImport": {
+    "count": 2,
+    "hasBoth": true,
+    "allObservationRefs": true,
+    "rejectedUnsupportedAtomically": true
+  },
+  "offline": {
+    "retainedText": true,
+    "submissionDisabled": true
+  },
+  "concurrency": {
+    "statuses": [
+      409,
+      201
+    ],
+    "refs": [
+      "task_submission:learning-50db1e72432a04f273cfa8db97635af420c80ad167f600bc25561f8f8ea10ec5"
+    ],
+    "codes": [
+      "IDEMPOTENCY_CONFLICT",
+      null
+    ],
+    "friendlyNotice": true,
+    "automaticHandoff": true
+  },
+  "finalReload": {
+    "at": "2026-10-28T13:56:48.914Z",
+    "stage": "completed",
+    "completed": 8
+  },
+  "visuals": [
+    {
+      "title": "单缝 vs 双缝：要比较什么？",
+      "steps": [
+        {
+          "step": 1,
+          "mermaid": true,
+          "tex": false,
+          "visualCount": 1
+        },
+        {
+          "step": 2,
+          "mermaid": false,
+          "tex": true,
+          "visualCount": 1
+        },
+        {
+          "step": 3,
+          "mermaid": false,
+          "tex": true,
+          "visualCount": 1
+        },
+        {
+          "step": 4,
+          "mermaid": false,
+          "tex": true,
+          "visualCount": 1
+        },
+        {
+          "step": 5,
+          "mermaid": false,
+          "tex": false,
+          "visualCount": 1
+        }
+      ],
+      "replay": true
+    },
+    {
+      "title": "两列波相遇：叠加与相干",
+      "steps": [
+        {
+          "step": 1,
+          "mermaid": true,
+          "tex": false,
+          "visualCount": 1
+        },
+        {
+          "step": 2,
+          "mermaid": false,
+          "tex": true,
+          "visualCount": 1
+        },
+        {
+          "step": 3,
+          "mermaid": true,
+          "tex": false,
+          "visualCount": 1
+        }
+      ],
+      "replay": true
+    }
+  ],
+  "toolFailures": [],
+  "browserTransport": {
+    "systemProxy": "127.0.0.1:7897",
+    "symptom": "Browser requests returned empty HTTP 502 while direct API and server readiness succeeded.",
+    "action": "Restart only this synthetic test browser with --no-proxy-server; system settings unchanged.",
+    "resumedAt": "2026-10-28T13:49:01.805Z",
+    "tabReopenedAt": "2026-10-28T13:55:48.347Z"
+  },
+  "scopeSwitch": {
+    "lateResponseCaptured": true,
+    "originalProject": "proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683",
+    "secondProject": "proj-45146e3c-5bf6-4bba-bb50-cb640b6c168e",
+    "originalCompleted": 8,
+    "originalStage": "completed",
+    "secondCompleted": 0,
+    "visibleUrl": "http://122.51.130.204/student/tutor/proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683"
+  },
+  "outcome": "core_flow_passed_growth_publication_pending",
+  "growthGap": {
+    "publishedArtifactMissing": true,
+    "reason": "Growth publication projection still requires legacy mentor review evidence."
+  }
+}

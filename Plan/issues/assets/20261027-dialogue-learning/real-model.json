@@ -1,0 +1,13 @@
+{
+  "syntheticInputs": true,
+  "productionLearningFactsWritten": false,
+  "helpNotSubmitted": true,
+  "answerRecognized": true,
+  "operationQuestionNotSubmitted": true,
+  "ordinaryNecessaryCriteriaAccepted": true,
+  "semanticParaphraseAccepted": true,
+  "providerId": "deepseek",
+  "modelId": "deepseek-flash",
+  "elapsedMs": 4324,
+  "classroomValidated": false
+}

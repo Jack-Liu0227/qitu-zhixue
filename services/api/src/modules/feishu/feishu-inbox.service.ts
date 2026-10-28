@@ -18,6 +18,8 @@ export class FeishuInboxService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(FeishuInboxService.name);
   private timer?: ReturnType<typeof setInterval>;
   private draining = false;
+  private companyReceiver?: (assistantId: string, appId: string, payload: unknown) => Promise<boolean>;
+  registerCompanyReceiver(receiver: (assistantId: string, appId: string, payload: unknown) => Promise<boolean>) { this.companyReceiver = receiver; }
   constructor(
     @Inject(DATABASE_TOKEN) private readonly db: Database | null,
     private readonly feishu: FeishuService,
@@ -34,6 +36,7 @@ export class FeishuInboxService implements OnModuleInit, OnModuleDestroy {
 
   /** Await only validation and durable receipt before acknowledging the provider. */
   async receive(assistantId: string, appId: string, payload: unknown): Promise<boolean> {
+    if (await this.companyReceiver?.(assistantId, appId, payload)) return true;
     const message = parseInboundMessage(payload, appId);
     if (!message || !this.db) return false;
     const [bot] = await this.db.select().from(feishuBots).where(eq(feishuBots.assistantId, assistantId));

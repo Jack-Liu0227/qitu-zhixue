@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { ModelGatewayError } from '../model-registry/model-gateway.errors';
 import { createNoopTutorContextReader } from '@qitu/ai-client';
 import { ImaMcpClient } from './ima-mcp.client';
+import { builtinToolRegistry } from '../platform-registry/built-in-tools';
 import type {
   ModelCompletionRequest,
   ModelCompletionResult,
@@ -153,16 +154,64 @@ test('managed search owns retrieval routing while separately authorized director
 });
 
 test('help on a pending question keeps read tools but never advertises a forbidden new activity', async () => {
+  const context = (await imaInput()).contextPacket;
+  assert.ok(context?.runtime);
+  context.runtime.tools = builtinToolRegistry.listForAgentIds(['tutor.propose_lesson_activity']);
   const gateway = new StubGateway((_usage, request) => {
     assert.deepEqual(request.tools?.map(tool => tool.name), ['knowledge_read']);
+    assert.match(request.messages[0]!.content, /本轮实际可调用工具名称：\["knowledge_read"\]/);
+    assert.match(request.messages[0]!.content, /待答题期间不提供新课件/);
+    assert.match(request.messages[0]!.content, /授权工具目录上限：tutor.propose_lesson_activity/);
+    assert.doesNotMatch(request.messages[0]!.content, /可用工具：tutor.propose_lesson_activity/);
     return result('先看题目中哪些量保持不变，再尝试解释你的判断。');
   });
   await collect(new GatewayTutorProvider(gateway), { ...BASE_INPUT,
+    contextPacket: context,
     disclosure: { kind: 'pending_assessment', questionId: 'pending', prompt: 'Compare two conditions', options: [], protectedTexts: [] },
     knowledgeTools: [{ name: 'knowledge_read', description: 'Read governed material', inputSchema: { type: 'object' }, execute: async () => ({ text: 'Reference' }) }],
     lessonActivities: { tools: [{ name: 'tutor_propose_lesson_activity', description: 'Create an activity', inputSchema: { type: 'object' },
       execute: async () => { throw new Error('Must not replace a pending question'); } }], blocks: () => [], suppressNarration: () => false },
   });
+});
+
+test('dialogue prompts carry the owner receipt and final inline entry instead of the legacy sidebar instruction', async () => {
+  const context = await createNoopTutorContextReader().buildContext({ studentId: 'synthetic', projectId: 'project',
+    projectStage: 'artifact_review', currentGoal: 'Final delivery', query: 'Comparison', recentActivity: [] });
+  context.lessonProgram = { progression: 'dialogue.v1', templateVersionId: 'frozen', planId: 'plan', planRevision: 1,
+    learningSessionId: 'session-8', lessonIndex: 8, title: 'Final delivery', learningGoal: 'Deliver evidence-linked work',
+    objectiveIds: ['showcase'], activities: [], evidenceRequirements: [], completion: null, checkpoint: null };
+  context.lessonProgram.currentActivity = { activityId: 'final-check', kind: 'check', evidence: 'submitted_artifact',
+    status: 'current', guidance: 'Confirm final delivery', minutes: 15, evidenceRefs: [] };
+  const receipt = { kind: 'evidence_saved' as const, notice: '回答已保存，本次必要要求已满足。', sourceLearningSessionId: 'session-7', sourceQuestionId: null };
+  const gateway = new StubGateway((_usage, request) => {
+    const system = request.messages[0]!.content, user = request.messages[1]!.content;
+    assert.match(system, /当前行内“成果正文”/);
+    assert.doesNotMatch(system, /应让学生打开“本课记录与评价”/);
+    assert.match(system, /先准确承接回执/);
+    assert.match(user, /服务端本轮回应处理回执/);
+    assert.match(user, /session-7/);
+    assert.match(user, /本次必要要求已满足/);
+    assert.doesNotMatch(user, /学生本轮输入：My saved comparison/);
+    return result('写完先别急着点确认，把正文发给我看一眼，我帮你检查有没有缺环。');
+  });
+  const events = await collect(new GatewayTutorProvider(gateway), { ...BASE_INPUT, projectStage: 'artifact_review',
+    content: 'My saved comparison', contextPacket: context, learningReceipt: receipt });
+  assert.match(blocksOf(events).join(''), /然后点击“确认最终交付”/);
+  assert.doesNotMatch(blocksOf(events).join(''), /先别|发给我看/);
+});
+
+test('a recorded answer is not presented as the answer to the next pending question', async () => {
+  const gateway = new StubGateway((_usage, request) => {
+    const user = request.messages[1]!.content;
+    assert.doesNotMatch(user, /学生本轮输入：D/);
+    assert.match(user, /没有对当前新任务提交新的答案/);
+    assert.match(user, /previous-question/);
+    return result('上一题已记录。现在请看当前题目的条件。');
+  });
+  await collect(new GatewayTutorProvider(gateway), { ...BASE_INPUT, content: 'D',
+    learningReceipt: { kind: 'answer_recorded', notice: '这道题已记录，回答正确。',
+      sourceLearningSessionId: 'current-session', sourceQuestionId: 'previous-question' },
+    disclosure: { kind: 'pending_assessment', questionId: 'new-question', prompt: 'New question', options: [], protectedTexts: [] } });
 });
 
 test('MCP failure is redacted and the model is explicitly told that knowledge could not be verified', async () => {

@@ -1,0 +1,26 @@
+{
+  "success": true,
+  "runId": "run-1793031573481-91020",
+  "checks": [
+    "settings revision, published offer and current template binding",
+    "orders enforce guardian ownership, frozen price and durable idempotency",
+    "only matching signed-payment facts grant access, duplicate receipts audit once",
+    "refunds remain processing until verified, then revoke new-project access",
+    "revoked guardian link denies read immediately",
+    "expired orders block replacements until merchant closure is verified",
+    "operating checks persist one task per reference and lead handling resolves it",
+    "cost ledger is idempotent and never invents profitability or learning completions",
+    "individual registration creates one account without invitations, purchases, projects or guardian links",
+    "registration replay and lost idempotency receipt do not duplicate accounts",
+    "independent parent and student authenticate; sessions survive restart and revoke on logout",
+    "existing accounts, privileged roles, family injection and stale policy cannot create or change users",
+    "concurrent registrations sharing an email have one atomic winner",
+    "SMS replay sends once, binds number, and enforces shared cooldown",
+    "five wrong codes persist across service restarts; expired and mismatched codes fail",
+    "phone registration is atomic, authenticates both number formats and hides directory phones",
+    "audit failure rolls back user and SMS consumption; concurrent code reuse creates one account",
+    "provider failure never reports success or retries sending with the same key"
+  ],
+  "isolated": true,
+  "actualPayments": false
+}

@@ -102,7 +102,7 @@ export class BusinessReporting {
               Number,
             ),
           refunded:
-            sql<number>`coalesce(sum(${businessOrders.amountFen}) filter (where ${businessOrders.status} = 'refunded'),0)`.mapWith(
+            sql<number>`coalesce(sum(coalesce(${businessOrders.refundAmountFen}, ${businessOrders.amountFen})) filter (where ${businessOrders.status} = 'refunded'),0)`.mapWith(
               Number,
             ),
         })

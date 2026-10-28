@@ -1,6 +1,6 @@
-# 启途智学文档总入口
+# 启途智学使用说明
 
-> 文档校验基线：`2026-10-26`，版本标识：`v2026.10.26`。
+> 文档校验基线：`2026-10-28`，版本标识：`v2026.10.28`。
 > 核心定位：**项目式学习（PBL）驱动的 AI 育人共成长**，以真实任务挑战、探究证据链与人机协同育人为核心。
 >
 > 当前实现：NestJS 模块化单体 + PostgreSQL + Redis/Worker + 一个公开官网/登录应用 + 四个角色应用。
@@ -18,25 +18,25 @@
    - 家长端：[`parent/home.md`](./parent/home.md)
    - SDK：[`sdk/overview.md`](./sdk/overview.md)
 
+本目录只存储项目使用说明。研究、设计、实施计划、Issue、发布验收记录与历史资料请从 [Plan 总入口](../Plan/README.md) 查阅。
+
 ## 文档目录
 
 | 目录       | 责任                                                         | 入口                                                             |
 | ---------- | ------------------------------------------------------------ | ---------------------------------------------------------------- |
 | `aboutus/` | 产品定位、教育理念、公开主页信息                             | [`aboutus/README.md`](./aboutus/README.md)                       |
 | `admin/`   | 平台治理、认证、数据库、部署、公开站点、模型网关与权限       | [`admin/platform-governance.md`](./admin/platform-governance.md) |
-| `student/` | 灵感空间、AI搭档核心对话、项目、学习计划、作品和成长         | [`student/today.md`](./student/today.md) / [`student/tutor.md`](./student/tutor.md) / [`eyecare-rules.md`](./eyecare-rules.md) |
+| `student/` | 灵感空间、AI搭档核心对话、项目、学习计划、作品和成长         | [`student/today.md`](./student/today.md) / [`student/tutor.md`](./student/tutor.md) |
 | `teacher/` | 班主任工作台、学生、问题、统计和平台知识能力边界             | [`teacher/dashboard.md`](./teacher/dashboard.md)                 |
 | `parent/`  | 授权成长投影、进展、消息和导出                               | [`parent/home.md`](./parent/home.md)                             |
+| `company/` | 公司工作区、订阅产品、机构席位、运营助手和飞书绑定 | [`company/README.md`](./company/README.md) |
 | `sdk/`     | Agent Runtime、Team Runtime、领域 Facade、浏览器客户端和记忆 | [`sdk/overview.md`](./sdk/overview.md)                           |
-| `design/`  | 学生端 AI 搭档工作区、知识中心、PBL 动态交互设计与问题引擎决策| [`design/20261018-tutor-workspace-interaction-contract.md`](./design/20261018-tutor-workspace-interaction-contract.md) ; [`design/20261018-knowledge-center-deeptutor-reference.md`](./design/20261018-knowledge-center-deeptutor-reference.md) ; [`design/20261018-pbl-dynamic-interaction-openmaic.md`](./design/20261018-pbl-dynamic-interaction-openmaic.md) |
-| `plan/`    | 项目实施计划、规范设计与发布台账（权威基线：`plan/codex/`）  | [`plan/README.md`](./plan/README.md) / [`plan/codex/README.md`](./plan/codex/README.md) |
-| `archive/` | 按日期保存的历史规划、诊断、旧入口与原始稿件归档            | [`archive/pre-20261018/`](./archive/pre-20261018/)              |
 
 `aboutus/` 是产品叙事目录，不是新的运行时责任域；接口、状态机和权限合同仍以对应平台文档和代码为准。
 
 ## 仓库架构
 
-一人运营与商业交付见 [经营工作区](./admin/business-operations.md)及[四阶段实施记录](./plan/codex/one-person-operations-20261026.md)。
+一人运营与商业交付见 [经营工作区](./admin/business-operations.md)及[四阶段实施记录](../Plan/codex/one-person-operations-20261026.md)。
 
 ```text
 apps/       auth-portal（官网/统一登录）
@@ -84,13 +84,15 @@ Team Runtime 的真实协同链路是：Leader 创建 run → 服务端 route �
 
 ## 文档维护
 
-- 每个功能一个事实文档；规划内容明确标记，不用历史 ADR 代替当前合同。
+- `docs/` 仅存储当前功能的使用说明；计划、研究、设计、Issue、发布与验收记录统一写入根目录 `Plan/`，从 [计划总入口](../Plan/README.md) 查阅。
 - 新增页面、API、错误码、迁移、权限或异步任务时更新对应目录和本文件索引。
-- 当前合同保留在责任域目录；2026-10-18 前的历史规划与诊断材料统一进入 [`archive/pre-20261018/README.md`](./archive/pre-20261018/README.md)，不得把归档材料当作当前实现或另建平行事实源。
-- 所有 `@see docs/...` 和 Markdown 相对链接必须指向真实文件。
+- 当前合同保留在责任域目录；2026-10-18 前的历史规划与诊断材料统一进入 [`archive/pre-20261018/README.md`](../Plan/archive/pre-20261018/README.md)，不得把归档材料当作当前实现或另建平行事实源。
+- 所有源码注释、脚本中的文档路径与 Markdown 相对链接必须指向真实文件；移动文档同时更新引用。
 - `.codex-tasks/`、`.tmp/`、`.runtime/` 和本机临时目录不能作为长期文档的文件链接目标；验收证据应使用已脱敏的受控资产或明确的私有归档说明。
-- 文档只读校验：`python tooling/validate-docs.py`；校验器回归：`python tooling/validate-docs.test.py`。覆盖当前 Markdown 的本地目标、退役截图引用及归档索引覆盖率；不验证历史快照正文、远程 URL 或锚点内容。
+- 文档只读校验：`python tooling/validate-docs.py`；校验器回归：`python tooling/validate-docs.test.py`。覆盖目录分工、`docs/` 与 `Plan/` 的当前 Markdown、本地链接、退役截图引用及归档索引覆盖率；不验证历史快照正文、远程 URL 或锚点内容。
 - `.codex-tasks/`、`.tmp/`、`.runtime/` 和本机临时目录不能作为长期文档的文件链接目标；验收证据应使用已脱敏的受控资产或明确的私有归档说明。
 - 校验命令：`pnpm typecheck`、`pnpm test`、`pnpm build`、`pnpm check:basepath`。
 
-- [2026-10-26 仓库整理与验证](./issues/20261026-repository-cleanup.md)；[本轮历史资料](./archive/repository-cleanup-20261026/README.md)。
+- [2026-10-26 仓库整理与验证](../Plan/issues/20261026-repository-cleanup.md)；[本轮历史资料](../Plan/archive/repository-cleanup-20261026/README.md)。
+
+本次目录调整见 [2026-10-28 文档整理记录](../Plan/issues/20261028-document-layout.md)。

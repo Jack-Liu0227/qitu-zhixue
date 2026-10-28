@@ -58,8 +58,10 @@ test('new source-grounded boards persist; find does not consume a turn; pending 
   assert.equal(duplicate.isError, undefined); assert.equal(duplicate.outcome, 'unchanged');
   assert.equal(channel.blocks().length, 1);
   assert.equal((await store.instances(scope.projectId, scope.planId, scope.planRevision, scope.learningSessionId)).length, 1);
+  assert.deepEqual(createLessonActivityChannel({ ...input, assessmentPending: true }).tools, []);
+  const changing = { ...input, assessmentPending: false }, pending = createLessonActivityChannel(changing);
+  changing.assessmentPending = true;
   for (const candidate of [board, { kind: 'find_courseware', use: 'explain' }, { kind: 'reuse_courseware', assetVersionId: 'guess', sourceRefs: [source.sourceRef] }]) {
-    const pending = createLessonActivityChannel({ ...input, assessmentPending: true });
     assert.equal((await pending.tools[0]!.execute(candidate)).isError, true); assert.deepEqual(pending.blocks(), []);
   }
   source.sourceRef = 'ima-read:source';

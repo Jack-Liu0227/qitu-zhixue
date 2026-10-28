@@ -105,17 +105,7 @@ GET /api/v1/mastery/regressions         退步检测
 | offline | 只读缓存；不把缓存旧摘要标为最新 |
 | permission-denied | 403 页面 |
 
-## 6. 未决事项
-
-- [ ] 掌握度时间线的学生 / 家长 / 班主任字段投影矩阵（最高风险：学生行）。
-- [ ] 孩子「自述 / 反思」对家长是否全量可见。
-- [ ] 是否向学生展示风险信号（卡顿 / 情绪挫败 / 已升级班主任）——建议不可见。
-- [ ] `level` 连续值 vs 离散等级；不同 `knowledgeType` 是否允许不同标尺。
-- [ ] 快照生成频率、保留周期和删除策略。
-- [ ] Graphiti 选 Neo4j / FalkorDB，以及是否允许外部 LLM / embedding。
-- [ ] `KnowledgePoint` 独立表 vs 知识库 verified 文档结构化节点。
-- [ ] 「AI 总结与建议」（RAG / `growth.summarize` 用途）接入方式。
-- [ ] 六项导航在窄屏下的视觉验证。
+[相关计划与执行记录](../../Plan/maintenance/usage-records-20261028.md)。
 
 ## 7. 相关文档
 

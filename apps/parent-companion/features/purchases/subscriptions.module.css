@@ -1,0 +1,245 @@
+.section {
+  margin: 20px 0 36px;
+  padding: 28px;
+  background: #f3f8f6;
+  border: 1px solid #d8e6df;
+  border-radius: 18px;
+  color: #173d39;
+}
+.heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+.heading small {
+  color: #4e8174;
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+.heading h2 {
+  font-size: 25px;
+  line-height: 1.5;
+  margin: 8px 0;
+}
+.heading p {
+  color: #657e77;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 24px;
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid #dbe5df;
+  border-radius: 13px;
+  padding: 24px;
+}
+.card h3 {
+  font-size: 19px;
+  margin: 13px 0;
+}
+.card > small {
+  color: #6a8178;
+  font-size: 11px;
+}
+.card p,
+.card li {
+  font-size: 12px;
+  line-height: 1.9;
+  color: #637970;
+}
+.card ul {
+  padding-left: 18px;
+  flex: 1;
+  margin: 18px 0;
+}
+.card button,
+.confirm > button {
+  background: #25776b;
+  color: #fff;
+  border: 0;
+  border-radius: 8px;
+  min-height: 42px;
+  padding: 10px 17px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 12px;
+}
+.card button:disabled,
+.confirm > button:disabled {
+  background: #e5ece8;
+  color: #74847c;
+  cursor: not-allowed;
+}
+.price {
+  font-size: 29px;
+  letter-spacing: -0.7px;
+  font-weight: 650;
+  margin: 12px 0;
+}
+.price small {
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: #74887e;
+}
+.featured {
+  border: 2px solid #689b83;
+  padding: 23px;
+  background: #fffef7;
+}
+.badge {
+  background: #eef3ef;
+  color: #647f70;
+  border-radius: 8px;
+  text-align: center;
+  padding: 12px;
+  font-size: 12px;
+}
+.note {
+  font-size: 12px;
+  line-height: 1.9;
+  color: #728277;
+  margin: 18px 0 0;
+}
+.secondary {
+  border: 1px solid #c9d9cf;
+  background: white;
+  color: #3a6e58;
+  padding: 9px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.secondary:disabled {
+  opacity: 0.5;
+}
+.error,
+.notice {
+  padding: 15px;
+  margin: 14px 0;
+  font-size: 13px;
+  line-height: 1.7;
+  border-radius: 9px;
+}
+.error {
+  background: #fff0eb;
+  color: #a64735;
+}
+.notice {
+  background: #e5f3e9;
+  color: #2f6a4f;
+}
+.discount {
+  background: #f3f0d8;
+  padding: 9px;
+  border-radius: 6px;
+  color: #735e21 !important;
+}
+.confirm {
+  padding: 25px;
+  background: white;
+  border: 1px solid #89af98;
+  border-radius: 12px;
+  margin-top: 25px;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.confirm label {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 15px 0;
+}
+.confirm input {
+  width: 17px;
+  height: 17px;
+  flex: none;
+  margin-top: 4px;
+}
+.confirm details {
+  border-top: 1px solid #e2e9e2;
+  padding: 12px 0;
+}
+.confirm summary {
+  cursor: pointer;
+}
+.confirm details p {
+  white-space: pre-wrap;
+}
+.entitlements {
+  margin-top: 28px;
+}
+.entitlements h3 {
+  font-size: 17px;
+}
+.entitlements article {
+  padding: 18px 0;
+  border-top: 1px solid #d8e3da;
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+}
+.entitlements strong,
+.entitlements b {
+  font-size: 13px;
+}
+.entitlements small {
+  display: block;
+  font-size: 10px;
+  color: #738376;
+  margin-top: 7px;
+  line-height: 1.7;
+}
+.entitlements article > div:last-child {
+  width: 45%;
+  max-width: 340px;
+}
+.entitlements progress {
+  width: 100%;
+  height: 6px;
+  accent-color: #438471;
+  margin-top: 9px;
+}
+.section button:focus-visible,
+.section input:focus-visible,
+.section summary:focus-visible {
+  outline: 3px solid #c78f32;
+  outline-offset: 3px;
+}
+@media (max-width: 650px) {
+  .section {
+    padding: 19px 15px;
+  }
+  .heading h2 {
+    font-size: 21px;
+  }
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  .card {
+    padding: 22px;
+  }
+  .heading > .secondary {
+    font-size: 10px;
+    padding: 8px;
+  }
+  .entitlements article {
+    display: block;
+  }
+  .entitlements article > div:last-child {
+    width: 100%;
+    margin-top: 12px;
+  }
+  .confirm {
+    padding: 18px;
+  }
+}

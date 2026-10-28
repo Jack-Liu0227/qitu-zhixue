@@ -9,5 +9,6 @@ export interface LearningSubmissionReceipt {
   artifactId: string;
   artifactVersionId: string;
   contentDigest: string;
+  requestReview?: true;
   evidenceRefs: readonly string[];
 }

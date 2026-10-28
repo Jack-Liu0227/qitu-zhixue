@@ -1,0 +1,37 @@
+{
+  "templateId": "tpl-f950fdce-fbfb-44b1-b140-c85f66aae25b",
+  "versionId": "tplv-55d940f7-24f8-4740-b5ff-258259b3d3bf",
+  "bindingId": "bnd-07b0f905b332691d",
+  "steps": [
+    {
+      "step": "template",
+      "action": "reuse",
+      "detail": "id=tpl-f950fdce-fbfb-44b1-b140-c85f66aae25b slug=wave-interference-diffraction-8s-dialogue"
+    },
+    {
+      "step": "version",
+      "action": "reuse",
+      "detail": "id=tplv-55d940f7-24f8-4740-b5ff-258259b3d3bf version=v1 status=piloting"
+    },
+    {
+      "step": "pilot",
+      "action": "noop",
+      "detail": "version=tplv-55d940f7-24f8-4740-b5ff-258259b3d3bf already piloting"
+    },
+    {
+      "step": "binding",
+      "action": "noop",
+      "detail": "id=bnd-07b0f905b332691d already active for team=teaching-team-83af656232d8cd90a9ec1068934148e1"
+    }
+  ],
+  "refusedActions": [
+    "template.version.verify",
+    "template.version.publish"
+  ],
+  "status": "pilot",
+  "sourceBindingId": "bnd-8e056bfef49a4728",
+  "templateHash": "78f928af446cfd3cf58c1e5f58f411f0e73c88ecba2f893edb990b48b6bc1175",
+  "approvalPolicyVersion": "5c0871ec3fdc",
+  "refreshedSkillPins": 0,
+  "classroomValidated": false
+}

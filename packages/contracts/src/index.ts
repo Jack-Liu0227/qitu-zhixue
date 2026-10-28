@@ -108,3 +108,5 @@ export * from './feedback-attachments.js';
 export * from './resource-name.js';
 export * from './team-template-usage.js';
 export * from './business.js';
+export * from './commerce.js';
+export * from './company.js';

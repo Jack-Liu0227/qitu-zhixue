@@ -7,6 +7,24 @@ import { TemplatesService } from './templates.service';
 import { InMemoryTemplateViewerDirectory } from './template-evidence.store';
 import { actor } from './templates.test-support';
 import { teachingValueDigest } from './teaching-bundle.canonical';
+import { INSPIRATION_DIALOGUE_COURSES } from './content/inspiration/dialogue-courses';
+
+test('dialogue catalog creates separate governed versions and leaves guided bindings unchanged', async () => {
+  const h = inspirationCatalogFixture();
+  const guided = await configureInspirationCatalog(h.ports, { actor: inspirationAdmin, model: inspirationModel, mode: 'pilot' });
+  assert.equal(guided.success, true);
+  const before = await Promise.all(guided.results.map(async item => item.status === 'configured'
+    ? h.bindingStore.findActiveBinding(item.resource.templateVersionId) : null));
+  const options = { actor: inspirationAdmin, model: inspirationModel, mode: 'pilot' as const, progression: 'dialogue' as const };
+  const result = await configureInspirationCatalog(h.ports, options);
+  assert.equal(result.success, true, JSON.stringify(result.results));
+  assert.equal(result.results.length, INSPIRATION_DIALOGUE_COURSES.length);
+  assert.equal((await configureInspirationCatalog(h.ports, options)).success, true);
+  assert.equal(h.teams.size, 16);
+  const after = await Promise.all(guided.results.map(async item => item.status === 'configured'
+    ? h.bindingStore.findActiveBinding(item.resource.templateVersionId) : null));
+  assert.deepEqual(after, before);
+});
 
 test('Admin creates eight real governed curricula and teams; replay creates no duplicates and preserves source grants', async () => {
   const h = inspirationCatalogFixture();

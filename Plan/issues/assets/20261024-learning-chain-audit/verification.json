@@ -1,0 +1,289 @@
+{
+  "before": {
+    "at": "2026-10-23T19:55:45.820Z",
+    "projects": [
+      {
+        "id": "proj-4bd46027-66e2-4137-8ab4-a753782fb59c",
+        "stage": "completed",
+        "lesson": {
+          "index": 8,
+          "status": "completed",
+          "assessmentAvailable": false,
+          "activity": null,
+          "planId": "plan-7581e5b2-d9c2-4712-a1a4-4688740c7a41",
+          "planRevision": 1,
+          "learningSessionId": "plan-7581e5b2-d9c2-4712-a1a4-4688740c7a41:thunder-session-8"
+        },
+        "completed": 8,
+        "experiments": []
+      },
+      {
+        "id": "proj-27f87104-2a45-4890-b7f0-00fb97a14322",
+        "stage": "completed",
+        "lesson": {
+          "index": 8,
+          "status": "completed",
+          "teachingMode": "zero-base.v1",
+          "assessmentAvailable": false,
+          "activity": null,
+          "planId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9",
+          "planRevision": 1,
+          "learningSessionId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9:wave-session-8"
+        },
+        "completed": 8,
+        "experiments": [
+          {
+            "id": "optics-bbfedbf3189419a32177625f25a3447b",
+            "version": "2.0.0",
+            "lesson": 3,
+            "scope": {
+              "cerRef": "cer:claim-evidence-reasoning:v1",
+              "planId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9",
+              "rubricRef": "rubric:tplv-e6e78f26-9943-4450-adb7-67a9f288cc40:wave-optics-evidence-v1",
+              "activityId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9:wave-session-3:activity:practice",
+              "objectiveId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9:wave-double-paths",
+              "planRevision": 1,
+              "learningSessionId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9:wave-session-3"
+            },
+            "actions": [
+              "submit_prediction",
+              "run",
+              "record_observation"
+            ]
+          },
+          {
+            "id": "optics-f3cc4569795f54b4b9a78490446815b3",
+            "version": "2.0.0",
+            "lesson": 4,
+            "scope": {
+              "cerRef": "cer:claim-evidence-reasoning:v1",
+              "planId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9",
+              "rubricRef": "rubric:tplv-e6e78f26-9943-4450-adb7-67a9f288cc40:wave-optics-evidence-v1",
+              "activityId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9:wave-session-4:activity:practice",
+              "objectiveId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9:wave-double-compare",
+              "planRevision": 1,
+              "learningSessionId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9:wave-session-4"
+            },
+            "actions": [
+              "submit_prediction",
+              "run",
+              "record_observation"
+            ]
+          },
+          {
+            "id": "optics-38e1b4e83ff4421c989bb80ecbb8ec7f",
+            "version": "2.0.0",
+            "lesson": 5,
+            "scope": {
+              "cerRef": "cer:claim-evidence-reasoning:v1",
+              "planId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9",
+              "rubricRef": "rubric:tplv-e6e78f26-9943-4450-adb7-67a9f288cc40:wave-optics-evidence-v1",
+              "activityId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9:wave-session-5:activity:practice",
+              "objectiveId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9:wave-single-observe",
+              "planRevision": 1,
+              "learningSessionId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9:wave-session-5"
+            },
+            "actions": [
+              "submit_prediction",
+              "run",
+              "record_observation"
+            ]
+          },
+          {
+            "id": "optics-dcc5a15695c7b1358c6e205c1e87827d",
+            "version": "2.0.0",
+            "lesson": 6,
+            "scope": {
+              "cerRef": "cer:claim-evidence-reasoning:v1",
+              "planId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9",
+              "rubricRef": "rubric:tplv-e6e78f26-9943-4450-adb7-67a9f288cc40:wave-optics-evidence-v1",
+              "activityId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9:wave-session-6:activity:practice",
+              "objectiveId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9:wave-single-compare",
+              "planRevision": 1,
+              "learningSessionId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9:wave-session-6"
+            },
+            "actions": [
+              "submit_prediction",
+              "run",
+              "record_observation"
+            ]
+          },
+          {
+            "id": "optics-4699f3d473af518eecfffc47163371b1",
+            "version": "2.0.0",
+            "lesson": 7,
+            "scope": {
+              "cerRef": "cer:claim-evidence-reasoning:v1",
+              "planId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9",
+              "rubricRef": "rubric:tplv-e6e78f26-9943-4450-adb7-67a9f288cc40:wave-optics-evidence-v1",
+              "activityId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9:wave-session-7:activity:practice",
+              "objectiveId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9:wave-evidence-compare",
+              "planRevision": 1,
+              "learningSessionId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9:wave-session-7"
+            },
+            "actions": [
+              "submit_prediction",
+              "run",
+              "record_observation"
+            ]
+          }
+        ],
+        "historicalRunButton": {
+          "count": 5,
+          "enabled": true
+        },
+        "historicalRunResponse": {
+          "status": 409,
+          "code": "TUTOR_EXPERIMENT_GATE_REQUIRED",
+          "message": "TheoryMastered 门禁通过后才能进入实验操作",
+          "body": {
+            "type": "about:blank",
+            "title": "Conflict",
+            "status": 409,
+            "detail": "TheoryMastered 门禁通过后才能进入实验操作",
+            "instance": "/api/v1/tutor/sessions/session-proj-27f87104-2a45-4890-b7f0-00fb97a14322/interactive/experiments/optics-4699f3d473af518eecfffc47163371b1/action",
+            "code": "TUTOR_EXPERIMENT_GATE_REQUIRED",
+            "traceId": "8e28e29ba90fda47",
+            "message": "TheoryMastered 门禁通过后才能进入实验操作"
+          }
+        }
+      }
+    ]
+  },
+  "after": {
+    "at": "2026-10-23T20:07:15.235Z",
+    "projects": [
+      {
+        "id": "proj-4bd46027-66e2-4137-8ab4-a753782fb59c",
+        "stage": "completed",
+        "lesson": {
+          "index": 8,
+          "status": "completed",
+          "assessmentAvailable": false,
+          "activity": null,
+          "planId": "plan-7581e5b2-d9c2-4712-a1a4-4688740c7a41",
+          "planRevision": 1,
+          "learningSessionId": "plan-7581e5b2-d9c2-4712-a1a4-4688740c7a41:thunder-session-8"
+        },
+        "completed": 8,
+        "experiments": []
+      },
+      {
+        "id": "proj-27f87104-2a45-4890-b7f0-00fb97a14322",
+        "stage": "completed",
+        "lesson": {
+          "index": 8,
+          "status": "completed",
+          "teachingMode": "zero-base.v1",
+          "assessmentAvailable": false,
+          "activity": null,
+          "planId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9",
+          "planRevision": 1,
+          "learningSessionId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9:wave-session-8"
+        },
+        "completed": 8,
+        "experiments": [
+          {
+            "id": "optics-bbfedbf3189419a32177625f25a3447b",
+            "version": "2.0.0",
+            "lesson": 3,
+            "scope": {
+              "cerRef": "cer:claim-evidence-reasoning:v1",
+              "planId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9",
+              "rubricRef": "rubric:tplv-e6e78f26-9943-4450-adb7-67a9f288cc40:wave-optics-evidence-v1",
+              "activityId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9:wave-session-3:activity:practice",
+              "objectiveId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9:wave-double-paths",
+              "planRevision": 1,
+              "learningSessionId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9:wave-session-3"
+            },
+            "actions": []
+          },
+          {
+            "id": "optics-f3cc4569795f54b4b9a78490446815b3",
+            "version": "2.0.0",
+            "lesson": 4,
+            "scope": {
+              "cerRef": "cer:claim-evidence-reasoning:v1",
+              "planId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9",
+              "rubricRef": "rubric:tplv-e6e78f26-9943-4450-adb7-67a9f288cc40:wave-optics-evidence-v1",
+              "activityId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9:wave-session-4:activity:practice",
+              "objectiveId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9:wave-double-compare",
+              "planRevision": 1,
+              "learningSessionId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9:wave-session-4"
+            },
+            "actions": []
+          },
+          {
+            "id": "optics-38e1b4e83ff4421c989bb80ecbb8ec7f",
+            "version": "2.0.0",
+            "lesson": 5,
+            "scope": {
+              "cerRef": "cer:claim-evidence-reasoning:v1",
+              "planId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9",
+              "rubricRef": "rubric:tplv-e6e78f26-9943-4450-adb7-67a9f288cc40:wave-optics-evidence-v1",
+              "activityId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9:wave-session-5:activity:practice",
+              "objectiveId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9:wave-single-observe",
+              "planRevision": 1,
+              "learningSessionId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9:wave-session-5"
+            },
+            "actions": []
+          },
+          {
+            "id": "optics-dcc5a15695c7b1358c6e205c1e87827d",
+            "version": "2.0.0",
+            "lesson": 6,
+            "scope": {
+              "cerRef": "cer:claim-evidence-reasoning:v1",
+              "planId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9",
+              "rubricRef": "rubric:tplv-e6e78f26-9943-4450-adb7-67a9f288cc40:wave-optics-evidence-v1",
+              "activityId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9:wave-session-6:activity:practice",
+              "objectiveId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9:wave-single-compare",
+              "planRevision": 1,
+              "learningSessionId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9:wave-session-6"
+            },
+            "actions": []
+          },
+          {
+            "id": "optics-4699f3d473af518eecfffc47163371b1",
+            "version": "2.0.0",
+            "lesson": 7,
+            "scope": {
+              "cerRef": "cer:claim-evidence-reasoning:v1",
+              "planId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9",
+              "rubricRef": "rubric:tplv-e6e78f26-9943-4450-adb7-67a9f288cc40:wave-optics-evidence-v1",
+              "activityId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9:wave-session-7:activity:practice",
+              "objectiveId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9:wave-evidence-compare",
+              "planRevision": 1,
+              "learningSessionId": "plan-b3ece4ac-90f4-4a53-9427-4749cdec95c9:wave-session-7"
+            },
+            "actions": []
+          }
+        ],
+        "historicalRunButton": {
+          "count": 5,
+          "enabled": false
+        },
+        "directOldRequest": {
+          "status": 409,
+          "code": "TUTOR_EXPERIMENT_PRACTICE_CLOSED"
+        },
+        "reloadReadOnly": true
+      }
+    ]
+  },
+  "buildId": "ehWzWJrxh5T2NBIw1XOu9",
+  "tests": {
+    "apiPassed": 6,
+    "frontendPassed": 2
+  },
+  "browserAssertions": {
+    "archivedButtonsDisabled": 5,
+    "persistedWavePlotsVisible": 5,
+    "reloadReadOnly": true,
+    "oldWriteRejected": "TUTOR_EXPERIMENT_PRACTICE_CLOSED"
+  },
+  "limitations": [
+    "Existing synthetic completed projects only; natural teaching acceptance remains outstanding.",
+    "Pending-question courseware review verified in isolated owner tests, not by injecting production questions."
+  ]
+}

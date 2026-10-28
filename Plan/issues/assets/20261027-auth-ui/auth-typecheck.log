@@ -1,0 +1,4 @@
+
+> @qitu/auth-portal@0.1.0 typecheck /root/qitu-zhixue/apps/auth-portal
+> tsc --noEmit
+

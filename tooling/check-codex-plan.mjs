@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const CURRENT = 'docs/plan/codex';
+const CURRENT = 'Plan/codex';
 const REQUIRED = [
   'README.md', 'architecture.md', 'implementation-plan.md', 'skills-catalog.md',
   'mcp-tool-governance.md', 'theme-session-team-ima-design.md', 'gap-audit-20261019.md',
@@ -175,7 +175,7 @@ function check(root) {
   const attempt = (label, callback) => { try { return callback(); } catch (error) { problems.push(`${label}: ${error.message}`); } };
   for (const file of REQUIRED) attempt(file, () => repoFile(root, `${CURRENT}/${file}`));
   const current = filesUnder(path.join(root, CURRENT));
-  const indexes = filesUnder(path.join(root, 'docs/archive')).filter(file => path.basename(file) === 'manifest.json');
+  const indexes = filesUnder(path.join(root, 'Plan/archive')).filter(file => path.basename(file) === 'manifest.json');
   const documents = current.filter(file => file.endsWith('.md'));
   const json = new Map();
   for (const file of current.filter(file => file.endsWith('.json'))) {

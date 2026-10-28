@@ -31,11 +31,11 @@ export function draftFromPublishedTeam(
     assignment.sessionIndex === session.sessionIndex && assignment.teamVersionId === team.id)) : profile.sessions;
   const sessionRoutes = sessions.map((session) => {
     const selection = sessionAssignments?.find(assignment => assignment.sessionIndex === session.sessionIndex);
-    const assigned = template.lessonPolicy === 'lesson-guided.v1' ? session.leadAssistantId
+    const assigned = template.lessonPolicy ? session.leadAssistantId
       : template.phases.find((phase) => phase.phase === session.phase)?.assignedAssistantId;
     const selectedMemberId = selection ? selection.kind === 'assistant' ? selection.memberId
       : members.find(candidate => candidate.assistantId === team.leaderAssistantId)?.slotId
-      : template.lessonPolicy === 'lesson-guided.v1' ? undefined : phaseAssignments[session.phase];
+      : template.lessonPolicy ? undefined : phaseAssignments[session.phase];
     const member = selectedMemberId
       ? members.find((candidate) => candidate.slotId === selectedMemberId)
       : assigned

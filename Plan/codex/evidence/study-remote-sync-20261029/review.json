@@ -1,0 +1,73 @@
+{
+  "date": "2026-10-29",
+  "timezone": "Asia/Shanghai",
+  "remote_root": "/root/qitu-zhixue",
+  "remote_worktree_count": 1,
+  "remote_disk_available": "89G",
+  "remote_node": "v22.22.1",
+  "remote_pnpm": "10.10.0",
+  "local_core_autocrlf": "true",
+  "remote_core_autocrlf": "input",
+  "active_units": [
+    "qitu-api",
+    "qitu-auth",
+    "qitu-student",
+    "qitu-parent",
+    "qitu-teacher",
+    "qitu-admin",
+    "qitu-workers"
+  ],
+  "active_unit_working_directory": "/root/qitu-zhixue",
+  "missing_unit": "qitu-company",
+  "application_requests_tested": false,
+  "local_files_observed_modified_after_manifest": [
+    "services/api/src/modules/ai-tutor/tutor.service.ts",
+    "services/api/src/modules/business/business.reporting.ts",
+    "services/api/src/modules/business/commerce.access.ts",
+    "services/api/src/modules/business/commerce.service.ts"
+  ],
+  "lockfile_company_importer_present_at_review": false,
+  "checks_before_report": {
+    "documentation": {
+      "documents": 238,
+      "links": 1716,
+      "issues": 0
+    },
+    "documentation_regression": {
+      "tests": 18,
+      "passed": true
+    },
+    "codex_plan": {
+      "documents": 75,
+      "links": 483,
+      "json_files": 15,
+      "archive_manifests": 2,
+      "archive_hashes": 15,
+      "issues": 0
+    }
+  },
+  "business_tests_run": false,
+  "database_inspected": false,
+  "remote_files_changed": false,
+  "checks_after_report": {
+    "documentation": {
+      "documents": 239,
+      "links": 1723,
+      "issues": 0
+    },
+    "evidence": {
+      "arithmetic": true,
+      "migration_coverage": 850,
+      "case_uniqueness": true,
+      "collector_syntax": true
+    },
+    "codex_plan": {
+      "documents": 76,
+      "links": 490,
+      "json_files": 19,
+      "archive_manifests": 2,
+      "archive_hashes": 15,
+      "issues": 0
+    }
+  }
+}

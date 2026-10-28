@@ -113,7 +113,7 @@ export function BusinessExpenseForm({
               <option value="">平台共同成本</option>
               {data.recentOrders.map((o) => (
                 <option key={o.id} value={o.id}>
-                  {o.offer.title} · {o.id.slice(-8)}
+                  {o.subscription?.product.title ?? o.offer?.title ?? '历史课程'} · {o.id.slice(-8)}
                 </option>
               ))}
             </select>

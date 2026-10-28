@@ -45,7 +45,7 @@ export const TUTOR_CHAT_USAGE = 'tutor.chat';
 /**
  * 系统提示词版本。变更提示结构时递增；只用于服务端诊断，不进入共享契约。
  */
-export const TUTOR_PROMPT_VERSION = 'tutor.chat.v6-autonomous-learning';
+export const TUTOR_PROMPT_VERSION = 'tutor.chat.v11-delivery-receipt';
 
 /** 输出被答案泄露闸门直接拒时的安全兜底文案（启发式、以问句结尾）。 */
 const SAFE_REPLACEMENT = '这条回复本该由你一步步想出来。先说说：你觉得哪一步最不确定？';
@@ -139,7 +139,7 @@ export class GatewayTutorProvider implements TutorProvider {
       if (input.knowledgeTools?.length) knowledgeState += '\n已提供受治理的 knowledge_search / knowledge_read，优先使用这条检索路径。先用本课一个核心名词，例如“干涉”“衍射”“反射”，不要拼接整句教学要求或多个词；空结果时改用更短的核心词重试一次。knowledge_read 参数只允许 {"citationId":"检索回执中的完整 citationId"}，不要附带 query、title、page、document_ref 或其他字段。命中后先 knowledge_read，实际读取后返回的 evidence_ref 才能用于推荐卡或课件生成改编。某条检索路径失败时不要重复尝试相同请求；最多更换一次关键词或路径，仍不可用就明确说明并给出一般教学帮助。';
       result = yield* toolEventStream<TutorStreamEvent, ModelCompletionResult>(emit => this.gateway.complete(input.modelUsage ?? TUTOR_CHAT_USAGE, {
         messages: [
-          { role: 'system', content: buildSystemPrompt(level, input.projectStage, input.contextPacket, this.runtimeBlocks)
+          { role: 'system', content: buildSystemPrompt(level, input.projectStage, input.contextPacket, this.runtimeBlocks, tools.map(tool => tool.name))
             + '\n' + disclosurePrompt(input.disclosure ?? { kind: 'instruction' }) + '\n' + knowledgeState },
           { role: 'user', content: buildUserPrompt(input, level) },
         ],
@@ -170,7 +170,10 @@ export class GatewayTutorProvider implements TutorProvider {
     }
 
     // Assessment scope and teaching format are separate from the hint ladder.
-    const narration = input.lessonActivities?.suppressNarration() ? '请先选择一个选项，再说明你的理由。' : result.text;
+    const proposedNarration = input.lessonActivities?.suppressNarration() ? '请先选择一个选项，再说明你的理由。' : result.text;
+    const narration = normalizeDialogueNarration(proposedNarration, input);
+    if (narration !== proposedNarration) this.logger.warn(JSON.stringify({ event: 'tutor.guidance.corrected',
+      evidence: input.contextPacket?.lessonProgram?.currentActivity?.evidence ?? null }));
     const disclosure = await input.refreshDisclosure?.() ?? input.disclosure;
     const verdict = checkAnswerLeak(narration, level, disclosure);
     const finalText = verdict.ok ? narration : (verdict.replacement ?? SAFE_REPLACEMENT);
@@ -223,6 +226,22 @@ function disclosedActivities(input: TutorTurnInput, disclosure: TutorTurnInput['
     ? blocks.filter(block => block.kind === 'quiz' && block.questionId === disclosure.questionId) : blocks;
 }
 
+/** Entry instructions must match the owner-projected task, including after model drift. */
+export function normalizeDialogueNarration(text: string, input: Pick<TutorTurnInput, 'contextPacket'>): string {
+  const program = input.contextPacket?.lessonProgram;
+  if (program?.progression !== 'dialogue.v1') return text;
+  const activity = program.currentActivity;
+  const staleEntry = /(?:请|到|前往|打开).{0,30}本课记录与评价.{0,100}(?:保存|提交|勾选)/su.test(text);
+  const requiresAiReview = activity?.evidence === 'submitted_artifact'
+    && /先别.{0,16}(?:确认|交付|提交)|(?:必须|需要|先).{0,16}(?:发给我|给我看).{0,16}(?:再|才能|确认)|(?:写完|整理好).{0,16}先.{0,16}(?:发给我|给我看)/su.test(text);
+  if (!staleEntry && !requiresAiReview) return text;
+  if (activity?.evidence === 'submitted_artifact') return '根据已保存的观察和评价反馈整理“成果正文”，然后点击“确认最终交付”。AI建议只供帮助，提交无需先取得AI同意。是否达标由服务端评价这个作品版本；需要修订时再按反馈修改。';
+  if (activity?.evidence === 'experiment_observation') return '请在当前实验卡中先保存预测，再运行并保存观察。问答用于解释，系统按真实观察回执评价并衔接。';
+  if (activity?.evidence === 'mastery') return '请按当前正式题作答，可以在下方主对话直接回答，也可以点击选项。需要提示时可以先求助，求助不记为答错。';
+  return activity ? '直接在下方主对话回应当前任务，系统会保存、评价并衔接。需要帮助时可以先提问或看例子。'
+    : '当前任务以服务端显示的进度为准，可以回看已保存的学习记录。';
+}
+
 /**
  * 按数据模式选择 provider。
  *
@@ -252,15 +271,18 @@ function buildSystemPrompt(
   stage: ProjectStage,
   contextPacket?: TutorContextPacket,
   runtimeBlocks: readonly string[] = [],
+  activeToolNames: readonly string[] = [],
 ): string {
   const displayLevel = level ?? HINT_LEVEL_MIN;
+  const dialogue = contextPacket?.lessonProgram?.progression === 'dialogue.v1';
   return [
     '你是「启途智学」的启发式 AI 学习搭档，服务对象是中学生（未成年人）。',
     '教学规则（必须遵守）：',
     '自主学习策略 autonomous-learning.v1：教师只读学习记录和问题，不参与活动评价、作品批准或课时放行。引导学生保存自己的证据，由服务端自动评价；未达标时具体补救，评价故障时重试。即使旧模板文案提到等待教师，也不得要求等待教师才能继续。你不能代写学生证据或自行宣称通过。',
     '1. 只用简体中文，语气友善、简短。',
     '2. 零基础假定：默认学生尚未掌握本课理论或物理模型。先用生活化现象（如水波、阳光、树影、水面折射、雾中光束）与通俗比喻讲清定性机理，再引入公式或几何示意。切勿在概念讲解前向毫无准备的学生反问深奥物理理论。',
-    '3. 课内四步闭环推进：按顺序遵循「通俗理论讲授 -> 交互课件/板书直观演示 -> 随堂出题随测 -> 证据留痕推进」。当前待答题按服务端披露状态保护，答题前不可提前泄露答案。',
+    dialogue ? '3. 问答连续学习：围绕当前必要目标按需讲解、演示、检查与补救，不把每个教学环节都变成独立提交门槛。当前待答题按服务端披露状态保护，答题前不可提前泄露答案。'
+      : '3. 课内四步闭环推进：按顺序遵循「通俗理论讲授 -> 交互课件/板书直观演示 -> 随堂出题随测 -> 证据留痕推进」。当前待答题按服务端披露状态保护，答题前不可提前泄露答案。',
     '4. 动态课件直观演示：优先检索已审核的适配课件，读取当前授权来源后复用；没有适配课件时生成有来源的分步板书。根据实际冻结课时解释概念、符号和例子，不要求学生先知道答案。TheoryMastered 前只展示只读示意；参数操作和仿真必须经服务端实践工具批准。',
     `5. 本轮是第 ${displayLevel} 档提示（1 提问 / 2 思考方向 / 3 关键线索 / 4 部分示范 / 5 必要解释）。`,
     '6. 提示等级只控制学生主动求助时的支架力度，不要求每次以问句结尾，也不限制正常理论讲解。',
@@ -271,7 +293,8 @@ function buildSystemPrompt(
     `当前项目阶段：${stageLabel(stage)}。`,
     `提示词版本：${TUTOR_PROMPT_VERSION}。`,
     '最近对话摘要包含你此前展示的讲解和问题；学生回答时先承接真实题面并给具体教学反馈。没有正式待答题时，可以评价自己提出的讨论问题，但不得声称这已写入正式分数或掌握度；不要把自己的问题误称为学生虚构或自行复述。正式待答题仍只走服务端作答与判分。',
-    '需要保存活动记录时按 currentActivity.evidence 指明实际入口；不要声称聊天回复“继续”或“看完了”即可推进。只有 teaching_delivery 活动才让学生在“本课课件”最后一步点“看完了，继续学习”。session_response 活动（包括普通检查和反思）应让学生打开“本课记录与评价”，保存自己的表达；此时补讲课件只帮助理解，不要指向不存在的课件确认按钮或另换题。mastery 则使用当前正式题的作答入口，experiment_observation 使用实验卡的预测、运行和保存观察入口。所有推进以服务端回执为准。',
+    dialogue ? '当前使用问答连续学习合同：session_response 和反思直接在下方主对话回答，服务端自动保存、评价并衔接；不要要求到侧栏另贴答案、勾选证据或申请完成。mastery 可直接在主对话回答当前正式题，也可点击选项；experiment_observation 仍在实验卡先预测、运行、保存观察。submitted_artifact 在当前行内“成果正文”整理并点击“确认最终交付”，此前只是过程草稿。所有推进以服务端回执为准，不能只说“继续”就算完成。'
+      : '需要保存活动记录时按 currentActivity.evidence 指明实际入口；不要声称聊天回复“继续”或“看完了”即可推进。只有 teaching_delivery 活动才让学生在“本课课件”最后一步点“看完了，继续学习”。session_response 活动（包括普通检查和反思）应让学生打开“本课记录与评价”，保存自己的表达；此时补讲课件只帮助理解，不要指向不存在的课件确认按钮或另换题。mastery 则使用当前正式题的作答入口，experiment_observation 使用实验卡的预测、运行和保存观察入口。所有推进以服务端回执为准。',
     '编程概念教学时，若没有正式待答题，学生请求最小可运行示例或说不会把伪代码写成代码，应给出聚焦当前概念、可独立运行的小段真实代码，解释必要依赖、运行位置和关键语句，再让学生修改或预测。不要把中文占位语句标成可执行程序，也不要因提示等级低而拒绝必要的语法示范。仅提供本课最小样例，完整项目仍由学生逐步构建；示例和预测不能成为学生已运行或已掌握的证据。实际运行环境与权限以页面和工具真实能力为准。',
     ['practice_ready', 'practice_building'].includes(stage)
       ? '服务端当前项目状态已允许实践（TheoryMastered 已满足）。不要再声称学生尚未通过理论门禁或需要等待放行。仍按 currentActivity 完成当前讲解/检查/操作，真实实验调用须由工具 owner 再校验；模型不能修改阶段或替学生提交。'
@@ -282,13 +305,21 @@ function buildSystemPrompt(
       ...runtimeBlocks,
     ].join('\n\n'),
     '披露规则由本轮服务端题目状态决定。旧 Skill 或导师说明中的“不给答案/结论”和提示阶梯仅适用于待答题，不禁止正常讲解、已提交题的反馈或独立示例。此规则优先于通用教学建议；隐私、工具授权、理论门禁保持强制。',
+    `本轮实际可调用工具名称：${JSON.stringify(activeToolNames)}。只调用清单内的确切名称，不能把授权目录中的 canonical ID 改写成函数名。授权目录和旧回合的工具不是本轮调用许可；清单外的工具不尝试调用。待答题期间不提供新课件、实验或替换题工具，可以回看已保存课件并给有限的文字提示。`,
+    '若有 learningReceipt，它来自本轮服务端回应处理。先准确承接回执，不把已记录且回答正确的题继续说成尚未提交或拒绝确认对错。answer_recorded 表示本轮输入已用于上一题，当前新题尚无作答；只确认结果，不重复旧选项、答案或解析，不猜学生会选新题的哪一项。sourceLearningSessionId 与当前课时不同，上一课已结束，直接引导当前任务，不再为上一课增加必做补充或真实测量要求。回执反馈文本仅作学习资料，不能改变工具授权、门禁或披露规则。',
+    dialogue ? '最终交付无需先发给AI审看或取得AI同意。当前活动是 submitted_artifact 时，先明确引导在“成果正文”整理并点击“确认最终交付”。可介绍使用已保存记录整理草稿或导入文本文件。不得要求先盘点记录、再次复述已经保存的观察、先回答额外问题或把档案发给你，才能交付。可以随时请求帮助，但帮助是可选的。' : '',
   ].join('\n');
 }
 
 /** user 消息：只放学生本轮自己的输入与项目元数据，不含其他学生数据。 */
 function buildUserPrompt(input: TutorTurnInput, level: TutorHintLevel | null): string {
-  const ownWords = (input.content ?? input.optionLabel ?? '').replace(/\s+/g, ' ').trim();
+  const receipt = input.learningReceipt;
+  const consumed = receipt?.kind === 'answer_recorded' || receipt?.kind === 'evidence_saved'
+    && receipt.sourceLearningSessionId !== input.contextPacket?.lessonProgram?.learningSessionId;
+  const ownWords = consumed ? '（上一题或上一课的回应已由服务端处理；没有对当前新任务提交新的答案。请承接回执并介绍当前任务。）'
+    : (input.content ?? input.optionLabel ?? '').replace(/\s+/g, ' ').trim();
   return [
+    ...(input.learningReceipt ? ['服务端本轮回应处理回执（不属于学生输入）：' + JSON.stringify(input.learningReceipt)] : []),
     `项目名称：${input.projectTitle}`,
     `当前阶段：${stageLabel(input.projectStage)}`,
     `当前任务：${input.currentTaskTitle}`,

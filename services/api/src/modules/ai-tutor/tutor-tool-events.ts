@@ -9,6 +9,7 @@ const labels: Readonly<Record<string, string>> = {
   ima_search_knowledge: '检索知识库', ima_read_document: '读取教材内容',
 };
 const failures: Readonly<Record<string, string>> = {
+  TOOL_NOT_ALLOWED: '当前步骤未提供这项工具。请按当前任务继续，已有课件仍可回看。',
   TOOL_ARGUMENT_INVALID: '本次参数需要调整，尚未执行。AI搭档将尝试修正。',
   COURSEWARE_INVALID: '课件内容格式需要调整，本次未保存。',
   COURSEWARE_NOT_AUTHORIZED: '课件目标或资料引用与当前活动不匹配，本次未保存。',

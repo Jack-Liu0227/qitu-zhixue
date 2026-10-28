@@ -910,7 +910,7 @@ export type GateEvidenceType = string;
  * 证据档案：把「交付物」翻译成「这个阶段需要哪种证据、因此该由哪个门禁收口」。
  * 用于让 guided_practice 的门禁**由交付物推导**，而不是由阶段名硬编码。
  */
-export const EVIDENCE_PROFILES = ['runnable_code', 'experiment_report', 'rubric_artifact'] as const;
+export const EVIDENCE_PROFILES = ['runnable_code', 'experiment_report', 'rubric_artifact', 'learning_progress'] as const;
 export type EvidenceProfile = (typeof EVIDENCE_PROFILES)[number];
 
 /**
@@ -969,6 +969,10 @@ export const GATE_CONDITION_REGISTRY: Readonly<Record<string, GateConditionRegis
     allowedSources: ['works.publish-approved', 'mentor_review', 'server_backfill'],
     producerId: 'works.document-structure-validator',
   },
+  practice_evidence_ready: {
+    gateId: 'practice_evidence_ready', phase: 'guided_practice', requiredEvidenceType: 'session_completion',
+    allowedSources: ['learning-plan.session-completion'], producerId: 'learning-plan.session-completion',
+  },
   rubric_artifact_validated: {
     gateId: 'rubric_artifact_validated',
     phase: 'guided_practice',
@@ -980,7 +984,7 @@ export const GATE_CONDITION_REGISTRY: Readonly<Record<string, GateConditionRegis
     gateId: 'review_completed_and_archived',
     phase: 'deliverable_review',
     requiredEvidenceType: 'growth_archive',
-    allowedSources: ['works.publish-approved', 'mentor_review', 'server_backfill'],
+    allowedSources: ['works.publish-approved', 'projects.learning-completed', 'mentor_review', 'server_backfill'],
     producerId: 'works.publish-approved',
   },
 });
@@ -1047,6 +1051,7 @@ export function derivePracticeGateFromDeliverable(
   if (evidenceProfile === 'runnable_code') return 'code_playable_run_verified';
   if (evidenceProfile === 'experiment_report') return 'experiment_report_validated';
   if (evidenceProfile === 'rubric_artifact') return 'rubric_artifact_validated';
+  if (evidenceProfile === 'learning_progress') return 'practice_evidence_ready';
   if (!deliverableType) return null;
   const normalized = deliverableType.trim().toLowerCase();
   if (normalized === 'runnable_python_game' || normalized === 'runnable_code') return 'code_playable_run_verified';

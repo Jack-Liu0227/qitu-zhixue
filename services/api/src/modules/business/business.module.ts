@@ -10,12 +10,17 @@ import { BusinessAutomation } from './business.automation';
 import { BusinessUsage } from './business.usage';
 import { BusinessAccess } from './business.access';
 import { WechatPayment } from './wechat-payment';
-import { FamilyInvitationService } from '../directory/family-invitation.service';
+import { AccountRegistrationService } from '../directory/account-registration.service';
+import { RegistrationSmsService } from '../directory/registration-sms.service';
+import { AliyunRegistrationSms } from '../directory/aliyun-registration-sms';
+import { CommerceService } from './commerce.service';
+import { CommerceAccess } from './commerce.access';
+import { CommerceController } from './commerce.controller';
 
 @Global()
 @Module({
   imports: [AuthModule, DirectoryModule],
-  controllers: [BusinessController],
+  controllers: [BusinessController, CommerceController],
   providers: [
     BusinessStore,
     BusinessService,
@@ -25,8 +30,12 @@ import { FamilyInvitationService } from '../directory/family-invitation.service'
     BusinessUsage,
     BusinessAccess,
     WechatPayment,
-    FamilyInvitationService,
+    AccountRegistrationService,
+    RegistrationSmsService,
+    AliyunRegistrationSms,
+    CommerceService,
+    CommerceAccess,
   ],
-  exports: [BusinessUsage, BusinessAccess],
+  exports: [BusinessUsage, BusinessAccess, BusinessStore, BusinessService, BusinessOrders, BusinessReporting, CommerceService, CommerceAccess],
 })
 export class BusinessModule {}

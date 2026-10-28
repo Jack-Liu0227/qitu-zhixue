@@ -4,7 +4,7 @@ import { BOARD_STEPS_SCHEMA } from '../../common/tutor-runtime/activity-tool-sch
 export const COURSEWARE_TOOL_INSTRUCTIONS = 'This lesson requires source-grounded courseware, including newly generated boards. First search and read an authorized source with knowledge_read or ima_read_document in this turn. Every board MUST include sourceRefs copied from the actual verified read evidence_ref and objectiveRefs selected from the schema enum. Never use plan-prefixed objective IDs. find_courseware accepts ONLY kind,use. reuse_courseware accepts ONLY kind,assetVersionId,sourceRefs. board accepts ONLY kind,title,steps,objectiveRefs,sourceRefs and optional origin,parentVersionId,use. Set use=remediate when the learner explicitly asks to revisit or re-explain an already delivered concept; other uses do not bypass ordinary delivery deduplication. OMIT summary,mode,parameters,nulls and unused fields. Each step has caption and either nodes with edges (use [] if no edges) or nonempty tex. Save one coherent board per turn, then wait for the learner. A newly generated board still requires verified sources; do not apply the source-free board rule from other courses. ';
 
 /** Narrows the model-facing proposal format; the frozen capability and owner validation stay unchanged. */
-export function coursewareToolSchema(objectiveIds: readonly string[], practiceMode: 'diffraction' | 'interference' | null = null): Record<string, unknown> {
+export function coursewareToolSchema(objectiveIds: readonly string[], practiceMode: 'diffraction' | 'interference' | null = null, allowQuestion = false): Record<string, unknown> {
   const properties = COURSEWARE_ACTIVITY_SCHEMA.properties;
   const variants = [
     { kind: 'find_courseware', required: ['use'], optional: [] },
@@ -15,7 +15,7 @@ export function coursewareToolSchema(objectiveIds: readonly string[], practiceMo
     { kind: 'optics', required: ['title', 'summary', 'mode', 'parameters'], optional: [] },
     { kind: 'choice_question', required: ['question'], optional: [] },
   ];
-  const available = variants.filter(variant => practiceMode ? variant.kind === 'optics' : ['find_courseware', 'reuse_courseware', 'board'].includes(variant.kind));
+  const available = variants.filter(variant => practiceMode ? variant.kind === 'optics' : ['find_courseware', 'reuse_courseware', 'board', ...(allowQuestion ? ['choice_question'] : [])].includes(variant.kind));
   const branches = available.map(variant => ({ type: 'object', additionalProperties: false,
     properties: Object.fromEntries(['kind', ...variant.required, ...variant.optional].map(name => {
       if (name === 'kind') return [name, { const: variant.kind }];

@@ -110,10 +110,4 @@ pnpm --filter @qitu/database seed
 - 数据库不可达、投影过期或外部服务不可用时，API 返回明确的 unavailable/stale 状态，前端不得伪造空数据或成功状态。
 - 迁移只向前执行；回滚通过受控环境中的 `.down.sql` 或数据库备份完成，不在 HTTP 初始化接口里执行 schema migration。
 
-## 7. 未决事项
-
-- [ ] 将 API 当前进程内 session store 接入持久化 `sessions` 轮换和跨实例撤销。
-- [ ] 完成学校隔离的 RLS / `SET LOCAL` 验证，并保留对象级权限的应用层校验。
-- [ ] 为 `knowledge_chunks.embedding` 选择并验证 pgvector 索引策略。
-- [ ] 完成 Tutor 旧适配层与领域真源的双写迁移计划，再删除兼容表。
-- [ ] 完善数据保留、删除和未成年人敏感访问审批流程。
+[相关计划与执行记录](../../Plan/maintenance/usage-records-20261028.md)。

@@ -10,6 +10,7 @@ export function safeRoleDestination(raw: string | null, role: Role): string {
   try {
     const target = new URL(raw, 'https://qitu.invalid');
     const prefix = `/${role}`;
+    if (target.origin === 'https://qitu.invalid' && (target.pathname === '/company' || target.pathname.startsWith('/company/'))) return `${target.pathname}${target.search}${target.hash}`;
     if (target.origin !== 'https://qitu.invalid' || (target.pathname !== prefix && !target.pathname.startsWith(`${prefix}/`))) return fallback;
     if (target.pathname === `${prefix}/login`) return fallback;
     return `${target.pathname}${target.search}${target.hash}`;

@@ -1,0 +1,4 @@
+# Include inside the existing server block. The URI must retain /company.
+location = /company { proxy_pass http://127.0.0.1:3105; include proxy_params; }
+location ^~ /company/ { proxy_pass http://127.0.0.1:3105; include proxy_params; }
+# Existing /api/ location continues to proxy to the shared API on port 4100.

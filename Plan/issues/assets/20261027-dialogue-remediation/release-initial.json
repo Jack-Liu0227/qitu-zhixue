@@ -1,0 +1,61 @@
+{
+  "sourceFiles": 11,
+  "runtimeArtifacts": [
+    "packages/ai-client/dist/context-packet.js",
+    "packages/ai-client/dist/context-packet.js.map",
+    "services/api/dist/modules/ai-tutor/tutor-learning-reply.service.js",
+    "services/api/dist/modules/ai-tutor/gateway-tutor.provider.js",
+    "services/api/dist/modules/ai-tutor/gateway-tutor.provider.d.ts",
+    "services/api/dist/modules/ai-tutor/tutor.provider.d.ts",
+    "services/api/dist/modules/ai-tutor/tutor.service.js",
+    "services/api/dist/modules/ai-tutor/tutor-tool-events.js"
+  ],
+  "verifiedBuildInputs": 1642,
+  "units": [
+    "qitu-api.service",
+    "qitu-student.service",
+    "qitu-workers.service",
+    "qitu-profile-growth.service"
+  ],
+  "releasedAt": "2026-10-27T13:55:07.321415+00:00",
+  "backup": "/var/backups/qitu-dialogue-fixes-20261027-215500",
+  "studentBuildId": "6U6_wh0rebCHy26JqcTfU",
+  "sourceHashes": {
+    "packages/ai-client/src/context-packet.ts": "e9a08b5dc1197e2df44b6944e7edbd2bb69f04c69ab7bf81901a87c6c30a067f",
+    "services/api/src/modules/ai-tutor/tutor-learning-reply.service.ts": "3d51b47d0fa5d01f8fa2e9cc91f853ae3aa799c8904c799100fb25e06ce460c6",
+    "services/api/src/modules/ai-tutor/gateway-tutor.provider.ts": "f78423a41cbeb0810e41778b3e4c14af44a70006ef8285ffa395838c1e77bb82",
+    "services/api/src/modules/ai-tutor/tutor.provider.ts": "43834ff6fcb4e7633ea54d5d41b654dd714f36d2dc1b686e0b17311f2b7821ea",
+    "services/api/src/modules/ai-tutor/tutor.service.ts": "8ff032f4038d5a2bab58932b024742ab67194771595ecab1e7c41bc43e581221",
+    "services/api/src/modules/ai-tutor/tutor-tool-events.ts": "2b48136454a11d8f1e8b9b337c401e6fd614d17b5f56c5b220c5df437af3ad78",
+    "apps/student-center/features/tutor/components/DialogueLessonPanel.tsx": "a05325b3839fff21588435a7cfb44ea975f553cf693cef56c61c95df12121720",
+    "services/api/src/modules/learning-plan/dialogue-course-fullflow.test.ts": "94f2a8c049125b3f0066441de711bd6e843c1334f564f7658d84b5a1a208b952",
+    "services/api/src/modules/ai-tutor/gateway-tutor.provider.test.ts": "0442fdb1bbde30ba683e7c29d174067fea63dcaba2519a67c7b22cdb40b8fbb7",
+    "services/api/src/modules/ai-tutor/tutor-tool-outcomes.test.ts": "0eee83ac4578fe5488619137eca206ac6d7e9f1cc361fd45715cf748aee436c4",
+    "tooling/verify-tutor-lessons.mjs": "06552ba299403badac88277867b8c69b9e70452d6f83e8f34c2e239e2739a5b3"
+  },
+  "runtimeHashes": {
+    "packages/ai-client/dist/context-packet.js": "11fcca8cae2ddb534ac66696f7d71f97c377e7eabc7a5480a8dea411d234a340",
+    "packages/ai-client/dist/context-packet.js.map": "ca7e1e536764f74e97161580ab83a441aeaec953bcec0073bd5145031b6375a8",
+    "services/api/dist/modules/ai-tutor/tutor-learning-reply.service.js": "58248fd2a87e098b5452eaac604cb62aa36e44c9ff6c179bc720369795dd1813",
+    "services/api/dist/modules/ai-tutor/gateway-tutor.provider.js": "e4b87d37019b5d970209c1aa88a78ce9d49d3c59cc92e95542d2872962cf6b6a",
+    "services/api/dist/modules/ai-tutor/gateway-tutor.provider.d.ts": "b03ed439341b1deccd2f0102e4ad2b25bd13c72c430dc3b2f11995e6e0804c7e",
+    "services/api/dist/modules/ai-tutor/tutor.provider.d.ts": "9e701280fe67c5bdf80dd2046d0c8b9ebcd195940dd1d462728e32870d855c35",
+    "services/api/dist/modules/ai-tutor/tutor.service.js": "49a34e3adf87cc14a94ed442c1fb970e78aa611bf70156c77cc653900285a062",
+    "services/api/dist/modules/ai-tutor/tutor-tool-events.js": "61ab402d491e7316dd4a84f443259a33e6abd0a0fb3ca70514f6b44021b10c99"
+  },
+  "readiness": {
+    "service": "qitu-zhixue-api",
+    "status": "ready",
+    "version": "0.1.0",
+    "checkedAt": "2026-10-27T13:55:07.301Z",
+    "dataMode": "live",
+    "dependencies": {
+      "database": {
+        "status": "ok"
+      },
+      "redis": {
+        "status": "ok"
+      }
+    }
+  }
+}

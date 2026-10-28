@@ -1,0 +1,71 @@
+{
+  "scope": "auth UI only",
+  "files": [
+    {
+      "path": "apps/auth-portal/app/login/AuthFrame.tsx",
+      "before": null,
+      "target": "bcd949fcdeca77c4b45ae14ec03aa0f32001bf31cb28b84e5fd57037c7a1bc42"
+    },
+    {
+      "path": "apps/auth-portal/app/login/auth.module.css",
+      "before": null,
+      "target": "69926e0b65763b97759dfdfd845a0abeb14684cfec9259b35360d32ce32d8018"
+    },
+    {
+      "path": "apps/auth-portal/app/login/RegistrationPassword.tsx",
+      "before": null,
+      "target": "140167c3a64577656b87098771f2a22abfd3fdcae3ccde1c6f52427da9db4106"
+    },
+    {
+      "path": "apps/auth-portal/app/login/page.tsx",
+      "before": "f5c7f5dc2562b1fad36127ae91d6c92bced78ac17dca4749a225bb2ed1ee4d7b",
+      "target": "6ecfa2721e361b480b420441cbaaa33be18a5390d0b532b55ab95464ea96aade"
+    },
+    {
+      "path": "apps/auth-portal/app/login/AccountRegistration.tsx",
+      "before": "1e21c69e52f7e53c998e6ea19fbc125ca80c967eccd8beab9df1206006feebe2",
+      "target": "3ee7be5597ada961d3ef0b7315a5ec30fb923d13d819548c217a6c4666ca88b8"
+    },
+    {
+      "path": "apps/auth-portal/app/login/RegistrationPhoneFields.tsx",
+      "before": "06480f1eda9060b12c8c3b7c2928ec29f21dd0612bec794d74954aaa4ca3c358",
+      "target": "aa6627c20d88b8c23b644606a75e6eb2089e2109dcfd694b875bed3a5973d34a"
+    },
+    {
+      "path": "apps/auth-portal/app/login/registration.module.css",
+      "before": "e7383c996fefffe1b184d88e54ad0792b4bea69eb866f46f857b4c7df95ed769",
+      "target": "4dbe0504579c5ed5a331e1d746af391f68f5061ddb57d6a8ef13f2428683d743"
+    },
+    {
+      "path": "apps/auth-portal/app/login/layout.tsx",
+      "before": "623dfc2f0b3b039dbcf525db6c60b8916dc5a70eac70f093d758d51d84130b34",
+      "target": "9ec714bdd52d581016705fea30f6342a7890a50175def721e1b637ff76c0a77c"
+    },
+    {
+      "path": "Plan/issues/20261027-auth-ui.md",
+      "before": null,
+      "target": "7435b1cff03ea04a231b9899c4e05d22a642313f250b0db4f8b7b202ce11c43e"
+    }
+  ],
+  "preparedAt": "2026-10-26T18:05:08.066Z",
+  "head": "b5de9023f90aa3efa0ceaec25ba67714e05e54dd",
+  "backup": "/var/backups/qitu-auth-ui-20261027",
+  "oldBuild": "qMFgEGser2O6uVWSLFnMm",
+  "steps": [
+    {
+      "name": "auth-typecheck",
+      "exitCode": 0
+    },
+    {
+      "name": "auth-build",
+      "exitCode": 0
+    },
+    {
+      "name": "frontend-assets",
+      "exitCode": 0
+    }
+  ],
+  "status": "deployed",
+  "deployedAt": "2026-10-26T18:07:12.838714+00:00",
+  "newBuild": "NP4yf0mlLFeoJFHHFhteK"
+}

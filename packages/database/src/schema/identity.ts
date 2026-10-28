@@ -1,10 +1,10 @@
-import { pgTable, text, timestamp, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, index, uniqueIndex, check } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { schools } from './tenancy';
 
 /**
  * Users table: the single identity source for all roles.
- * Product constraint: email must be unique (case-insensitive).
+ * Nonempty email and verified phone are unique login identifiers.
  * We use a unique index on lower(email) instead of citext to avoid extension dependencies.
  *
  * `school_id` is the tenancy anchor for the shared single-school model: nullable today
@@ -16,6 +16,8 @@ export const users = pgTable(
   {
     id: text('id').primaryKey(),
     email: text('email').notNull(),
+    phone: text('phone'),
+    phoneVerifiedAt: timestamp('phone_verified_at', { withTimezone: true }),
     displayName: text('display_name').notNull(),
     role: text('role').notNull(), // 'student' | 'parent' | 'teacher' | 'admin'
     passwordHash: text('password_hash').notNull(),
@@ -25,7 +27,10 @@ export const users = pgTable(
     disabledAt: timestamp('disabled_at', { withTimezone: true }),
   },
   (table) => ({
-    emailLowerIdx: uniqueIndex('users_email_lower_idx').on(sql`lower(${table.email})`),
+    emailLowerIdx: uniqueIndex('users_email_lower_idx').on(sql`lower(${table.email})`).where(sql`${table.email} <> ''`),
+    phoneIdx: uniqueIndex('users_phone_unique_idx').on(table.phone),
+    loginPresent: check('users_login_present', sql`${table.email} <> '' OR (${table.phone} IS NOT NULL AND ${table.phoneVerifiedAt} IS NOT NULL)`),
+    phoneFormat: check('users_phone_format', sql`${table.phone} IS NULL OR ${table.phone} ~ '^\\+861[3-9][0-9]{9}$'`),
     schoolIdx: index('users_school_idx').on(table.schoolId),
   }),
 );

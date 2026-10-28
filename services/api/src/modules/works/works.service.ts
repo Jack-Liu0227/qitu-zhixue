@@ -392,7 +392,7 @@ export class WorksService {
         const practiceGate = await this.automaticReview.practiceGate(current, latest);
         if (practiceGate) await this.teamRuntime.recordGateForStudent({ studentUserId: studentId, projectId: current.projectId,
           gate: practiceGate, evidenceRef: `artifact_version:${latest.id}`, source: 'works.publish-approved' });
-        await this.recordReviewCompletedGate(studentId, artifactId, current.projectId);
+        if (!await this.automaticReview.isDialogueArtifact?.(current, latest)) await this.recordReviewCompletedGate(studentId, artifactId, current.projectId);
       }
       return result.body;
     } catch (error) {

@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { test } from 'node:test';
 import { AuthService, verifyScryptPassword, type SessionRecord } from './auth.service';
 import { AuthSessionPersistence } from './auth-session.persistence';
-import { hashFamilyPassword } from '../directory/family-invitation.service';
+import { hashAccountPassword } from '../directory/account-password';
 
 class FixtureSessions extends AuthSessionPersistence {
   rows = new Map<string, SessionRecord>();
@@ -52,10 +52,10 @@ test('session survives an API restart and logout revokes its durable digest', as
   assert.throws(() => next.getSession(login.token));
 });
 
-test('new family passwords use independent salted scrypt records', () => {
+test('new family passwords use independent salted scrypt records', async () => {
   const password = 'fixture-long-password';
-  const first = hashFamilyPassword(password);
-  const second = hashFamilyPassword(password);
+  const first = await hashAccountPassword(password);
+  const second = await hashAccountPassword(password);
   assert.notEqual(first, second);
   assert.equal(verifyScryptPassword(password, first), true);
   assert.equal(verifyScryptPassword('wrong-password', first), false);

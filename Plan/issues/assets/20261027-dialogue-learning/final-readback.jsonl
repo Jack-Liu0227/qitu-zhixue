@@ -1,0 +1,5 @@
+BEGIN
+{"templateId" : "tpl-f950fdce-fbfb-44b1-b140-c85f66aae25b", "slug" : "wave-interference-diffraction-8s-dialogue", "templateStatus" : "piloting", "versionId" : "tplv-55d940f7-24f8-4740-b5ff-258259b3d3bf", "versionStatus" : "piloting", "bindingId" : "bnd-07b0f905b332691d", "bindingStatus" : "active", "bundleDigest" : "aa66d9e729db1b3fb7a433ef721b14ea2b071cd513103171bad13b30221e6c7e", "policy" : "lesson-dialogue.v1", "profile" : "wave-optics-8x60-dialogue-v1", "approvalPolicy" : "5c0871ec3fdc", "sessionCount" : 8}
+{"sourceBindingId" : "bnd-8e056bfef49a4728", "sourceStatus" : "active", "sourcePolicy" : "lesson-guided.v1"}
+{"projectCount" : 31, "dialogueProjects" : 0}
+COMMIT

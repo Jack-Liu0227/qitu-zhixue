@@ -2,24 +2,28 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  Optional,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { and, eq, gt, inArray, isNotNull } from 'drizzle-orm';
 import { businessOffers, businessOrders, guardianLinks, type Database } from '@qitu/database';
 import { DATABASE_TOKEN } from '../../database';
 import type { BusinessTransaction } from './business.store';
+import { CommerceAccess } from './commerce.access';
 
 @Injectable()
 export class BusinessAccess {
-  constructor(@Inject(DATABASE_TOKEN) private readonly db: Database | null) {}
+  constructor(@Inject(DATABASE_TOKEN) private readonly db: Database | null, @Optional() private readonly commerce?: CommerceAccess) {}
 
   async assertCanStart(
     studentId: string,
     versionId: string | null,
     tx?: BusinessTransaction,
+    projectId?: string,
   ): Promise<void> {
     const executor = tx ?? this.db;
     if (!versionId) return;
+    if (await this.commerce?.start(studentId, versionId, projectId, tx)) return;
     if (!executor)
       throw new ServiceUnavailableException({
         code: 'BUSINESS_UNAVAILABLE',

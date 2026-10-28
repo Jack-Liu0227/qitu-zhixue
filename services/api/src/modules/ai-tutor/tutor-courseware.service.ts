@@ -66,7 +66,7 @@ export class TutorCoursewareService {
     const pending = await this.plans.findAwaitingQuestion(actor.id, teaching.planId);
     if (pending) blockedReason = '当前有一道待答题。可以回看课件帮助理解，作答后再继续下一学习活动。';
     const activity = teaching.lesson.currentActivity;
-    const canPrepare = !pending && ['review', 'theory'].includes(activity?.kind ?? '');
+    const canPrepare = !pending && !!activity && (teaching.lesson.progression === 'dialogue.v1' || ['review', 'theory'].includes(activity.kind));
     const validCurrent = visible.some(instance => instance.activityId === activity?.activityId);
     const hadCurrent = instances.some(instance => instance.activityId === activity?.activityId);
     return { enabled: true, planId: teaching.planId, planRevision: teaching.planRevision, learningSessionId: teaching.session.id,
@@ -88,7 +88,7 @@ export class TutorCoursewareService {
       || row.value.planRevision !== scope.planRevision || row.value.learningSessionId !== scope.learningSessionId) this.changed();
     if (input.continueLearning && await this.plans.findAwaitingQuestion(actor.id, scope.planId)) this.changed('请先完成当前待答题。');
     if (input.continueLearning && (row.value.activityId !== teaching.lesson.currentActivity?.activityId
-      || !['review', 'theory'].includes(teaching.lesson.currentActivity?.kind ?? '')
+      || teaching.lesson.progression !== 'dialogue.v1' && !['review', 'theory'].includes(teaching.lesson.currentActivity?.kind ?? '')
       || input.position !== row.value.content.steps.length - 1)) this.changed('请先看完当前活动的课件。');
     if (!await this.verify(actor, context, row.value)) this.changed('课件来源已变化，请重新读取本课资料。');
     // Serialize the delivery receipt with session changes; network reads happen before taking this lock.

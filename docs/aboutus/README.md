@@ -65,4 +65,4 @@
 
 ## 历史参赛稿
 
-两份不同版本的参赛介绍按原字节保存在 [2026-10-26 历史资料](../archive/repository-cleanup-20261026/README.md)，不作为当前产品合同。
+两份不同版本的参赛介绍按原字节保存在 [2026-10-26 历史资料](../../Plan/archive/repository-cleanup-20261026/README.md)，不作为当前产品合同。

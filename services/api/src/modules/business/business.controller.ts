@@ -6,6 +6,7 @@ import {
   Header,
   Headers,
   HttpCode,
+  Ip,
   Param,
   Patch,
   Post,
@@ -20,7 +21,8 @@ import { BusinessOrders } from './business.orders';
 import { BusinessReporting } from './business.reporting';
 import { BusinessAutomation } from './business.automation';
 import { WechatPayment } from './wechat-payment';
-import { FamilyInvitationService } from '../directory/family-invitation.service';
+import { AccountRegistrationService } from '../directory/account-registration.service';
+import { registrationClientKey } from '../directory/account-registration.validation';
 import {
   objectInput,
   parseBusinessSettings,
@@ -39,29 +41,33 @@ export class BusinessController {
     private readonly reports: BusinessReporting,
     private readonly automation: BusinessAutomation,
     private readonly payment: WechatPayment,
-    private readonly invitations: FamilyInvitationService,
+    private readonly registration: AccountRegistrationService,
   ) {}
 
-  @Post('admin/business/invitations')
-  async invite(
-    @Headers('cookie') cookie: string | undefined,
+  @Post('public/account-registration')
+  @Header('Cache-Control', 'no-store')
+  async registerAccount(
     @Headers('idempotency-key') key: string,
+    @Headers('x-forwarded-for') forwardedFor: string | undefined,
+    @Ip() ip: string,
     @Body() body: unknown,
   ) {
-    return { data: await this.invitations.create(this.admin(cookie), key, body) };
+    return {
+      data: await this.registration.register(key, body, registrationClientKey(ip, forwardedFor)),
+    };
   }
 
-  @Post('public/family-invitations/inspect')
+  @Get('public/account-registration')
   @Header('Cache-Control', 'no-store')
-  async inspectInvitation(@Body() body: unknown) {
-    const v = objectInput(body, ['token']);
-    return { data: await this.invitations.inspect(textInput(v.token, '邀请', 200)) };
+  async registrationPolicy() {
+    return { data: await this.registration.policy() };
   }
 
-  @Post('public/family-invitations/accept')
+  @Post('public/account-registration/sms')
   @Header('Cache-Control', 'no-store')
-  async acceptInvitation(@Body() body: unknown) {
-    return { data: await this.invitations.accept(body) };
+  async registrationSms(@Headers('idempotency-key') key: string,
+    @Headers('x-forwarded-for') forwardedFor: string | undefined, @Ip() ip: string, @Body() body: unknown) {
+    return { data: await this.registration.sendCode(key, body, registrationClientKey(ip, forwardedFor)) };
   }
 
   @Get('public/project-offers')

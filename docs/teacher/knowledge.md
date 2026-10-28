@@ -26,12 +26,7 @@ POST /api/v1/knowledge/documents/:id/verify   验证（平台治理）
 - 若未来 Teacher 有只读知识视图，仍必须逐对象授权，且不能编辑 / 发布 / 验证。
 - 平台知识库、模板库、数据库迁移、模型凭证、AI runtime 治理**始终归 Admin**。
 
-## 3. 未决事项
-
-- [ ] 是否为学生端 / 班主任端提供知识库浏览（需先改产品文档）。
-- [ ] 知识文档的验证工作流与发布权限。
-- [ ] pgvector 维度 / 索引（HNSW / IVFFlat）与中文召回验证。
-- [ ] `KnowledgePoint`（canonical 知识点）与知识文档的映射（见 growth §3）。
+[相关计划与执行记录](../../Plan/maintenance/usage-records-20261028.md)。
 
 ## 4. 相关文档
 

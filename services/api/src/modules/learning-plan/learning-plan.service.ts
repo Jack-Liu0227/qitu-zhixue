@@ -1,6 +1,9 @@
 import { CoursewareStore } from '../knowledge/courseware.store';
+import { LessonQualityEvaluator } from '../works/lesson-quality-evaluator';
+import { reviewDialogueAnswer } from './dialogue-answer-review';
 import { BusinessAccess } from '../business/business.access';
 import { WAVE_TEACHING_TEMPLATE_SLUG } from '../templates/content/wave-teaching';
+import { WAVE_DIALOGUE_TEMPLATE_SLUG } from '../templates/content/wave-dialogue';
 import { createHash } from 'node:crypto';
 import {
   BadRequestException,
@@ -161,6 +164,7 @@ export class LearningPlanService {
     @Optional() private readonly learningEvidence?: WorksLearningEvidenceService,
     @Optional() private readonly courseware?: CoursewareStore,
     @Optional() private readonly businessAccess?: BusinessAccess,
+    @Optional() private readonly dialogueEvaluator?: LessonQualityEvaluator,
   ) {
     this.masteryDomain = mastery ?? new MasteryDomainService(store, new MasteryReadService(store, access), access, audit, outbox);
   }
@@ -201,7 +205,7 @@ export class LearningPlanService {
     let generated: GeneratedPlan;
     let teachingTemplate: ProjectTemplateSpec | undefined;
     if (input.curriculumSlug !== undefined) {
-      if (![OPTICS_16_TEMPLATE_SLUG, OPTICS_16_COMPLETION_TEMPLATE_SLUG, OPTICS_16_QUALITY_TEMPLATE_SLUG, OPTICS_GUIDED_TEMPLATE_SLUG, WAVE_OPTICS_TEMPLATE_SLUG, WAVE_TEACHING_TEMPLATE_SLUG].includes(input.curriculumSlug)) {
+      if (![OPTICS_16_TEMPLATE_SLUG, OPTICS_16_COMPLETION_TEMPLATE_SLUG, OPTICS_16_QUALITY_TEMPLATE_SLUG, OPTICS_GUIDED_TEMPLATE_SLUG, WAVE_OPTICS_TEMPLATE_SLUG, WAVE_TEACHING_TEMPLATE_SLUG, WAVE_DIALOGUE_TEMPLATE_SLUG].includes(input.curriculumSlug)) {
         throw new BadRequestException({
           code: 'CURRICULUM_TEMPLATE_UNAVAILABLE',
           message: `课程 ${input.curriculumSlug} 尚未通过模板授权。`,
@@ -344,7 +348,7 @@ export class LearningPlanService {
             // warning-only omission leaves Tutor without a governed team,
             // template, and MCP scope, so fail closed before returning success.
             commit: async (projectId, tx) => {
-              await this.businessAccess?.assertCanStart(actor.id, bundle.plan.templateVersion, tx);
+              await this.businessAccess?.assertCanStart(actor.id, bundle.plan.templateVersion, tx, projectId);
               if (!this.templateBindings) {
                 throw new ConflictException({
                   code: 'CURRICULUM_BINDING_UNAVAILABLE',
@@ -709,7 +713,12 @@ export class LearningPlanService {
             return scoped.submitFormativeAnswer(actor, fresh, freshSession, freshStates, pending, objective, body.answer as string, idempotencyKey);
           }
           const card = scoped.pendingToCard(pending);
-          const grade = gradeAnswer(card, body.answer as string, 'awaiting');
+          const reviewed = await reviewDialogueAnswer({ bundle: fresh, pending, answer: body.answer as string,
+            grade: gradeAnswer(card, body.answer as string, 'awaiting'), bindings: scoped.templateBindings, evaluator: scoped.dialogueEvaluator });
+          const grade = reviewed.grade;
+          if (reviewed.semanticReview) await scoped.audit.write({ actorId: actor.id, actorRole: actor.role,
+            action: 'learning.answer.semantic-candidate', targetType: 'pending_question', targetId: pending.id,
+            idempotencyKey: `dialogue-answer:${pending.id}:${idempotencyKey}`, detail: reviewed.semanticReview });
           const attempt = scoped.buildAttempt({
             studentId: fresh.plan.studentUserId,
             planId,
@@ -976,6 +985,8 @@ export class LearningPlanService {
         this.templateBindings,
         this.learningEvidence,
         this.courseware,
+        this.businessAccess,
+        this.dialogueEvaluator,
       );
       return work(scoped);
     });

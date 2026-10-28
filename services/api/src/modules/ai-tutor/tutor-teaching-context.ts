@@ -82,6 +82,7 @@ export async function resolveTutorTeachingContext(
   if (!role || !role.modelByPurpose.dialogue || !teaching.teamVersion.members.some((member) =>
     member.memberId === role.memberId && member.assistantId === role.assistantId)) unavailable('PROJECT_TEACHING_ROUTE_INVALID');
   const lesson = {
+    ...(selected.frozen.progression ? { progression: selected.frozen.progression, pendingQuestionId: awaiting?.id ?? null } : {}),
     opening: selected.frozen.opening,
     learningGoal: selected.frozen.learningGoal,
     assessmentAvailable: selected.session.theoryObjectiveIds.length > 0 && selected.session.practiceObjectiveIds.length === 0,

@@ -1,0 +1,236 @@
+{
+  "outcome": "fixed-and-published",
+  "runtimePromptVersion": "tutor.chat.v9-inline-delivery",
+  "apiRegression": {
+    "tests": 345,
+    "pass": 345,
+    "fail": 0
+  },
+  "liveCourse": {
+    "at": "2026-10-27T14:18:50.136Z",
+    "projectId": "proj-d412f071-5812-4e58-a77e-0469a792b341",
+    "templateVersionId": "tplv-55d940f7-24f8-4740-b5ff-258259b3d3bf",
+    "stage": "completed",
+    "completedCount": 8,
+    "totalCount": 8,
+    "lessonCount": 8,
+    "acceptedObservationCount": 6,
+    "allLessonsCompleted": true,
+    "finalArtifact": {
+      "id": "art-02c704cf-35a1-4729-a8e2-067cfe07af52",
+      "status": "published",
+      "versionId": "artv-6135100a-2e7a-4232-a069-e555960bcedd",
+      "approvedVersionId": "artv-6135100a-2e7a-4232-a069-e555960bcedd",
+      "exactContentMatched": true,
+      "contentSha256": "089ce9bdc7f254bcb5936116572eb2b8aaa54f5d8c33fe8b688ef1a102677aba"
+    },
+    "manualLessonCompletionRequests": 0,
+    "fileUploadRequests": 0,
+    "teacherMutationRequests": 0,
+    "planStatus": "completed"
+  },
+  "liveCourseRuntime": "tutor.chat.v8-consumed-replies",
+  "finalNarrationGuard": {
+    "at": "2026-10-27T14:27:54.835Z",
+    "productionModuleSha256": "40c94a9309bfa6e40527fc94d33dc5c57bc177c1d43b1b238000dd0568074c6e",
+    "projectId": "proj-d412f071-5812-4e58-a77e-0469a792b341",
+    "source": "saved synthetic final-lesson owner context and actual model narration",
+    "normalized": "根据已保存的观察和评价反馈整理“成果正文”，然后点击“确认最终交付”。AI建议只供帮助，提交无需先取得AI同意。是否达标由服务端评价这个作品版本；需要修订时再按反馈修改。",
+    "legacyUnchanged": true,
+    "writesPerformed": false
+  },
+  "afterFinalRelease": {
+    "at": "2026-10-27T14:30:12.008Z",
+    "stage": "completed",
+    "completed": 8
+  },
+  "fixedChecks": {
+    "plainOptions": 3,
+    "toolFailures": [],
+    "handoffNarration": "好，先回答你的问题：**最终交付的入口就在这个对话区**，不用导出文件，也不用去别处上传。\n\n**这一步在做什么**\n前面几课你已经攒下了过程草稿：参数、模拟观察、修订后的解释。现在要做的是把它们整理成一份“别人能照着复核”的档案，然后在当前行内的**“成果正文”**里整理好，再点**“确认最终交付”**。在点确认之前，这些都还只是过程草稿。\n\n**档案要能被复核，靠的是这条链**（板书已生成，可回看）：\n参数 → 观察 → 主张 → 推理 → 边界\n\n对照你已有的数据，正好是两组“只改一个量”的对照：\n- 双缝：d 从 150 改到 300 μm，细纹间距 7.33 → 3.67 mm（减半）\n- 单缝：a 从 20 改到 10 μm，中央亮带 110.04 → 220.33 mm（加倍）\n\n**教材依据**：《双基限时练17·光的衍射》第 1、2、5 题（PDF 第 1–3 页）指出，衍射条纹是波叠加的结果，缝宽越小衍射越明显；第 2 题还说明，挡住一条缝后看到的是衍射条纹，不是原来的干涉条纹。这正好支持你“两者都靠叠加、但结构不同”的修订。\n\n**下一步（一个小动作）**\n在“成果正文”里按上面五段各写一两句，其中“边界”那句要写明：这是模拟计算值，不是真实测量。写完先别急着点确认，把正文发给我看一眼，我帮你检查有没有缺环。",
+    "exactFinalLabel": true,
+    "recoveredToolFailures": [],
+    "unrecoveredToolFailures": [],
+    "pendingHelpStream": {
+      "at": "2026-10-27T14:12:42.082Z",
+      "status": 200,
+      "events": [
+        {
+          "type": "tool_call",
+          "name": "agent.runtime.run"
+        },
+        {
+          "type": "tool_result",
+          "name": "agent.runtime.run",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "model.gateway.complete"
+        },
+        {
+          "type": "tool_call",
+          "name": "ima.tools.list"
+        },
+        {
+          "type": "tool_result",
+          "name": "ima.tools.list",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "knowledge_search"
+        },
+        {
+          "type": "tool_result",
+          "name": "knowledge_search",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "knowledge_search"
+        },
+        {
+          "type": "tool_result",
+          "name": "knowledge_search",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "knowledge_read"
+        },
+        {
+          "type": "tool_result",
+          "name": "knowledge_read",
+          "status": "done"
+        },
+        {
+          "type": "tool_result",
+          "name": "model.gateway.complete",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "safety.answer_leak.guard"
+        },
+        {
+          "type": "tool_result",
+          "name": "safety.answer_leak.guard",
+          "status": "done"
+        }
+      ],
+      "blocks": [
+        {
+          "kind": "hint"
+        }
+      ],
+      "modelGateway": true
+    }
+  },
+  "pendingEvaluationRecovery": [
+    {
+      "lesson": 7,
+      "case": "pending-evaluation-recovery",
+      "ref": "task_submission:learning-18630a150d68bd3becf45d05e0755e418232910de25d18c8e74b5be1c089ccb6",
+      "at": "2026-10-27T14:17:23.841Z",
+      "evidence": {
+        "submissions": [
+          {
+            "activityId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-7:activity:check",
+            "kind": "session_response",
+            "ref": "task_submission:learning-18630a150d68bd3becf45d05e0755e418232910de25d18c8e74b5be1c089ccb6",
+            "scope": {
+              "projectId": "proj-d412f071-5812-4e58-a77e-0469a792b341",
+              "planId": "plan-45a05829-505c-47f4-bf62-904ca80d2616",
+              "planRevision": 1,
+              "learningSessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-7",
+              "objectiveIds": [
+                "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-evidence-compare"
+              ]
+            },
+            "objectiveId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-evidence-compare",
+            "sourceKind": "task_submission",
+            "artifactId": "art-bc2e7622-49ee-4975-a913-90125e60cc4e",
+            "artifactVersionId": "artv-6302d890-38c3-433c-a921-90892835f4a0",
+            "quality": {
+              "status": "accepted",
+              "subjectDigest": "2eea075e03285e53809a08343357b81d2f5fd04c2db5824d70503accd267cde1",
+              "feedback": [
+                {
+                  "criterionId": "wave-dialogue-7-extension",
+                  "meets": false,
+                  "feedback": "本次回应没有尝试另一种表示（如公式、示意或伪代码）或提出后续探究问题。可选改进：补充用 d sinθ=mλ 和 a sinθ=λ 说明两套条纹间距来源，或提出一个（如改变波长时两类图样如何同步变化）的后续探究问题。"
+                },
+                {
+                  "criterionId": "wave-dialogue-7-necessary",
+                  "meets": true,
+                  "feedback": "结合已保存的双缝与单缝模拟观察，说明了两者的共同基础（波的叠加）和结构差异（d控制细纹、a控制包络），并用具体参数变化支持；同时明确限定了单色相干、远场模型和所保存参数等适用边界，并声明不是真实测量、不能比较绝对亮度，符合要求。"
+                }
+              ]
+            }
+          }
+        ],
+        "observations": [],
+        "approvedArtifacts": [],
+        "reflections": [],
+        "scope": {
+          "projectId": "proj-d412f071-5812-4e58-a77e-0469a792b341",
+          "planId": "plan-45a05829-505c-47f4-bf62-904ca80d2616",
+          "planRevision": 1,
+          "learningSessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-7",
+          "objectiveIds": [
+            "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-evidence-compare"
+          ]
+        },
+        "sessionType": "practice",
+        "allowedActions": [
+          "respond",
+          "submit_artifact"
+        ],
+        "qualityCriteria": [
+          {
+            "id": "wave-dialogue-7-necessary",
+            "required": true,
+            "description": "结合已保存的单缝和双缝观察，解释一个共同点或差异，并说明模型的适用边界。"
+          },
+          {
+            "id": "wave-dialogue-7-extension",
+            "required": false,
+            "description": "尝试另一种表示或提出一个后续探究问题；此项仅作提升建议。"
+          }
+        ]
+      },
+      "after": {
+        "stage": "artifact_review",
+        "lesson": 8,
+        "title": "别人能复核我的探究吗？",
+        "completed": 7,
+        "activity": {
+          "activityId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-8:activity:check",
+          "kind": "check",
+          "evidence": "submitted_artifact",
+          "status": "current",
+          "guidance": "参考已保存的过程草稿与观察，在对话区整理最终档案并确认交付；站内正文无需导出再上传。",
+          "minutes": 15,
+          "evidenceRefs": []
+        },
+        "pendingQuestionId": null,
+        "evidence": {
+          "submissions": [],
+          "observations": [],
+          "reflections": [],
+          "approved": []
+        }
+      }
+    }
+  ],
+  "visualBoards": 5,
+  "visualSteps": 22,
+  "pageErrors": [],
+  "mobile": {
+    "width": 390,
+    "documentWidth": 390,
+    "viewport": 390
+  },
+  "scope": "Fresh synthetic account engineering test; complete flow plus targeted final-output replay. Original learner records and standards were not rewritten."
+}

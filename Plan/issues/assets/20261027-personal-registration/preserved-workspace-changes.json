@@ -1,0 +1,269 @@
+{
+  "note": "Concurrent and prior changes observed, excluded from this deployment. Remote source hash preservation verified by deploy script; these local feature behaviors are outside this release acceptance.",
+  "files": [
+    {
+      "status": " M",
+      "path": "apps/admin-console/app/(console)/settings/teams/components/MemberEditor.tsx"
+    },
+    {
+      "status": " M",
+      "path": "apps/admin-console/lib/components/teaching-binding/LessonDraftEditor.tsx"
+    },
+    {
+      "status": " M",
+      "path": "apps/student-center/features/tutor/components/LessonAssessmentCard.tsx"
+    },
+    {
+      "status": " M",
+      "path": "apps/student-center/features/tutor/components/LessonLearningDock.tsx"
+    },
+    {
+      "status": " M",
+      "path": "apps/student-center/features/tutor/data/tutorApiDataSource.ts"
+    },
+    {
+      "status": " M",
+      "path": "apps/student-center/features/tutor/data/tutorStream.ts"
+    },
+    {
+      "status": " M",
+      "path": "apps/student-center/features/tutor/hooks/useTutorSession.ts"
+    },
+    {
+      "status": " M",
+      "path": "Plan/issues/20261026-one-person-operations.md"
+    },
+    {
+      "status": " M",
+      "path": "Plan/codex/README.md"
+    },
+    {
+      "status": " M",
+      "path": "Plan/codex/one-person-operations-20261026.md"
+    },
+    {
+      "status": " M",
+      "path": "Plan/codex/pbl-continuous-learning-final-delivery-20261026.md"
+    },
+    {
+      "status": " M",
+      "path": "docs/student/tutor.md"
+    },
+    {
+      "status": " M",
+      "path": "packages/ai-client/src/context-packet.ts"
+    },
+    {
+      "status": " M",
+      "path": "packages/ai-client/src/pbl-team.ts"
+    },
+    {
+      "status": " M",
+      "path": "packages/ai-client/src/quiz-bank/index.ts"
+    },
+    {
+      "status": " M",
+      "path": "packages/ai-client/src/quiz-bank/optics-quiz-bank.test.ts"
+    },
+    {
+      "status": " M",
+      "path": "packages/contracts/src/courseware.validation.ts"
+    },
+    {
+      "status": " M",
+      "path": "packages/contracts/src/pbl-learning.ts"
+    },
+    {
+      "status": " M",
+      "path": "packages/contracts/src/team-runtime.ts"
+    },
+    {
+      "status": " M",
+      "path": "packages/contracts/src/tutor-learning.ts"
+    },
+    {
+      "status": " M",
+      "path": "packages/contracts/src/tutor-lesson-program.ts"
+    },
+    {
+      "status": " M",
+      "path": "packages/contracts/src/tutor.ts"
+    },
+    {
+      "status": " M",
+      "path": "services/api/src/modules/ai-tutor/courseware-tool-schema.ts"
+    },
+    {
+      "status": " M",
+      "path": "services/api/src/modules/ai-tutor/tutor-courseware.service.ts"
+    },
+    {
+      "status": " M",
+      "path": "services/api/src/modules/ai-tutor/tutor-experiment.service.ts"
+    },
+    {
+      "status": " M",
+      "path": "services/api/src/modules/ai-tutor/tutor-frozen-runtime.ts"
+    },
+    {
+      "status": " M",
+      "path": "services/api/src/modules/ai-tutor/tutor-lesson-activity.ts"
+    },
+    {
+      "status": " M",
+      "path": "services/api/src/modules/ai-tutor/tutor-lesson-program.ts"
+    },
+    {
+      "status": " M",
+      "path": "services/api/src/modules/ai-tutor/tutor-teaching-context.ts"
+    },
+    {
+      "status": " M",
+      "path": "services/api/src/modules/ai-tutor/tutor.controller.ts"
+    },
+    {
+      "status": " M",
+      "path": "services/api/src/modules/ai-tutor/tutor.module.ts"
+    },
+    {
+      "status": " M",
+      "path": "services/api/src/modules/ai-tutor/tutor.service.ts"
+    },
+    {
+      "status": " M",
+      "path": "services/api/src/modules/knowledge/knowledge-center.service.ts"
+    },
+    {
+      "status": " M",
+      "path": "services/api/src/modules/knowledge/knowledge-tool-catalog.service.ts"
+    },
+    {
+      "status": " M",
+      "path": "services/api/src/modules/learning-plan/learning-plan.service.ts"
+    },
+    {
+      "status": " M",
+      "path": "services/api/src/modules/learning-plan/learning-session-progress.service.ts"
+    },
+    {
+      "status": " M",
+      "path": "services/api/src/modules/learning-plan/lesson-activity-progress.ts"
+    },
+    {
+      "status": " M",
+      "path": "services/api/src/modules/learning-plan/optics-fullflow.test-fixture.ts"
+    },
+    {
+      "status": " M",
+      "path": "services/api/src/modules/platform-registry/legacy-mcp-catalog.ts"
+    },
+    {
+      "status": " M",
+      "path": "services/api/src/modules/platform-registry/platform-registry.service.ts"
+    },
+    {
+      "status": " M",
+      "path": "services/api/src/modules/projects/project-learning-lifecycle.service.ts"
+    },
+    {
+      "status": " M",
+      "path": "services/api/src/modules/team-runtime/team-runtime.gate.test.ts"
+    },
+    {
+      "status": " M",
+      "path": "services/api/src/modules/templates/teaching-bundle.catalog.ts"
+    },
+    {
+      "status": " M",
+      "path": "services/api/src/modules/templates/teaching-bundle.compiler.ts"
+    },
+    {
+      "status": " M",
+      "path": "services/api/src/modules/templates/teaching-bundle.draft.ts"
+    },
+    {
+      "status": " M",
+      "path": "services/api/src/modules/works/lesson-quality-evaluator.ts"
+    },
+    {
+      "status": " M",
+      "path": "services/api/src/modules/works/works-learning-evidence.service.ts"
+    },
+    {
+      "status": " M",
+      "path": "services/api/src/modules/works/works-lesson-quality.ts"
+    },
+    {
+      "status": " M",
+      "path": "services/api/src/modules/works/works-publication-review.ts"
+    },
+    {
+      "status": " M",
+      "path": "services/api/src/modules/works/works.module.ts"
+    },
+    {
+      "status": " M",
+      "path": "services/api/src/modules/works/works.service.ts"
+    },
+    {
+      "status": " M",
+      "path": "services/api/src/scripts/optics-template-bootstrap.ts"
+    },
+    {
+      "status": " M",
+      "path": "tooling/test-tutor-live-boundary.mjs"
+    },
+    {
+      "status": " M",
+      "path": "tooling/verify-tutor-lessons.mjs"
+    },
+    {
+      "status": "??",
+      "path": "apps/student-center/features/tutor/components/DialogueLessonPanel.module.css"
+    },
+    {
+      "status": "??",
+      "path": "apps/student-center/features/tutor/components/DialogueLessonPanel.tsx"
+    },
+    {
+      "status": "??",
+      "path": "Plan/releases/release-one-person-operations-20261026.md"
+    },
+    {
+      "status": "??",
+      "path": "Plan/issues/20261026-dialogue-learning.md"
+    },
+    {
+      "status": "??",
+      "path": "Plan/issues/assets/20261027-dialogue-learning/"
+    },
+    {
+      "status": "??",
+      "path": "Plan/codex/pbl-dialogue-implementation-20261027.md"
+    },
+    {
+      "status": "??",
+      "path": "packages/ai-client/src/quiz-bank/optics/wave-dialogue-curriculum.ts"
+    },
+    {
+      "status": "??",
+      "path": "services/api/src/modules/ai-tutor/tutor-learning-reply.service.ts"
+    },
+    {
+      "status": "??",
+      "path": "services/api/src/modules/learning-plan/dialogue-answer-review.ts"
+    },
+    {
+      "status": "??",
+      "path": "services/api/src/modules/learning-plan/dialogue-course-fullflow.test.ts"
+    },
+    {
+      "status": "??",
+      "path": "services/api/src/modules/templates/content/wave-dialogue.ts"
+    },
+    {
+      "status": "??",
+      "path": "services/api/src/scripts/dialogue-course-bootstrap.ts"
+    }
+  ]
+}

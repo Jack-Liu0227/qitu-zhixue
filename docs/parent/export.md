@@ -39,12 +39,7 @@ GET  /api/v1/parent/growth-exports/:exportId/download          下载（签名 U
 | offline | 禁止发起导出 |
 | permission-denied | 403 页面 |
 
-## 5. 未决事项
-
-- [ ] 导出格式（PDF / Markdown / 结构化数据）与字段清单。
-- [ ] 签名 URL 有效期与下载次数限制。
-- [ ] 导出记录的保留与删除策略。
-- [ ] 是否需要二次确认 / 水印。
+[相关计划与执行记录](../../Plan/maintenance/usage-records-20261028.md)。
 
 ## 6. 相关文档
 

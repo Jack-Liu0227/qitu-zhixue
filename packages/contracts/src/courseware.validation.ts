@@ -10,10 +10,10 @@ export function validateLessonTeachingSpec(session: Record<string, unknown>, pat
     || !Array.isArray(session.requiredSkillIds) || !session.requiredSkillIds.includes('pbl-courseware-guidance')) {
     issue(`${path}.teachingSpec`, 'zero-base teaching requires concepts, verified sources and the courseware capability'); return;
   }
-  if (!object(session.blocks) || !Array.isArray(session.activityRequirements)
+  if (session.progression !== 'dialogue.v1' && (!object(session.blocks) || !Array.isArray(session.activityRequirements)
     || ['review', 'theory'].some(activity => Number((session.blocks as Record<string, unknown>)[activity]) > 0
       && !(session.activityRequirements as unknown[]).some(requirement => object(requirement)
-        && requirement.activity === activity && requirement.evidence === 'teaching_delivery'))) {
+        && requirement.activity === activity && requirement.evidence === 'teaching_delivery')))) {
     issue(`${path}.activityRequirements`, 'zero-base content activities require explicit teaching delivery receipts');
   }
   const ids = new Set<string>();

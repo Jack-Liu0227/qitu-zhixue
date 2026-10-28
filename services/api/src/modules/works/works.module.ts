@@ -63,6 +63,7 @@ import { CoursewareStorageModule } from '../knowledge/courseware-storage.module'
 import { ModelRegistryModule } from '../model-registry/model-registry.module';
 import { LessonQualityEvaluator, GatewayLessonQualityEvaluator } from './lesson-quality-evaluator';
 import { WorksPublicationReview } from './works-publication-review';
+import { LessonEvaluationRecoveryStore } from './lesson-evaluation-recovery.store';
 
 /**
  * 作品 / 证据模块（Works）。
@@ -86,6 +87,7 @@ import { WorksPublicationReview } from './works-publication-review';
     { provide: LessonQualityEvaluator, useClass: GatewayLessonQualityEvaluator },
     ArtifactFormatService,
     WorksLearningEvidenceService,
+    LessonEvaluationRecoveryStore,
     ProjectEvidenceMaterializer,
     {
       provide: WorksStore,
@@ -177,6 +179,6 @@ import { WorksPublicationReview } from './works-publication-review';
       useFactory: (store: WorksStore): CodeArtifactResolver => new StoreBackedCodeArtifactResolver(store),
     },
   ],
-  exports: [WorksService, WorksStore, ProjectEvidenceMaterializer, ProjectAssessmentService, WorksLearningEvidenceService],
+  exports: [WorksService, WorksStore, ProjectEvidenceMaterializer, ProjectAssessmentService, WorksLearningEvidenceService, LessonQualityEvaluator, LessonEvaluationRecoveryStore],
 })
 export class WorksModule {}

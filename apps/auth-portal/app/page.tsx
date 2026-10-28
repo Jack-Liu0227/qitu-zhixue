@@ -84,7 +84,7 @@ export default async function HomePage() {
                   destination="/learning"
                 />
               </div>
-              <p className="home-account-hint">使用学校或机构发放的账号登录 · <Link href="/contact">联系开通</Link></p>
+              <p className="home-account-hint">开启你的自主探究 · <Link href="/login?mode=register">创建个人账号</Link> · <Link href="/login">已有账号登录</Link></p>
               <p className="home-trust">
                 <span>
                   <Icon name="school" size={16} /> 校本课程与项目模板

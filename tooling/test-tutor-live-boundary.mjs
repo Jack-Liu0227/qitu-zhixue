@@ -9,6 +9,27 @@ import './verify-workspace-source.mjs';
 const root = resolve(import.meta.dirname, '..');
 const require = createRequire(import.meta.url);
 const cache = new Map();
+test('dialogue turns transport the exact presented task and question scope', async () => {
+  const { TutorApiDataSource } = loadModule('apps/student-center/features/tutor/data/tutorApiDataSource.ts');
+  const original = globalThis.fetch;
+  let observed;
+  let resolveRequest;
+  const sent = new Promise(resolve => { resolveRequest = resolve; });
+  globalThis.fetch = async (_url, init) => {
+    observed = JSON.parse(init.body); resolveRequest();
+    return new Response('event: done\ndata: {"seq":2,"turnSummary":{"hintLevel":null}}\n\n', { headers: { 'content-type': 'text/event-stream' } });
+  };
+  try {
+    const source = new TutorApiDataSource();
+    const socket = source.createSocket('chat-dialogue');
+    const learningReply = { planId: 'plan', planRevision: 3, learningSessionId: 'session', activityId: 'session:activity:check', questionId: 'question-instance' };
+    await source.submitTurn('chat-dialogue', { content: '选 A', idempotencyKey: 'scoped-answer', learningReply });
+    await sent;
+    assert.deepEqual(observed.learningReply, learningReply);
+    assert.equal(observed.content, '选 A');
+    socket.close();
+  } finally { globalThis.fetch = original; }
+});
 test('observation success requires a persisted receipt for the submitted session and run', async () => {
   const { TutorApiDataSource } = loadModule('apps/student-center/features/tutor/data/tutorApiDataSource.ts');
   const original = globalThis.fetch;

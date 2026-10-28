@@ -10,9 +10,9 @@ import { spawnSync } from 'node:child_process';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const stage = process.argv.find(arg => arg.startsWith('--stage='))?.slice(8) ?? 'all';
 assert(['scope', 'evidence', 'content', 'catalog', 'behavior', 'delivery', 'restore', 'all'].includes(stage), 'Unknown verification stage');
-const issue = 'docs/issues/20261024-inspiration-eight-projects.md';
+const issue = 'Plan/issues/20261024-inspiration-eight-projects.md';
 assert(existsSync(join(root, issue)), 'Implementation Issue is required');
-assert(existsSync(join(root, 'docs/plan/codex/inspiration-eight-project-expansion-20261024.md')));
+assert(existsSync(join(root, 'docs/student/inspiration.md')), 'Inspiration usage guide is required');
 if (stage === 'scope') {
   console.log('Scope and implementation Issue verified; no runtime changes made.');
   process.exit(0);

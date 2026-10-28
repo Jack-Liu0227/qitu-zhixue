@@ -312,6 +312,7 @@ export class TutorApiDataSource implements TutorDataSource {
     // The stream itself is opened by the socket; the ack only carries the
     // journal baseline so the UI can order the student's echo correctly.
     const baseline = socket.startTurn({
+      ...(request.learningReply ? { learningReply: request.learningReply } : {}),
       content: request.content,
       pedagogicMove: request.pedagogicMove,
       optionLabel: request.optionLabel,

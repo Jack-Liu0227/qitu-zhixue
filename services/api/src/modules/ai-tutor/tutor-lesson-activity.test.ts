@@ -101,11 +101,7 @@ test('model activity tool receives frozen guidance, activity minutes and require
 test('a pending assessment cannot leak its solution through a board or be replaced by another tool activity', async () => {
   const h = await fixture();
   const channel = createLessonActivityChannel({ ...h.input, assessmentPending: true });
-  for (const candidate of [board, { kind: 'choice_question', question: {} }, { kind: 'optics', mode: 'diffraction' }]) {
-    const rejected = await channel.tools[0]!.execute(candidate);
-    assert.equal(rejected.isError, true);
-    assert.match(rejected.text, /PENDING_ASSESSMENT/);
-  }
+  assert.deepEqual(channel.tools, []);
   assert.equal(channel.blocks().length, 0);
   assert.equal(h.questionWrites(), 0);
 });
@@ -205,11 +201,23 @@ test('recovered pending question is restored; replacement questions and unreview
   const pending = { kind: 'quiz' as const, questionId: 'existing-owner-question', stem: 'Existing question', options: [{ key: 'stable-a', text: 'A' }] };
   const channel = createLessonActivityChannel({ ...h.input, pendingQuestion: pending, restorePending: true });
   assert.deepEqual(channel.blocks(), [pending]);
-  assert.equal((await channel.tools[0]!.execute({ kind: 'choice_question', question: {} })).isError, true);
-  assert.equal((await channel.tools[0]!.execute(board)).isError, true);
+  assert.deepEqual(channel.tools, []);
   assert.equal(h.questionWrites(), 0);
   assert.equal(channel.blocks()[0], pending);
   assert.equal(channel.blocks().length, 1);
+});
+
+test('a governed lesson without a current activity advertises no activity tool; a stale tool still rechecks', async () => {
+  const h = await fixture();
+  Object.assign(h.teaching.bundle.template, { lessonPolicy: 'lesson-dialogue.v1' });
+  h.teaching.lesson.currentActivity = null;
+  assert.deepEqual(createLessonActivityChannel(h.input).tools, []);
+  Object.assign(h.teaching.lesson, { currentActivity: { activityId: 'current', kind: 'explain', evidence: 'session_response' } });
+  const channel = createLessonActivityChannel(h.input);
+  assert.equal(channel.tools.length, 1);
+  h.teaching.lesson.currentActivity = null;
+  await assert.rejects(channel.tools[0]!.execute(board));
+  assert.equal(channel.blocks().length, 0);
 });
 
 

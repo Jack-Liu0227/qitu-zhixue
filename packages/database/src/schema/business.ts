@@ -13,6 +13,7 @@ import type {
   ProjectOffer,
   BusinessOrderStatus,
   BusinessOrder,
+  CommerceOrderSnapshot,
 } from '@qitu/contracts' with { 'resolution-mode': 'import' };
 import { users } from './identity';
 import { projectTemplateVersions } from './project-templates';
@@ -50,15 +51,15 @@ export const businessOrders = pgTable(
       .notNull()
       .references(() => users.id),
     studentId: text('student_id')
-      .notNull()
       .references(() => users.id),
     offerId: text('offer_id')
-      .notNull()
       .references(() => businessOffers.id),
     templateVersionId: text('template_version_id')
-      .notNull()
       .references(() => projectTemplateVersions.id),
-    offerSnapshot: jsonb('offer_snapshot').$type<ProjectOffer>().notNull(),
+    offerSnapshot: jsonb('offer_snapshot').$type<ProjectOffer>(),
+    subscription: jsonb('subscription').$type<CommerceOrderSnapshot>(),
+    serviceStartsAt: timestamp('service_starts_at', { withTimezone: true }),
+    refundAmountFen: integer('refund_amount_fen'),
     termsSnapshot: jsonb('terms_snapshot').$type<BusinessOrder['terms']>().notNull(),
     amountFen: integer('amount_fen').notNull(),
     status: text('status').$type<BusinessOrderStatus>().notNull(),

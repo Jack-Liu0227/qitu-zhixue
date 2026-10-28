@@ -1,0 +1,292 @@
+{
+  "passed": true,
+  "at": "2026-10-23T19:35:02Z",
+  "studentBuildId": "Y7zLlIUBhWAWmP0GQF-AH",
+  "services": [
+    {
+      "Id": "postgresql@18-main.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "ActiveEnterTimestamp": "Sat 2026-10-24 03:34:31 CST",
+      "MainPID": "2535791",
+      "NRestarts": "0",
+      "WorkingDirectory": "",
+      "previousPid": "2395815",
+      "restarted": true
+    },
+    {
+      "Id": "redis-server.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "ActiveEnterTimestamp": "Sat 2026-10-24 03:34:29 CST",
+      "MainPID": "2535774",
+      "NRestarts": "0",
+      "WorkingDirectory": "",
+      "previousPid": "2395799",
+      "restarted": true
+    },
+    {
+      "Id": "nginx.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "ActiveEnterTimestamp": "Sat 2026-10-24 03:34:32 CST",
+      "MainPID": "2535913",
+      "NRestarts": "0",
+      "WorkingDirectory": "",
+      "previousPid": "2395919",
+      "restarted": true
+    },
+    {
+      "Id": "qitu-admin.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "ActiveEnterTimestamp": "Sat 2026-10-24 03:34:31 CST",
+      "MainPID": "2535817",
+      "NRestarts": "0",
+      "WorkingDirectory": "/root/qitu-zhixue",
+      "previousPid": "2534011",
+      "restarted": true
+    },
+    {
+      "Id": "qitu-api.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "ActiveEnterTimestamp": "Sat 2026-10-24 03:34:31 CST",
+      "MainPID": "2535818",
+      "NRestarts": "0",
+      "WorkingDirectory": "/root/qitu-zhixue",
+      "previousPid": "2527577",
+      "restarted": true
+    },
+    {
+      "Id": "qitu-auth.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "ActiveEnterTimestamp": "Sat 2026-10-24 03:34:31 CST",
+      "MainPID": "2535819",
+      "NRestarts": "0",
+      "WorkingDirectory": "/root/qitu-zhixue",
+      "previousPid": "2463119",
+      "restarted": true
+    },
+    {
+      "Id": "qitu-fix-admin.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "ActiveEnterTimestamp": "Sat 2026-10-24 03:34:31 CST",
+      "MainPID": "2535820",
+      "NRestarts": "0",
+      "WorkingDirectory": "/root/qitu-zhixue",
+      "previousPid": "0",
+      "restarted": true
+    },
+    {
+      "Id": "qitu-fix-auth.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "ActiveEnterTimestamp": "Sat 2026-10-24 03:34:31 CST",
+      "MainPID": "2535821",
+      "NRestarts": "0",
+      "WorkingDirectory": "/root/qitu-zhixue",
+      "previousPid": "0",
+      "restarted": true
+    },
+    {
+      "Id": "qitu-fix-parent.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "ActiveEnterTimestamp": "Sat 2026-10-24 03:34:31 CST",
+      "MainPID": "2535822",
+      "NRestarts": "0",
+      "WorkingDirectory": "/root/qitu-zhixue",
+      "previousPid": "0",
+      "restarted": true
+    },
+    {
+      "Id": "qitu-fix-student.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "ActiveEnterTimestamp": "Sat 2026-10-24 03:34:31 CST",
+      "MainPID": "2535824",
+      "NRestarts": "0",
+      "WorkingDirectory": "/root/qitu-zhixue",
+      "previousPid": "2531004",
+      "restarted": true
+    },
+    {
+      "Id": "qitu-fix-teacher.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "ActiveEnterTimestamp": "Sat 2026-10-24 03:34:31 CST",
+      "MainPID": "2535825",
+      "NRestarts": "0",
+      "WorkingDirectory": "/root/qitu-zhixue",
+      "previousPid": "0",
+      "restarted": true
+    },
+    {
+      "Id": "qitu-ima-mcp.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "ActiveEnterTimestamp": "Sat 2026-10-24 03:34:31 CST",
+      "MainPID": "2535827",
+      "NRestarts": "0",
+      "WorkingDirectory": "/opt/qitu-ima",
+      "previousPid": "2395846",
+      "restarted": true
+    },
+    {
+      "Id": "qitu-local-embedding.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "ActiveEnterTimestamp": "Sat 2026-10-24 03:34:31 CST",
+      "MainPID": "2535828",
+      "NRestarts": "0",
+      "WorkingDirectory": "/root/qitu-zhixue/services/knowledge",
+      "previousPid": "2395847",
+      "restarted": true
+    },
+    {
+      "Id": "qitu-parent.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "ActiveEnterTimestamp": "Sat 2026-10-24 03:34:31 CST",
+      "MainPID": "2535829",
+      "NRestarts": "0",
+      "WorkingDirectory": "/root/qitu-zhixue",
+      "previousPid": "2534692",
+      "restarted": true
+    },
+    {
+      "Id": "qitu-profile-growth.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "ActiveEnterTimestamp": "Sat 2026-10-24 03:34:31 CST",
+      "MainPID": "2535830",
+      "NRestarts": "0",
+      "WorkingDirectory": "/root/qitu-zhixue",
+      "previousPid": "2530040",
+      "restarted": true
+    },
+    {
+      "Id": "qitu-student.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "ActiveEnterTimestamp": "Sat 2026-10-24 03:34:31 CST",
+      "MainPID": "2535832",
+      "NRestarts": "0",
+      "WorkingDirectory": "/root/qitu-zhixue",
+      "previousPid": "2533470",
+      "restarted": true
+    },
+    {
+      "Id": "qitu-teacher.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "ActiveEnterTimestamp": "Sat 2026-10-24 03:34:31 CST",
+      "MainPID": "2535837",
+      "NRestarts": "0",
+      "WorkingDirectory": "/root/qitu-zhixue",
+      "previousPid": "2534336",
+      "restarted": true
+    },
+    {
+      "Id": "qitu-workers.service",
+      "ActiveState": "active",
+      "SubState": "running",
+      "ActiveEnterTimestamp": "Sat 2026-10-24 03:34:31 CST",
+      "MainPID": "2535839",
+      "NRestarts": "0",
+      "WorkingDirectory": "/root/qitu-zhixue",
+      "previousPid": "2530039",
+      "restarted": true
+    }
+  ],
+  "httpChecks": [
+    {
+      "port": 4100,
+      "path": "/api/v1/health/ready",
+      "status": 200,
+      "readiness": "ready"
+    },
+    {
+      "port": 3100,
+      "path": "/login",
+      "status": 200,
+      "scriptChunks": 9
+    },
+    {
+      "port": 3101,
+      "path": "/student/tutor",
+      "status": 200,
+      "scriptChunks": 12
+    },
+    {
+      "port": 3102,
+      "path": "/parent",
+      "status": 200,
+      "scriptChunks": 10
+    },
+    {
+      "port": 3103,
+      "path": "/teacher/dashboard",
+      "status": 200,
+      "scriptChunks": 9
+    },
+    {
+      "port": 3104,
+      "path": "/admin",
+      "status": 200,
+      "scriptChunks": 10
+    },
+    {
+      "port": 3215,
+      "path": "/login",
+      "status": 200,
+      "scriptChunks": 9
+    },
+    {
+      "port": 3211,
+      "path": "/student/tutor",
+      "status": 200,
+      "scriptChunks": 12
+    },
+    {
+      "port": 3212,
+      "path": "/parent",
+      "status": 200,
+      "scriptChunks": 10
+    },
+    {
+      "port": 3213,
+      "path": "/teacher/dashboard",
+      "status": 200,
+      "scriptChunks": 9
+    },
+    {
+      "port": 3214,
+      "path": "/admin",
+      "status": 200,
+      "scriptChunks": 10
+    },
+    {
+      "port": 3000,
+      "path": "/student/tutor",
+      "status": 200,
+      "scriptChunks": 12
+    },
+    {
+      "port": 3000,
+      "path": "/api/v1/health/ready",
+      "status": 200,
+      "readiness": "ready"
+    },
+    {
+      "port": 4115,
+      "path": "/health",
+      "anonymous": 401,
+      "authenticated": 200,
+      "status": 200
+    }
+  ]
+}

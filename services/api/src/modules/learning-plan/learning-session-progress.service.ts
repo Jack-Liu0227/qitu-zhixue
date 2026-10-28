@@ -117,7 +117,9 @@ export class LearningSessionProgressService {
       ? proof.reflections : [...proof.reflections, ...proof.submissions.filter((entry) => entry.kind === 'session_response')];
     const artifactSessionIds = new Set(context.sessions.filter((entry) => ['experiment_report_validated', 'code_playable_run_verified', 'practice_artifact_approved', 'rubric_artifact_validated'].includes(entry.frozen.checkpoint?.requiredGate ?? ''))
       .map((entry) => entry.session.id));
-    const approvedReports = selected.frozen.checkpoint?.requiredGate === 'review_completed_and_archived'
+    const approvedReports = selected.frozen.progression === 'dialogue.v1'
+      ? proof.approvedArtifacts.filter(entry => entry.scope.learningSessionId === selected.session.id)
+      : selected.frozen.checkpoint?.requiredGate === 'review_completed_and_archived'
       ? proof.approvedArtifacts.filter((entry) => artifactSessionIds.has(entry.scope.learningSessionId)) : proof.approvedArtifacts;
     const evidence = {
       session_response: responseProofs,
@@ -162,7 +164,7 @@ export class LearningSessionProgressService {
     return projectLessonActivities({ lesson: selected.frozen, sessionId: selected.session.id,
       teachingDeliveries: selected.frozen.teachingSpec && this.courseware
         ? await this.courseware.instances(context.projectId, plan.id, plan.version, selected.session.id) : [],
-      proofs: [...view.submissions, ...view.observations, ...view.reflections], sessionCompleted: completed, locked,
+      proofs: [...view.submissions, ...view.observations, ...view.reflections, ...view.approvedArtifacts], sessionCompleted: completed, locked,
       masteryAccepted: !awaiting && ids.length > 0 && await this.mastery.checkRequiredObjectives(actor, plan.studentUserId, plan.id, ids, store) });
   }
 

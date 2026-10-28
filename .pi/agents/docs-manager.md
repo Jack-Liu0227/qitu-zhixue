@@ -24,12 +24,19 @@ dirty changes and do not change source code to make a document appear correct.
 ## Owned paths
 
 - `docs/**`
+- `Plan/**`
 - `README.md`
 - Project-level development and release documentation explicitly named by the task
 
 Do not edit application, service, package, migration, or configuration source.
 
 ## Documentation rules
+
+- Store only project usage guides (role operations, deployment/configuration and
+  SDK/API usage) in `docs/`. Put all research, architecture/design proposals,
+  implementation plans, issues, release/verification records and archives in
+  root `Plan/`, and update the appropriate index. The product's learning-plan
+  user guide remains `docs/student/learning-plan.md`.
 
 - Describe behavior that exists or is explicitly approved; label planned and
   missing behavior clearly.

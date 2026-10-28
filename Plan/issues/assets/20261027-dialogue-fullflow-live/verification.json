@@ -1,0 +1,317 @@
+{
+  "environment": "production-synthetic-browser-and-owner-readback",
+  "outcome": "completed_with_experience_issues",
+  "projectId": "proj-02aef7f4-83b0-41dc-a279-18e46de7bfd6",
+  "freshSyntheticAccount": true,
+  "finalReadback": {
+    "at": "2026-10-27T13:11:17.761Z",
+    "projectId": "proj-02aef7f4-83b0-41dc-a279-18e46de7bfd6",
+    "templateVersionId": "tplv-55d940f7-24f8-4740-b5ff-258259b3d3bf",
+    "stage": "completed",
+    "planStatus": "completed",
+    "completedCount": 8,
+    "totalCount": 8,
+    "lessonCount": 8,
+    "acceptedObservationCount": 6,
+    "allLessonsCompleted": true,
+    "finalArtifact": {
+      "id": "art-91885d6e-f60b-4de3-bca7-838934f1fed3",
+      "status": "published",
+      "versionId": "artv-560b5a8a-6cc6-4f07-a0d2-925ba4df3523",
+      "approvedVersionId": "artv-560b5a8a-6cc6-4f07-a0d2-925ba4df3523",
+      "exactContentMatched": true,
+      "contentSha256": "6a2e706f3b594583deff2bdab92f293402aa4d84a9a64bda185017670936d43e"
+    },
+    "manualLessonCompletionRequests": 0,
+    "fileUploadRequests": 0,
+    "teacherMutationRequests": 0
+  },
+  "checks": [
+    {
+      "case": "fresh-account-and-project",
+      "result": "passed"
+    },
+    {
+      "case": "help-preserves-question-and-progress",
+      "result": "passed"
+    },
+    {
+      "case": "incorrect-response-needs-revision",
+      "result": "passed"
+    },
+    {
+      "case": "plain-choice-letter",
+      "result": "failed:D1"
+    },
+    {
+      "case": "explicit-choice-phrase",
+      "result": "passed"
+    },
+    {
+      "case": "three-theory-objectives-before-practice",
+      "result": "passed"
+    },
+    {
+      "case": "six-owner-accepted-simulation-observations",
+      "result": "passed"
+    },
+    {
+      "case": "optional-criteria-nonblocking",
+      "result": "passed"
+    },
+    {
+      "case": "lesson-four-refresh-recovery",
+      "result": "passed"
+    },
+    {
+      "case": "final-lesson-before-artifact-approval",
+      "result": "passed"
+    },
+    {
+      "case": "incomplete-final-artifact-rejected",
+      "result": "passed"
+    },
+    {
+      "case": "draft-restore-six-observation-refs",
+      "result": "passed"
+    },
+    {
+      "case": "mobile-inline-final-delivery",
+      "result": "passed"
+    },
+    {
+      "case": "exact-artifact-version-and-content",
+      "result": "passed"
+    },
+    {
+      "case": "reflection-before-project-completion",
+      "result": "passed"
+    },
+    {
+      "case": "completed-state-after-reload",
+      "result": "passed"
+    },
+    {
+      "case": "four-boards-eighteen-visual-steps-and-replay",
+      "result": "passed"
+    },
+    {
+      "case": "simulation-replay-writes-no-evidence",
+      "result": "passed"
+    },
+    {
+      "case": "tutor-entry-guidance",
+      "result": "failed:D2"
+    },
+    {
+      "case": "courseware-tool-call-reliability",
+      "result": "degraded:D3"
+    }
+  ],
+  "visualChecks": [
+    {
+      "title": "单缝 vs 双缝：屏上到底比什么",
+      "steps": [
+        {
+          "step": 1,
+          "mermaid": true,
+          "tex": false,
+          "visualCount": 1
+        },
+        {
+          "step": 2,
+          "mermaid": false,
+          "tex": true,
+          "visualCount": 1
+        },
+        {
+          "step": 3,
+          "mermaid": false,
+          "tex": true,
+          "visualCount": 1
+        },
+        {
+          "step": 4,
+          "mermaid": true,
+          "tex": false,
+          "visualCount": 1
+        },
+        {
+          "step": 5,
+          "mermaid": false,
+          "tex": true,
+          "visualCount": 1
+        }
+      ],
+      "replay": true
+    },
+    {
+      "title": "单缝和双缝：真的不一样",
+      "steps": [
+        {
+          "step": 1,
+          "mermaid": true,
+          "tex": false,
+          "visualCount": 1
+        },
+        {
+          "step": 2,
+          "mermaid": false,
+          "tex": true,
+          "visualCount": 1
+        },
+        {
+          "step": 3,
+          "mermaid": false,
+          "tex": true,
+          "visualCount": 1
+        },
+        {
+          "step": 4,
+          "mermaid": false,
+          "tex": true,
+          "visualCount": 1
+        },
+        {
+          "step": 5,
+          "mermaid": false,
+          "tex": false,
+          "visualCount": 1
+        }
+      ],
+      "replay": true
+    },
+    {
+      "title": "只改缝宽 a：中央亮带怎么变",
+      "steps": [
+        {
+          "step": 1,
+          "mermaid": true,
+          "tex": false,
+          "visualCount": 1
+        },
+        {
+          "step": 2,
+          "mermaid": false,
+          "tex": true,
+          "visualCount": 1
+        },
+        {
+          "step": 3,
+          "mermaid": false,
+          "tex": true,
+          "visualCount": 1
+        },
+        {
+          "step": 4,
+          "mermaid": false,
+          "tex": false,
+          "visualCount": 1
+        }
+      ],
+      "replay": true
+    },
+    {
+      "title": "复核卡：d 管细纹、a 管包络",
+      "steps": [
+        {
+          "step": 1,
+          "mermaid": false,
+          "tex": true,
+          "visualCount": 1
+        },
+        {
+          "step": 2,
+          "mermaid": false,
+          "tex": true,
+          "visualCount": 1
+        },
+        {
+          "step": 3,
+          "mermaid": true,
+          "tex": false,
+          "visualCount": 1
+        },
+        {
+          "step": 4,
+          "mermaid": false,
+          "tex": true,
+          "visualCount": 1
+        }
+      ],
+      "replay": true
+    }
+  ],
+  "mobileFinal": {
+    "width": 390,
+    "documentWidth": 390,
+    "viewport": 390
+  },
+  "simulationReplay": {
+    "at": "2026-10-27T13:10:48.575Z",
+    "completedBefore": 8,
+    "completedAfter": 8,
+    "newWriteRequests": 0
+  },
+  "pageErrors": [],
+  "issues": [
+    {
+      "id": "D1",
+      "kind": "dialogue-choice-recognition",
+      "lesson": 2,
+      "observed": "Six plain C messages left the same pending question; 我选择 C was saved and advanced to coherence.",
+      "workaround": "Use an explicit choice phrase in the main composer; ordinary question options remain available.",
+      "resolved": false
+    },
+    {
+      "id": "H1",
+      "kind": "automation-slider",
+      "lesson": 4,
+      "observed": "Home followed by a fixed number of ArrowRight steps overshot to d=400; UI showed outside far-field range and disabled run. No invalid observation was saved.",
+      "resolved": true,
+      "fix": "Adjust the slider relative to its actual current value, then assert the target before running."
+    },
+    {
+      "id": "H2",
+      "kind": "automation-locator",
+      "lesson": 8,
+      "observed": "The editor remained visible, but its wrapping label included textarea text after submission, so an exact label locator failed.",
+      "resolved": true,
+      "fix": "Locate the sole textarea inside the final-task region."
+    },
+    {
+      "id": "D2",
+      "kind": "outdated-tutor-copy",
+      "lesson": 7,
+      "observed": "After auto-advancing to the final lesson, the tutor still said to save in 本课记录与评价 although the current inline final editor was available.",
+      "resolved": false
+    },
+    {
+      "id": "D3",
+      "kind": "courseware-tool-degradation",
+      "lesson": 2,
+      "observed": "A tutor.propose_lesson_activity call did not complete; student-facing trace only said it could be retried. The conversation continued with text, and existing boards remained replayable.",
+      "resolved": false,
+      "rootCause": "Not established in this test; do not assume the two answer-leak safety rewrites caused this tool failure."
+    }
+  ],
+  "toolErrors": [
+    {
+      "name": "tutor.propose_lesson_activity",
+      "result": "本次工具调用未完成，可以重试。"
+    },
+    {
+      "name": "safety.answer_leak.guard",
+      "result": "已安全改写：待答题需要保留独立作答空间"
+    },
+    {
+      "name": "safety.answer_leak.guard",
+      "result": "已安全改写：待答题需要保留独立作答空间"
+    }
+  ],
+  "scopeLimits": [
+    "Synthetic engineering acceptance, not real learner outcomes.",
+    "No fault injection for offline, evaluator outage, cross-account access, or concurrent submissions in this run.",
+    "Two automation script defects were corrected; no application code or grading policy was changed."
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "status": "passed",
+  "origin": "http://127.0.0.1:3710",
+  "checks": [
+    "policy load failure and retry, desktop/mobile layout, offline write lock",
+    "real registration and persisted retry, parent login prefill, no stored passwords",
+    "new parent/student authenticate and cannot access admin or another child orders",
+    "invitation endpoints removed, legacy link clears token, homepage registration entry"
+  ],
+  "pageErrors": [],
+  "isolated": true,
+  "actualPayments": false
+}

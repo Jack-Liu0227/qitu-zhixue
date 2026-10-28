@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
 import { businessOrders } from '@qitu/database';
 import type { CurrentUser } from '@qitu/contracts';
@@ -6,6 +6,7 @@ import { BusinessService } from './business.service';
 import { BusinessStore, orderView, type OrderRecord } from './business.store';
 import { WechatPayment, type PaymentFact, type RefundFact } from './wechat-payment';
 import { AuditWriter } from '../../common/audit/audit.service';
+import { activateCommerceOrder, commerceRefundAmount, revokeCommerceOrder } from './commerce.lifecycle';
 
 /** Reject stale or mismatched gateway facts before changing any commercial access. */
 export function validatePaymentFact(
@@ -37,7 +38,8 @@ export class BusinessOrders {
       .from(businessOrders)
       .where(and(eq(businessOrders.id, id), eq(businessOrders.buyerId, actor.id)));
     if (!order) throw new NotFoundException('订单不存在');
-    await this.business.assertGuardian(actor.id, order.studentId);
+    if (order.studentId) await this.business.assertGuardian(actor.id, order.studentId);
+    else if (actor.role !== 'admin' || !order.subscription?.organizationId) throw new ForbiddenException('机构订单需要管理员权限');
     return order;
   }
 
@@ -62,7 +64,7 @@ export class BusinessOrders {
       const code = await this.payment.create({
         id,
         amountFen: order.amountFen,
-        title: order.offerSnapshot.title,
+        title: order.subscription?.product.title ?? order.offerSnapshot?.title ?? '启途智学课程',
         expiresAt: order.checkoutExpiresAt,
       });
       const [saved] = await tx
@@ -111,6 +113,7 @@ export class BusinessOrders {
   async requestRefund(actor: CurrentUser, id: string, reason: string, key: string) {
     await this.owned(actor, id);
     return this.store.mutate(actor, key, 'refund.request', { id, reason }, async (tx) => {
+      await this.store.lockSettings(tx);
       const [order] = await tx
         .select()
         .from(businessOrders)
@@ -124,7 +127,7 @@ export class BusinessOrders {
       if (order.status === 'refund_requested') return orderView(order);
       const [saved] = await tx
         .update(businessOrders)
-        .set({ status: 'refund_requested', refundReason: reason, updatedAt: new Date() })
+        .set({ status: 'refund_requested', refundReason: reason, refundAmountFen: await commerceRefundAmount(tx, order), updatedAt: new Date() })
         .where(eq(businessOrders.id, id))
         .returning();
       if (!saved) throw new Error('退款申请保存失败');
@@ -156,7 +159,7 @@ export class BusinessOrders {
     });
     if (order.status !== 'refunded')
       await this.acceptRefund(
-        await this.payment.refund({ id, amountFen: order.amountFen, refundId: `rf${id}` }),
+        await this.payment.refund({ id, amountFen: order.amountFen, refundFen: order.refundAmountFen ?? order.amountFen, refundId: `rf${id}` }),
       );
     const [saved] = await this.store
       .database()
@@ -169,6 +172,7 @@ export class BusinessOrders {
 
   async acceptPayment(fact: PaymentFact) {
     await this.store.database().transaction(async (tx) => {
+      await this.store.lockSettings(tx);
       const [order] = await tx
         .select()
         .from(businessOrders)
@@ -186,7 +190,7 @@ export class BusinessOrders {
           status: 'paid',
           transactionId: fact.transactionId,
           paidAt,
-          accessUntil: new Date(paidAt.getTime() + order.offerSnapshot.accessDays * 86_400_000),
+          ...await activateCommerceOrder(tx, order, paidAt),
           checkoutUrl: null,
           updatedAt: new Date(),
         })
@@ -210,7 +214,7 @@ export class BusinessOrders {
         .from(businessOrders)
         .where(eq(businessOrders.id, fact.orderId))
         .for('update');
-      if (!order || order.refundId !== fact.refundId || order.amountFen !== fact.amountFen)
+      if (!order || order.refundId !== fact.refundId || (order.refundAmountFen ?? order.amountFen) !== fact.amountFen)
         throw new ConflictException({
           code: 'PAYMENT_FACT_CONFLICT',
           message: '退款凭据与订单不一致',
@@ -227,12 +231,13 @@ export class BusinessOrders {
         .update(businessOrders)
         .set({ status: 'refunded', checkoutUrl: null, updatedAt: new Date() })
         .where(eq(businessOrders.id, order.id));
+      await revokeCommerceOrder(tx, order.id);
       await this.audit.write(
         {
           action: 'business.refund.verified',
           targetType: 'business_order',
           targetId: order.id,
-          detail: { amountFen: order.amountFen },
+          detail: { amountFen: fact.amountFen },
         },
         tx,
       );

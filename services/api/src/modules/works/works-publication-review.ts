@@ -73,4 +73,7 @@ export class WorksPublicationReview {
       && context.lesson.phase === 'guided_practice' && context.lesson.checkpoint?.requiredGate === 'rubric_artifact_validated'
       ? 'rubric_artifact_validated' as const : null;
   }
+  async isDialogueArtifact(artifact: ArtifactRecord, version: ArtifactVersionRecord) {
+    return (await this.subject(artifact, version))?.context.lesson.progression === 'dialogue.v1';
+  }
 }

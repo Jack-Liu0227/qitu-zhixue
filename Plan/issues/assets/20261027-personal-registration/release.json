@@ -1,0 +1,365 @@
+{
+  "status": "deployed",
+  "deployedAt": "2026-10-26T16:48:55.244706+00:00",
+  "head": "b4a0b870327800e55170db631343ad8a582345bc",
+  "backup": "/var/backups/qitu-personal-registration-20261027-r2",
+  "steps": [
+    {
+      "name": "database-before",
+      "exitCode": 0
+    },
+    {
+      "name": "stop-runtime",
+      "exitCode": 0
+    },
+    {
+      "name": "frozen-install",
+      "exitCode": 0
+    },
+    {
+      "name": "runtime-build",
+      "exitCode": 0
+    },
+    {
+      "name": "api-test-compile",
+      "exitCode": 0
+    },
+    {
+      "name": "api-regression",
+      "exitCode": 0
+    },
+    {
+      "name": "api-lint",
+      "exitCode": 0
+    },
+    {
+      "name": "database-migrate",
+      "exitCode": 0
+    },
+    {
+      "name": "database-after",
+      "exitCode": 0
+    },
+    {
+      "name": "start-runtime",
+      "exitCode": 0
+    },
+    {
+      "name": "admin-typecheck",
+      "exitCode": 0
+    },
+    {
+      "name": "stop-admin",
+      "exitCode": 0
+    },
+    {
+      "name": "admin-build",
+      "exitCode": 0
+    },
+    {
+      "name": "start-admin",
+      "exitCode": 0
+    },
+    {
+      "name": "parent-typecheck",
+      "exitCode": 0
+    },
+    {
+      "name": "stop-parent",
+      "exitCode": 0
+    },
+    {
+      "name": "parent-build",
+      "exitCode": 0
+    },
+    {
+      "name": "start-parent",
+      "exitCode": 0
+    },
+    {
+      "name": "auth-typecheck",
+      "exitCode": 0
+    },
+    {
+      "name": "stop-auth",
+      "exitCode": 0
+    },
+    {
+      "name": "auth-build",
+      "exitCode": 0
+    },
+    {
+      "name": "start-auth",
+      "exitCode": 0
+    },
+    {
+      "name": "frontend-assets",
+      "exitCode": 0
+    },
+    {
+      "name": "nginx-config",
+      "exitCode": 0
+    },
+    {
+      "name": "auth-mobile-label-refinement",
+      "exitCode": 0
+    }
+  ],
+  "files": [
+    {
+      "path": "apps/auth-portal/app/login/RegistrationPhoneFields.tsx",
+      "before": null,
+      "target": "06480f1eda9060b12c8c3b7c2928ec29f21dd0612bec794d74954aaa4ca3c358"
+    },
+    {
+      "path": "packages/database/src/schema/identity.ts",
+      "before": "19100b4f0bc0f623536417e75eaf93c6e3fe96df82f21b446cb00ab550d14c62",
+      "target": "fd0911ca04e3b6a643393d0b64001b35d7b7f196b69c3258df7003e71399d4e7"
+    },
+    {
+      "path": "packages/database/src/schema/index.ts",
+      "before": "d3793b93b998173565a7360e99b8a8095fa8691102afd43b4626671d7f038c15",
+      "target": "3a5d7c3d4e56f3965280f4938cfa5ae5ed55e4cb2dc67604391edbf71ebb45f8"
+    },
+    {
+      "path": "packages/database/src/schema/registration-sms.ts",
+      "before": null,
+      "target": "ed7672f1a2d897f7c70ba543b8a755d983b06cefe2441a7a14eac7550364e2cc"
+    },
+    {
+      "path": "database/migrations/0055_phone_registration.sql",
+      "before": "9953964ba602bf4f8340e0a4ef12ab397c9d9544eee902e59b61fe6c054eb7e7",
+      "target": "9953964ba602bf4f8340e0a4ef12ab397c9d9544eee902e59b61fe6c054eb7e7"
+    },
+    {
+      "path": "database/migrations/0055_phone_registration.down.sql",
+      "before": "688f4b4ec29dba8e26fb288310639e30e8ba44951e910e73fdab5d8db16f4bce",
+      "target": "688f4b4ec29dba8e26fb288310639e30e8ba44951e910e73fdab5d8db16f4bce"
+    },
+    {
+      "path": "database/migrations/meta/_journal.json",
+      "before": "1b4a1781695d4d2b73461f4151b58ff86bde4ac4fc90d1a6bd6c6859944dc967",
+      "target": "1b4a1781695d4d2b73461f4151b58ff86bde4ac4fc90d1a6bd6c6859944dc967"
+    },
+    {
+      "path": "services/api/src/modules/directory/directory.service.ts",
+      "before": "aa7b282bf6ac6a3960094fcb105edd29ff828dfc570c7118c04251bdb89f8d96",
+      "target": "44ab3722214414caed99c2f1f305d4be978c1488a6ac03d328f04897f4c56288"
+    },
+    {
+      "path": "services/api/src/modules/identity-auth/auth.service.ts",
+      "before": "f556b6d763dfcb4faa710f4db7d3f5130380098b155c67a64e4975737fd60883",
+      "target": "c4dd0d6505b74f3e82fcccbbd9a785b8eb61d701bfeb7bfa6f6c8423a9a5003e"
+    },
+    {
+      "path": "services/api/src/modules/identity-auth/auth.controller.ts",
+      "before": "8250119eb0a26e5cc1b8b0745f9f9aded734cb362db183e46b25b3a11a409f72",
+      "target": "8c3d24899a655303efa093f1a84c28bb0e74ff069d083dc1f58a353350351a0e"
+    },
+    {
+      "path": "services/api/src/modules/directory/registration-sms.service.ts",
+      "before": null,
+      "target": "183f3dd0eb3b1b5afda4d9a0d2b16b7c24bfe01f9c82f32238dfb391d55520b5"
+    },
+    {
+      "path": "services/api/src/modules/directory/aliyun-registration-sms.ts",
+      "before": null,
+      "target": "ff154f2593ee50ce23ea092b39d2c8576791a984539742624fd99b8f6478224c"
+    },
+    {
+      "path": "tooling/test-registration-sms-postgres.mjs",
+      "before": null,
+      "target": "72ac861ed7a968dd2d7415cb4d2b17bac497132422220f9bdf32b0fe6d87b528"
+    },
+    {
+      "path": "docs/admin/sms-registration.md",
+      "before": null,
+      "target": "c6c20815b36338a42ae8ff33ea975091533a2fc52302c96cb3bd9b406e2c8abf"
+    },
+    {
+      "path": "packages/contracts/src/auth.ts",
+      "before": "c2cc4da314f259d06f755a8288c93274b3b269b617bd999c2fe5ddd7334b45bf",
+      "target": "71f0af4a7dc5a4cfc600dbed3eafe04f458dbdaf9ea08385d222e3eb6039c7cf"
+    },
+    {
+      "path": "packages/contracts/src/errors.ts",
+      "before": "6a2daf23a81b7fbe6b2af5540fe937039b70526e22b4b4e1a3cecd4e3fea0142",
+      "target": "097fdb01fb04df535d808ef6d21ab80abf3c99137eb4a69debc5f963a083bef1"
+    },
+    {
+      "path": "services/api/src/modules/directory/family-invitation.service.ts",
+      "before": "117a2c6b19250ab06b1108808d1c7d6ddd27f4ce4062bfa11bfcb6882a8d194c",
+      "target": null
+    },
+    {
+      "path": "services/api/src/modules/business/business.controller.ts",
+      "before": "b68dd9a6b54074f0788bc948069bc9b5c5fad83c8e5ed49f2d5fa539bd1457b9",
+      "target": "44d2e6a830bca330653edfacc0ecced964ee37ce18bcb1b7c052a31f017b1e43"
+    },
+    {
+      "path": "services/api/src/modules/business/business.module.ts",
+      "before": "5ac4b48b556c4357794b330014b2e0b574a18aba78b3ebb0fd95981044940dde",
+      "target": "0088a8d8e589c8a0d5f282c499de065964ae490281c78c7297eb57f6376c3559"
+    },
+    {
+      "path": "services/api/src/modules/identity-auth/auth-session.persistence.test.ts",
+      "before": "469e63afe1a84dd06514c32fd8fc8121ffae377623e89294f19ba63896178e2a",
+      "target": "483f9b8b762fa203bfa49f44cf098658a1c467e8399020c10988afe2332e6c2b"
+    },
+    {
+      "path": "apps/auth-portal/app/login/FamilyInvitation.tsx",
+      "before": "157aee14287121411bad027ba9600aec3c5b180354b787d7d36bc4302122641e",
+      "target": null
+    },
+    {
+      "path": "apps/auth-portal/app/login/invitation.module.css",
+      "before": "1cdfc11fbf4f26abdd560dcb88395a97ddf7e7ba214fe825ad8b6ee3d0fb1eec",
+      "target": null
+    },
+    {
+      "path": "apps/auth-portal/app/login/registration.module.css",
+      "before": null,
+      "target": "e7383c996fefffe1b184d88e54ad0792b4bea69eb866f46f857b4c7df95ed769"
+    },
+    {
+      "path": "apps/auth-portal/app/login/page.tsx",
+      "before": "f2c2820472e6a3773dfb4bdfccdadd29cf9b50a8da82dd7db446890b7064e659",
+      "target": "f5c7f5dc2562b1fad36127ae91d6c92bced78ac17dca4749a225bb2ed1ee4d7b"
+    },
+    {
+      "path": "apps/auth-portal/app/page.tsx",
+      "before": "d5a54dc0e0258aa48724b0b69c9e00d7b918adc11b5b794988076ed7264bc7e2",
+      "target": "17df78702a3ac6f0306b6aa5d67f7d0ac1c214f9dc6e5d36f0e9c9ab934a127e"
+    },
+    {
+      "path": "apps/auth-portal/app/showcase/ProjectOfferShowcase.tsx",
+      "before": "a2f0147f18f97f58014a519219eead618d93f6d072028817130af0f766683a13",
+      "target": "b6ea14d34c0c8d9f0fa424b66d2e9aa2c0b5a9a9556c1dd1594a91d5ae5c0dc8"
+    },
+    {
+      "path": "apps/admin-console/features/business/BusinessPanels.tsx",
+      "before": "f58adfe466f71a433771c897311f4180b5bee567a8f902ada46127d3a7edc242",
+      "target": "a2eba93035a26b91c88828637748e5bc8ff243fa2a7450101653515b58494994"
+    },
+    {
+      "path": "apps/admin-console/features/business/FamilyInvitationForm.tsx",
+      "before": "e1dcc23dac25b5c002c17977156df520a0b87769499b9a089c29d50964182848",
+      "target": null
+    },
+    {
+      "path": "apps/auth-portal/next.config.ts",
+      "before": "ffb875f09cef5f97996d3e17b6135dd14419f52ea5aad7369237ecec9cac2184",
+      "target": "29f768243ab6e870f3f1b3a86219414b80093968c0afc20a6dd2b8899f850b16"
+    },
+    {
+      "path": "Plan/issues/20261026-family-self-registration.md",
+      "before": null,
+      "target": "486d151ef1659669ab034a12852d711c236ff5002f9e5d90ebd24eba1bcc7c74"
+    },
+    {
+      "path": "docs/admin/business-operations.md",
+      "before": "2217298cbdedf3e1900bc440cee5e882c79140892c4bc329af76a2e0047100a6",
+      "target": "59949f3bf9b4666733ba6a8bedd88ea2ef8ab35a39e4a2bc048cc42f47c73b2c"
+    },
+    {
+      "path": "docs/admin/authentication.md",
+      "before": "b4116c118e9af667cf77f9511998d76f4c44b56a2f0a3d7f8805ca25439960f0",
+      "target": "3bdc92845778d05c06ed2b7006c1ae4c43af6d4ba8fe29422f200598f38224db"
+    },
+    {
+      "path": "docs/admin/public-site.md",
+      "before": "501b5d2d23345a57b0d53150869958cc6cad747bed51a91926eb7c448e7b3da1",
+      "target": "98dcc441e851f4cb9cd53b54b8e995af3276d4c82a41b915b2dfb285adb074c9"
+    },
+    {
+      "path": "docs/parent/home.md",
+      "before": "9357c6534e5abfa14ec1b0e65b23a5e6f719cd82d5403e658be222a34f1863db",
+      "target": "b1e8d447dd79d8707fc3bce60396ed97fb34eee291e89a646b1e4848b547af0f"
+    },
+    {
+      "path": "tooling/test-business-postgres.mjs",
+      "before": "1aab21fc6f61ef64b8570fd2952711f56f65c7d375aca4a932811fa766f7ab23",
+      "target": "8e3c798fb0d3deb7a8f69152ff979e906944376ead3897460769814250bda3df"
+    },
+    {
+      "path": "tooling/verify-business-operations.mjs",
+      "before": "27ddabfd87d52c3dad287b3439447f3641ddf459037d174a268d70d685bdd590",
+      "target": "d29bee76db24a49d18a87c2105ad7d7d6646a5467b2eb23d694351c2f927aac3"
+    },
+    {
+      "path": "services/api/src/modules/directory/account-password.ts",
+      "before": null,
+      "target": "a07a20e97135abf14b40cd04d2fd14a34be454b1c38254e7e5cd3fedf37ac9fd"
+    },
+    {
+      "path": "services/api/src/modules/directory/account-registration.service.ts",
+      "before": null,
+      "target": "ec40410f77fe1aba3e7da86cd8d78d925942f5761b6f71db1750527748a5a7c3"
+    },
+    {
+      "path": "services/api/src/modules/directory/account-registration.validation.ts",
+      "before": null,
+      "target": "55433051e2e19b276896e39694a0d348e4e4c1892f6cd81ba9f6a5086f8ed63f"
+    },
+    {
+      "path": "services/api/src/modules/directory/account-registration.test.ts",
+      "before": null,
+      "target": "ab3944b736443af00ae45f6284d9f85c29c3ce815e24d531add7f070773b5332"
+    },
+    {
+      "path": "services/api/src/modules/directory/account-registration.sms.test.ts",
+      "before": null,
+      "target": "a84c0d2dac93989d2bda0e8c2596a0975e893a4675eb8e1f28e4403d6bd17473"
+    },
+    {
+      "path": "apps/auth-portal/app/login/AccountRegistration.tsx",
+      "before": null,
+      "target": "1e21c69e52f7e53c998e6ea19fbc125ca80c967eccd8beab9df1206006feebe2"
+    },
+    {
+      "path": "apps/parent-companion/features/ParentStates.tsx",
+      "before": "5489778667146a654564f683ff25923acb312a078e3edb01a1e6b551d5e97c9d",
+      "target": "3002f8c702fca6fa267ac2e3b6fe7a049ffff59e0603e9443e46c5b55f19f46b"
+    },
+    {
+      "path": "tooling/test-account-registration-postgres.mjs",
+      "before": null,
+      "target": "aa5c4ee3d2094782f476879d312fe6d0eff77534610d274d9133c705a8624d34"
+    },
+    {
+      "path": "apps/auth-portal/package.json",
+      "before": "cdeb1526b396165f0da57625fe83b72045f947db4985a57bb1d5764be7d115fa",
+      "target": "513ed5f1e14081073b8a14b5457e058fbb4927a79fcb71ea6d52d4eba9e8b065"
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "before": "a3e86b9b0d9104c5efde9bb6137061edf9def4f8fc76e8f4d3376224f0257261",
+      "target": "2927f1abaa4e4ed54f1fbcd50a6de9c61ab4466bcc2aa01b54f8acf17f7bf445"
+    }
+  ],
+  "preservedSourceCount": 1845,
+  "databaseMigration": "0055_phone_registration",
+  "actualSms": false,
+  "historicalInvitationRowsDeleted": false,
+  "builds": {
+    "admin": {
+      "before": "bTSazUanjgHf9yu-AYs9F",
+      "after": "E5UyqYtXhR-g5TCaRqjll"
+    },
+    "parent": {
+      "before": "1cVYz5zyZHaj4EBdbBZUV",
+      "after": "YyRKuOwFAj5NY8T6WQsjO"
+    },
+    "auth": {
+      "before": "wBOGuhEtrQKT575Sa76l2",
+      "after": "qMFgEGser2O6uVWSLFnMm"
+    }
+  },
+  "actualPayments": false,
+  "uiRefinement": {
+    "path": "apps/auth-portal/app/login/registration.module.css",
+    "before": "8f7f393e3b7b983f47aba5f30ee6a3905d15646084187651f31a56f177b4e82c",
+    "after": "e7383c996fefffe1b184d88e54ad0792b4bea69eb866f46f857b4c7df95ed769",
+    "backup": "/var/backups/qitu-personal-registration-20261027-ui"
+  }
+}

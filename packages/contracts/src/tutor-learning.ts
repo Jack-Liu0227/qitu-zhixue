@@ -6,6 +6,11 @@ export interface TutorLearningScope {
   planRevision: number;
   learningSessionId: string;
 }
+export interface TutorLearningReplyScope extends TutorLearningScope {
+  activityId: string;
+  /** The question visible when composing. Null means no question was presented. */
+  questionId: string | null;
+}
 export interface TutorLessonAssessmentView {
   projectId: string;
   scope: TutorLearningScope;

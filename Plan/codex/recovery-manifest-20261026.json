@@ -1,0 +1,376 @@
+{
+  "schemaVersion": 1,
+  "reason": "Restore missing referenced documents without claiming current implementation or deployment.",
+  "records": [
+    {
+      "path": "Plan/20261018-issue-digest-feishu-assistant.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "1d4c2b03314c8267620831d4b8b2807fd30d5f452a0e3ef260401fba5476f5c2"
+    },
+    {
+      "path": "Plan/20261018-skill-tool-governance-and-assignment.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "129f5ce9a803372db5ea7f737acfe3a0686112fc812be9dc89d39116a9403a5e"
+    },
+    {
+      "path": "Plan/README.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "4344f3e4b7a53f09f2dacbc7d521c202b12dcd26fbda4cb9fb5a1e9fe9faffe3"
+    },
+    {
+      "path": "Plan/codex/agent-driven-pbl-requirements-20261021.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "df79a1d987e18f901293d4346ddbb7791ee5a7a273318ab5f75627eabb16aa7c"
+    },
+    {
+      "path": "Plan/codex/architecture.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "01778aaf055dd144acefb16693deef7002d14c0a7da2cff3282e789ef3e2bff6"
+    },
+    {
+      "path": "Plan/codex/copilot-lifecycle-verification-20261021.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "5e1a3ff8f7d7376787de68767077ba60c1433e5f50fadbc45199f06eccf84e93"
+    },
+    {
+      "path": "Plan/codex/copilot-module-references-20261021.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "d08baa9bb7eaacb176408fb351f2b037fb5124310329655814eff0b4f487ee1b"
+    },
+    {
+      "path": "Plan/codex/delivery-status.json",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "7feb4cf1b1debfddb637ee6932c7c6aa79d3abee0fba5e28f83407f088b5ca47"
+    },
+    {
+      "path": "Plan/codex/gap-audit-20261019.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "c3f428542416c91b884fe945ee38a6aa75b69dba56ba4ca4d9612763759080bd"
+    },
+    {
+      "path": "Plan/codex/implementation-plan.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "f2db0841f444ad0c6a8670988ef3ffb76aae2cd73fb632914789475c55925ee0"
+    },
+    {
+      "path": "Plan/codex/mcp-tool-governance.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "b2eba6c3922d08efb7f57763103effd9b6b37812fded70036d25579a071c9532"
+    },
+    {
+      "path": "Plan/codex/optics-scattering-diffraction-analysis.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "c396e7df0571e04cf6c224681be7bcb7510f3033405f6853efc5d1b9d7653706"
+    },
+    {
+      "path": "Plan/codex/optics-template-runtime/00-completion-audit.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "824069213a41ff0f5e2b3569b3d51fa354d1a7118cf5a9b4a54123e762ad1927"
+    },
+    {
+      "path": "Plan/codex/optics-template-runtime/01-admin-teaching-bundle.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "a3452ea2e48b78a961627c002556443039cc459434a5cf866fe38d22ceff48be"
+    },
+    {
+      "path": "Plan/codex/optics-template-runtime/02-student-pbl-runtime.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "94062b1dce0417d0246d6b85040acda7994762aae8486eb3c0b93bbd7bb5b095"
+    },
+    {
+      "path": "Plan/codex/optics-template-runtime/03-optics-experiment-protocol.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "8230952d1df4a76bb641945123a366e774aa260ec94c33df2a42f6f93155dd1e"
+    },
+    {
+      "path": "Plan/codex/optics-template-runtime/04-verification.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "41599273148b3e5acf0fc7eda9c64d0794a862f944323e95899716d52fe2c394"
+    },
+    {
+      "path": "Plan/codex/optics-template-runtime/05-student-tutor-flow-qa.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "436244a05f3db27838fba42d8e48c7266a2dfd93a904410b2563faeccd96e7ec"
+    },
+    {
+      "path": "Plan/codex/optics-template-runtime/06-copilot-skill-design.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "404818da99c4a7b6e6a4cb156fec112821764ad1fbacc945e5d870761b6cdf86"
+    },
+    {
+      "path": "Plan/codex/optics-template-runtime/06-fullflow-implementation-20261021.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "6ae12f7f2ca4065874a6c440f187f27979f3c429cf3cc69370b1fa5b92bab223"
+    },
+    {
+      "path": "Plan/codex/optics-template-runtime/07-fullflow-verification-20261021.json",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "b1d710b854adc5788e2009e3e2ac26b69277364b45c0db0d8281b0a955cc1923"
+    },
+    {
+      "path": "Plan/codex/optics-template-runtime/07-remaining-tasks.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "3df28f7436dce623978569073227c2772189a79cb63533697f9b7be838e21c62"
+    },
+    {
+      "path": "Plan/codex/optics-template-runtime/08-validation-20261021.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "10d91c7994845cb1111c260382a242de7e89e3df9684dcf90ab1b15ef328bac8"
+    },
+    {
+      "path": "Plan/codex/optics-template-runtime/09-copilot-implementation-20261021.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "1be7ab107f0bc0c6c3d88f9e7e63af844b4a2c31ee966424757c8d1e2a5412cb"
+    },
+    {
+      "path": "Plan/codex/optics-template-runtime/10-template-team-assistant-knowledge-architecture.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "8adb50c96c5207bca6b62e4122426abda894aa4947de6ab4ce9b3e8c77fb7749"
+    },
+    {
+      "path": "Plan/codex/optics-template-runtime/11-copilot-verification-20261021.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "1985b2c79cea4323f27e4f5260ad0916b6fda20161091be355ceb62d04c597f6"
+    },
+    {
+      "path": "Plan/codex/optics-template-runtime/README.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "e69cd669f607fa8469bd2f516e9f6fb5905a07ac17ab9d4c97a155f392b2e2f9"
+    },
+    {
+      "path": "Plan/codex/optics-template-runtime/TODO.csv",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "b56dab078623b3693d87395fde83e5570d36dfd051a25ed49fc1cafc89f1b95a"
+    },
+    {
+      "path": "Plan/codex/optics-template-runtime/student-tutor-qa-fixes-20261021.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "1127e1419a5cec1146b77297a51b5f8982c68ce429be9db7eedafdd55c0d9472"
+    },
+    {
+      "path": "Plan/codex/profile-growth-projection/00-completion-audit.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "aaf22d6c3316fbd8009df547920c95b64240536a04c1e87ad90b39aa739db5fb"
+    },
+    {
+      "path": "Plan/codex/profile-growth-projection/01-evidence-contract.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "a9684a858997d02e69b4192edd06be3e616660b6279b22cb2fd0792e3dd5546c"
+    },
+    {
+      "path": "Plan/codex/profile-growth-projection/02-owner-acceptance.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "e7b61f1e403201c755c677e019427ca0856815167ed7f81e8d3b81ff0d5e98a1"
+    },
+    {
+      "path": "Plan/codex/profile-growth-projection/03-profile-read-model.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "46d6dbfd3c9251b1ca7582d7eaef30ca2080e7c9f4d850c12571305a035d59e9"
+    },
+    {
+      "path": "Plan/codex/profile-growth-projection/04-verification.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "3053042d2f699268ea9f670a2d4b0b00668f263e500c8d966df3a3fe6aaebc8d"
+    },
+    {
+      "path": "Plan/codex/profile-growth-projection/05-evidence-routing-design.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "b58e62107dc4dd48f54da2f82177619a84447b7dce43b929389e5ebeefeb2761"
+    },
+    {
+      "path": "Plan/codex/profile-growth-projection/06-remaining-tasks.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "f9976d484cd49eee09a20f4193989baa20adcc5025b6f082f8a88ba0e807d008"
+    },
+    {
+      "path": "Plan/codex/profile-growth-projection/07-validation-20261021.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "f2672d36c17be51663050bc2f6826c9df43523b56f66fa18925319e95b87042e"
+    },
+    {
+      "path": "Plan/codex/profile-growth-projection/README.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "dd45c28c5bd1a3ee2c55690fa451ddb0a4a36792fbc46ab6e783ff826b52e7c0"
+    },
+    {
+      "path": "Plan/codex/profile-growth-projection/TODO.csv",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "32e4a288a95de875b014db008dd1275544d66e913b1178f3ac2be6b6b1a50ed8"
+    },
+    {
+      "path": "Plan/codex/research-report.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "99dd725440e57b1f0553456e305c22557d8cc305aac38bd4fd6edd665e800d1b"
+    },
+    {
+      "path": "Plan/codex/runtime-governance-optimization-20261021.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "8f8078d02c0c1f390202dce96c8db042850085c8a89fc04fc5b8d8da88573a9c"
+    },
+    {
+      "path": "Plan/codex/skills-catalog.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "f31009582c09fee2030257e1cafd637ea7bd34705a5ded28ea0db557886334bf"
+    },
+    {
+      "path": "Plan/codex/skills-mcp-tools-sdk-audit-20261021.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "64106eaedee9b952d52e883bbfb34e90258e4ecc9de18397297be484de77b20f"
+    },
+    {
+      "path": "Plan/codex/source-lock.json",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "4a4b30126442180c2c28bccde6eaac67e1815cfa6fb0d93e8de96ff4f18e74ea"
+    },
+    {
+      "path": "Plan/codex/takeover-validation-20261019.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "f99470cfa95df7cf1c99a8d5c3df19f4e6b7b61e20d8d58d77f17062186bac27"
+    },
+    {
+      "path": "Plan/codex/theme-session-team-ima-design.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "5cf4414bb3f0c79216affaa61ef0469b9aabe523a606929420d3ec89b447e9ba"
+    },
+    {
+      "path": "Plan/codex/validation-20261019.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "812af113207d21d3079bc0cf0dffa965110785f9dad33f3b966a9ad3813d44a3"
+    },
+    {
+      "path": "Plan/codex/visual-assets/01-generation.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "de20438ab3d2cffa6b0872f676b97a05ae6c2d2a1ea9150b51053107089cdc90"
+    },
+    {
+      "path": "Plan/codex/visual-assets/02-integration.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "653f1caeff25a4ac5f6bfa9e31d4e6f0d42ec2a2e9c6b2a005b85d24379fdf50"
+    },
+    {
+      "path": "Plan/codex/visual-assets/03-site-inventory.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "aaf10055d970d1bcec817439a4fc3d95bb9e61aafe67e01ae2ed5f7e848a2113"
+    },
+    {
+      "path": "Plan/codex/visual-assets/04-implementation.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "59ad374bed7aa9c7d6ad5ca680cd58662b4f7b9a73d3963b860ce70532297ef6"
+    },
+    {
+      "path": "Plan/codex/visual-assets/05-interface-and-persistence.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "78743a13948a6d6f552fa8bebccb321cc67a03793ee74a575e07e33b7af7189c"
+    },
+    {
+      "path": "Plan/codex/visual-assets/06-unique-navigation-and-logo.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "b86c2df4b7958890dc7943d9e0ff22da8f1150aa72a59b545ed6a6e2b684536d"
+    },
+    {
+      "path": "Plan/codex/visual-assets/README.md",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "e17bf567df25c6edf68a1896ceb9898529e603a151ed54f69c98b1210b5cf54b"
+    },
+    {
+      "path": "Plan/codex/visual-assets/interface-verification-20261021.json",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "33d6c680e9e8551f1adff04427f1c476ca4698aeb44e13d136305ca28edf0227"
+    },
+    {
+      "path": "Plan/codex/visual-assets/navigation-logo-20261021/admin-settings-desktop.png",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "f23d78d2547f2c2600003fe76e85d3fc11dab9a1b2d11385f93d82aeec5a98ae"
+    },
+    {
+      "path": "Plan/codex/visual-assets/navigation-logo-20261021/admin-settings-mobile.png",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "e3f414f542ba78d8a6ce33afa5e12c5d5f0a8c0cd2bccdd5a524ac91004cf038"
+    },
+    {
+      "path": "Plan/codex/visual-assets/navigation-logo-20261021/admin-sidebar-desktop.png",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "ae4b8157a8e9b1748ff5cf5299086dda9eea11fcd0eb3bcbe87ba1837ae07bc0"
+    },
+    {
+      "path": "Plan/codex/visual-assets/navigation-logo-20261021/admin-sidebar-mobile.png",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "99e9d788cb1c77facb875ec7693b705792ee8c61df34737bd1d80be816d8ba32"
+    },
+    {
+      "path": "Plan/codex/visual-assets/navigation-logo-20261021/brand-full-logo.png",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "6aa668d921c59aa45d1aa9f3e1508e9bec651b495d00826ecb3236f7cf853df5"
+    },
+    {
+      "path": "Plan/codex/visual-assets/navigation-logo-20261021/parent-sidebar-desktop.png",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "77d7b0469c9176eeef14c7707208d7f733217ac70e11765e2cd7651e9a797c10"
+    },
+    {
+      "path": "Plan/codex/visual-assets/navigation-logo-20261021/parent-sidebar-mobile.png",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "c4209450d319d15c5a225181425e00851114567f23819b3f6311562a29d46687"
+    },
+    {
+      "path": "Plan/codex/visual-assets/navigation-logo-20261021/report.json",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "4a6ed258e5ea22d7be46e44f9666d2d6311e3b6d62e5cf4d79ac9f5ecf634ee2"
+    },
+    {
+      "path": "Plan/codex/visual-assets/navigation-logo-20261021/student-sidebar-desktop.png",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "4e49d61144a05946c24d7368f7eb913e17b93658938afa07a6449337a1f60aab"
+    },
+    {
+      "path": "Plan/codex/visual-assets/navigation-logo-20261021/student-sidebar-mobile.png",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "328794c699be88abadba8784937c86d28ae1e4d5d8391189fd179b9d784811a6"
+    },
+    {
+      "path": "Plan/codex/visual-assets/navigation-logo-20261021/teacher-sidebar-desktop.png",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "8d92cc88e6b28bb0e14fdde713fbb1460468ed210f5b045057d23ff45a8bc534"
+    },
+    {
+      "path": "Plan/codex/visual-assets/navigation-logo-20261021/teacher-sidebar-mobile.png",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "fa13e795553aeb37fdbe941d3ccf78f3210034940fd49787f89caddff1783435"
+    },
+    {
+      "path": "Plan/codex/visual-assets/picker-desktop.png",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "e86780fc6268ac5627ed1eac304a4f53e88ecbabb4d7cd1e99c9743d06e7eb9d"
+    },
+    {
+      "path": "Plan/codex/visual-assets/picker-mobile.png",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "f71e050a7671f0eb051165895ed6f305c5fcd7cc6db86785f0b23eac2819ae87"
+    },
+    {
+      "path": "Plan/codex/visual-assets/sidebar-admin-20261021.png",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "e739cb574e9ef23f68be5c94d9f4beade6b130903cd3fa8ed27a3f60271eb415"
+    },
+    {
+      "path": "Plan/codex/visual-assets/sidebar-parent-20261021.png",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "4b58a115394254d0f45d1ae0ab3b39b5655f059f544888a9cfd580129d52fff1"
+    },
+    {
+      "path": "Plan/codex/visual-assets/sidebar-student-20261021.png",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "546a5f616b8de32b42b71f7153e5629a13d6ec0cfb1a3ce1d9bd8e4a0af37f3c"
+    },
+    {
+      "path": "Plan/codex/visual-assets/sidebar-teacher-20261021.png",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "0ee11ea525c4bfb727a8aa70d3708855957966b379e9d0df6a29e14d6d3e65b0"
+    },
+    {
+      "path": "Plan/codex/visual-assets/verification.json",
+      "sourceCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+      "sourceSha256": "cbe91c73176905ea2d94fc2cb5a5414a85f843498b18018d57886fe33562fca1"
+    }
+  ]
+}

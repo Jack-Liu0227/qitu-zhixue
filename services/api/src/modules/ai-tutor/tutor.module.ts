@@ -33,6 +33,7 @@ import { TutorLessonCollaborationController } from './tutor-lesson-collaboration
 import { TutorLessonCollaborationService } from './tutor-lesson-collaboration.service';
 import { TutorCoursewareController } from './tutor-courseware.controller';
 import { TutorCoursewareService } from './tutor-courseware.service';
+import { LearningReplyInterpreter, TutorLearningReplyService } from './tutor-learning-reply.service';
 
 /**
  * AI 搭档模块。
@@ -62,6 +63,8 @@ import { TutorCoursewareService } from './tutor-courseware.service';
     TutorLessonAssessmentService,
     TutorLessonCollaborationService,
     TutorCoursewareService,
+    LearningReplyInterpreter,
+    TutorLearningReplyService,
     {
       provide: TutorQuizStore,
       inject: [DATABASE_TOKEN, DATA_MODE_TOKEN],

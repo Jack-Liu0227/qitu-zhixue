@@ -37,7 +37,7 @@ test('conceptual wave preview is read-only, opt-in and blocked while an assessme
   assert.equal(result.steps.length, 2); assert.ok(result.steps.every(step => step.svg && !/script|foreignObject|https?:/iu.test(step.svg)));
   assert.doesNotMatch(JSON.stringify(result), /experimentId|actionId|observationReceipt/);
   const pending = createLessonActivityChannel({ ...h.input, assessmentPending: true });
-  assert.equal((await pending.tools[0]!.execute(candidate)).isError, true); assert.deepEqual(pending.blocks(), []);
+  assert.deepEqual(pending.tools, []); assert.deepEqual(pending.blocks(), []);
   const arbitrary = createLessonActivityChannel(h.input);
   await assert.rejects(arbitrary.tools[0]!.execute({ ...candidate, parameters: { wavelength: 600 } }));
 });
@@ -72,5 +72,5 @@ test('unread, expired, revoked or invented claims cannot produce resources or re
   assert.equal((await createLessonActivityChannel(h.input).tools[0]!.execute(candidate)).isError, true);
   const pending = { kind: 'quiz' as const, questionId: 'owner-question', stem: '待回答', options: [{ key: 'a', text: '选项' }] };
   const channel = createLessonActivityChannel({ ...h.input, pendingQuestion: pending, restorePending: true });
-  assert.equal((await channel.tools[0]!.execute(candidate)).isError, true); assert.deepEqual(channel.blocks(), [pending]);
+  assert.deepEqual(channel.tools, []); assert.deepEqual(channel.blocks(), [pending]);
 });

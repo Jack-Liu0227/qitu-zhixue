@@ -32,12 +32,17 @@ export function LessonAssessmentCard({ projectId, lesson, disabled, onChanged, o
   const answerKey = useRef<{ signature: string; key: string } | null>(null);
   const autoStarted = useRef<string | null>(null);
   useEffect(() => {
+    if (lesson.progression === 'dialogue.v1' && view?.nextStep?.question?.questionId !== lesson.pendingQuestionId) {
+      setView(null); setResult(null); setAnswer(''); autoStarted.current = null;
+    }
+  }, [lesson.pendingQuestionId]);
+  useEffect(() => {
     const identity = `${lesson.planId}:${lesson.planRevision}:${lesson.learningSessionId}:${lesson.currentActivity?.activityId}`;
-    if (lesson.teachingMode !== 'zero-base.v1' || !lesson.assessmentAvailable || disabled || busy || view || result
+    if (lesson.progression === 'dialogue.v1' && !lesson.pendingQuestionId || lesson.teachingMode !== 'zero-base.v1' || !lesson.assessmentAvailable || disabled || busy || view || result
       || autoStarted.current === identity) return;
     autoStarted.current = identity;
     void start();
-  }, [lesson.teachingMode, lesson.assessmentAvailable, lesson.planId, lesson.planRevision, lesson.learningSessionId, lesson.currentActivity?.activityId, disabled]);
+  }, [lesson.teachingMode, lesson.assessmentAvailable, lesson.planId, lesson.planRevision, lesson.learningSessionId, lesson.currentActivity?.activityId, lesson.pendingQuestionId, disabled, view, result]);
   useEffect(() => {
     active.current = true;
     return () => { active.current = false; for (const controller of controllers.current) controller.abort(); };
@@ -62,6 +67,7 @@ export function LessonAssessmentCard({ projectId, lesson, disabled, onChanged, o
     if (next.projectId !== projectId || !matches(next.scope)) throw new Error('考核响应与当前课时不一致，请刷新。');
     if (!active.current) return;
     setView(next); setResult(null); setAnswer(''); answerKey.current = null;
+    if (lesson.progression === 'dialogue.v1') await onChanged();
   });
   const submit = () => run(async controller => {
     if (!question) return;
@@ -91,10 +97,10 @@ export function LessonAssessmentCard({ projectId, lesson, disabled, onChanged, o
         {question.options.map(option => <label key={option.id} style={{ display: 'block', margin: '8px 0' }}>
           <input type="radio" name={`lesson-${question.questionId}`} value={option.id} checked={answer === option.id} onChange={() => setAnswer(option.id)} /> {option.label} {option.body}
         </label>)}
-      </fieldset> : <label style={{ display: 'grid', gap: 8 }}>我的解释
+      </fieldset> : lesson.progression === 'dialogue.v1' ? <p>直接在下方对话框回答这道题，也可以先请求提示。</p> : <label style={{ display: 'grid', gap: 8 }}>我的解释
         <textarea rows={4} maxLength={8000} value={answer} disabled={disabled || busy} onChange={event => setAnswer(event.target.value)} />
       </label>}
-      <button type="submit" className="qitu-button qitu-button-primary" disabled={disabled || busy || !answer.trim()}>{busy ? '正在评阅…' : '提交并查看解析'}</button>
+      {question.options.length || lesson.progression !== 'dialogue.v1' ? <button type="submit" className="qitu-button qitu-button-primary" disabled={disabled || busy || !answer.trim()}>{busy ? '正在评阅…' : '提交并查看解析'}</button> : null}
       {onExplain ? <button type="button" className="qitu-button qitu-button-ghost" disabled={disabled || busy}
         onClick={() => onExplain('我还没提交当前这道题，请只给我一个思考提示，不要透露答案或更换题目。')}>给我一点提示</button> : null}
     </form> : null}
@@ -106,7 +112,7 @@ export function LessonAssessmentCard({ projectId, lesson, disabled, onChanged, o
       {result.answer.remediation ? <p style={{ color: '#86909c', fontSize: '13px' }}>{result.answer.remediation}</p> : null}
       {result.answer.theoryMastered ? (
         <div style={{ marginTop: '8px', padding: '8px 10px', background: '#dcfce7', borderRadius: '6px', color: '#15803d', fontWeight: 600, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span>本课理论目标已达标。请继续完成本课学习记录与评价；进入实践课后，才能操作该课的实验。</span>
+          <span>{lesson.progression === 'dialogue.v1' ? '本课理论目标已达标，系统正在核对下一步。' : '本课理论目标已达标。请继续完成本课学习记录与评价；进入实践课后，才能操作该课的实验。'}</span>
         </div>
       ) : (
         <p style={{ fontSize: '12px', color: '#4e5969' }}>继续结合反馈检查当前目标。</p>

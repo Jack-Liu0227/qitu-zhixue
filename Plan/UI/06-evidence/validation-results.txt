@@ -1,0 +1,35 @@
+UI review artifact validation — 2026-10-21 Asia/Shanghai
+
+PASS — 231 PNG files decoded and verified with Pillow.
+PASS — PNG dimensions and SHA-256 hashes recorded in screenshot-manifest.json.
+PASS — 58 deduplicated route/view/compatibility records in browser-metrics.json.
+PASS — 465 local HTML src/href references exist; no missing targets.
+PASS — Gallery renders 231 cards; role + mobile + optics filter returns 6 cards.
+PASS — Visible gallery image check returned 0 unloaded/broken images in the inspected desktop set.
+PASS: 107 current/index documents, 739 local links, 0 issues (python tooling/validate-docs.py)
+PASS — New text artifacts scanned for private-key headers and common bearer/API-key patterns; no matches.
+PASS — No authored Python/HTML file exceeds 2500 lines.
+
+Initial document validation reported the not-yet-written validation-results.txt.
+The missing target was created and the full document check was repeated successfully.
+
+Coverage: 231 screenshots, approximately 62.3 MiB.
+Folders: home 67; login 12; student 41; teacher 16; parent 6; admin 89.
+Main viewport sizes: 1440x1000 and 390x844 CSS pixels.
+Some scroll containers produce narrower full-document PNG widths; manifest dimensions are authoritative.
+
+Privacy: original Tutor conversation content hidden; credential/input fields and selected identity data masked.
+No auth state files, cookies, password values or raw network response bodies are part of Plan/UI.
+This pattern scan is an artifact check, not a full secret-detection certification.
+
+The first teacher-detail desktop capture contained a busy/loading region.
+It was retained as student-detail-loading-desktop.png and stable desktop/mobile captures replaced the main files.
+One DOM image-load candidate was observed during teacher dashboard capture; it is not classified as a persistent broken-image defect.
+Optics component screenshots initially suffered ancestor clipping; final files use native conversation-scroll segments.
+
+Workspace: existing changes were preserved. During this review, 27 additional non-UI status entries appeared from parallel work; no initial status entry disappeared.
+See workspace-before.txt, workspace-after.txt and workspace-concurrent-changes.txt.
+Only Plan/UI artifacts were authored by this task. Business tests for concurrent modifications were not run or certified here.
+
+No production build, runtime configuration publication, grading, experiment run, observation save, artifact approval or parent/teacher business submission was performed.
+Login/logout and product auto-launch behavior were exercised; see verification.md for limits.

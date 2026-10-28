@@ -3,6 +3,7 @@ import type { AdminAssistantCreateInput, AdminTeamCreateInput, CurrentUser } fro
 import { loadTutorRuntimeSource } from '../../common/tutor-runtime/runtime-source';
 import type { PlatformRegistryService } from '../platform-registry/platform-registry.service';
 import { INSPIRATION_COURSES, type InspirationCourse } from './content/inspiration';
+import { INSPIRATION_DIALOGUE_COURSES } from './content/inspiration/dialogue-courses';
 import { teachingValueDigest } from './teaching-bundle.canonical';
 import type { TemplateBindingService } from './templates-binding.service';
 import type { TemplateBindingStore } from './templates-binding.store';
@@ -18,6 +19,7 @@ export interface InspirationCatalogPorts {
 export interface InspirationCatalogOptions {
   actor: CurrentUser; model: { modelProviderId: string; modelId: string }; mode: 'draft' | 'pilot';
   projects?: readonly string[];
+  progression?: 'guided' | 'dialogue';
 }
 function requireCondition(value: unknown, code: string): asserts value { if (!value) throw new Error(code); }
 
@@ -119,7 +121,9 @@ export async function configureInspirationCatalog(ports: InspirationCatalogPorts
   if (options.actor.role !== 'admin') throw new ForbiddenException({ code: 'CATALOG_ADMIN_REQUIRED' });
   requireCondition(options.mode === 'draft' || options.mode === 'pilot', 'CATALOG_MODE_INVALID');
   requireCondition(options.model.modelProviderId && options.model.modelId && ports.registry.isModelAvailable(options.model), 'CATALOG_MODEL_UNAVAILABLE');
-  const courses = options.projects ? INSPIRATION_COURSES.filter(course => options.projects!.includes(course.slug)) : [...INSPIRATION_COURSES];
+  requireCondition(options.progression === undefined || options.progression === 'guided' || options.progression === 'dialogue', 'CATALOG_PROGRESSION_INVALID');
+  const catalog = options.progression === 'dialogue' ? INSPIRATION_DIALOGUE_COURSES : INSPIRATION_COURSES;
+  const courses = options.projects ? catalog.filter(course => options.projects!.includes(course.slug)) : [...catalog];
   requireCondition(courses.length && (!options.projects || new Set(options.projects).size === options.projects.length
     && courses.length === options.projects.length), 'CATALOG_PROJECT_SELECTION_INVALID');
   const runtime = loadTutorRuntimeSource();

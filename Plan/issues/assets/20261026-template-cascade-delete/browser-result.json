@@ -1,0 +1,17 @@
+{
+  "success": true,
+  "checks": [
+    "anonymous-401-and-student-teacher-parent-403-preview-and-delete",
+    "missing-confirmation-and-real-scope-change-refused",
+    "desktop-mobile-confirmation-guard-real-quality-record-deletion-and-replay",
+    "readback-outage-visible-same-key-retry-no-false-success",
+    "existing-catalog-unchanged-no-page-errors-static-resources-200"
+  ],
+  "createdIds": [
+    "tpl-498a8021-85c7-443c-8db9-32c478e4b33d",
+    "tpl-c39f1e01-10ee-40e8-a9b2-44749081e2e7"
+  ],
+  "existingCount": 12,
+  "staticResourceCount": 136,
+  "pageErrors": []
+}

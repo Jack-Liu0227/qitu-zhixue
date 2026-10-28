@@ -159,11 +159,27 @@ export function matchesPolicyGate(actualGate: string, policyGate: string): boole
 export const GLOBAL_GOVERNANCE_POLICIES: readonly PblGovernancePolicy[] = [
   STANDARD_STEM_PBL_POLICY,
   {
+    ...STANDARD_STEM_PBL_POLICY,
+    id: 'wave-optics-dialogue:v1', name: '问答探究与末课交付', version: 'v1',
+    description: '理论门禁保留，前序实践证据完成后进入末课，末课验收作品并反思归档。',
+    phases: STANDARD_STEM_PBL_POLICY.phases.map(phase => phase.phase === 'guided_practice'
+      ? { ...phase, requiredCheckpoint: 'practice_evidence_ready', allowedToolTypesAfterGate: ['single_slit_diffraction', 'double_slit_interference'] } : { ...phase }),
+  },
+  {
     id: 'rubric-pbl:v1', name: '跨领域作品探究', version: 'v1',
     description: '保留理论掌握门禁，以冻结标准和确切作品版本的服务端评价完成实践。',
     phases: STANDARD_STEM_PBL_POLICY.phases.map(phase => ({
       ...phase,
       ...(phase.phase === 'guided_practice' ? { requiredCheckpoint: 'rubric_artifact_validated', leadAssistantRole: 'Artifact Coach' } : {}),
+      allowedToolTypesBeforeGate: ['concept_probe', 'driving_question', 'visual_explanation'],
+      allowedToolTypesAfterGate: ['concept_probe', 'visual_explanation', 'artifact_revision', 'reflection'],
+    })),
+  },
+  {
+    id: 'rubric-dialogue:v1', name: '跨领域问答探究与末课交付', version: 'v1',
+    description: '过程通过问答保留真实证据，理论检查后实践，最后一课确认成果版本并反思归档。',
+    phases: STANDARD_STEM_PBL_POLICY.phases.map(phase => ({ ...phase,
+      ...(phase.phase === 'guided_practice' ? { requiredCheckpoint: 'practice_evidence_ready', leadAssistantRole: 'Artifact Coach' } : {}),
       allowedToolTypesBeforeGate: ['concept_probe', 'driving_question', 'visual_explanation'],
       allowedToolTypesAfterGate: ['concept_probe', 'visual_explanation', 'artifact_revision', 'reflection'],
     })),
@@ -218,7 +234,7 @@ export function derivePhasesFromPolicyAndSessions(
       deliverableType: options?.deliverableTypes?.[policyPhase.phase] ?? defaultDeliverable,
       evidenceProfile:
         policyPhase.phase === 'guided_practice'
-          ? 'experiment_report'
+          ? policyPhase.requiredCheckpoint === 'practice_evidence_ready' ? 'learning_progress' : 'experiment_report'
           : null,
       assignedAssistantId: options?.assignedAssistants?.[policyPhase.phase] ?? null,
     };
@@ -229,7 +245,7 @@ export type PblTemplateSchedule = PblLessonSchedule;
 
 export interface ProjectTemplateSpec {
   /** Opt-in immutable teaching semantics. Omitted on historical templates. */
-  lessonPolicy?: 'lesson-guided.v1';
+  lessonPolicy?: 'lesson-guided.v1' | 'lesson-dialogue.v1';
   contractVersion: typeof PBL_LEARNING_CONTRACT_VERSION;
   id: string;
   version: string;
@@ -268,8 +284,8 @@ interface LearningSessionCompletionRequirements {
 export interface LessonQualityReviewSpec {
   version: 'lesson-quality.v1';
   reviewer: 'current_teacher' | 'autonomous-learning.v1';
-  criteria: readonly { id: string; description: string }[];
-  artifactCriteria?: readonly { id: string; description: string }[];
+  criteria: readonly { id: string; description: string; required?: boolean }[];
+  artifactCriteria?: readonly { id: string; description: string; required?: boolean }[];
 }
 
 export type LearningSessionCompletionSpec = LearningSessionCompletionRequirements & (
@@ -283,6 +299,8 @@ export function hasLearningSessionCompletion(session: Pick<PblTemplateSession, '
 }
 
 export interface PblTemplateSession {
+  /** Opt-in: only activityRequirements block progression; other scheduled teaching is optional. */
+  progression?: 'dialogue.v1';
   teachingSpec?: LessonTeachingSpec;
   opening?: {
     version: 'lesson-opening.v1';
@@ -519,7 +537,7 @@ export function validateProjectTemplateSpec(input: unknown): ProjectTemplateVali
   templateKeys(input, ['contractVersion', 'id', 'version', 'status', 'title', 'description', 'targetDomain', 'ageRange',
     'prerequisites', 'materials', 'safetyRequirements', 'objectives', 'phases', 'schedules', 'finalDeliverableType',
     'rubricId', 'teamId', 'governancePolicyId', 'theme', 'curriculum', 'lessonPolicy'], 'pbl', issue);
-  if (input.lessonPolicy !== undefined && input.lessonPolicy !== 'lesson-guided.v1') issue('lessonPolicy', 'unsupported lesson policy');
+  if (input.lessonPolicy !== undefined && !['lesson-guided.v1', 'lesson-dialogue.v1'].includes(String(input.lessonPolicy))) issue('lessonPolicy', 'unsupported lesson policy');
   if (input.lessonPolicy && !input.curriculum) issue('curriculum', 'lesson-guided teaching requires a frozen curriculum');
   if (input.contractVersion !== PBL_LEARNING_CONTRACT_VERSION) issue('contractVersion', 'unsupported contractVersion');
   for (const key of ['id', 'version', 'title', 'description', 'targetDomain', 'finalDeliverableType', 'rubricId', 'teamId']) {
@@ -607,6 +625,9 @@ export function validateProjectTemplateSpec(input: unknown): ProjectTemplateVali
     else for (const id of value.objectiveIds) if (!objectives.has(id)) issue(`${path}.objectiveIds`, `unknown objective ${id}`);
     if (!isGateConditionId(value.gateCondition)) issue(`${path}.gateCondition`, 'invalid gate condition');
     if (value.phase === 'concept_mastery' && value.gateCondition !== 'TheoryMastered') issue(`${path}.gateCondition`, 'concept phase must require TheoryMastered');
+    if (value.phase === 'guided_practice' && input.lessonPolicy === 'lesson-dialogue.v1'
+      && (value.gateCondition !== 'practice_evidence_ready' || value.evidenceProfile !== 'learning_progress')) issue(path, 'dialogue practice must finish through learning evidence, before final delivery');
+    if (value.gateCondition === 'practice_evidence_ready' && input.lessonPolicy !== 'lesson-dialogue.v1') issue(path, 'learning evidence gate requires the dialogue policy');
     if (activePolicy) {
       const policyPhase = activePolicy.phases.find((p) => p.phase === value.phase);
       if (policyPhase && !matchesPolicyGate(String(value.gateCondition), policyPhase.requiredCheckpoint)) {
@@ -637,7 +658,8 @@ export function validateProjectTemplateSpec(input: unknown): ProjectTemplateVali
       const profileIds = new Set<string>();
       for (const [index, profile] of input.curriculum.profiles.entries()) {
         validateTemplateProfile(profile, `curriculum.profiles[${index}]`, profileIds, schedules, objectives, phases, issue);
-        if (input.lessonPolicy === 'lesson-guided.v1') validateGuidedProfile(profile, `curriculum.profiles[${index}]`, issue);
+        if (input.lessonPolicy) validateGuidedProfile(profile, `curriculum.profiles[${index}]`, issue);
+        validateDialogueProfile(profile, input.lessonPolicy, `curriculum.profiles[${index}]`, issue);
       }
       if (activePolicy) {
         for (const profile of input.curriculum.profiles) {
@@ -679,8 +701,36 @@ function validateActivityRequirements(session: Record<string, unknown>, path: st
     }
     seen.add(String(item.activity));
   }
-  for (const activity of TEMPLATE_ACTIVITIES) if (Number(session.blocks[activity]) > 0 && !seen.has(activity)) {
+  for (const activity of TEMPLATE_ACTIVITIES) if (session.progression !== 'dialogue.v1' && Number(session.blocks[activity]) > 0 && !seen.has(activity)) {
     issue(path, `missing activity evidence requirement: ${activity}`);
+  }
+}
+
+function validateDialogueProfile(profile: unknown, policy: unknown, path: string, issue: (path: string, message: string) => void): void {
+  if (!templateRecord(profile) || !Array.isArray(profile.sessions)) return;
+  for (const [index, session] of profile.sessions.entries()) {
+    if (!templateRecord(session)) continue;
+    if (session.progression !== undefined && session.progression !== 'dialogue.v1') issue(path, 'unsupported progression');
+    if (policy !== 'lesson-dialogue.v1') {
+      if (session.progression) issue(path, 'dialogue progression requires an explicit template policy');
+      continue;
+    }
+    const spec = templateRecord(session.completionSpec) ? session.completionSpec : {};
+    const requirements = Array.isArray(session.activityRequirements) ? session.activityRequirements : [];
+    const evidence = Array.isArray(spec.requiredEvidence) ? spec.requiredEvidence : [];
+    const final = index === profile.sessions.length - 1;
+    if (session.progression !== 'dialogue.v1' || requirements.length === 0) issue(path, 'dialogue lessons require explicit necessary activities');
+    if (final !== (session.phase === 'deliverable_review')) issue(path, 'only the final lesson is the delivery lesson');
+    if (!final && (requirements.some(r => templateRecord(r) && r.evidence === 'submitted_artifact')
+      || evidence.some(r => templateRecord(r) && ['submitted_artifact', 'approved_artifact'].includes(String(r.kind))))) issue(path, 'formal delivery is limited to the final lesson');
+    if (final && (!evidence.some(r => templateRecord(r) && r.kind === 'approved_artifact' && r.scope === 'session')
+      || !evidence.some(r => templateRecord(r) && r.kind === 'session_response' && r.scope === 'session')
+      || !requirements.some(r => templateRecord(r) && r.evidence === 'submitted_artifact')
+      || !requirements.some(r => templateRecord(r) && r.activity === 'reflect' && r.evidence === 'session_response')
+      || !templateRecord(session.checkpoint) || session.checkpoint.requiredGate !== 'review_completed_and_archived')) issue(path, 'final delivery requires an accepted local artifact followed by reflection');
+    for (const role of Array.isArray(session.collaborators) ? session.collaborators : []) {
+      if (templateRecord(role) && !requirements.some(r => templateRecord(r) && r.activity === role.activity)) issue(path, 'collaborator must target a reachable necessary activity');
+    }
   }
 }
 
@@ -767,7 +817,7 @@ function validateTemplateProfile(
     const sessionPath = `${path}.sessions[${index}]`;
     if (!templateRecord(session)) { issue(sessionPath, 'session must be an object'); continue; }
     templateKeys(session, ['id', 'sessionIndex', 'title', 'phase', 'sessionType', 'objectiveIds',
-      'durationMinutes', 'blocks', 'learningGoal', 'activityGuidance', 'evidenceRequirements', 'completionSpec', 'checkpoint', 'interactiveSpec', 'teachingRequirements', 'requiredSkillIds', 'requiredToolIds', 'leadAssistantId', 'activityRequirements', 'opening', 'contentStrategy', 'collaborators', 'teachingSpec'], sessionPath, issue);
+      'durationMinutes', 'blocks', 'learningGoal', 'activityGuidance', 'evidenceRequirements', 'completionSpec', 'checkpoint', 'interactiveSpec', 'teachingRequirements', 'requiredSkillIds', 'requiredToolIds', 'leadAssistantId', 'activityRequirements', 'opening', 'contentStrategy', 'collaborators', 'teachingSpec', 'progression'], sessionPath, issue);
     if (session.teachingSpec !== undefined) validateLessonTeachingSpec(session, sessionPath, issue);
     validateLessonAuthoring(session, sessionPath, issue);
     if (session.leadAssistantId !== undefined && !templateText(session.leadAssistantId)) issue(`${sessionPath}.leadAssistantId`, 'invalid lead assistant');
@@ -813,7 +863,7 @@ function validateTemplateProfile(
               const ids = new Set<string>();
               for (const criterion of review.criteria) {
                 if (!templateRecord(criterion)) { issue(specPath, 'invalid quality criterion'); continue; }
-                templateKeys(criterion, ['id', 'description'], `${specPath}.qualityReview.criteria`, issue);
+                templateKeys(criterion, ['id', 'description', ...(session.progression === 'dialogue.v1' ? ['required'] : [])], `${specPath}.qualityReview.criteria`, issue);
                 if (!templateText(criterion.id) || !templateText(criterion.description) || criterion.description.length > 600
                   || ids.has(String(criterion.id))) issue(`${specPath}.qualityReview.criteria`, 'invalid or duplicate quality criterion');
                 ids.add(String(criterion.id));
@@ -826,16 +876,20 @@ function validateTemplateProfile(
                 const ids = new Set<string>();
                 for (const criterion of review.artifactCriteria) {
                   if (!templateRecord(criterion)) { issue(specPath, 'invalid artifact criterion'); continue; }
-                  templateKeys(criterion, ['id', 'description'], `${specPath}.qualityReview.artifactCriteria`, issue);
+                  templateKeys(criterion, ['id', 'description', ...(session.progression === 'dialogue.v1' ? ['required'] : [])], `${specPath}.qualityReview.artifactCriteria`, issue);
                   if (!templateText(criterion.id) || !templateText(criterion.description) || criterion.description.length > 600
                     || ids.has(String(criterion.id))) issue(`${specPath}.qualityReview.artifactCriteria`, 'invalid or duplicate artifact criterion');
                   ids.add(String(criterion.id));
                 }
               }
             }
+            for (const criteria of [review.criteria, review.artifactCriteria]) if (Array.isArray(criteria)) {
+              if (!criteria.some(c => templateRecord(c) && c.required !== false)
+                || criteria.some(c => templateRecord(c) && c.required !== undefined && typeof c.required !== 'boolean')) issue(specPath, 'at least one necessary criterion is required');
+            }
           }
         }
-        if (!Array.isArray(spec.requiredEvidence) || spec.requiredEvidence.length < 1 || spec.requiredEvidence.length > 4) {
+        if (!Array.isArray(spec.requiredEvidence) || (spec.requiredEvidence.length < 1 && !(session.progression === 'dialogue.v1' && Array.isArray(spec.requiredMasteryObjectiveIds) && spec.requiredMasteryObjectiveIds.length)) || spec.requiredEvidence.length > 4) {
           issue(`${specPath}.requiredEvidence`, 'one to four server-owned evidence requirements are required');
         } else {
           const seen = new Set<string>();

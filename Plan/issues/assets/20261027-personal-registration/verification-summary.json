@@ -1,0 +1,249 @@
+{
+  "verifiedAt": "2026-10-26T16:38:28.893Z",
+  "sourceRunId": "run-1793031573481-91020",
+  "steps": [
+    {
+      "name": "build-contracts",
+      "exitCode": 0
+    },
+    {
+      "name": "contracts-esm",
+      "exitCode": 0
+    },
+    {
+      "name": "build-database",
+      "exitCode": 0
+    },
+    {
+      "name": "build-infra",
+      "exitCode": 0
+    },
+    {
+      "name": "build-agent-memory",
+      "exitCode": 0
+    },
+    {
+      "name": "build-ai-client",
+      "exitCode": 0
+    },
+    {
+      "name": "build-model-runtime",
+      "exitCode": 0
+    },
+    {
+      "name": "api",
+      "exitCode": 0
+    },
+    {
+      "name": "types-admin-console",
+      "exitCode": 0
+    },
+    {
+      "name": "types-parent-companion",
+      "exitCode": 0
+    },
+    {
+      "name": "types-auth-portal",
+      "exitCode": 0
+    },
+    {
+      "name": "behavior",
+      "exitCode": 0
+    }
+  ],
+  "unitTests": 25,
+  "postgresChecks": 18,
+  "sourceFiles": [
+    {
+      "path": "apps/auth-portal/app/login/RegistrationPhoneFields.tsx",
+      "sha256": "06480f1eda9060b12c8c3b7c2928ec29f21dd0612bec794d74954aaa4ca3c358"
+    },
+    {
+      "path": "packages/database/src/schema/identity.ts",
+      "sha256": "fd0911ca04e3b6a643393d0b64001b35d7b7f196b69c3258df7003e71399d4e7"
+    },
+    {
+      "path": "packages/database/src/schema/index.ts",
+      "sha256": "3a5d7c3d4e56f3965280f4938cfa5ae5ed55e4cb2dc67604391edbf71ebb45f8"
+    },
+    {
+      "path": "packages/database/src/schema/registration-sms.ts",
+      "sha256": "ed7672f1a2d897f7c70ba543b8a755d983b06cefe2441a7a14eac7550364e2cc"
+    },
+    {
+      "path": "database/migrations/0055_phone_registration.sql",
+      "sha256": "9953964ba602bf4f8340e0a4ef12ab397c9d9544eee902e59b61fe6c054eb7e7"
+    },
+    {
+      "path": "database/migrations/0055_phone_registration.down.sql",
+      "sha256": "688f4b4ec29dba8e26fb288310639e30e8ba44951e910e73fdab5d8db16f4bce"
+    },
+    {
+      "path": "database/migrations/meta/_journal.json",
+      "sha256": "1b4a1781695d4d2b73461f4151b58ff86bde4ac4fc90d1a6bd6c6859944dc967"
+    },
+    {
+      "path": "services/api/src/modules/directory/directory.service.ts",
+      "sha256": "44ab3722214414caed99c2f1f305d4be978c1488a6ac03d328f04897f4c56288"
+    },
+    {
+      "path": "services/api/src/modules/identity-auth/auth.service.ts",
+      "sha256": "c4dd0d6505b74f3e82fcccbbd9a785b8eb61d701bfeb7bfa6f6c8423a9a5003e"
+    },
+    {
+      "path": "services/api/src/modules/identity-auth/auth.controller.ts",
+      "sha256": "8c3d24899a655303efa093f1a84c28bb0e74ff069d083dc1f58a353350351a0e"
+    },
+    {
+      "path": "services/api/src/modules/directory/registration-sms.service.ts",
+      "sha256": "183f3dd0eb3b1b5afda4d9a0d2b16b7c24bfe01f9c82f32238dfb391d55520b5"
+    },
+    {
+      "path": "services/api/src/modules/directory/aliyun-registration-sms.ts",
+      "sha256": "ff154f2593ee50ce23ea092b39d2c8576791a984539742624fd99b8f6478224c"
+    },
+    {
+      "path": "tooling/test-registration-sms-postgres.mjs",
+      "sha256": "72ac861ed7a968dd2d7415cb4d2b17bac497132422220f9bdf32b0fe6d87b528"
+    },
+    {
+      "path": "docs/admin/sms-registration.md",
+      "sha256": "c6c20815b36338a42ae8ff33ea975091533a2fc52302c96cb3bd9b406e2c8abf"
+    },
+    {
+      "path": "packages/contracts/src/auth.ts",
+      "sha256": "71f0af4a7dc5a4cfc600dbed3eafe04f458dbdaf9ea08385d222e3eb6039c7cf"
+    },
+    {
+      "path": "packages/contracts/src/errors.ts",
+      "sha256": "097fdb01fb04df535d808ef6d21ab80abf3c99137eb4a69debc5f963a083bef1"
+    },
+    {
+      "path": "services/api/src/modules/directory/family-invitation.service.ts",
+      "sha256": null
+    },
+    {
+      "path": "services/api/src/modules/business/business.controller.ts",
+      "sha256": "44d2e6a830bca330653edfacc0ecced964ee37ce18bcb1b7c052a31f017b1e43"
+    },
+    {
+      "path": "services/api/src/modules/business/business.module.ts",
+      "sha256": "0088a8d8e589c8a0d5f282c499de065964ae490281c78c7297eb57f6376c3559"
+    },
+    {
+      "path": "services/api/src/modules/identity-auth/auth-session.persistence.test.ts",
+      "sha256": "483f9b8b762fa203bfa49f44cf098658a1c467e8399020c10988afe2332e6c2b"
+    },
+    {
+      "path": "apps/auth-portal/app/login/FamilyInvitation.tsx",
+      "sha256": null
+    },
+    {
+      "path": "apps/auth-portal/app/login/invitation.module.css",
+      "sha256": null
+    },
+    {
+      "path": "apps/auth-portal/app/login/registration.module.css",
+      "sha256": "e7383c996fefffe1b184d88e54ad0792b4bea69eb866f46f857b4c7df95ed769"
+    },
+    {
+      "path": "apps/auth-portal/app/login/page.tsx",
+      "sha256": "f5c7f5dc2562b1fad36127ae91d6c92bced78ac17dca4749a225bb2ed1ee4d7b"
+    },
+    {
+      "path": "apps/auth-portal/app/page.tsx",
+      "sha256": "17df78702a3ac6f0306b6aa5d67f7d0ac1c214f9dc6e5d36f0e9c9ab934a127e"
+    },
+    {
+      "path": "apps/auth-portal/app/showcase/ProjectOfferShowcase.tsx",
+      "sha256": "b6ea14d34c0c8d9f0fa424b66d2e9aa2c0b5a9a9556c1dd1594a91d5ae5c0dc8"
+    },
+    {
+      "path": "apps/admin-console/features/business/BusinessPanels.tsx",
+      "sha256": "a2eba93035a26b91c88828637748e5bc8ff243fa2a7450101653515b58494994"
+    },
+    {
+      "path": "apps/admin-console/features/business/FamilyInvitationForm.tsx",
+      "sha256": null
+    },
+    {
+      "path": "apps/auth-portal/next.config.ts",
+      "sha256": "29f768243ab6e870f3f1b3a86219414b80093968c0afc20a6dd2b8899f850b16"
+    },
+    {
+      "path": "Plan/issues/20261026-family-self-registration.md",
+      "sha256": "486d151ef1659669ab034a12852d711c236ff5002f9e5d90ebd24eba1bcc7c74"
+    },
+    {
+      "path": "docs/admin/business-operations.md",
+      "sha256": "59949f3bf9b4666733ba6a8bedd88ea2ef8ab35a39e4a2bc048cc42f47c73b2c"
+    },
+    {
+      "path": "docs/admin/authentication.md",
+      "sha256": "3bdc92845778d05c06ed2b7006c1ae4c43af6d4ba8fe29422f200598f38224db"
+    },
+    {
+      "path": "docs/admin/public-site.md",
+      "sha256": "98dcc441e851f4cb9cd53b54b8e995af3276d4c82a41b915b2dfb285adb074c9"
+    },
+    {
+      "path": "docs/parent/home.md",
+      "sha256": "b1e8d447dd79d8707fc3bce60396ed97fb34eee291e89a646b1e4848b547af0f"
+    },
+    {
+      "path": "tooling/test-business-postgres.mjs",
+      "sha256": "8e3c798fb0d3deb7a8f69152ff979e906944376ead3897460769814250bda3df"
+    },
+    {
+      "path": "tooling/verify-business-operations.mjs",
+      "sha256": "d29bee76db24a49d18a87c2105ad7d7d6646a5467b2eb23d694351c2f927aac3"
+    },
+    {
+      "path": "services/api/src/modules/directory/account-password.ts",
+      "sha256": "a07a20e97135abf14b40cd04d2fd14a34be454b1c38254e7e5cd3fedf37ac9fd"
+    },
+    {
+      "path": "services/api/src/modules/directory/account-registration.service.ts",
+      "sha256": "ec40410f77fe1aba3e7da86cd8d78d925942f5761b6f71db1750527748a5a7c3"
+    },
+    {
+      "path": "services/api/src/modules/directory/account-registration.validation.ts",
+      "sha256": "55433051e2e19b276896e39694a0d348e4e4c1892f6cd81ba9f6a5086f8ed63f"
+    },
+    {
+      "path": "services/api/src/modules/directory/account-registration.test.ts",
+      "sha256": "ab3944b736443af00ae45f6284d9f85c29c3ce815e24d531add7f070773b5332"
+    },
+    {
+      "path": "services/api/src/modules/directory/account-registration.sms.test.ts",
+      "sha256": "a84c0d2dac93989d2bda0e8c2596a0975e893a4675eb8e1f28e4403d6bd17473"
+    },
+    {
+      "path": "apps/auth-portal/app/login/AccountRegistration.tsx",
+      "sha256": "1e21c69e52f7e53c998e6ea19fbc125ca80c967eccd8beab9df1206006feebe2"
+    },
+    {
+      "path": "apps/parent-companion/features/ParentStates.tsx",
+      "sha256": "3002f8c702fca6fa267ac2e3b6fe7a049ffff59e0603e9443e46c5b55f19f46b"
+    },
+    {
+      "path": "tooling/test-account-registration-postgres.mjs",
+      "sha256": "aa5c4ee3d2094782f476879d312fe6d0eff77534610d274d9133c705a8624d34"
+    },
+    {
+      "path": "apps/auth-portal/package.json",
+      "sha256": "513ed5f1e14081073b8a14b5457e058fbb4927a79fcb71ea6d52d4eba9e8b065"
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "sha256": "2927f1abaa4e4ed54f1fbcd50a6de9c61ab4466bcc2aa01b54f8acf17f7bf445"
+    }
+  ],
+  "unrelatedChanges": "Tutor, learning plan, courseware/contracts, and other admin edits preserved; excluded from deploy",
+  "actualSms": false,
+  "actualPayments": false,
+  "postUnitValidation": {
+    "dependencyDeclaration": "Verified by production frozen install and application typechecks",
+    "mobileCss": "Verified at 320px and 390px by production browser"
+  }
+}

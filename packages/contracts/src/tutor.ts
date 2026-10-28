@@ -387,6 +387,8 @@ export interface TutorProjectContext {
   phases?: TutorPhaseProjection[];
   /** 当前冻结课时投影。阶段仅作为服务端策略元数据，不在学生端作为课程主轴展示。 */
   lesson?: {
+    progression?: 'dialogue.v1';
+    pendingQuestionId?: string | null;
     collaborationAvailable?: boolean;
     opening?: PblTemplateSession['opening'];
     learningGoal?: string;
@@ -592,6 +594,7 @@ export interface GetTutorSessionResponse {
 
 /** POST /tutor/sessions/:id/turns */
 export interface CreateTutorTurnRequest {
+  learningReply?: import('./tutor-learning.js').TutorLearningReplyScope;
   content?: string;
   pedagogicMove?: PedagogicMove;
   optionLabel?: string;

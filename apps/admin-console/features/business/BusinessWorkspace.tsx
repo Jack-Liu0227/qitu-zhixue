@@ -162,6 +162,7 @@ export default function BusinessWorkspace() {
           <p>跟进客户、核对订单，关注每一个项目的真实进展。</p>
         </div>
         <div className={styles.actions}>
+          <a className={styles.secondary} href="/company">打开 Company 公司工作区 ↗</a>
           <span className={styles.tag}>
             {loading
               ? '正在读取…'

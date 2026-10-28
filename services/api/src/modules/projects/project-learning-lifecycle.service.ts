@@ -1,4 +1,5 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
+import { TeamRuntimeService } from '../team-runtime/team-runtime.service';
 import type { CurrentUser, ProjectStage, ReconcileProjectLearningRequest, ReconcileProjectLearningResponse } from '@qitu/contracts';
 import { AuditWriter } from '../../common/audit/audit.service';
 import { OutboxWriter } from '../../common/outbox/outbox.service';
@@ -26,6 +27,7 @@ export class ProjectLearningLifecycleService {
     private readonly idempotency: IdempotencyStore,
     private readonly audit: AuditWriter,
     private readonly outbox: OutboxWriter,
+    @Optional() private readonly team?: TeamRuntimeService,
   ) {}
 
   /** Called after a durable answer, including retries; grading remains owned by learning-plan. */
@@ -57,9 +59,20 @@ export class ProjectLearningLifecycleService {
     if (typeof input.planId !== 'string' || !input.planId || !Number.isSafeInteger(input.planRevision) || input.planRevision < 1) {
       throw new BadRequestException({ code: 'LEARNING_PROGRESS_INVALID', message: '需要当前计划与修订号。' });
     }
-    await this.owned(actor, projectId, input);
+    // Only explicit new contracts auto-complete. The existing owner rechecks all evidence under its transaction.
+    const owned = await this.owned(actor, projectId, input);
+    const frozenBundle = await this.bindings.getFrozenTeachingBundle(projectId, owned.project.templateVersionId!);
+    if (frozenBundle.template.lessonPolicy === 'lesson-dialogue.v1' && owned.plan.plan.status === 'active') {
+      const before = await this.progress.readProgress(actor, input.planId);
+      const current = before.sessions.find(session => session.sessionId === before.currentSessionId);
+      if (current?.canComplete) await this.progress.complete(actor, input.planId, current.sessionId,
+        { projectId, planRevision: input.planRevision, evidenceRefs: [] },
+        hashIdempotentInput('dialogue.lesson.complete', { planId: input.planId, sessionId: current.sessionId }, { revision: input.planRevision }));
+    }
     const scope = `project.learning.reconcile:${actor.id}:${projectId}`;
-    const result = await this.idempotency.execute(scope, key, hashIdempotentInput(scope, { projectId }, input), async () => {
+    const syncKey = frozenBundle.template.lessonPolicy === 'lesson-dialogue.v1'
+      ? hashIdempotentInput('dialogue.progress.sync', { key }, { progress: await this.progress.readProgress(actor, input.planId) }) : key;
+    const result = await this.idempotency.execute(scope, syncKey, hashIdempotentInput(scope, { projectId }, input), async () => {
       const body = await this.store.withSessionProgressTransaction(actor.id, input.planId, async store => {
         const { project, plan } = await this.owned(actor, projectId, input, store);
         const teaching = await this.bindings.getFrozenTeachingBundle(projectId, project.templateVersionId!);
@@ -81,8 +94,11 @@ export class ProjectLearningLifecycleService {
             ? 'artifact_review' : 'practice_building';
         }
         if (frozen.phase === 'deliverable_review') {
-          if (!proofs.approvedArtifacts.length) this.reject('PROJECT_REVIEW_REQUIRED');
-          target = 'reflection';
+          if (frozen.progression === 'dialogue.v1') target = proofs.approvedArtifacts.some(proof => proof.scope.learningSessionId === session.id) ? 'reflection' : 'artifact_review';
+          else {
+            if (!proofs.approvedArtifacts.length) this.reject('PROJECT_REVIEW_REQUIRED');
+            target = 'reflection';
+          }
         }
         if (progress.currentSessionId === null) {
           if (progress.completedCount !== profile.sessions.length || !proofs.approvedArtifacts.length || !proofs.reflections.length) this.reject('PROJECT_ARCHIVE_EVIDENCE_REQUIRED');
@@ -115,6 +131,21 @@ export class ProjectLearningLifecycleService {
       });
       return { status: 200, body };
     });
+    if (frozenBundle.template.lessonPolicy === 'lesson-dialogue.v1' && this.team) {
+      const profile = frozenBundle.template.curriculum!.profiles.find(item => item.id === frozenBundle.scheduleProfileId)!;
+      const completions = await this.store.listSessionCompletions(input.planId, input.planRevision);
+      const practice = profile.sessions.filter(item => item.phase === 'guided_practice');
+      if (practice.length && practice.every(item => completions.some(record => record.learningSessionId === `${input.planId}:${item.id}`))) {
+        try {
+          await this.team.recordGateForStudent({ studentUserId: actor.id, projectId, gate: 'practice_evidence_ready',
+            source: 'learning-plan.session-completion', evidenceRef: `learning_plan:${input.planId}:revision:${input.planRevision}:practice`,
+            idempotencyKey: `dialogue-practice:${input.planId}:${input.planRevision}` });
+          if (result.body.stage === 'completed') await this.team.recordGateForStudent({ studentUserId: actor.id, projectId,
+            gate: 'review_completed_and_archived', source: 'projects.learning-completed', evidenceRef: `project:${projectId}:completed:${input.planRevision}`,
+            idempotencyKey: `dialogue-archive:${input.planId}:${input.planRevision}` });
+        } catch { new Logger(ProjectLearningLifecycleService.name).warn('Learning is saved; optional team projection will retry on reconciliation.'); }
+      }
+    }
     return { ...result.body, replayed: result.replayed };
   }
 

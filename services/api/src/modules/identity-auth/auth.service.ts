@@ -2,6 +2,7 @@ import { HttpException, HttpStatus, Injectable, Inject, Optional, UnauthorizedEx
 import { AuthSessionPersistence } from './auth-session.persistence';
 import { createHash, randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto';
 import type { CurrentUser, LoginResponse } from '@qitu/contracts';
+import { normalizeRegistrationPhone } from '@qitu/contracts';
 import type { DirectoryService } from '../directory/directory.service';
 import { allowsConfiguredTestLogin, testLoginOptions } from './test-login';
 
@@ -80,7 +81,7 @@ export class AuthService implements OnModuleInit {
   private readonly attempts = new Map<string, AttemptRecord>();
 
   constructor(
-    @Inject('DirectoryService') private readonly directory: Pick<DirectoryService, 'findCredentialByEmail' | 'allowsDemoLogin' | 'findUser'>,
+    @Inject('DirectoryService') private readonly directory: Pick<DirectoryService, 'findCredentialByEmail' | 'allowsDemoLogin' | 'findUser'> & Partial<Pick<DirectoryService, 'findCredentialByPhone'>>,
     @Optional() private readonly persistence?: AuthSessionPersistence,
   ) {}
 
@@ -104,12 +105,15 @@ export class AuthService implements OnModuleInit {
     clientKey = '',
     device: { id?: string; userAgent?: string } = {},
   ): Promise<{ token: string } & LoginResponse> {
+    email = normalizeRegistrationPhone(email) ?? email;
     this.assertWithinRateLimit(email, clientKey);
 
     // 凭据从目录取：身份与口令是同一份真相。
     // 从前这里是两张硬编码表（EMAIL_TO_USER_ID + PASSWORD_STORE），
     // 结果是数据库里新增的用户永远登不进来。
-    const credential = await this.directory.findCredentialByEmail(email);
+    const credential = normalizeRegistrationPhone(email)
+      ? await this.directory.findCredentialByPhone?.(email) ?? null
+      : await this.directory.findCredentialByEmail(email);
 
     // Hash the provided password and compare with stored hash
     const providedHash = createHash('sha256').update(passwordPlain, 'utf8').digest('hex');
@@ -122,7 +126,7 @@ export class AuthService implements OnModuleInit {
       this.recordFailure(email, clientKey);
       throw new UnauthorizedException({
         code: 'INVALID_CREDENTIALS',
-        message: '邮箱或密码错误',
+        message: '手机号、邮箱或密码错误',
       });
     }
 

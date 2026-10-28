@@ -10,7 +10,6 @@ import {
 import type { BusinessAction } from './BusinessWorkspace';
 import styles from './business.module.css';
 import { BusinessExpenseForm } from './BusinessExpenseForm';
-import { FamilyInvitationForm } from './FamilyInvitationForm';
 
 const date = (s: string | null) =>
   s ? new Date(s).toLocaleString('zh-CN', { hour12: false }) : '尚未运行';
@@ -181,7 +180,7 @@ export function BusinessOrdersPanel({ data, disabled, act }: PanelProps) {
         {data.recentOrders.map((order) => (
           <div className={styles.row} key={order.id}>
             <div>
-              <strong>{order.offer.title}</strong>
+              <strong>{order.subscription?.product.title ?? order.offer?.title ?? '历史课程'}</strong>
               <p>
                 {order.id} · {date(order.createdAt)}
               </p>
@@ -228,7 +227,11 @@ export function BusinessOrdersPanel({ data, disabled, act }: PanelProps) {
 export function BusinessCustomersPanel({ data, disabled, act }: PanelProps) {
   return (
     <div className={styles.stack}>
-      <FamilyInvitationForm disabled={disabled} act={act} />
+      <section className={styles.panel}>
+        <h2>家庭自助注册</h2>
+        <p>学生与家长可分别创建个人账号。监护关系完成核验后，家长可为已绑定孩子开通课程。</p>
+        <a href="/login?mode=register" target="_blank" rel="noreferrer">查看家庭注册入口</a>
+      </section>
       <section className={styles.panel}>
         <div className={styles.sectionHeading}>
           <div>

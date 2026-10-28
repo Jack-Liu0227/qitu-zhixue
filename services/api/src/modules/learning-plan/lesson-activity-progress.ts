@@ -26,7 +26,10 @@ export function projectLessonActivities(input: {
     const minimumObservations = Math.max(1, ...(input.lesson.completionSpec?.requiredEvidence ?? [])
       .filter(item => item.kind === 'experiment_observation' && item.scope === 'session').map(item => item.minimumCount));
     const observationCount = new Set(refs).size;
-    const accepted = requirement.evidence === 'mastery' ? input.masteryAccepted
+    const finalArtifact = input.lesson.progression === 'dialogue.v1' && requirement.evidence === 'submitted_artifact';
+    const approved = input.proofs.some(proof => proof.kind === 'submitted_artifact' && refs.includes(proof.ref)
+      && input.proofs.some(other => other.kind === 'approved_artifact' && other.artifactId === proof.artifactId && other.artifactVersionId === proof.artifactVersionId));
+    const accepted = finalArtifact ? approved : requirement.evidence === 'mastery' ? input.masteryAccepted
       : requirement.evidence === 'teaching_delivery' ? delivered
       : requirement.evidence === 'experiment_observation' ? observationCount >= minimumObservations : refs.length > 0;
     const status = input.locked ? 'locked' : input.sessionCompleted || (!blocked && accepted) ? 'completed' : blocked ? 'locked' : 'current';

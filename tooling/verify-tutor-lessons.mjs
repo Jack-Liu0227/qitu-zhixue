@@ -128,7 +128,7 @@ const currentNames = new Set(['wave-course-fullflow', 'tutor-exploration', 'wave
   'tutor-lesson-activity', 'tutor-lesson-activity.feedback', 'tutor-lesson-assessment.service', 'tutor-opening', 'tutor-teaching-context', 'tutor.runtime-identity', 'tutor.team-resolution',
   'tutor.service', 'learning-session-progress', 'optics-fullflow', 'works-learning-evidence', 'works-lesson-quality',
   'teaching-bundle.compiler', 'teaching-bundle.draft', 'templates-binding.service', 'optics-template-bootstrap',
-  'courseware', 'tutor-courseware-activity', 'tutor-courseware', 'learning-plan.service']);
+  'courseware', 'tutor-courseware-activity', 'tutor-courseware', 'learning-plan.service', 'dialogue-course-fullflow', 'inspiration-dialogue-fullflow', 'inspiration-catalog-bootstrap', 'project-learning-lifecycle', 'lesson-evaluation-recovery', 'tutor-tool-outcomes']);
 const testFiles = findTests(join(runDirectory, 'dist')).filter(file =>
   currentOnly ? currentNames.has(file.split(sep).at(-1).replace(/\.test\.js$/, ''))
     : focusDirectories.some(name => file.includes(join('modules', name) + sep)));

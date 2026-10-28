@@ -1,0 +1,3859 @@
+{
+  "environment": "production-synthetic-demo-owner-api",
+  "projects": [
+    {
+      "template": "zero8",
+      "projectId": "proj-7ddf7fcc-fd9d-4d6f-9617-f76d52653756",
+      "completed": {
+        "projectId": "proj-7ddf7fcc-fd9d-4d6f-9617-f76d52653756",
+        "planId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8",
+        "planRevision": 1,
+        "currentSessionId": null,
+        "completedCount": 8,
+        "totalCount": 8,
+        "contractReady": true,
+        "sessions": [
+          {
+            "sessionId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-1",
+            "lessonIndex": 1,
+            "title": "条纹从哪里来？",
+            "activities": [
+              {
+                "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-1:activity:review",
+                "kind": "review",
+                "evidence": "teaching_delivery",
+                "status": "completed",
+                "guidance": "从已保存的课件和上一课证据衔接；首次学习先解释观察对象，不把不会视为答错。",
+                "minutes": 5,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-1:activity:theory",
+                "kind": "theory",
+                "evidence": "teaching_delivery",
+                "status": "completed",
+                "guidance": "依据本课授权知识库，逐个解释概念与符号，展示有来源的交互板书。先查找已审核课件，适配不够时生成本项目课件。讲解与演示后让学生选择继续、再解释或看例子；继续只记录教学展示，不代表掌握。",
+                "minutes": 25,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-1:activity:check",
+                "kind": "check",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "根据学生本轮解释提出一个检查问题；题目可动态生成，不覆盖已有待答题。",
+                "minutes": 20,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-1:activity:reflect",
+                "kind": "reflect",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "现象对照卡与一个可探究问题。用自己的话说明依据和一次修订；保存真实学习产物。",
+                "minutes": 10,
+                "evidenceRefs": []
+              }
+            ],
+            "status": "completed",
+            "completedAt": "2026-10-23T21:52:59.512Z",
+            "canComplete": false,
+            "blockers": []
+          },
+          {
+            "sessionId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-2",
+            "lessonIndex": 2,
+            "title": "两列波相遇会怎样？",
+            "activities": [
+              {
+                "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-2:activity:review",
+                "kind": "review",
+                "evidence": "teaching_delivery",
+                "status": "completed",
+                "guidance": "从已保存的课件和上一课证据衔接；首次学习先解释观察对象，不把不会视为答错。",
+                "minutes": 5,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-2:activity:theory",
+                "kind": "theory",
+                "evidence": "teaching_delivery",
+                "status": "completed",
+                "guidance": "依据本课授权知识库，逐个解释概念与符号，展示有来源的交互板书。先查找已审核课件，适配不够时生成本项目课件。讲解与演示后让学生选择继续、再解释或看例子；继续只记录教学展示，不代表掌握。",
+                "minutes": 25,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-2:activity:check",
+                "kind": "check",
+                "evidence": "mastery",
+                "status": "completed",
+                "guidance": "通过服务端专题准备检查；求助不自动判错，未掌握则同目标补救。",
+                "minutes": 20,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-2:activity:reflect",
+                "kind": "reflect",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "波叠加解释、相干条件与受控比较的服务端检查回执。用自己的话说明依据和一次修订；保存真实学习产物。",
+                "minutes": 10,
+                "evidenceRefs": []
+              }
+            ],
+            "status": "completed",
+            "completedAt": "2026-10-23T22:08:42.713Z",
+            "canComplete": false,
+            "blockers": []
+          },
+          {
+            "sessionId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-3",
+            "lessonIndex": 3,
+            "title": "双缝为什么出现明暗？",
+            "activities": [
+              {
+                "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-3:activity:review",
+                "kind": "review",
+                "evidence": "teaching_delivery",
+                "status": "completed",
+                "guidance": "从已保存的课件和上一课证据衔接；首次学习先解释观察对象，不把不会视为答错。",
+                "minutes": 5,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-3:activity:theory",
+                "kind": "theory",
+                "evidence": "teaching_delivery",
+                "status": "completed",
+                "guidance": "依据本课授权知识库，逐个解释概念与符号，展示有来源的交互板书。先查找已审核课件，适配不够时生成本项目课件。讲解与演示后让学生选择继续、再解释或看例子；继续只记录教学展示，不代表掌握。",
+                "minutes": 15,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-3:activity:check",
+                "kind": "check",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "根据学生本轮解释提出一个检查问题；题目可动态生成，不覆盖已有待答题。",
+                "minutes": 10,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-3:activity:practice",
+                "kind": "practice",
+                "evidence": "experiment_observation",
+                "status": "completed",
+                "guidance": "先预测再使用本课注册模型；一次只改一个变量，保存参数和模拟观察，不写成实测。",
+                "minutes": 25,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-3:activity:reflect",
+                "kind": "reflect",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "双缝标注图与一次基于路径的判断。用自己的话说明依据和一次修订；保存真实学习产物。",
+                "minutes": 5,
+                "evidenceRefs": []
+              }
+            ],
+            "status": "completed",
+            "completedAt": "2026-10-23T22:12:27.942Z",
+            "canComplete": false,
+            "blockers": []
+          },
+          {
+            "sessionId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-4",
+            "lessonIndex": 4,
+            "title": "怎样改变干涉条纹间距？",
+            "activities": [
+              {
+                "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-4:activity:review",
+                "kind": "review",
+                "evidence": "teaching_delivery",
+                "status": "completed",
+                "guidance": "从已保存的课件和上一课证据衔接；首次学习先解释观察对象，不把不会视为答错。",
+                "minutes": 5,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-4:activity:theory",
+                "kind": "theory",
+                "evidence": "teaching_delivery",
+                "status": "completed",
+                "guidance": "依据本课授权知识库，逐个解释概念与符号，展示有来源的交互板书。先查找已审核课件，适配不够时生成本项目课件。讲解与演示后让学生选择继续、再解释或看例子；继续只记录教学展示，不代表掌握。",
+                "minutes": 15,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-4:activity:check",
+                "kind": "check",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "根据学生本轮解释提出一个检查问题；题目可动态生成，不覆盖已有待答题。",
+                "minutes": 10,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-4:activity:practice",
+                "kind": "practice",
+                "evidence": "experiment_observation",
+                "status": "completed",
+                "guidance": "先预测再使用本课注册模型；一次只改一个变量，保存参数和模拟观察，不写成实测。",
+                "minutes": 25,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-4:activity:reflect",
+                "kind": "reflect",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "至少一组受控双缝模拟观察与比较解释。用自己的话说明依据和一次修订；保存真实学习产物。",
+                "minutes": 5,
+                "evidenceRefs": []
+              }
+            ],
+            "status": "completed",
+            "completedAt": "2026-10-23T22:21:22.036Z",
+            "canComplete": false,
+            "blockers": []
+          },
+          {
+            "sessionId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-5",
+            "lessonIndex": 5,
+            "title": "一条缝为什么仍有条纹？",
+            "activities": [
+              {
+                "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-5:activity:review",
+                "kind": "review",
+                "evidence": "teaching_delivery",
+                "status": "completed",
+                "guidance": "从已保存的课件和上一课证据衔接；首次学习先解释观察对象，不把不会视为答错。",
+                "minutes": 5,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-5:activity:theory",
+                "kind": "theory",
+                "evidence": "teaching_delivery",
+                "status": "completed",
+                "guidance": "依据本课授权知识库，逐个解释概念与符号，展示有来源的交互板书。先查找已审核课件，适配不够时生成本项目课件。讲解与演示后让学生选择继续、再解释或看例子；继续只记录教学展示，不代表掌握。",
+                "minutes": 15,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-5:activity:check",
+                "kind": "check",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "根据学生本轮解释提出一个检查问题；题目可动态生成，不覆盖已有待答题。",
+                "minutes": 10,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-5:activity:practice",
+                "kind": "practice",
+                "evidence": "experiment_observation",
+                "status": "completed",
+                "guidance": "先预测再使用本课注册模型；一次只改一个变量，保存参数和模拟观察，不写成实测。",
+                "minutes": 25,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-5:activity:reflect",
+                "kind": "reflect",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "单缝特征标注与初步解释。用自己的话说明依据和一次修订；保存真实学习产物。",
+                "minutes": 5,
+                "evidenceRefs": []
+              }
+            ],
+            "status": "completed",
+            "completedAt": "2026-10-24T09:31:39.099Z",
+            "canComplete": false,
+            "blockers": []
+          },
+          {
+            "sessionId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-6",
+            "lessonIndex": 6,
+            "title": "缝变窄，图样怎样变化？",
+            "activities": [
+              {
+                "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-6:activity:review",
+                "kind": "review",
+                "evidence": "teaching_delivery",
+                "status": "completed",
+                "guidance": "从已保存的课件和上一课证据衔接；首次学习先解释观察对象，不把不会视为答错。",
+                "minutes": 5,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-6:activity:theory",
+                "kind": "theory",
+                "evidence": "teaching_delivery",
+                "status": "completed",
+                "guidance": "依据本课授权知识库，逐个解释概念与符号，展示有来源的交互板书。先查找已审核课件，适配不够时生成本项目课件。讲解与演示后让学生选择继续、再解释或看例子；继续只记录教学展示，不代表掌握。",
+                "minutes": 15,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-6:activity:check",
+                "kind": "check",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "根据学生本轮解释提出一个检查问题；题目可动态生成，不覆盖已有待答题。",
+                "minutes": 10,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-6:activity:practice",
+                "kind": "practice",
+                "evidence": "experiment_observation",
+                "status": "completed",
+                "guidance": "先预测再使用本课注册模型；一次只改一个变量，保存参数和模拟观察，不写成实测。",
+                "minutes": 25,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-6:activity:reflect",
+                "kind": "reflect",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "至少一组受控单缝模拟观察、单位与修订解释。用自己的话说明依据和一次修订；保存真实学习产物。",
+                "minutes": 5,
+                "evidenceRefs": []
+              }
+            ],
+            "status": "completed",
+            "completedAt": "2026-10-24T09:41:12.800Z",
+            "canComplete": false,
+            "blockers": []
+          },
+          {
+            "sessionId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-7",
+            "lessonIndex": 7,
+            "title": "干涉与衍射怎样联系？",
+            "activities": [
+              {
+                "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-7:activity:review",
+                "kind": "review",
+                "evidence": "teaching_delivery",
+                "status": "completed",
+                "guidance": "从已保存的课件和上一课证据衔接；首次学习先解释观察对象，不把不会视为答错。",
+                "minutes": 5,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-7:activity:theory",
+                "kind": "theory",
+                "evidence": "teaching_delivery",
+                "status": "completed",
+                "guidance": "依据本课授权知识库，逐个解释概念与符号，展示有来源的交互板书。先查找已审核课件，适配不够时生成本项目课件。讲解与演示后让学生选择继续、再解释或看例子；继续只记录教学展示，不代表掌握。",
+                "minutes": 20,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-7:activity:check",
+                "kind": "check",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "根据学生本轮解释提出一个检查问题；题目可动态生成，不覆盖已有待答题。",
+                "minutes": 15,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-7:activity:practice",
+                "kind": "practice",
+                "evidence": "experiment_observation",
+                "status": "completed",
+                "guidance": "先预测再使用本课注册模型；一次只改一个变量，保存参数和模拟观察，不写成实测。",
+                "minutes": 15,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-7:activity:reflect",
+                "kind": "reflect",
+                "evidence": "submitted_artifact",
+                "status": "completed",
+                "guidance": "两类现象的证据比较档案及作品审核回执。用自己的话说明依据和一次修订；保存真实学习产物。",
+                "minutes": 5,
+                "evidenceRefs": []
+              }
+            ],
+            "status": "completed",
+            "completedAt": "2026-10-24T09:45:13.184Z",
+            "canComplete": false,
+            "blockers": []
+          },
+          {
+            "sessionId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-8",
+            "lessonIndex": 8,
+            "title": "别人能复核我的探究吗？",
+            "activities": [
+              {
+                "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-8:activity:review",
+                "kind": "review",
+                "evidence": "teaching_delivery",
+                "status": "completed",
+                "guidance": "从已保存的课件和上一课证据衔接；首次学习先解释观察对象，不把不会视为答错。",
+                "minutes": 5,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-8:activity:theory",
+                "kind": "theory",
+                "evidence": "teaching_delivery",
+                "status": "completed",
+                "guidance": "依据本课授权知识库，逐个解释概念与符号，展示有来源的交互板书。先查找已审核课件，适配不够时生成本项目课件。讲解与演示后让学生选择继续、再解释或看例子；继续只记录教学展示，不代表掌握。",
+                "minutes": 10,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-8:activity:check",
+                "kind": "check",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "根据学生本轮解释提出一个检查问题；题目可动态生成，不覆盖已有待答题。",
+                "minutes": 15,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-8:activity:reflect",
+                "kind": "reflect",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "最终作品、答辩回应、真实反思与归档回执。用自己的话说明依据和一次修订；保存真实学习产物。",
+                "minutes": 30,
+                "evidenceRefs": []
+              }
+            ],
+            "status": "completed",
+            "completedAt": "2026-10-24T09:48:42.924Z",
+            "canComplete": false,
+            "blockers": []
+          }
+        ],
+        "stage": "completed"
+      },
+      "startedAt": "2026-10-23T21:49:54.110Z",
+      "finishedAt": "2026-10-24T09:48:44.800Z",
+      "gateChecks": [
+        {
+          "trigger": "lesson-completion",
+          "lesson": 2,
+          "stage": "practice_building"
+        }
+      ],
+      "negative": {},
+      "activityExecutions": [
+        {
+          "lesson": 1,
+          "title": "条纹从哪里来？",
+          "activity": "review",
+          "evidence": "teaching_delivery",
+          "at": "2026-10-23T21:49:54.110Z",
+          "passed": true
+        },
+        {
+          "lesson": 1,
+          "title": "条纹从哪里来？",
+          "activity": "theory",
+          "evidence": "teaching_delivery",
+          "at": "2026-10-23T21:51:10.816Z",
+          "passed": true
+        },
+        {
+          "lesson": 1,
+          "title": "条纹从哪里来？",
+          "activity": "check",
+          "evidence": "session_response",
+          "at": "2026-10-23T21:52:35.401Z",
+          "passed": true
+        },
+        {
+          "lesson": 1,
+          "title": "条纹从哪里来？",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-23T21:52:43.039Z",
+          "passed": true
+        },
+        {
+          "lesson": 1,
+          "title": "条纹从哪里来？",
+          "activity": "complete",
+          "at": "2026-10-23T21:52:51.823Z",
+          "passed": true
+        },
+        {
+          "lesson": 2,
+          "title": "两列波相遇会怎样？",
+          "activity": "review",
+          "evidence": "teaching_delivery",
+          "at": "2026-10-23T21:53:00.325Z",
+          "passed": true
+        },
+        {
+          "lesson": 2,
+          "title": "两列波相遇会怎样？",
+          "activity": "review",
+          "evidence": "teaching_delivery",
+          "at": "2026-10-23T21:53:54.068Z",
+          "passed": true
+        },
+        {
+          "lesson": 2,
+          "title": "两列波相遇会怎样？",
+          "activity": "review",
+          "evidence": "teaching_delivery",
+          "at": "2026-10-23T21:54:52.888Z",
+          "passed": true
+        },
+        {
+          "lesson": 2,
+          "title": "两列波相遇会怎样？",
+          "activity": "theory",
+          "evidence": "teaching_delivery",
+          "at": "2026-10-23T21:55:51.614Z",
+          "passed": true
+        },
+        {
+          "lesson": 2,
+          "title": "两列波相遇会怎样？",
+          "activity": "theory",
+          "evidence": "teaching_delivery",
+          "at": "2026-10-23T21:57:01.231Z"
+        },
+        {
+          "lesson": 2,
+          "title": "两列波相遇会怎样？",
+          "activity": "theory",
+          "evidence": "teaching_delivery",
+          "at": "2026-10-23T22:06:54.604Z",
+          "passed": true
+        },
+        {
+          "lesson": 2,
+          "title": "两列波相遇会怎样？",
+          "activity": "theory",
+          "evidence": "teaching_delivery",
+          "at": "2026-10-23T22:07:18.911Z",
+          "passed": true
+        },
+        {
+          "lesson": 2,
+          "title": "两列波相遇会怎样？",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-23T22:08:26.260Z",
+          "passed": true
+        },
+        {
+          "lesson": 2,
+          "title": "两列波相遇会怎样？",
+          "activity": "complete",
+          "at": "2026-10-23T22:08:34.690Z",
+          "passed": true
+        },
+        {
+          "lesson": 3,
+          "title": "双缝为什么出现明暗？",
+          "activity": "review",
+          "evidence": "teaching_delivery",
+          "at": "2026-10-23T22:08:44.090Z",
+          "passed": true
+        },
+        {
+          "lesson": 3,
+          "title": "双缝为什么出现明暗？",
+          "activity": "theory",
+          "evidence": "teaching_delivery",
+          "at": "2026-10-23T22:10:00.958Z",
+          "passed": true
+        },
+        {
+          "lesson": 3,
+          "title": "双缝为什么出现明暗？",
+          "activity": "check",
+          "evidence": "session_response",
+          "at": "2026-10-23T22:11:21.637Z",
+          "passed": true
+        },
+        {
+          "lesson": 3,
+          "title": "双缝为什么出现明暗？",
+          "activity": "practice",
+          "evidence": "experiment_observation",
+          "at": "2026-10-23T22:11:29.927Z",
+          "passed": true
+        },
+        {
+          "lesson": 3,
+          "title": "双缝为什么出现明暗？",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-23T22:12:03.397Z",
+          "passed": true
+        },
+        {
+          "lesson": 3,
+          "title": "双缝为什么出现明暗？",
+          "activity": "complete",
+          "at": "2026-10-23T22:12:18.307Z",
+          "passed": true
+        },
+        {
+          "lesson": 4,
+          "title": "怎样改变干涉条纹间距？",
+          "activity": "review",
+          "evidence": "teaching_delivery",
+          "at": "2026-10-23T22:12:28.754Z",
+          "passed": true
+        },
+        {
+          "lesson": 4,
+          "title": "怎样改变干涉条纹间距？",
+          "activity": "theory",
+          "evidence": "teaching_delivery",
+          "at": "2026-10-23T22:13:47.507Z"
+        },
+        {
+          "lesson": 4,
+          "title": "怎样改变干涉条纹间距？",
+          "activity": "theory",
+          "evidence": "teaching_delivery",
+          "at": "2026-10-23T22:18:47.796Z",
+          "passed": true
+        },
+        {
+          "lesson": 4,
+          "title": "怎样改变干涉条纹间距？",
+          "activity": "check",
+          "evidence": "session_response",
+          "at": "2026-10-23T22:20:16.647Z",
+          "passed": true
+        },
+        {
+          "lesson": 4,
+          "title": "怎样改变干涉条纹间距？",
+          "activity": "practice",
+          "evidence": "experiment_observation",
+          "at": "2026-10-23T22:20:26.487Z",
+          "passed": true
+        },
+        {
+          "lesson": 4,
+          "title": "怎样改变干涉条纹间距？",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-23T22:21:05.207Z",
+          "passed": true
+        },
+        {
+          "lesson": 4,
+          "title": "怎样改变干涉条纹间距？",
+          "activity": "complete",
+          "at": "2026-10-23T22:21:16.790Z",
+          "passed": true
+        },
+        {
+          "lesson": 5,
+          "title": "一条缝为什么仍有条纹？",
+          "activity": "review",
+          "evidence": "teaching_delivery",
+          "at": "2026-10-23T22:21:27.453Z"
+        },
+        {
+          "lesson": 5,
+          "title": "一条缝为什么仍有条纹？",
+          "activity": "review",
+          "evidence": "teaching_delivery",
+          "at": "2026-10-23T22:26:37.905Z",
+          "passed": true
+        },
+        {
+          "lesson": 5,
+          "title": "一条缝为什么仍有条纹？",
+          "activity": "theory",
+          "evidence": "teaching_delivery",
+          "at": "2026-10-23T22:27:31.692Z",
+          "passed": true
+        },
+        {
+          "lesson": 5,
+          "title": "一条缝为什么仍有条纹？",
+          "activity": "check",
+          "evidence": "session_response",
+          "at": "2026-10-23T22:28:33.858Z",
+          "passed": true
+        },
+        {
+          "lesson": 5,
+          "title": "一条缝为什么仍有条纹？",
+          "activity": "practice",
+          "evidence": "experiment_observation",
+          "at": "2026-10-23T22:28:43.357Z",
+          "passed": true
+        },
+        {
+          "lesson": 5,
+          "title": "一条缝为什么仍有条纹？",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-23T22:29:21.008Z"
+        },
+        {
+          "lesson": 5,
+          "title": "一条缝为什么仍有条纹？",
+          "activity": "complete",
+          "at": "2026-10-24T09:31:36.615Z",
+          "passed": true
+        },
+        {
+          "lesson": 6,
+          "title": "缝变窄，图样怎样变化？",
+          "activity": "review",
+          "evidence": "teaching_delivery",
+          "at": "2026-10-24T09:31:43.822Z",
+          "passed": true
+        },
+        {
+          "lesson": 6,
+          "title": "缝变窄，图样怎样变化？",
+          "activity": "theory",
+          "evidence": "teaching_delivery",
+          "at": "2026-10-24T09:32:47.076Z",
+          "passed": true
+        },
+        {
+          "lesson": 6,
+          "title": "缝变窄，图样怎样变化？",
+          "activity": "check",
+          "evidence": "session_response",
+          "at": "2026-10-24T09:33:46.840Z",
+          "passed": true
+        },
+        {
+          "lesson": 6,
+          "title": "缝变窄，图样怎样变化？",
+          "activity": "practice",
+          "evidence": "experiment_observation",
+          "at": "2026-10-24T09:33:54.484Z"
+        },
+        {
+          "lesson": 6,
+          "title": "缝变窄，图样怎样变化？",
+          "activity": "practice",
+          "evidence": "experiment_observation",
+          "at": "2026-10-24T09:40:39.491Z",
+          "passed": true
+        },
+        {
+          "lesson": 6,
+          "title": "缝变窄，图样怎样变化？",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-24T09:40:59.389Z",
+          "passed": true
+        },
+        {
+          "lesson": 6,
+          "title": "缝变窄，图样怎样变化？",
+          "activity": "complete",
+          "at": "2026-10-24T09:41:09.917Z",
+          "passed": true
+        },
+        {
+          "lesson": 7,
+          "title": "干涉与衍射怎样联系？",
+          "activity": "review",
+          "evidence": "teaching_delivery",
+          "at": "2026-10-24T09:41:17.679Z",
+          "passed": true
+        },
+        {
+          "lesson": 7,
+          "title": "干涉与衍射怎样联系？",
+          "activity": "theory",
+          "evidence": "teaching_delivery",
+          "at": "2026-10-24T09:42:36.930Z",
+          "passed": true
+        },
+        {
+          "lesson": 7,
+          "title": "干涉与衍射怎样联系？",
+          "activity": "check",
+          "evidence": "session_response",
+          "at": "2026-10-24T09:44:07.724Z",
+          "passed": true
+        },
+        {
+          "lesson": 7,
+          "title": "干涉与衍射怎样联系？",
+          "activity": "practice",
+          "evidence": "experiment_observation",
+          "at": "2026-10-24T09:44:20.701Z",
+          "passed": true
+        },
+        {
+          "lesson": 7,
+          "title": "干涉与衍射怎样联系？",
+          "activity": "reflect",
+          "evidence": "submitted_artifact",
+          "at": "2026-10-24T09:44:55.137Z",
+          "passed": true
+        },
+        {
+          "lesson": 7,
+          "title": "干涉与衍射怎样联系？",
+          "activity": "complete",
+          "at": "2026-10-24T09:45:10.304Z",
+          "passed": true
+        },
+        {
+          "lesson": 8,
+          "title": "别人能复核我的探究吗？",
+          "activity": "review",
+          "evidence": "teaching_delivery",
+          "at": "2026-10-24T09:45:18.093Z",
+          "passed": true
+        },
+        {
+          "lesson": 8,
+          "title": "别人能复核我的探究吗？",
+          "activity": "theory",
+          "evidence": "teaching_delivery",
+          "at": "2026-10-24T09:46:13.824Z",
+          "passed": true
+        },
+        {
+          "lesson": 8,
+          "title": "别人能复核我的探究吗？",
+          "activity": "theory",
+          "evidence": "teaching_delivery",
+          "at": "2026-10-24T09:47:06.499Z",
+          "passed": true
+        },
+        {
+          "lesson": 8,
+          "title": "别人能复核我的探究吗？",
+          "activity": "check",
+          "evidence": "session_response",
+          "at": "2026-10-24T09:48:23.856Z",
+          "passed": true
+        },
+        {
+          "lesson": 8,
+          "title": "别人能复核我的探究吗？",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-24T09:48:31.552Z",
+          "passed": true
+        },
+        {
+          "lesson": 8,
+          "title": "别人能复核我的探究吗？",
+          "activity": "complete",
+          "at": "2026-10-24T09:48:40.315Z",
+          "passed": true
+        }
+      ],
+      "issuesEncountered": [
+        {
+          "kind": "failure",
+          "message": "TOOL_RETEST_REQUIRED: [{\"callId\":\"call_00_OcDkhQaMxm5nUYVBDDyY6318\",\"type\":\"tool_result\",\"status\":\"error\",\"result\":\"本次参数需要调整，尚未执行。AI搭档将尝试修正。\"}]"
+        },
+        {
+          "kind": "failure",
+          "message": "TOOL_RETEST_REQUIRED: [{\"callId\":\"call_00_iW07tzhEorVgjLcIRtOa9249\",\"type\":\"tool_result\",\"status\":\"error\",\"result\":\"本次工具调用未完成，可以重试。\"}]"
+        },
+        {
+          "kind": "failure",
+          "message": "TOOL_RETEST_REQUIRED: [{\"name\":\"ima_search_knowledge\",\"callId\":\"call_00_UBysRcCVzCmJfZf6Hgnr7894\",\"type\":\"tool_result\",\"status\":\"error\",\"result\":\"本次工具调用未完成，可以重试。\"}]"
+        },
+        {
+          "kind": "failure",
+          "message": "TOOL_RETEST_REQUIRED: [{\"name\":\"ima_search_knowledge\",\"callId\":\"call_00_ET_w14dNBkQhmTzTwQhJ9Gc1317\",\"type\":\"tool_result\",\"status\":\"error\",\"result\":\"本次工具调用未完成，可以重试。\"}]"
+        }
+      ],
+      "toolCalls": 249,
+      "failedToolCalls": [
+        {
+          "at": "2026-10-23T21:57:40.901Z",
+          "scope": {
+            "lesson": 2,
+            "learningSessionId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-2",
+            "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-2:activity:theory",
+            "kind": "theory"
+          },
+          "event": {
+            "callId": "call_00_OcDkhQaMxm5nUYVBDDyY6318",
+            "type": "tool_result",
+            "status": "error",
+            "result": "本次参数需要调整，尚未执行。AI搭档将尝试修正。"
+          }
+        },
+        {
+          "at": "2026-10-23T22:14:22.313Z",
+          "scope": {
+            "lesson": 4,
+            "learningSessionId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-4",
+            "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-4:activity:theory",
+            "kind": "theory"
+          },
+          "event": {
+            "callId": "call_00_iW07tzhEorVgjLcIRtOa9249",
+            "type": "tool_result",
+            "status": "error",
+            "result": "本次工具调用未完成，可以重试。"
+          }
+        },
+        {
+          "at": "2026-10-23T22:21:58.151Z",
+          "scope": {
+            "lesson": 5,
+            "learningSessionId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-5",
+            "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-5:activity:review",
+            "kind": "review"
+          },
+          "event": {
+            "name": "ima_search_knowledge",
+            "callId": "call_00_UBysRcCVzCmJfZf6Hgnr7894",
+            "type": "tool_result",
+            "status": "error",
+            "result": "本次工具调用未完成，可以重试。"
+          }
+        },
+        {
+          "at": "2026-10-24T09:34:15.448Z",
+          "scope": {
+            "lesson": 6,
+            "learningSessionId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-6",
+            "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-6:activity:practice",
+            "kind": "practice"
+          },
+          "event": {
+            "name": "ima_search_knowledge",
+            "callId": "call_00_ET_w14dNBkQhmTzTwQhJ9Gc1317",
+            "type": "tool_result",
+            "status": "error",
+            "result": "本次工具调用未完成，可以重试。"
+          }
+        }
+      ],
+      "turns": [
+        {
+          "at": "2026-10-23T21:50:28.228Z",
+          "scope": {
+            "lesson": 1,
+            "learningSessionId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-1",
+            "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-1:activity:review",
+            "kind": "review"
+          },
+          "errors": [],
+          "blockKinds": [
+            "board",
+            "hint"
+          ]
+        },
+        {
+          "at": "2026-10-23T21:51:53.696Z",
+          "scope": {
+            "lesson": 1,
+            "learningSessionId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-1",
+            "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-1:activity:theory",
+            "kind": "theory"
+          },
+          "errors": [],
+          "blockKinds": [
+            "board",
+            "hint"
+          ]
+        },
+        {
+          "at": "2026-10-23T21:53:28.364Z",
+          "scope": {
+            "lesson": 2,
+            "learningSessionId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-2",
+            "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-2:activity:review",
+            "kind": "review"
+          },
+          "errors": [],
+          "blockKinds": [
+            "board",
+            "hint"
+          ]
+        },
+        {
+          "at": "2026-10-23T21:54:26.713Z",
+          "scope": {
+            "lesson": 2,
+            "learningSessionId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-2",
+            "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-2:activity:review",
+            "kind": "review"
+          },
+          "errors": [],
+          "blockKinds": [
+            "board",
+            "hint"
+          ]
+        },
+        {
+          "at": "2026-10-23T21:55:22.714Z",
+          "scope": {
+            "lesson": 2,
+            "learningSessionId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-2",
+            "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-2:activity:review",
+            "kind": "review"
+          },
+          "errors": [],
+          "blockKinds": [
+            "board",
+            "hint"
+          ]
+        },
+        {
+          "at": "2026-10-23T21:56:27.964Z",
+          "scope": {
+            "lesson": 2,
+            "learningSessionId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-2",
+            "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-2:activity:theory",
+            "kind": "theory"
+          },
+          "errors": [],
+          "blockKinds": [
+            "board",
+            "hint"
+          ]
+        },
+        {
+          "at": "2026-10-23T21:57:40.901Z",
+          "scope": {
+            "lesson": 2,
+            "learningSessionId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-2",
+            "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-2:activity:theory",
+            "kind": "theory"
+          },
+          "errors": [],
+          "blockKinds": [
+            "board",
+            "hint"
+          ]
+        },
+        {
+          "at": "2026-10-23T22:07:52.514Z",
+          "scope": {
+            "lesson": 2,
+            "learningSessionId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-2",
+            "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-2:activity:theory",
+            "kind": "theory"
+          },
+          "errors": [],
+          "blockKinds": [
+            "board",
+            "hint"
+          ]
+        },
+        {
+          "at": "2026-10-23T22:09:17.877Z",
+          "scope": {
+            "lesson": 3,
+            "learningSessionId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-3",
+            "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-3:activity:review",
+            "kind": "review"
+          },
+          "errors": [],
+          "blockKinds": [
+            "board",
+            "hint"
+          ]
+        },
+        {
+          "at": "2026-10-23T22:10:37.211Z",
+          "scope": {
+            "lesson": 3,
+            "learningSessionId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-3",
+            "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-3:activity:theory",
+            "kind": "theory"
+          },
+          "errors": [],
+          "blockKinds": [
+            "board",
+            "hint"
+          ]
+        },
+        {
+          "at": "2026-10-23T22:11:46.339Z",
+          "scope": {
+            "lesson": 3,
+            "learningSessionId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-3",
+            "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-3:activity:practice",
+            "kind": "practice"
+          },
+          "errors": [],
+          "blockKinds": [
+            "optics_experiment",
+            "hint"
+          ]
+        },
+        {
+          "at": "2026-10-23T22:13:03.010Z",
+          "scope": {
+            "lesson": 4,
+            "learningSessionId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-4",
+            "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-4:activity:review",
+            "kind": "review"
+          },
+          "errors": [],
+          "blockKinds": [
+            "board",
+            "hint"
+          ]
+        },
+        {
+          "at": "2026-10-23T22:14:22.313Z",
+          "scope": {
+            "lesson": 4,
+            "learningSessionId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-4",
+            "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-4:activity:theory",
+            "kind": "theory"
+          },
+          "errors": [],
+          "blockKinds": [
+            "hint"
+          ]
+        },
+        {
+          "at": "2026-10-23T22:19:25.814Z",
+          "scope": {
+            "lesson": 4,
+            "learningSessionId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-4",
+            "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-4:activity:theory",
+            "kind": "theory"
+          },
+          "errors": [],
+          "blockKinds": [
+            "board",
+            "hint"
+          ]
+        },
+        {
+          "at": "2026-10-23T22:20:39.505Z",
+          "scope": {
+            "lesson": 4,
+            "learningSessionId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-4",
+            "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-4:activity:practice",
+            "kind": "practice"
+          },
+          "errors": [],
+          "blockKinds": [
+            "optics_experiment",
+            "hint"
+          ]
+        },
+        {
+          "at": "2026-10-23T22:21:58.151Z",
+          "scope": {
+            "lesson": 5,
+            "learningSessionId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-5",
+            "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-5:activity:review",
+            "kind": "review"
+          },
+          "errors": [],
+          "blockKinds": [
+            "hint"
+          ]
+        },
+        {
+          "at": "2026-10-23T22:27:03.321Z",
+          "scope": {
+            "lesson": 5,
+            "learningSessionId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-5",
+            "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-5:activity:review",
+            "kind": "review"
+          },
+          "errors": [],
+          "blockKinds": [
+            "board",
+            "hint"
+          ]
+        },
+        {
+          "at": "2026-10-23T22:28:04.832Z",
+          "scope": {
+            "lesson": 5,
+            "learningSessionId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-5",
+            "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-5:activity:theory",
+            "kind": "theory"
+          },
+          "errors": [],
+          "blockKinds": [
+            "board",
+            "hint"
+          ]
+        },
+        {
+          "at": "2026-10-23T22:29:02.244Z",
+          "scope": {
+            "lesson": 5,
+            "learningSessionId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-5",
+            "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-5:activity:practice",
+            "kind": "practice"
+          },
+          "errors": [],
+          "blockKinds": [
+            "optics_experiment",
+            "hint"
+          ]
+        },
+        {
+          "at": "2026-10-24T09:32:09.651Z",
+          "scope": {
+            "lesson": 6,
+            "learningSessionId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-6",
+            "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-6:activity:review",
+            "kind": "review"
+          },
+          "errors": [],
+          "blockKinds": [
+            "board",
+            "hint"
+          ]
+        },
+        {
+          "at": "2026-10-24T09:33:15.161Z",
+          "scope": {
+            "lesson": 6,
+            "learningSessionId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-6",
+            "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-6:activity:theory",
+            "kind": "theory"
+          },
+          "errors": [],
+          "blockKinds": [
+            "board",
+            "hint"
+          ]
+        },
+        {
+          "at": "2026-10-24T09:34:15.448Z",
+          "scope": {
+            "lesson": 6,
+            "learningSessionId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-6",
+            "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-6:activity:practice",
+            "kind": "practice"
+          },
+          "errors": [],
+          "blockKinds": [
+            "optics_experiment",
+            "hint"
+          ]
+        },
+        {
+          "at": "2026-10-24T09:41:52.562Z",
+          "scope": {
+            "lesson": 7,
+            "learningSessionId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-7",
+            "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-7:activity:review",
+            "kind": "review"
+          },
+          "errors": [],
+          "blockKinds": [
+            "board",
+            "hint"
+          ]
+        },
+        {
+          "at": "2026-10-24T09:43:14.427Z",
+          "scope": {
+            "lesson": 7,
+            "learningSessionId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-7",
+            "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-7:activity:theory",
+            "kind": "theory"
+          },
+          "errors": [],
+          "blockKinds": [
+            "board",
+            "hint"
+          ]
+        },
+        {
+          "at": "2026-10-24T09:44:37.055Z",
+          "scope": {
+            "lesson": 7,
+            "learningSessionId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-7",
+            "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-7:activity:practice",
+            "kind": "practice"
+          },
+          "errors": [],
+          "blockKinds": [
+            "optics_experiment",
+            "hint"
+          ]
+        },
+        {
+          "at": "2026-10-24T09:45:49.556Z",
+          "scope": {
+            "lesson": 8,
+            "learningSessionId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-8",
+            "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-8:activity:review",
+            "kind": "review"
+          },
+          "errors": [],
+          "blockKinds": [
+            "board",
+            "hint"
+          ]
+        },
+        {
+          "at": "2026-10-24T09:46:41.865Z",
+          "scope": {
+            "lesson": 8,
+            "learningSessionId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-8",
+            "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-8:activity:theory",
+            "kind": "theory"
+          },
+          "errors": [],
+          "blockKinds": [
+            "board",
+            "hint"
+          ]
+        },
+        {
+          "at": "2026-10-24T09:47:39.041Z",
+          "scope": {
+            "lesson": 8,
+            "learningSessionId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-8",
+            "activityId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8:wave-session-8:activity:theory",
+            "kind": "theory"
+          },
+          "errors": [],
+          "blockKinds": [
+            "board",
+            "hint"
+          ]
+        }
+      ],
+      "gameRuns": {}
+    },
+    {
+      "template": "thunder",
+      "projectId": "proj-91368fda-a4cb-4af9-b09a-c0127c2be9e2",
+      "completed": {
+        "projectId": "proj-91368fda-a4cb-4af9-b09a-c0127c2be9e2",
+        "planId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729",
+        "planRevision": 1,
+        "currentSessionId": null,
+        "completedCount": 8,
+        "totalCount": 8,
+        "contractReady": true,
+        "sessions": [
+          {
+            "sessionId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-1",
+            "lessonIndex": 1,
+            "title": "我的战机游戏怎么玩？",
+            "activities": [
+              {
+                "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-1:activity:review",
+                "kind": "review",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "联系上一课已保存的证据；第一课先了解兴趣，不预设已有编程知识。",
+                "minutes": 5,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-1:activity:theory",
+                "kind": "theory",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "每次只解释一个新词或代码结构，用注册 BoardBlock、流程图或坐标示意演示，再让学生预测和解释。依据本课课程目标教学；没有编程知识库来源时明确是教学示例，不伪称检索过教材。",
+                "minutes": 25,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-1:activity:check",
+                "kind": "check",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "请学生结合自己的图示、代码或测试说明理由，再给下一条有界提示。",
+                "minutes": 20,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-1:activity:reflect",
+                "kind": "reflect",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "保存自己的解释、修改与测试证据，说明一个理解变化；最终反思仍需 owner 回执才算归档。",
+                "minutes": 10,
+                "evidenceRefs": []
+              }
+            ],
+            "status": "completed",
+            "completedAt": "2026-10-24T09:49:35.571Z",
+            "canComplete": false,
+            "blockers": []
+          },
+          {
+            "sessionId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-2",
+            "lessonIndex": 2,
+            "title": "画面为什么会动？循环与坐标",
+            "activities": [
+              {
+                "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-2:activity:review",
+                "kind": "review",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "联系上一课已保存的证据；第一课先了解兴趣，不预设已有编程知识。",
+                "minutes": 5,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-2:activity:theory",
+                "kind": "theory",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "每次只解释一个新词或代码结构，用注册 BoardBlock、流程图或坐标示意演示，再让学生预测和解释。依据本课课程目标教学；没有编程知识库来源时明确是教学示例，不伪称检索过教材。",
+                "minutes": 25,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-2:activity:check",
+                "kind": "check",
+                "evidence": "mastery",
+                "status": "completed",
+                "guidance": "先完成讲解和示例，再通过正式题目检查本课目标；求助不替换待答题，未掌握时同目标补救。",
+                "minutes": 20,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-2:activity:reflect",
+                "kind": "reflect",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "保存自己的解释、修改与测试证据，说明一个理解变化；最终反思仍需 owner 回执才算归档。",
+                "minutes": 10,
+                "evidenceRefs": []
+              }
+            ],
+            "status": "completed",
+            "completedAt": "2026-10-24T09:50:12.275Z",
+            "canComplete": false,
+            "blockers": []
+          },
+          {
+            "sessionId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-3",
+            "lessonIndex": 3,
+            "title": "按键与碰撞怎样变成规则？",
+            "activities": [
+              {
+                "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-3:activity:review",
+                "kind": "review",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "联系上一课已保存的证据；第一课先了解兴趣，不预设已有编程知识。",
+                "minutes": 5,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-3:activity:theory",
+                "kind": "theory",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "每次只解释一个新词或代码结构，用注册 BoardBlock、流程图或坐标示意演示，再让学生预测和解释。依据本课课程目标教学；没有编程知识库来源时明确是教学示例，不伪称检索过教材。",
+                "minutes": 25,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-3:activity:check",
+                "kind": "check",
+                "evidence": "mastery",
+                "status": "completed",
+                "guidance": "先完成讲解和示例，再通过正式题目检查本课目标；求助不替换待答题，未掌握时同目标补救。",
+                "minutes": 20,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-3:activity:reflect",
+                "kind": "reflect",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "保存自己的解释、修改与测试证据，说明一个理解变化；最终反思仍需 owner 回执才算归档。",
+                "minutes": 10,
+                "evidenceRefs": []
+              }
+            ],
+            "status": "completed",
+            "completedAt": "2026-10-24T09:50:50.469Z",
+            "canComplete": false,
+            "blockers": []
+          },
+          {
+            "sessionId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-4",
+            "lessonIndex": 4,
+            "title": "让第一架战机动起来",
+            "activities": [
+              {
+                "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-4:activity:review",
+                "kind": "review",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "联系上一课已保存的证据；第一课先了解兴趣，不预设已有编程知识。",
+                "minutes": 5,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-4:activity:theory",
+                "kind": "theory",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "每次只解释一个新词或代码结构，用注册 BoardBlock、流程图或坐标示意演示，再让学生预测和解释。依据本课课程目标教学；没有编程知识库来源时明确是教学示例，不伪称检索过教材。",
+                "minutes": 15,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-4:activity:check",
+                "kind": "check",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "请学生结合自己的图示、代码或测试说明理由，再给下一条有界提示。",
+                "minutes": 10,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-4:activity:practice",
+                "kind": "practice",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "仅在 TheoryMastered 后指导学生在自己的受控本地环境编写和运行代码。记录代码与实际测试，不执行模型生成的任意代码，不将静态语法通过宣称为可玩。",
+                "minutes": 25,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-4:activity:reflect",
+                "kind": "reflect",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "保存自己的解释、修改与测试证据，说明一个理解变化；最终反思仍需 owner 回执才算归档。",
+                "minutes": 5,
+                "evidenceRefs": []
+              }
+            ],
+            "status": "completed",
+            "completedAt": "2026-10-24T09:51:50.288Z",
+            "canComplete": false,
+            "blockers": []
+          },
+          {
+            "sessionId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-5",
+            "lessonIndex": 5,
+            "title": "加入子弹与敌机",
+            "activities": [
+              {
+                "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-5:activity:review",
+                "kind": "review",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "联系上一课已保存的证据；第一课先了解兴趣，不预设已有编程知识。",
+                "minutes": 5,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-5:activity:theory",
+                "kind": "theory",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "每次只解释一个新词或代码结构，用注册 BoardBlock、流程图或坐标示意演示，再让学生预测和解释。依据本课课程目标教学；没有编程知识库来源时明确是教学示例，不伪称检索过教材。",
+                "minutes": 15,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-5:activity:check",
+                "kind": "check",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "请学生结合自己的图示、代码或测试说明理由，再给下一条有界提示。",
+                "minutes": 10,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-5:activity:practice",
+                "kind": "practice",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "仅在 TheoryMastered 后指导学生在自己的受控本地环境编写和运行代码。记录代码与实际测试，不执行模型生成的任意代码，不将静态语法通过宣称为可玩。",
+                "minutes": 25,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-5:activity:reflect",
+                "kind": "reflect",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "保存自己的解释、修改与测试证据，说明一个理解变化；最终反思仍需 owner 回执才算归档。",
+                "minutes": 5,
+                "evidenceRefs": []
+              }
+            ],
+            "status": "completed",
+            "completedAt": "2026-10-24T09:52:50.266Z",
+            "canComplete": false,
+            "blockers": []
+          },
+          {
+            "sessionId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-6",
+            "lessonIndex": 6,
+            "title": "完成得分、生命和重新开始",
+            "activities": [
+              {
+                "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-6:activity:review",
+                "kind": "review",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "联系上一课已保存的证据；第一课先了解兴趣，不预设已有编程知识。",
+                "minutes": 5,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-6:activity:theory",
+                "kind": "theory",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "每次只解释一个新词或代码结构，用注册 BoardBlock、流程图或坐标示意演示，再让学生预测和解释。依据本课课程目标教学；没有编程知识库来源时明确是教学示例，不伪称检索过教材。",
+                "minutes": 15,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-6:activity:check",
+                "kind": "check",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "请学生结合自己的图示、代码或测试说明理由，再给下一条有界提示。",
+                "minutes": 10,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-6:activity:practice",
+                "kind": "practice",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "仅在 TheoryMastered 后指导学生在自己的受控本地环境编写和运行代码。记录代码与实际测试，不执行模型生成的任意代码，不将静态语法通过宣称为可玩。",
+                "minutes": 25,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-6:activity:reflect",
+                "kind": "reflect",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "保存自己的解释、修改与测试证据，说明一个理解变化；最终反思仍需 owner 回执才算归档。",
+                "minutes": 5,
+                "evidenceRefs": []
+              }
+            ],
+            "status": "completed",
+            "completedAt": "2026-10-24T09:53:52.118Z",
+            "canComplete": false,
+            "blockers": []
+          },
+          {
+            "sessionId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-7",
+            "lessonIndex": 7,
+            "title": "测试并交付可玩的游戏",
+            "activities": [
+              {
+                "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-7:activity:review",
+                "kind": "review",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "联系上一课已保存的证据；第一课先了解兴趣，不预设已有编程知识。",
+                "minutes": 5,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-7:activity:theory",
+                "kind": "theory",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "每次只解释一个新词或代码结构，用注册 BoardBlock、流程图或坐标示意演示，再让学生预测和解释。依据本课课程目标教学；没有编程知识库来源时明确是教学示例，不伪称检索过教材。",
+                "minutes": 15,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-7:activity:check",
+                "kind": "check",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "请学生结合自己的图示、代码或测试说明理由，再给下一条有界提示。",
+                "minutes": 10,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-7:activity:practice",
+                "kind": "practice",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "仅在 TheoryMastered 后指导学生在自己的受控本地环境编写和运行代码。记录代码与实际测试，不执行模型生成的任意代码，不将静态语法通过宣称为可玩。",
+                "minutes": 25,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-7:activity:reflect",
+                "kind": "reflect",
+                "evidence": "submitted_artifact",
+                "status": "completed",
+                "guidance": "提交源码、启动说明、实机试玩证据和缺陷修复记录，等待作品 owner 审核。",
+                "minutes": 5,
+                "evidenceRefs": []
+              }
+            ],
+            "status": "completed",
+            "completedAt": "2026-10-24T09:55:05.706Z",
+            "canComplete": false,
+            "blockers": []
+          },
+          {
+            "sessionId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-8",
+            "lessonIndex": 8,
+            "title": "展示作品，解释我的设计",
+            "activities": [
+              {
+                "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-8:activity:review",
+                "kind": "review",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "联系上一课已保存的证据；第一课先了解兴趣，不预设已有编程知识。",
+                "minutes": 5,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-8:activity:theory",
+                "kind": "theory",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "每次只解释一个新词或代码结构，用注册 BoardBlock、流程图或坐标示意演示，再让学生预测和解释。依据本课课程目标教学；没有编程知识库来源时明确是教学示例，不伪称检索过教材。",
+                "minutes": 10,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-8:activity:check",
+                "kind": "check",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "请学生结合自己的图示、代码或测试说明理由，再给下一条有界提示。",
+                "minutes": 15,
+                "evidenceRefs": []
+              },
+              {
+                "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-8:activity:reflect",
+                "kind": "reflect",
+                "evidence": "session_response",
+                "status": "completed",
+                "guidance": "保存自己的解释、修改与测试证据，说明一个理解变化；最终反思仍需 owner 回执才算归档。",
+                "minutes": 30,
+                "evidenceRefs": []
+              }
+            ],
+            "status": "completed",
+            "completedAt": "2026-10-24T09:56:03.167Z",
+            "canComplete": false,
+            "blockers": []
+          }
+        ],
+        "stage": "completed"
+      },
+      "startedAt": "2026-10-24T09:48:59.484Z",
+      "finishedAt": "2026-10-24T09:56:04.384Z",
+      "gateChecks": [
+        {
+          "trigger": "lesson-completion",
+          "lesson": 3,
+          "stage": "practice_building"
+        }
+      ],
+      "negative": {},
+      "activityExecutions": [
+        {
+          "lesson": 1,
+          "title": "我的战机游戏怎么玩？",
+          "activity": "review",
+          "evidence": "session_response",
+          "at": "2026-10-24T09:48:59.484Z",
+          "passed": true
+        },
+        {
+          "lesson": 1,
+          "title": "我的战机游戏怎么玩？",
+          "activity": "theory",
+          "evidence": "session_response",
+          "at": "2026-10-24T09:49:03.562Z",
+          "passed": true
+        },
+        {
+          "lesson": 1,
+          "title": "我的战机游戏怎么玩？",
+          "activity": "check",
+          "evidence": "session_response",
+          "at": "2026-10-24T09:49:20.501Z",
+          "passed": true
+        },
+        {
+          "lesson": 1,
+          "title": "我的战机游戏怎么玩？",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-24T09:49:26.089Z",
+          "passed": true
+        },
+        {
+          "lesson": 1,
+          "title": "我的战机游戏怎么玩？",
+          "activity": "complete",
+          "at": "2026-10-24T09:49:33.410Z",
+          "passed": true
+        },
+        {
+          "lesson": 2,
+          "title": "画面为什么会动？循环与坐标",
+          "activity": "review",
+          "evidence": "session_response",
+          "at": "2026-10-24T09:49:38.865Z",
+          "passed": true
+        },
+        {
+          "lesson": 2,
+          "title": "画面为什么会动？循环与坐标",
+          "activity": "theory",
+          "evidence": "session_response",
+          "at": "2026-10-24T09:49:43.795Z",
+          "passed": true
+        },
+        {
+          "lesson": 2,
+          "title": "画面为什么会动？循环与坐标",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-24T09:50:04.295Z",
+          "passed": true
+        },
+        {
+          "lesson": 2,
+          "title": "画面为什么会动？循环与坐标",
+          "activity": "complete",
+          "at": "2026-10-24T09:50:10.141Z",
+          "passed": true
+        },
+        {
+          "lesson": 3,
+          "title": "按键与碰撞怎样变成规则？",
+          "activity": "review",
+          "evidence": "session_response",
+          "at": "2026-10-24T09:50:15.475Z",
+          "passed": true
+        },
+        {
+          "lesson": 3,
+          "title": "按键与碰撞怎样变成规则？",
+          "activity": "theory",
+          "evidence": "session_response",
+          "at": "2026-10-24T09:50:20.493Z",
+          "passed": true
+        },
+        {
+          "lesson": 3,
+          "title": "按键与碰撞怎样变成规则？",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-24T09:50:42.029Z",
+          "passed": true
+        },
+        {
+          "lesson": 3,
+          "title": "按键与碰撞怎样变成规则？",
+          "activity": "complete",
+          "at": "2026-10-24T09:50:48.365Z",
+          "passed": true
+        },
+        {
+          "lesson": 4,
+          "title": "让第一架战机动起来",
+          "activity": "review",
+          "evidence": "session_response",
+          "at": "2026-10-24T09:50:56.948Z",
+          "passed": true
+        },
+        {
+          "lesson": 4,
+          "title": "让第一架战机动起来",
+          "activity": "theory",
+          "evidence": "session_response",
+          "at": "2026-10-24T09:51:01.946Z",
+          "passed": true
+        },
+        {
+          "lesson": 4,
+          "title": "让第一架战机动起来",
+          "activity": "check",
+          "evidence": "session_response",
+          "at": "2026-10-24T09:51:26.740Z",
+          "passed": true
+        },
+        {
+          "lesson": 4,
+          "title": "让第一架战机动起来",
+          "activity": "practice",
+          "evidence": "session_response",
+          "at": "2026-10-24T09:51:33.270Z",
+          "passed": true
+        },
+        {
+          "lesson": 4,
+          "title": "让第一架战机动起来",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-24T09:51:40.317Z",
+          "passed": true
+        },
+        {
+          "lesson": 4,
+          "title": "让第一架战机动起来",
+          "activity": "complete",
+          "at": "2026-10-24T09:51:47.800Z",
+          "passed": true
+        },
+        {
+          "lesson": 5,
+          "title": "加入子弹与敌机",
+          "activity": "review",
+          "evidence": "session_response",
+          "at": "2026-10-24T09:51:56.348Z",
+          "passed": true
+        },
+        {
+          "lesson": 5,
+          "title": "加入子弹与敌机",
+          "activity": "theory",
+          "evidence": "session_response",
+          "at": "2026-10-24T09:52:02.004Z",
+          "passed": true
+        },
+        {
+          "lesson": 5,
+          "title": "加入子弹与敌机",
+          "activity": "check",
+          "evidence": "session_response",
+          "at": "2026-10-24T09:52:24.305Z",
+          "passed": true
+        },
+        {
+          "lesson": 5,
+          "title": "加入子弹与敌机",
+          "activity": "practice",
+          "evidence": "session_response",
+          "at": "2026-10-24T09:52:31.251Z",
+          "passed": true
+        },
+        {
+          "lesson": 5,
+          "title": "加入子弹与敌机",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-24T09:52:39.309Z",
+          "passed": true
+        },
+        {
+          "lesson": 5,
+          "title": "加入子弹与敌机",
+          "activity": "complete",
+          "at": "2026-10-24T09:52:47.687Z",
+          "passed": true
+        },
+        {
+          "lesson": 6,
+          "title": "完成得分、生命和重新开始",
+          "activity": "review",
+          "evidence": "session_response",
+          "at": "2026-10-24T09:52:56.829Z",
+          "passed": true
+        },
+        {
+          "lesson": 6,
+          "title": "完成得分、生命和重新开始",
+          "activity": "theory",
+          "evidence": "session_response",
+          "at": "2026-10-24T09:53:03.048Z",
+          "passed": true
+        },
+        {
+          "lesson": 6,
+          "title": "完成得分、生命和重新开始",
+          "activity": "check",
+          "evidence": "session_response",
+          "at": "2026-10-24T09:53:25.902Z",
+          "passed": true
+        },
+        {
+          "lesson": 6,
+          "title": "完成得分、生命和重新开始",
+          "activity": "practice",
+          "evidence": "session_response",
+          "at": "2026-10-24T09:53:33.116Z",
+          "passed": true
+        },
+        {
+          "lesson": 6,
+          "title": "完成得分、生命和重新开始",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-24T09:53:40.821Z",
+          "passed": true
+        },
+        {
+          "lesson": 6,
+          "title": "完成得分、生命和重新开始",
+          "activity": "complete",
+          "at": "2026-10-24T09:53:49.533Z",
+          "passed": true
+        },
+        {
+          "lesson": 7,
+          "title": "测试并交付可玩的游戏",
+          "activity": "review",
+          "evidence": "session_response",
+          "at": "2026-10-24T09:53:59.317Z",
+          "passed": true
+        },
+        {
+          "lesson": 7,
+          "title": "测试并交付可玩的游戏",
+          "activity": "theory",
+          "evidence": "session_response",
+          "at": "2026-10-24T09:54:05.795Z",
+          "passed": true
+        },
+        {
+          "lesson": 7,
+          "title": "测试并交付可玩的游戏",
+          "activity": "check",
+          "evidence": "session_response",
+          "at": "2026-10-24T09:54:31.232Z",
+          "passed": true
+        },
+        {
+          "lesson": 7,
+          "title": "测试并交付可玩的游戏",
+          "activity": "practice",
+          "evidence": "session_response",
+          "at": "2026-10-24T09:54:38.836Z",
+          "passed": true
+        },
+        {
+          "lesson": 7,
+          "title": "测试并交付可玩的游戏",
+          "activity": "reflect",
+          "evidence": "submitted_artifact",
+          "at": "2026-10-24T09:54:47.819Z",
+          "passed": true
+        },
+        {
+          "lesson": 7,
+          "title": "测试并交付可玩的游戏",
+          "activity": "complete",
+          "at": "2026-10-24T09:55:03.089Z",
+          "passed": true
+        },
+        {
+          "lesson": 8,
+          "title": "展示作品，解释我的设计",
+          "activity": "review",
+          "evidence": "session_response",
+          "at": "2026-10-24T09:55:13.662Z",
+          "passed": true
+        },
+        {
+          "lesson": 8,
+          "title": "展示作品，解释我的设计",
+          "activity": "theory",
+          "evidence": "session_response",
+          "at": "2026-10-24T09:55:20.139Z",
+          "passed": true
+        },
+        {
+          "lesson": 8,
+          "title": "展示作品，解释我的设计",
+          "activity": "check",
+          "evidence": "session_response",
+          "at": "2026-10-24T09:55:45.326Z",
+          "passed": true
+        },
+        {
+          "lesson": 8,
+          "title": "展示作品，解释我的设计",
+          "activity": "reflect",
+          "evidence": "session_response",
+          "at": "2026-10-24T09:55:52.510Z",
+          "passed": true
+        },
+        {
+          "lesson": 8,
+          "title": "展示作品，解释我的设计",
+          "activity": "complete",
+          "at": "2026-10-24T09:56:00.674Z",
+          "passed": true
+        }
+      ],
+      "issuesEncountered": [],
+      "toolCalls": 32,
+      "failedToolCalls": [],
+      "turns": [
+        {
+          "at": "2026-10-24T09:49:14.699Z",
+          "scope": {
+            "lesson": 1,
+            "learningSessionId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-1",
+            "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-1:activity:theory",
+            "kind": "theory"
+          },
+          "errors": [],
+          "blockKinds": [
+            "text",
+            "board",
+            "hint"
+          ]
+        },
+        {
+          "at": "2026-10-24T09:49:57.651Z",
+          "scope": {
+            "lesson": 2,
+            "learningSessionId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-2",
+            "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-2:activity:theory",
+            "kind": "theory"
+          },
+          "errors": [],
+          "blockKinds": [
+            "text",
+            "board",
+            "hint"
+          ]
+        },
+        {
+          "at": "2026-10-24T09:50:35.471Z",
+          "scope": {
+            "lesson": 3,
+            "learningSessionId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-3",
+            "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-3:activity:theory",
+            "kind": "theory"
+          },
+          "errors": [],
+          "blockKinds": [
+            "text",
+            "board",
+            "hint"
+          ]
+        },
+        {
+          "at": "2026-10-24T09:51:19.842Z",
+          "scope": {
+            "lesson": 4,
+            "learningSessionId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-4",
+            "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-4:activity:theory",
+            "kind": "theory"
+          },
+          "errors": [],
+          "blockKinds": [
+            "text",
+            "board",
+            "hint"
+          ]
+        },
+        {
+          "at": "2026-10-24T09:52:17.061Z",
+          "scope": {
+            "lesson": 5,
+            "learningSessionId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-5",
+            "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-5:activity:theory",
+            "kind": "theory"
+          },
+          "errors": [],
+          "blockKinds": [
+            "text",
+            "board",
+            "hint"
+          ]
+        },
+        {
+          "at": "2026-10-24T09:53:17.944Z",
+          "scope": {
+            "lesson": 6,
+            "learningSessionId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-6",
+            "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-6:activity:theory",
+            "kind": "theory"
+          },
+          "errors": [],
+          "blockKinds": [
+            "text",
+            "board",
+            "hint"
+          ]
+        },
+        {
+          "at": "2026-10-24T09:54:22.737Z",
+          "scope": {
+            "lesson": 7,
+            "learningSessionId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-7",
+            "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-7:activity:theory",
+            "kind": "theory"
+          },
+          "errors": [],
+          "blockKinds": [
+            "text",
+            "board",
+            "hint"
+          ]
+        },
+        {
+          "at": "2026-10-24T09:55:36.899Z",
+          "scope": {
+            "lesson": 8,
+            "learningSessionId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-8",
+            "activityId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729:thunder-session-8:activity:theory",
+            "kind": "theory"
+          },
+          "errors": [],
+          "blockKinds": [
+            "text",
+            "board",
+            "hint"
+          ]
+        }
+      ],
+      "gameRuns": {
+        "4": {
+          "at": "2026-10-24T09:50:56.781945+00:00",
+          "level": 1,
+          "python": "3.13.5",
+          "pygame": "2.6.1",
+          "videoDriver": "windows",
+          "sourceSha256": "00c72821d34fb50570301173dd45cb598424e6596388a768a18cc4ff7188111e",
+          "integerPositionRegression": {
+            "oldIntegerDistance": 120,
+            "expectedDistance": 130,
+            "actualFloatDistance": 130
+          },
+          "checks": [
+            "actual event queue moves player right",
+            "floating position fixes reproduced integer truncation",
+            "key release stops movement",
+            "left screen boundary clamps player",
+            "window quit ends loop"
+          ],
+          "passed": true,
+          "scope": "real Pygame window, synthetic event-queue input; not an automated production container runner"
+        },
+        "5": {
+          "at": "2026-10-24T09:51:56.286204+00:00",
+          "level": 2,
+          "python": "3.13.5",
+          "pygame": "2.6.1",
+          "videoDriver": "windows",
+          "sourceSha256": "00c72821d34fb50570301173dd45cb598424e6596388a768a18cc4ff7188111e",
+          "integerPositionRegression": {
+            "oldIntegerDistance": 120,
+            "expectedDistance": 130,
+            "actualFloatDistance": 130
+          },
+          "checks": [
+            "actual event queue moves player right",
+            "floating position fixes reproduced integer truncation",
+            "key release stops movement",
+            "left screen boundary clamps player",
+            "space input produces moving bullets",
+            "timer produces descending enemies",
+            "offscreen objects are removed",
+            "window quit ends loop"
+          ],
+          "passed": true,
+          "scope": "real Pygame window, synthetic event-queue input; not an automated production container runner"
+        },
+        "6": {
+          "at": "2026-10-24T09:52:56.765702+00:00",
+          "level": 3,
+          "python": "3.13.5",
+          "pygame": "2.6.1",
+          "videoDriver": "windows",
+          "sourceSha256": "00c72821d34fb50570301173dd45cb598424e6596388a768a18cc4ff7188111e",
+          "integerPositionRegression": {
+            "oldIntegerDistance": 120,
+            "expectedDistance": 130,
+            "actualFloatDistance": 130
+          },
+          "checks": [
+            "actual event queue moves player right",
+            "floating position fixes reproduced integer truncation",
+            "key release stops movement",
+            "left screen boundary clamps player",
+            "space input produces moving bullets",
+            "timer produces descending enemies",
+            "offscreen objects are removed",
+            "bullet hit increases score once",
+            "same hit cannot award score twice",
+            "three collisions produce game over",
+            "R restarts score life and object state",
+            "window quit ends loop"
+          ],
+          "passed": true,
+          "scope": "real Pygame window, synthetic event-queue input; not an automated production container runner"
+        },
+        "7": {
+          "at": "2026-10-24T09:53:59.266476+00:00",
+          "level": 3,
+          "python": "3.13.5",
+          "pygame": "2.6.1",
+          "videoDriver": "windows",
+          "sourceSha256": "00c72821d34fb50570301173dd45cb598424e6596388a768a18cc4ff7188111e",
+          "integerPositionRegression": {
+            "oldIntegerDistance": 120,
+            "expectedDistance": 130,
+            "actualFloatDistance": 130
+          },
+          "checks": [
+            "actual event queue moves player right",
+            "floating position fixes reproduced integer truncation",
+            "key release stops movement",
+            "left screen boundary clamps player",
+            "space input produces moving bullets",
+            "timer produces descending enemies",
+            "offscreen objects are removed",
+            "bullet hit increases score once",
+            "same hit cannot award score twice",
+            "three collisions produce game over",
+            "R restarts score life and object state",
+            "window quit ends loop"
+          ],
+          "passed": true,
+          "scope": "real Pygame window, synthetic event-queue input; not an automated production container runner"
+        },
+        "8": {
+          "at": "2026-10-24T09:55:13.592667+00:00",
+          "level": 3,
+          "python": "3.13.5",
+          "pygame": "2.6.1",
+          "videoDriver": "windows",
+          "sourceSha256": "00c72821d34fb50570301173dd45cb598424e6596388a768a18cc4ff7188111e",
+          "integerPositionRegression": {
+            "oldIntegerDistance": 120,
+            "expectedDistance": 130,
+            "actualFloatDistance": 130
+          },
+          "checks": [
+            "actual event queue moves player right",
+            "floating position fixes reproduced integer truncation",
+            "key release stops movement",
+            "left screen boundary clamps player",
+            "space input produces moving bullets",
+            "timer produces descending enemies",
+            "offscreen objects are removed",
+            "bullet hit increases score once",
+            "same hit cannot award score twice",
+            "three collisions produce game over",
+            "R restarts score life and object state",
+            "window quit ends loop"
+          ],
+          "passed": true,
+          "scope": "real Pygame window, synthetic event-queue input; not an automated production container runner"
+        }
+      }
+    }
+  ],
+  "checks": {
+    "visual": {
+      "at": "2026-10-24T10:25:18.116Z",
+      "projects": [
+        "proj-7ddf7fcc-fd9d-4d6f-9617-f76d52653756",
+        "proj-91368fda-a4cb-4af9-b09a-c0127c2be9e2"
+      ],
+      "errors": [],
+      "writes": [],
+      "reducedMotion": true,
+      "waveActuallyMoves": true,
+      "pauseResume": true,
+      "repeatAndParameterResponse": true,
+      "fullscreen": true,
+      "mobileGeometry": [
+        {
+          "tag": "SECTION",
+          "cls": "WaveOpticsExperimentCard_card__9ssZS",
+          "width": 243.33334350585938,
+          "scroll": 242,
+          "minWidth": "0px",
+          "display": "block",
+          "flex": "0 1 auto",
+          "overflow": "visible"
+        },
+        {
+          "tag": "DIV",
+          "cls": "qitu-chat-body",
+          "width": 243.33334350585938,
+          "scroll": 243,
+          "minWidth": "0px",
+          "display": "grid",
+          "flex": "0 1 auto",
+          "overflow": "visible"
+        },
+        {
+          "tag": "DIV",
+          "cls": "qitu-chat-bubble is-assistant",
+          "width": 276.66668701171875,
+          "scroll": 275,
+          "minWidth": "0px",
+          "display": "grid",
+          "flex": "0 1 auto",
+          "overflow": "visible"
+        },
+        {
+          "tag": "DIV",
+          "cls": "qitu-chat-thread",
+          "width": 304.66668701171875,
+          "scroll": 367,
+          "minWidth": "0px",
+          "display": "grid",
+          "flex": "1 1 0%",
+          "overflow": "hidden auto"
+        },
+        {
+          "tag": "DIV",
+          "cls": "qitu-tutor-col qitu-tutor-col-center",
+          "width": 346,
+          "scroll": 345,
+          "minWidth": "0px",
+          "display": "flex",
+          "flex": "1 1 0%",
+          "overflow": "hidden"
+        },
+        {
+          "tag": "DIV",
+          "cls": "qitu-tutor-center-column",
+          "width": 346,
+          "scroll": 346,
+          "minWidth": "0px",
+          "display": "flex",
+          "flex": "1 1 auto",
+          "overflow": "hidden"
+        },
+        {
+          "tag": "DIV",
+          "cls": "qitu-resizable-panel",
+          "width": 346,
+          "scroll": 346,
+          "minWidth": "0px",
+          "display": "block",
+          "flex": "1 0 440px",
+          "overflow": "visible"
+        },
+        {
+          "tag": "DIV",
+          "cls": "qitu-resizable-panels qitu-tutor-workspace-layout",
+          "width": 362,
+          "scroll": 362,
+          "minWidth": "0px",
+          "display": "flex",
+          "flex": "1 1 0%",
+          "overflow": "auto"
+        },
+        {
+          "tag": "DIV",
+          "cls": "qitu-tutor-page",
+          "width": 362,
+          "scroll": 362,
+          "minWidth": "auto",
+          "display": "flex",
+          "flex": "0 1 auto",
+          "overflow": "hidden"
+        },
+        {
+          "tag": "MAIN",
+          "cls": "qitu-student-content qitu-page-transition",
+          "width": 382,
+          "scroll": 382,
+          "minWidth": "auto",
+          "display": "flex",
+          "flex": "1 1 0%",
+          "overflow": "hidden"
+        },
+        {
+          "tag": "DIV",
+          "cls": "qitu-student-main",
+          "width": 382,
+          "scroll": 382,
+          "minWidth": "0px",
+          "display": "flex",
+          "flex": "1 1 0%",
+          "overflow": "visible"
+        },
+        {
+          "tag": "DIV",
+          "cls": "qitu-student-shell is-tutor-workspace",
+          "width": 382,
+          "scroll": 382,
+          "minWidth": "0px",
+          "display": "flex",
+          "flex": "0 1 auto",
+          "overflow": "hidden"
+        },
+        {
+          "tag": "BODY",
+          "cls": "",
+          "width": 382,
+          "scroll": 382,
+          "minWidth": "0px",
+          "display": "block",
+          "flex": "0 1 auto",
+          "overflow": "clip visible"
+        },
+        {
+          "tag": "HTML",
+          "cls": "",
+          "width": 382,
+          "scroll": 382,
+          "minWidth": "0px",
+          "display": "block",
+          "flex": "0 1 auto",
+          "overflow": "clip visible"
+        }
+      ],
+      "mobileFits": true,
+      "boards": [
+        {
+          "projectId": "proj-7ddf7fcc-fd9d-4d6f-9617-f76d52653756",
+          "persisted": 21,
+          "rendered": 21,
+          "allReplayed": true
+        },
+        {
+          "projectId": "proj-91368fda-a4cb-4af9-b09a-c0127c2be9e2",
+          "persisted": 8,
+          "rendered": 8,
+          "allReplayed": true
+        }
+      ],
+      "allStepVisualsRendered": true,
+      "stepNavigation": true,
+      "noEvidenceWrites": true,
+      "passed": true
+    },
+    "assessmentUiFixture": {
+      "environment": "browser-only-response-fixture-no-production-writes",
+      "requests": [
+        {
+          "path": "/api/v1/tutor/projects/proj-7ddf7fcc-fd9d-4d6f-9617-f76d52653756/lesson/assessment"
+        },
+        {
+          "path": "/api/v1/tutor/sessions/session-proj-7ddf7fcc-fd9d-4d6f-9617-f76d52653756/stream"
+        },
+        {
+          "path": "/api/v1/tutor/projects/proj-7ddf7fcc-fd9d-4d6f-9617-f76d52653756/lesson/assessment"
+        },
+        {
+          "path": "/api/v1/tutor/projects/proj-7ddf7fcc-fd9d-4d6f-9617-f76d52653756/lesson/assessment/answers",
+          "key": "turn-mvm97s4v-ab9jigs19lh"
+        },
+        {
+          "path": "/api/v1/tutor/projects/proj-7ddf7fcc-fd9d-4d6f-9617-f76d52653756/lesson/assessment/answers",
+          "key": "turn-mvm97s4v-ab9jigs19lh"
+        },
+        {
+          "path": "/api/v1/tutor/projects/proj-7ddf7fcc-fd9d-4d6f-9617-f76d52653756/lesson/assessment"
+        },
+        {
+          "path": "/api/v1/tutor/projects/proj-7ddf7fcc-fd9d-4d6f-9617-f76d52653756/lesson/assessment/answers",
+          "key": "turn-mvm97sfu-sx66huqb5o"
+        }
+      ],
+      "errors": [],
+      "helpPreservesQuestionAndSelection": true,
+      "reloadRestoresQuestion": true,
+      "failedSubmissionRetryKeepsKey": true,
+      "wrongAnswerFeedback": true,
+      "correctAnswerFeedback": true,
+      "passed": true
+    },
+    "pre-restart": {
+      "at": "2026-10-24T10:23:48.671Z",
+      "phase": "pre-restart",
+      "projects": [
+        {
+          "target": "zero8",
+          "url": "http://122.51.130.204/student/tutor/proj-7ddf7fcc-fd9d-4d6f-9617-f76d52653756",
+          "stage": "completed",
+          "planId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8",
+          "planRevision": 1,
+          "lessons": [
+            {
+              "lesson": 1,
+              "title": "条纹从哪里来？",
+              "completedAt": "2026-10-23T21:52:59.512Z",
+              "visible": true,
+              "responses": 2,
+              "observations": 0,
+              "reflections": 0,
+              "approvedArtifacts": 1,
+              "proofRefs": [
+                "task_submission:learning-a3e05caaeed4f60d5096252b3d38224d804c8bc4b79f0998ce4c670ccd383c6b",
+                "task_submission:learning-45549e91c615c3f91c4f5413f0a59074014832ebd50992b779cf0fc7eec9ae8a"
+              ],
+              "artifacts": [
+                {
+                  "artifactId": "art-87255b1c-56e0-4496-9c65-02e0e4730073",
+                  "versionId": "artv-ce3b002b-9851-4d25-a29a-1410c3b14ddf",
+                  "contentSha256": "05dbcddb9ce1d830bd047008b9cef365dde841f25206cbd18d6bebe927f4c2b8"
+                },
+                {
+                  "artifactId": "art-5d7ff386-5ae6-4ec1-a07c-96f32f641c8a",
+                  "versionId": "artv-e98145d3-3d0f-4b10-9ef5-38f63ce160e8",
+                  "contentSha256": "d93fdfb15a2053f281b15e0d98209e49bbd46f712727d778eeabd076a5bc11a5"
+                }
+              ]
+            },
+            {
+              "lesson": 2,
+              "title": "两列波相遇会怎样？",
+              "completedAt": "2026-10-23T22:08:42.713Z",
+              "visible": true,
+              "responses": 1,
+              "observations": 0,
+              "reflections": 0,
+              "approvedArtifacts": 1,
+              "proofRefs": [
+                "task_submission:learning-c5650de0b1756a5366705a3010fecb469e3d94315168ce3eebab3532d36be081"
+              ],
+              "artifacts": [
+                {
+                  "artifactId": "art-27092eea-6b01-4f46-84a9-64fce9ca9d0f",
+                  "versionId": "artv-42ef36d4-f68d-4436-90a6-192c07d50af0",
+                  "contentSha256": "6384adafc5081cb1cf7025fdcaa0f74dc466a64aaad4872f3605d2c196b43904"
+                }
+              ]
+            },
+            {
+              "lesson": 3,
+              "title": "双缝为什么出现明暗？",
+              "completedAt": "2026-10-23T22:12:27.942Z",
+              "visible": true,
+              "responses": 2,
+              "observations": 1,
+              "reflections": 0,
+              "approvedArtifacts": 1,
+              "proofRefs": [
+                "task_submission:learning-7cd209a396c839063bf2022abbb92264c783e13197815b57385bdebe84d4384d",
+                "task_submission:learning-f2a0dca7ffdabb55c50d2bf8efcc75d3941c72c2a98da8fddd482ae18d3e2ca5",
+                "experiment_observation:obs-c8b8dda341231e006a87e9988100f458"
+              ],
+              "artifacts": [
+                {
+                  "artifactId": "art-a73d0056-1f37-4172-8d48-081c6accf5aa",
+                  "versionId": "artv-bc4bea58-fbec-456b-b4a7-2d43456c727d",
+                  "contentSha256": "f8703518ee6af427c71d497ad2f8b70942a76089bb65309a4bd16fbc46df2611"
+                },
+                {
+                  "artifactId": "art-06f34532-e377-4f6a-b42e-b698d45f9413",
+                  "versionId": "artv-cbf30e6b-a586-4f64-955e-510c0f55493a",
+                  "contentSha256": "a9f6bb3b1ae326a77043e6b88d3ab3e7d5dd2f10ce30b3e225252f589fd40ea7"
+                }
+              ]
+            },
+            {
+              "lesson": 4,
+              "title": "怎样改变干涉条纹间距？",
+              "completedAt": "2026-10-23T22:21:22.036Z",
+              "visible": true,
+              "responses": 2,
+              "observations": 2,
+              "reflections": 0,
+              "approvedArtifacts": 1,
+              "proofRefs": [
+                "task_submission:learning-21a86fca8a0b5102f0ac4bb109b77000848aba9ccffc27f944ecfcb938b1b32b",
+                "task_submission:learning-054bc1e4f23507d4968bda858229b3542f5852a61d54f219bc9e7671a7034f8e",
+                "experiment_observation:obs-801d4223ad6e70ece3de327b85c48992",
+                "experiment_observation:obs-2895a02f737dd7d187ba288633be2a49"
+              ],
+              "artifacts": [
+                {
+                  "artifactId": "art-a373e1a9-de62-4bae-b05f-fa756c5ec8e3",
+                  "versionId": "artv-a0261da9-4516-4b22-80e6-68f4b0b5ca14",
+                  "contentSha256": "968a05048ee1dcc5fcab1b9bfd4c0e6e59a5ce95422bffe85da744601b413908"
+                },
+                {
+                  "artifactId": "art-dfac8089-57d6-4413-b7c7-943c31d2e270",
+                  "versionId": "artv-076d1227-18df-4f6f-ae20-083a646e8d49",
+                  "contentSha256": "2ffdb600f4257138d86fba724748d78d1fb2718704177903e2fc9c796ccacc00"
+                }
+              ]
+            },
+            {
+              "lesson": 5,
+              "title": "一条缝为什么仍有条纹？",
+              "completedAt": "2026-10-24T09:31:39.099Z",
+              "visible": true,
+              "responses": 2,
+              "observations": 1,
+              "reflections": 0,
+              "approvedArtifacts": 1,
+              "proofRefs": [
+                "task_submission:learning-01b6cc25a158c6797153544e99fd1466c57a8215d2ab0f3ac05124645bb9852d",
+                "task_submission:learning-43173f0eda83aa4f9d2fc44018139db0ae0187938bc6bb8db738cca3a6ff8d84",
+                "experiment_observation:obs-263efc5a9247528c6d27bb44f66295cc"
+              ],
+              "artifacts": [
+                {
+                  "artifactId": "art-be59c579-5876-426d-83c7-49dd8c946431",
+                  "versionId": "artv-ca423b69-9992-4662-a149-9f7ad9afeeb6",
+                  "contentSha256": "83c854d0e26c5bbca4b3ce47fdcdd2be6b97e2f15b79c42aa0a5f69afe275b6d"
+                },
+                {
+                  "artifactId": "art-998eda84-6c78-4b0f-a846-46ef26626661",
+                  "versionId": "artv-cb1cc399-3716-4f6d-8c1b-43ee9691c5cc",
+                  "contentSha256": "e411b97f56bfeec8deeb51dc36613555f3fefe6276bd15f9705150a42c40ce24"
+                }
+              ]
+            },
+            {
+              "lesson": 6,
+              "title": "缝变窄，图样怎样变化？",
+              "completedAt": "2026-10-24T09:41:12.800Z",
+              "visible": true,
+              "responses": 2,
+              "observations": 2,
+              "reflections": 0,
+              "approvedArtifacts": 1,
+              "proofRefs": [
+                "task_submission:learning-0f621bc45b4da59bd815376ecdea1e8ab20cd60a04372036248572ddafaed5e7",
+                "task_submission:learning-666c570145a04f70a028c480a2350db73a320ec55e061ae408b92709e31e83a6",
+                "experiment_observation:obs-907405666f0a0ab7daf7e421cdfce9c0",
+                "experiment_observation:obs-4026d81a39a9ad70eb455a87d0798c6f"
+              ],
+              "artifacts": [
+                {
+                  "artifactId": "art-13316bb3-0561-46e9-896b-cf39d2bda0dc",
+                  "versionId": "artv-fd2ace5e-35a8-4cd4-a8f6-89246471d8d6",
+                  "contentSha256": "ba562e9b558b7ee7de2e6726d18a9c5cd7d0d2d355ea6ed88aeaac8d654cbdf2"
+                },
+                {
+                  "artifactId": "art-af45f784-88be-4c21-bd58-6fc9ff2fedf7",
+                  "versionId": "artv-2420c0c7-c2f6-4268-a732-14fc3dd107d2",
+                  "contentSha256": "f4b7a36d843da0143707f0eeb82d8e83d3a642b0521f718bc43525b0220ad95a"
+                }
+              ]
+            },
+            {
+              "lesson": 7,
+              "title": "干涉与衍射怎样联系？",
+              "completedAt": "2026-10-24T09:45:13.184Z",
+              "visible": true,
+              "responses": 2,
+              "observations": 1,
+              "reflections": 0,
+              "approvedArtifacts": 1,
+              "proofRefs": [
+                "task_submission:learning-d526ef31d8093e5fc565db6a91b0c8c9df24c01d590c6c9f2a1b729edc6c11bc",
+                "task_submission:learning-6ea887571a1733924a15b48adea14a995f269e25c1428ebbdf1384dcaf357417",
+                "experiment_observation:obs-bcfa786ec6338ab59c92fa8a9152407e"
+              ],
+              "artifacts": [
+                {
+                  "artifactId": "art-615b8c8a-3823-47d5-a874-5d56c0542c72",
+                  "versionId": "artv-cf1a96a9-4916-4704-b1d0-9fda8172139b",
+                  "contentSha256": "fce09dd73462165853165db1a5c438d16310d9eb453b1e6cd767d6e02e38e16c"
+                },
+                {
+                  "artifactId": "art-2e47ed81-42ec-4f27-8829-7782ac6a98f3",
+                  "versionId": "artv-82ad040e-d67f-4d3b-b9ba-6a34a4d2584f",
+                  "contentSha256": "4a9defdd8e5819dc5ec59bb3106da27f3afccb97fdc4781d463fd3fc466cbed1"
+                }
+              ]
+            },
+            {
+              "lesson": 8,
+              "title": "别人能复核我的探究吗？",
+              "completedAt": "2026-10-24T09:48:42.924Z",
+              "visible": true,
+              "responses": 1,
+              "observations": 0,
+              "reflections": 1,
+              "approvedArtifacts": 1,
+              "proofRefs": [
+                "task_submission:learning-96c85b970895992ec412ed098a0862156c22e09581db28b7e50e5a9d08900e29",
+                "reflection:learning-f3292520334d1e4e5a009066117b60d6405fd70c0c1025e749e4dd0860658a3b"
+              ],
+              "artifacts": [
+                {
+                  "artifactId": "art-ad2242b5-e4cf-4eaa-bb52-d3240cf9264f",
+                  "versionId": "artv-79a8bd30-7b11-44ff-88f4-4690980b32a5",
+                  "contentSha256": "6c41ec0e174aadecfd50608390a31785029eb43adf50dd3204394c1a4f7bbaaf"
+                },
+                {
+                  "artifactId": "art-3bf843fe-356b-4f57-9898-9ac79b354058",
+                  "versionId": "artv-f2134698-5ca4-4e50-b7ab-f8fd9e281ffe",
+                  "contentSha256": "daca330c20c41588a228c26b2695ccff7e3df6d585f1e38cf9d96be95172340d"
+                }
+              ]
+            }
+          ],
+          "offlineRecovery": true,
+          "reloadPersisted": true
+        },
+        {
+          "target": "thunder",
+          "url": "http://122.51.130.204/student/tutor/proj-91368fda-a4cb-4af9-b09a-c0127c2be9e2",
+          "stage": "completed",
+          "planId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729",
+          "planRevision": 1,
+          "lessons": [
+            {
+              "lesson": 1,
+              "title": "我的战机游戏怎么玩？",
+              "completedAt": "2026-10-24T09:49:35.571Z",
+              "visible": true,
+              "responses": 4,
+              "observations": 0,
+              "reflections": 0,
+              "approvedArtifacts": 1,
+              "proofRefs": [
+                "task_submission:learning-c85173d14a231d40495699390b5dabe32f821b7296b3706eb91ffec499a962cf",
+                "task_submission:learning-bc93eef34dc15b379012ccd27a86298c8e8e2856300df32d5845c5e77767edaf",
+                "task_submission:learning-a653146223777bb6e69a7bbb9365e749487718bc12fb35e2d8c574124a38190b",
+                "task_submission:learning-25e00adb28d55b3ad136f132720a7d20dcc85bd5dc0ce4f0e61afb4515636968"
+              ],
+              "artifacts": [
+                {
+                  "artifactId": "art-795e6640-f1e1-4c18-b299-145ef32c00e1",
+                  "versionId": "artv-f3312ef6-9cc2-4d15-8e5e-67d29cde41e4",
+                  "contentSha256": "c110318478338ceaee35e8634583f17536848286fec92cbe9407e7e00056ce7d"
+                },
+                {
+                  "artifactId": "art-11d952c1-84bd-425c-bc16-9e3bf4f2c61f",
+                  "versionId": "artv-f237b6a2-1c85-437d-bded-eb9ac5af4993",
+                  "contentSha256": "f4da11f266058601c0daf369e64b83082172276cb3cf79cc8c6a1bd58fcdbe80"
+                },
+                {
+                  "artifactId": "art-e85a43c0-ea96-40ae-849b-05f90f210957",
+                  "versionId": "artv-503bb02a-bb85-425a-a5fa-29302a3e5994",
+                  "contentSha256": "f2dedcaaebedbacf8bee2ab5a6caf372394ff894d281e9114ce83cb1dd19fd65"
+                },
+                {
+                  "artifactId": "art-a6ef8437-4d49-4d53-bfe1-41a83140fed8",
+                  "versionId": "artv-7a711f21-7f1e-4bbe-8016-949532371ca5",
+                  "contentSha256": "d9715bda7985aa0945f739f4988bd924a6b3ea2b9f6af44456c991abae414f15"
+                }
+              ]
+            },
+            {
+              "lesson": 2,
+              "title": "画面为什么会动？循环与坐标",
+              "completedAt": "2026-10-24T09:50:12.275Z",
+              "visible": true,
+              "responses": 3,
+              "observations": 0,
+              "reflections": 0,
+              "approvedArtifacts": 1,
+              "proofRefs": [
+                "task_submission:learning-fa1200da7d80148c7e9f972515f332b1164a61ca2bc44bf77fdb755e05e9d64e",
+                "task_submission:learning-aae3a14e1a4d083f7f653cd70827bcaafc14c2ee6bd0e9041ffebc8cc56c8d6f",
+                "task_submission:learning-377e360d9f13ef2e3a7c706347b869d65c99bc11a7e23d85b3ddf8b7c87dfc8a"
+              ],
+              "artifacts": [
+                {
+                  "artifactId": "art-4d7cd43f-9e3e-4025-bf2f-b39d2581cea0",
+                  "versionId": "artv-3e846737-4874-4937-96a8-f765541eac71",
+                  "contentSha256": "c179651faaabe86c00fea90c3a89ea6372106d38dcac72d7404ac84a3e195030"
+                },
+                {
+                  "artifactId": "art-e86ce9ab-045c-46f0-9c4f-d8dbbb8e020b",
+                  "versionId": "artv-4a5e916b-e0cb-4662-a413-f8d9d1f541fe",
+                  "contentSha256": "1b3a9e0fe85ec9b1603ac596b4b3bcbcd070849106f10fac613a01748079e2c6"
+                },
+                {
+                  "artifactId": "art-56671e35-61a2-4035-a167-402fa07e5725",
+                  "versionId": "artv-8b9b8232-f87e-45db-9c7e-d134e3d8cbf1",
+                  "contentSha256": "b73570907191b6fdfb572deb7246bc71cb8d17bbe2277d5039b28bb7ec1b6c47"
+                }
+              ]
+            },
+            {
+              "lesson": 3,
+              "title": "按键与碰撞怎样变成规则？",
+              "completedAt": "2026-10-24T09:50:50.469Z",
+              "visible": true,
+              "responses": 3,
+              "observations": 0,
+              "reflections": 0,
+              "approvedArtifacts": 1,
+              "proofRefs": [
+                "task_submission:learning-5ef1ada141aade6e68a25032ba7b0c42a9839e88b64a9ce315ea09c4c8cfd9f0",
+                "task_submission:learning-9b013b44c4428b47591e32fbf3bce429b4f3ea1dc86bff594a3f15d19ff96f16",
+                "task_submission:learning-d8831fb01770aa0fc3c7b8c4fb704c11a27fec30fc70569aeb10e92ae9e5f385"
+              ],
+              "artifacts": [
+                {
+                  "artifactId": "art-b44f43ee-cbea-4be7-ad9f-692a7feca8ed",
+                  "versionId": "artv-afbcc482-0c4e-48e1-badc-37d2edf4ea61",
+                  "contentSha256": "94bd3b082c6ffd108f6989d82d521789f1b07f66ee905e2844f960524807dfde"
+                },
+                {
+                  "artifactId": "art-b6cdea83-646d-4bbb-95fd-ae545dea6db8",
+                  "versionId": "artv-a1f83ffa-eef1-48e3-bd17-362c8746e0fe",
+                  "contentSha256": "7ebd392ec866a0e772e99b68e926999226135c604eb363a5732298ac91d76303"
+                },
+                {
+                  "artifactId": "art-969375b4-c250-4dba-b5c7-9d6c531fbf16",
+                  "versionId": "artv-a053b5b5-a92d-48f1-b903-22d528830717",
+                  "contentSha256": "174a3fec5c1cb88fe11da8f42e53273fd014919afaf2cc9e53eb028202038df8"
+                }
+              ]
+            },
+            {
+              "lesson": 4,
+              "title": "让第一架战机动起来",
+              "completedAt": "2026-10-24T09:51:50.288Z",
+              "visible": true,
+              "responses": 5,
+              "observations": 0,
+              "reflections": 0,
+              "approvedArtifacts": 1,
+              "proofRefs": [
+                "task_submission:learning-bfec9fa627e54ba0cfe99ddab15fc35b51df586ff35128e5779317fac4c360ee",
+                "task_submission:learning-457daa049a40693f98e717bf844ebfecf5e740dad6bc54548d67eab8ab89e15f",
+                "task_submission:learning-fe316e5ea69c34680cedfa84c8c1e5f11f4cc3c3054039723ceb8348c903e2e5",
+                "task_submission:learning-447a1d19c84c379b86d3bfa02f8e310a773555361667adf17c1a65ecab3f193c",
+                "task_submission:learning-50d909efdbe3c2faff5f81d4c6e16afc551c728d7beae0d32715de98ec3892ff"
+              ],
+              "artifacts": [
+                {
+                  "artifactId": "art-b8c3c9bc-cdbc-4aad-adb7-aba68855576d",
+                  "versionId": "artv-fa958341-6435-4663-aaaa-b9a6620ad043",
+                  "contentSha256": "e83352b54b8e0e13b940ac549f45c3c55a4eb7560c904d4f3e42de381e7e363e"
+                },
+                {
+                  "artifactId": "art-d1cda95a-25c7-4fd4-8827-4c4b66710f7a",
+                  "versionId": "artv-e5735680-1d77-4bf6-9950-a98ef0fd8daf",
+                  "contentSha256": "24e089b54365321d77173c152ce55365e135f3a7335b70cf23629c42b427b0e6"
+                },
+                {
+                  "artifactId": "art-35a27367-6ce3-493f-8f90-020f727fb2e1",
+                  "versionId": "artv-94e89060-f4f3-44a1-b267-4799144de25c",
+                  "contentSha256": "ec85006575096cb77357c0d14ec50d3d01faf3842736adc62572ff0ea5012234"
+                },
+                {
+                  "artifactId": "art-d8c609a7-8692-4707-ab9d-9490bd67b00b",
+                  "versionId": "artv-96800101-48a7-4f16-9288-7a46538ef6cf",
+                  "contentSha256": "46f09ba728c6c0d3bb7e1209e1a6bce820236a904deba37ea6b0ed5dd49aafd2"
+                },
+                {
+                  "artifactId": "art-f300a8b7-4856-470c-b070-797964537dca",
+                  "versionId": "artv-ce420293-1994-424c-97d0-d3b9c9e55255",
+                  "contentSha256": "e6c88b36906f2eff77e712db8dfeb69cb84f2e9463fdaf51ff95705cf6cce9f4"
+                }
+              ]
+            },
+            {
+              "lesson": 5,
+              "title": "加入子弹与敌机",
+              "completedAt": "2026-10-24T09:52:50.266Z",
+              "visible": true,
+              "responses": 5,
+              "observations": 0,
+              "reflections": 0,
+              "approvedArtifacts": 1,
+              "proofRefs": [
+                "task_submission:learning-4b6e6daf94942de2a9771388bf3c378951299222c57456753ea78baaf54f7a7c",
+                "task_submission:learning-ae1689c1156067c045dcd47b31fc340cae47100ec9377c1d3e71710e96427525",
+                "task_submission:learning-72bb40379083e3aa54a506ecc34ffac1c9ee6b6559edf11125e39e038fd82414",
+                "task_submission:learning-65aaabc7035fb76c257922d4d2ac52fac190071a452d310dca971cfe0674ab57",
+                "task_submission:learning-c63811a34a3fd140e2626fb5df32dd280da56a283a9692068b359d9ef2845ef2"
+              ],
+              "artifacts": [
+                {
+                  "artifactId": "art-f6062baa-325f-4c3d-a0e1-b19453e93806",
+                  "versionId": "artv-a39312ef-ba52-4db0-9fbf-30ad45db6a7e",
+                  "contentSha256": "7e133ad3c18a46e5f8ca48dd8c4152c88851f7e1d9558c370893228326d06dd9"
+                },
+                {
+                  "artifactId": "art-d7190177-4e65-4d64-9881-0456936b895f",
+                  "versionId": "artv-14fe1669-a7fa-40a3-9fec-d1bb09f32d83",
+                  "contentSha256": "947a13ad6af49893a9f284f87bd18511c44c184ddd5013baece8c0bd8123c5a7"
+                },
+                {
+                  "artifactId": "art-ae99248a-4b56-4166-89ba-0ec9a350c728",
+                  "versionId": "artv-00857864-c489-4752-a144-35490c3e7f91",
+                  "contentSha256": "8f9ccbe1c087a9d97818ab08468aeb52e9ecc459241d4f26923aa43d1a326117"
+                },
+                {
+                  "artifactId": "art-53d14f4d-2cf1-4d37-8c09-4620fdd8a8d8",
+                  "versionId": "artv-91584fee-c8ec-4b76-b012-0e792c937038",
+                  "contentSha256": "a1e97fe1b015ce5a452ec16b49b51c404c8445a0f4f983b1f1c1b004deb9376b"
+                },
+                {
+                  "artifactId": "art-51711abf-61b8-4458-b24c-afa7317fd631",
+                  "versionId": "artv-87f807ee-6343-400d-8d27-dbd501eb7944",
+                  "contentSha256": "47c4724cc0afb4a6dee6b9cb800755326dc51a8a8fe135f3acd18ce16236387d"
+                }
+              ]
+            },
+            {
+              "lesson": 6,
+              "title": "完成得分、生命和重新开始",
+              "completedAt": "2026-10-24T09:53:52.118Z",
+              "visible": true,
+              "responses": 5,
+              "observations": 0,
+              "reflections": 0,
+              "approvedArtifacts": 1,
+              "proofRefs": [
+                "task_submission:learning-8ae682a2242d06caeb0506e374d0050756d6d08b5afcecb53215540e8ccc2436",
+                "task_submission:learning-c180c61d641b1c9e1b42eb3a71bd7ec19e549548cf7fcfd0274b492e9dbbbb24",
+                "task_submission:learning-00fa3f1871e25b0723671559e7d801bb1f5c05f9d2d73a4413a05a107fe2c65c",
+                "task_submission:learning-7e402eceea34582ffa85f2bf68f60586e60665d49fc96f33688fab910724e68f",
+                "task_submission:learning-9fc4c81b432a06edfa1e067d722e32c7192fd8d64f9565f0ca9d2b361e2fc1d4"
+              ],
+              "artifacts": [
+                {
+                  "artifactId": "art-62c48c58-ec46-4209-b14e-4f5341ac0ae5",
+                  "versionId": "artv-d1fb1ad1-748a-4dbb-a945-afa21d62c218",
+                  "contentSha256": "c27ed8aad277ce365ed8b22f1308e20117891066fb6c8328f259c32db79e4023"
+                },
+                {
+                  "artifactId": "art-1ceda4fd-b981-44b1-84ec-7c828a2f5957",
+                  "versionId": "artv-8bef83a7-491c-4c94-b4e0-946775b6ed16",
+                  "contentSha256": "371959603b949f413da8c2a6fb4569fa6c651cc899ab62434803f47bb7aa8e5b"
+                },
+                {
+                  "artifactId": "art-f6580f54-58ab-4396-899d-4ebaf25ccd47",
+                  "versionId": "artv-49666278-5f06-47b5-a762-3b97934c31d9",
+                  "contentSha256": "749f4f75db87a1cf235ef8ac04619e60e475dcd8ef4530ecc0cd8f42c26ee49a"
+                },
+                {
+                  "artifactId": "art-5d83e3a4-3068-4f5c-913b-973e7d5f754c",
+                  "versionId": "artv-ab6afb62-bb68-43bf-a5ae-71e92c64ee0f",
+                  "contentSha256": "c8916b8b3274db9e938109dbe4d85a6fdd418a46ecab1fbf6796dd3983b588c7"
+                },
+                {
+                  "artifactId": "art-9ced3ab5-9bfd-4b6b-b1c0-f7b2197ded13",
+                  "versionId": "artv-3f29d151-c4f3-4266-a99d-f60f10e49894",
+                  "contentSha256": "74ab61d0c3e7962f2f3ae123c2d0f8b4468ab406c41ed95d3ecceb5747a79d91"
+                }
+              ]
+            },
+            {
+              "lesson": 7,
+              "title": "测试并交付可玩的游戏",
+              "completedAt": "2026-10-24T09:55:05.706Z",
+              "visible": true,
+              "responses": 5,
+              "observations": 0,
+              "reflections": 0,
+              "approvedArtifacts": 1,
+              "proofRefs": [
+                "task_submission:learning-effb54b3a4cde7e257842a2cd21a50318a0eec30da9e9581083b2a9ba8c56af0",
+                "task_submission:learning-c697fa77507060de5b0b272b42f2aaf31d618841bc071fd932f8da6c8df0f5f1",
+                "task_submission:learning-f4618bcf7d3c36444255eff4faba4fbf5e7cc3caa7921a441f7887e893d861b4",
+                "task_submission:learning-7a5995dcbbe1aed87fad6433933ad926924550315e38501814224c8f9d4c4ab5",
+                "task_submission:learning-5c7fb848e81e1eedbe6ce8339735f380f123430393ce5533559b02c67e293804"
+              ],
+              "artifacts": [
+                {
+                  "artifactId": "art-f0f9a66e-058c-4933-a156-56324af80a3f",
+                  "versionId": "artv-16bf36af-fd17-4df4-a338-cc5a34301c7e",
+                  "contentSha256": "020d0686712f516404fa76f27400a360355f5de6974d74c454d5b4aede88de06"
+                },
+                {
+                  "artifactId": "art-a893572b-a8ef-4e7f-87c9-66e55d50d82d",
+                  "versionId": "artv-a556d9d0-e31c-48d5-9f2b-ba126f3b39ac",
+                  "contentSha256": "e40c98c698c44343fd748147ab41f944b2c3e61994fb271ab13a6023626069dc"
+                },
+                {
+                  "artifactId": "art-6bc00200-6d8f-44ba-9a38-adc2e447029e",
+                  "versionId": "artv-bfa62e89-1ac9-4d5b-a57e-d9e85f4697dd",
+                  "contentSha256": "e9d7224c67a1df11a619d1fd0da88b689cbf8cff574c4aa6da152328e51a9289"
+                },
+                {
+                  "artifactId": "art-614950b2-277b-452c-9de1-f1346f6b3941",
+                  "versionId": "artv-3ce8dcef-29c8-4041-a2d9-abc597fbf54c",
+                  "contentSha256": "1e1ed467ae7b56e3fe9633080cfdc478ba2c00c4319ad6693e4cd01e3c64b830"
+                },
+                {
+                  "artifactId": "art-cfc60049-3eba-4079-8fc9-8980f021f928",
+                  "versionId": "artv-e6b67298-c150-424d-95b8-01deb6f5f1fb",
+                  "contentSha256": "12b20a4197f81d8dc8d0c4f18f5d3c7196ea67a7878281397edc2454382e77e9"
+                }
+              ]
+            },
+            {
+              "lesson": 8,
+              "title": "展示作品，解释我的设计",
+              "completedAt": "2026-10-24T09:56:03.167Z",
+              "visible": true,
+              "responses": 3,
+              "observations": 0,
+              "reflections": 1,
+              "approvedArtifacts": 1,
+              "proofRefs": [
+                "task_submission:learning-d383b88a5f112d560e646c12dc14521fa18caaed33b0ef171fcce2a19acbeae7",
+                "task_submission:learning-46ee9080fe63d11534eec5c2435148585c4d7cb049028c5dff87fa087e9bdbb7",
+                "task_submission:learning-fbe4abe6a3cec697d1d392feb997570bfe19c11aab4768e66b0258af5e725239",
+                "reflection:learning-1d8963706020a79e5fdff8fad14582789a28ce70972a6f1f871b998e185bff2f"
+              ],
+              "artifacts": [
+                {
+                  "artifactId": "art-34dcc5af-b1bb-4260-b719-24242ef0e1d8",
+                  "versionId": "artv-22454bf5-b48a-4704-b05a-ac0e4d975cc1",
+                  "contentSha256": "e93e916d2412240d094cc7991f79bc52d136fb587caabfc5cb952251b8d9b3c5"
+                },
+                {
+                  "artifactId": "art-4ba34e8d-c0ec-43ae-b768-f0998e9a53c2",
+                  "versionId": "artv-7fa0029b-2a1a-4e5c-88e9-8d3452ed0a65",
+                  "contentSha256": "e2e9ba1d68b133481f13a368539d7615f47c3ac9daa1122266ef671792c5c320"
+                },
+                {
+                  "artifactId": "art-be163930-ce5d-4dc9-bfeb-b1894345b213",
+                  "versionId": "artv-a4ce5fd3-3815-4aeb-be47-e321b66f0091",
+                  "contentSha256": "2a9a16bfd7d87f3a5561ed96d99e1b733d192fdcd9a8ebfa68e1c85284267759"
+                },
+                {
+                  "artifactId": "art-cf7aea9b-5c0f-45e6-8f7d-9322d61db959",
+                  "versionId": "artv-c5fcf1d8-f5a1-4736-9e58-adddf04d4cea",
+                  "contentSha256": "679e61e4f132f34d32c5512bfae475f261324467e32b80f58f5614b872aa236c"
+                }
+              ]
+            }
+          ],
+          "playableArtifactSourceVerified": true,
+          "offlineRecovery": true,
+          "reloadPersisted": true
+        }
+      ],
+      "issues": [],
+      "anonymousRecordDenied": true,
+      "visibleTemplates": 2,
+      "passed": true
+    },
+    "post-restart": {
+      "at": "2026-10-24T10:25:28.364Z",
+      "phase": "post-restart",
+      "projects": [
+        {
+          "target": "zero8",
+          "url": "http://122.51.130.204/student/tutor/proj-7ddf7fcc-fd9d-4d6f-9617-f76d52653756",
+          "stage": "completed",
+          "planId": "plan-fd60157e-4739-4f2e-8ccf-b83edf0678a8",
+          "planRevision": 1,
+          "lessons": [
+            {
+              "lesson": 1,
+              "title": "条纹从哪里来？",
+              "completedAt": "2026-10-23T21:52:59.512Z",
+              "visible": true,
+              "responses": 2,
+              "observations": 0,
+              "reflections": 0,
+              "approvedArtifacts": 1,
+              "proofRefs": [
+                "task_submission:learning-a3e05caaeed4f60d5096252b3d38224d804c8bc4b79f0998ce4c670ccd383c6b",
+                "task_submission:learning-45549e91c615c3f91c4f5413f0a59074014832ebd50992b779cf0fc7eec9ae8a"
+              ],
+              "artifacts": [
+                {
+                  "artifactId": "art-87255b1c-56e0-4496-9c65-02e0e4730073",
+                  "versionId": "artv-ce3b002b-9851-4d25-a29a-1410c3b14ddf",
+                  "contentSha256": "05dbcddb9ce1d830bd047008b9cef365dde841f25206cbd18d6bebe927f4c2b8"
+                },
+                {
+                  "artifactId": "art-5d7ff386-5ae6-4ec1-a07c-96f32f641c8a",
+                  "versionId": "artv-e98145d3-3d0f-4b10-9ef5-38f63ce160e8",
+                  "contentSha256": "d93fdfb15a2053f281b15e0d98209e49bbd46f712727d778eeabd076a5bc11a5"
+                }
+              ]
+            },
+            {
+              "lesson": 2,
+              "title": "两列波相遇会怎样？",
+              "completedAt": "2026-10-23T22:08:42.713Z",
+              "visible": true,
+              "responses": 1,
+              "observations": 0,
+              "reflections": 0,
+              "approvedArtifacts": 1,
+              "proofRefs": [
+                "task_submission:learning-c5650de0b1756a5366705a3010fecb469e3d94315168ce3eebab3532d36be081"
+              ],
+              "artifacts": [
+                {
+                  "artifactId": "art-27092eea-6b01-4f46-84a9-64fce9ca9d0f",
+                  "versionId": "artv-42ef36d4-f68d-4436-90a6-192c07d50af0",
+                  "contentSha256": "6384adafc5081cb1cf7025fdcaa0f74dc466a64aaad4872f3605d2c196b43904"
+                }
+              ]
+            },
+            {
+              "lesson": 3,
+              "title": "双缝为什么出现明暗？",
+              "completedAt": "2026-10-23T22:12:27.942Z",
+              "visible": true,
+              "responses": 2,
+              "observations": 1,
+              "reflections": 0,
+              "approvedArtifacts": 1,
+              "proofRefs": [
+                "task_submission:learning-7cd209a396c839063bf2022abbb92264c783e13197815b57385bdebe84d4384d",
+                "task_submission:learning-f2a0dca7ffdabb55c50d2bf8efcc75d3941c72c2a98da8fddd482ae18d3e2ca5",
+                "experiment_observation:obs-c8b8dda341231e006a87e9988100f458"
+              ],
+              "artifacts": [
+                {
+                  "artifactId": "art-a73d0056-1f37-4172-8d48-081c6accf5aa",
+                  "versionId": "artv-bc4bea58-fbec-456b-b4a7-2d43456c727d",
+                  "contentSha256": "f8703518ee6af427c71d497ad2f8b70942a76089bb65309a4bd16fbc46df2611"
+                },
+                {
+                  "artifactId": "art-06f34532-e377-4f6a-b42e-b698d45f9413",
+                  "versionId": "artv-cbf30e6b-a586-4f64-955e-510c0f55493a",
+                  "contentSha256": "a9f6bb3b1ae326a77043e6b88d3ab3e7d5dd2f10ce30b3e225252f589fd40ea7"
+                }
+              ]
+            },
+            {
+              "lesson": 4,
+              "title": "怎样改变干涉条纹间距？",
+              "completedAt": "2026-10-23T22:21:22.036Z",
+              "visible": true,
+              "responses": 2,
+              "observations": 2,
+              "reflections": 0,
+              "approvedArtifacts": 1,
+              "proofRefs": [
+                "task_submission:learning-21a86fca8a0b5102f0ac4bb109b77000848aba9ccffc27f944ecfcb938b1b32b",
+                "task_submission:learning-054bc1e4f23507d4968bda858229b3542f5852a61d54f219bc9e7671a7034f8e",
+                "experiment_observation:obs-801d4223ad6e70ece3de327b85c48992",
+                "experiment_observation:obs-2895a02f737dd7d187ba288633be2a49"
+              ],
+              "artifacts": [
+                {
+                  "artifactId": "art-a373e1a9-de62-4bae-b05f-fa756c5ec8e3",
+                  "versionId": "artv-a0261da9-4516-4b22-80e6-68f4b0b5ca14",
+                  "contentSha256": "968a05048ee1dcc5fcab1b9bfd4c0e6e59a5ce95422bffe85da744601b413908"
+                },
+                {
+                  "artifactId": "art-dfac8089-57d6-4413-b7c7-943c31d2e270",
+                  "versionId": "artv-076d1227-18df-4f6f-ae20-083a646e8d49",
+                  "contentSha256": "2ffdb600f4257138d86fba724748d78d1fb2718704177903e2fc9c796ccacc00"
+                }
+              ]
+            },
+            {
+              "lesson": 5,
+              "title": "一条缝为什么仍有条纹？",
+              "completedAt": "2026-10-24T09:31:39.099Z",
+              "visible": true,
+              "responses": 2,
+              "observations": 1,
+              "reflections": 0,
+              "approvedArtifacts": 1,
+              "proofRefs": [
+                "task_submission:learning-01b6cc25a158c6797153544e99fd1466c57a8215d2ab0f3ac05124645bb9852d",
+                "task_submission:learning-43173f0eda83aa4f9d2fc44018139db0ae0187938bc6bb8db738cca3a6ff8d84",
+                "experiment_observation:obs-263efc5a9247528c6d27bb44f66295cc"
+              ],
+              "artifacts": [
+                {
+                  "artifactId": "art-be59c579-5876-426d-83c7-49dd8c946431",
+                  "versionId": "artv-ca423b69-9992-4662-a149-9f7ad9afeeb6",
+                  "contentSha256": "83c854d0e26c5bbca4b3ce47fdcdd2be6b97e2f15b79c42aa0a5f69afe275b6d"
+                },
+                {
+                  "artifactId": "art-998eda84-6c78-4b0f-a846-46ef26626661",
+                  "versionId": "artv-cb1cc399-3716-4f6d-8c1b-43ee9691c5cc",
+                  "contentSha256": "e411b97f56bfeec8deeb51dc36613555f3fefe6276bd15f9705150a42c40ce24"
+                }
+              ]
+            },
+            {
+              "lesson": 6,
+              "title": "缝变窄，图样怎样变化？",
+              "completedAt": "2026-10-24T09:41:12.800Z",
+              "visible": true,
+              "responses": 2,
+              "observations": 2,
+              "reflections": 0,
+              "approvedArtifacts": 1,
+              "proofRefs": [
+                "task_submission:learning-0f621bc45b4da59bd815376ecdea1e8ab20cd60a04372036248572ddafaed5e7",
+                "task_submission:learning-666c570145a04f70a028c480a2350db73a320ec55e061ae408b92709e31e83a6",
+                "experiment_observation:obs-907405666f0a0ab7daf7e421cdfce9c0",
+                "experiment_observation:obs-4026d81a39a9ad70eb455a87d0798c6f"
+              ],
+              "artifacts": [
+                {
+                  "artifactId": "art-13316bb3-0561-46e9-896b-cf39d2bda0dc",
+                  "versionId": "artv-fd2ace5e-35a8-4cd4-a8f6-89246471d8d6",
+                  "contentSha256": "ba562e9b558b7ee7de2e6726d18a9c5cd7d0d2d355ea6ed88aeaac8d654cbdf2"
+                },
+                {
+                  "artifactId": "art-af45f784-88be-4c21-bd58-6fc9ff2fedf7",
+                  "versionId": "artv-2420c0c7-c2f6-4268-a732-14fc3dd107d2",
+                  "contentSha256": "f4b7a36d843da0143707f0eeb82d8e83d3a642b0521f718bc43525b0220ad95a"
+                }
+              ]
+            },
+            {
+              "lesson": 7,
+              "title": "干涉与衍射怎样联系？",
+              "completedAt": "2026-10-24T09:45:13.184Z",
+              "visible": true,
+              "responses": 2,
+              "observations": 1,
+              "reflections": 0,
+              "approvedArtifacts": 1,
+              "proofRefs": [
+                "task_submission:learning-d526ef31d8093e5fc565db6a91b0c8c9df24c01d590c6c9f2a1b729edc6c11bc",
+                "task_submission:learning-6ea887571a1733924a15b48adea14a995f269e25c1428ebbdf1384dcaf357417",
+                "experiment_observation:obs-bcfa786ec6338ab59c92fa8a9152407e"
+              ],
+              "artifacts": [
+                {
+                  "artifactId": "art-615b8c8a-3823-47d5-a874-5d56c0542c72",
+                  "versionId": "artv-cf1a96a9-4916-4704-b1d0-9fda8172139b",
+                  "contentSha256": "fce09dd73462165853165db1a5c438d16310d9eb453b1e6cd767d6e02e38e16c"
+                },
+                {
+                  "artifactId": "art-2e47ed81-42ec-4f27-8829-7782ac6a98f3",
+                  "versionId": "artv-82ad040e-d67f-4d3b-b9ba-6a34a4d2584f",
+                  "contentSha256": "4a9defdd8e5819dc5ec59bb3106da27f3afccb97fdc4781d463fd3fc466cbed1"
+                }
+              ]
+            },
+            {
+              "lesson": 8,
+              "title": "别人能复核我的探究吗？",
+              "completedAt": "2026-10-24T09:48:42.924Z",
+              "visible": true,
+              "responses": 1,
+              "observations": 0,
+              "reflections": 1,
+              "approvedArtifacts": 1,
+              "proofRefs": [
+                "task_submission:learning-96c85b970895992ec412ed098a0862156c22e09581db28b7e50e5a9d08900e29",
+                "reflection:learning-f3292520334d1e4e5a009066117b60d6405fd70c0c1025e749e4dd0860658a3b"
+              ],
+              "artifacts": [
+                {
+                  "artifactId": "art-ad2242b5-e4cf-4eaa-bb52-d3240cf9264f",
+                  "versionId": "artv-79a8bd30-7b11-44ff-88f4-4690980b32a5",
+                  "contentSha256": "6c41ec0e174aadecfd50608390a31785029eb43adf50dd3204394c1a4f7bbaaf"
+                },
+                {
+                  "artifactId": "art-3bf843fe-356b-4f57-9898-9ac79b354058",
+                  "versionId": "artv-f2134698-5ca4-4e50-b7ab-f8fd9e281ffe",
+                  "contentSha256": "daca330c20c41588a228c26b2695ccff7e3df6d585f1e38cf9d96be95172340d"
+                }
+              ]
+            }
+          ],
+          "offlineRecovery": true,
+          "reloadPersisted": true
+        },
+        {
+          "target": "thunder",
+          "url": "http://122.51.130.204/student/tutor/proj-91368fda-a4cb-4af9-b09a-c0127c2be9e2",
+          "stage": "completed",
+          "planId": "plan-ac16b8b5-1dcb-47c6-a4cc-df8436d30729",
+          "planRevision": 1,
+          "lessons": [
+            {
+              "lesson": 1,
+              "title": "我的战机游戏怎么玩？",
+              "completedAt": "2026-10-24T09:49:35.571Z",
+              "visible": true,
+              "responses": 4,
+              "observations": 0,
+              "reflections": 0,
+              "approvedArtifacts": 1,
+              "proofRefs": [
+                "task_submission:learning-c85173d14a231d40495699390b5dabe32f821b7296b3706eb91ffec499a962cf",
+                "task_submission:learning-bc93eef34dc15b379012ccd27a86298c8e8e2856300df32d5845c5e77767edaf",
+                "task_submission:learning-a653146223777bb6e69a7bbb9365e749487718bc12fb35e2d8c574124a38190b",
+                "task_submission:learning-25e00adb28d55b3ad136f132720a7d20dcc85bd5dc0ce4f0e61afb4515636968"
+              ],
+              "artifacts": [
+                {
+                  "artifactId": "art-795e6640-f1e1-4c18-b299-145ef32c00e1",
+                  "versionId": "artv-f3312ef6-9cc2-4d15-8e5e-67d29cde41e4",
+                  "contentSha256": "c110318478338ceaee35e8634583f17536848286fec92cbe9407e7e00056ce7d"
+                },
+                {
+                  "artifactId": "art-11d952c1-84bd-425c-bc16-9e3bf4f2c61f",
+                  "versionId": "artv-f237b6a2-1c85-437d-bded-eb9ac5af4993",
+                  "contentSha256": "f4da11f266058601c0daf369e64b83082172276cb3cf79cc8c6a1bd58fcdbe80"
+                },
+                {
+                  "artifactId": "art-e85a43c0-ea96-40ae-849b-05f90f210957",
+                  "versionId": "artv-503bb02a-bb85-425a-a5fa-29302a3e5994",
+                  "contentSha256": "f2dedcaaebedbacf8bee2ab5a6caf372394ff894d281e9114ce83cb1dd19fd65"
+                },
+                {
+                  "artifactId": "art-a6ef8437-4d49-4d53-bfe1-41a83140fed8",
+                  "versionId": "artv-7a711f21-7f1e-4bbe-8016-949532371ca5",
+                  "contentSha256": "d9715bda7985aa0945f739f4988bd924a6b3ea2b9f6af44456c991abae414f15"
+                }
+              ]
+            },
+            {
+              "lesson": 2,
+              "title": "画面为什么会动？循环与坐标",
+              "completedAt": "2026-10-24T09:50:12.275Z",
+              "visible": true,
+              "responses": 3,
+              "observations": 0,
+              "reflections": 0,
+              "approvedArtifacts": 1,
+              "proofRefs": [
+                "task_submission:learning-fa1200da7d80148c7e9f972515f332b1164a61ca2bc44bf77fdb755e05e9d64e",
+                "task_submission:learning-aae3a14e1a4d083f7f653cd70827bcaafc14c2ee6bd0e9041ffebc8cc56c8d6f",
+                "task_submission:learning-377e360d9f13ef2e3a7c706347b869d65c99bc11a7e23d85b3ddf8b7c87dfc8a"
+              ],
+              "artifacts": [
+                {
+                  "artifactId": "art-4d7cd43f-9e3e-4025-bf2f-b39d2581cea0",
+                  "versionId": "artv-3e846737-4874-4937-96a8-f765541eac71",
+                  "contentSha256": "c179651faaabe86c00fea90c3a89ea6372106d38dcac72d7404ac84a3e195030"
+                },
+                {
+                  "artifactId": "art-e86ce9ab-045c-46f0-9c4f-d8dbbb8e020b",
+                  "versionId": "artv-4a5e916b-e0cb-4662-a413-f8d9d1f541fe",
+                  "contentSha256": "1b3a9e0fe85ec9b1603ac596b4b3bcbcd070849106f10fac613a01748079e2c6"
+                },
+                {
+                  "artifactId": "art-56671e35-61a2-4035-a167-402fa07e5725",
+                  "versionId": "artv-8b9b8232-f87e-45db-9c7e-d134e3d8cbf1",
+                  "contentSha256": "b73570907191b6fdfb572deb7246bc71cb8d17bbe2277d5039b28bb7ec1b6c47"
+                }
+              ]
+            },
+            {
+              "lesson": 3,
+              "title": "按键与碰撞怎样变成规则？",
+              "completedAt": "2026-10-24T09:50:50.469Z",
+              "visible": true,
+              "responses": 3,
+              "observations": 0,
+              "reflections": 0,
+              "approvedArtifacts": 1,
+              "proofRefs": [
+                "task_submission:learning-5ef1ada141aade6e68a25032ba7b0c42a9839e88b64a9ce315ea09c4c8cfd9f0",
+                "task_submission:learning-9b013b44c4428b47591e32fbf3bce429b4f3ea1dc86bff594a3f15d19ff96f16",
+                "task_submission:learning-d8831fb01770aa0fc3c7b8c4fb704c11a27fec30fc70569aeb10e92ae9e5f385"
+              ],
+              "artifacts": [
+                {
+                  "artifactId": "art-b44f43ee-cbea-4be7-ad9f-692a7feca8ed",
+                  "versionId": "artv-afbcc482-0c4e-48e1-badc-37d2edf4ea61",
+                  "contentSha256": "94bd3b082c6ffd108f6989d82d521789f1b07f66ee905e2844f960524807dfde"
+                },
+                {
+                  "artifactId": "art-b6cdea83-646d-4bbb-95fd-ae545dea6db8",
+                  "versionId": "artv-a1f83ffa-eef1-48e3-bd17-362c8746e0fe",
+                  "contentSha256": "7ebd392ec866a0e772e99b68e926999226135c604eb363a5732298ac91d76303"
+                },
+                {
+                  "artifactId": "art-969375b4-c250-4dba-b5c7-9d6c531fbf16",
+                  "versionId": "artv-a053b5b5-a92d-48f1-b903-22d528830717",
+                  "contentSha256": "174a3fec5c1cb88fe11da8f42e53273fd014919afaf2cc9e53eb028202038df8"
+                }
+              ]
+            },
+            {
+              "lesson": 4,
+              "title": "让第一架战机动起来",
+              "completedAt": "2026-10-24T09:51:50.288Z",
+              "visible": true,
+              "responses": 5,
+              "observations": 0,
+              "reflections": 0,
+              "approvedArtifacts": 1,
+              "proofRefs": [
+                "task_submission:learning-bfec9fa627e54ba0cfe99ddab15fc35b51df586ff35128e5779317fac4c360ee",
+                "task_submission:learning-457daa049a40693f98e717bf844ebfecf5e740dad6bc54548d67eab8ab89e15f",
+                "task_submission:learning-fe316e5ea69c34680cedfa84c8c1e5f11f4cc3c3054039723ceb8348c903e2e5",
+                "task_submission:learning-447a1d19c84c379b86d3bfa02f8e310a773555361667adf17c1a65ecab3f193c",
+                "task_submission:learning-50d909efdbe3c2faff5f81d4c6e16afc551c728d7beae0d32715de98ec3892ff"
+              ],
+              "artifacts": [
+                {
+                  "artifactId": "art-b8c3c9bc-cdbc-4aad-adb7-aba68855576d",
+                  "versionId": "artv-fa958341-6435-4663-aaaa-b9a6620ad043",
+                  "contentSha256": "e83352b54b8e0e13b940ac549f45c3c55a4eb7560c904d4f3e42de381e7e363e"
+                },
+                {
+                  "artifactId": "art-d1cda95a-25c7-4fd4-8827-4c4b66710f7a",
+                  "versionId": "artv-e5735680-1d77-4bf6-9950-a98ef0fd8daf",
+                  "contentSha256": "24e089b54365321d77173c152ce55365e135f3a7335b70cf23629c42b427b0e6"
+                },
+                {
+                  "artifactId": "art-35a27367-6ce3-493f-8f90-020f727fb2e1",
+                  "versionId": "artv-94e89060-f4f3-44a1-b267-4799144de25c",
+                  "contentSha256": "ec85006575096cb77357c0d14ec50d3d01faf3842736adc62572ff0ea5012234"
+                },
+                {
+                  "artifactId": "art-d8c609a7-8692-4707-ab9d-9490bd67b00b",
+                  "versionId": "artv-96800101-48a7-4f16-9288-7a46538ef6cf",
+                  "contentSha256": "46f09ba728c6c0d3bb7e1209e1a6bce820236a904deba37ea6b0ed5dd49aafd2"
+                },
+                {
+                  "artifactId": "art-f300a8b7-4856-470c-b070-797964537dca",
+                  "versionId": "artv-ce420293-1994-424c-97d0-d3b9c9e55255",
+                  "contentSha256": "e6c88b36906f2eff77e712db8dfeb69cb84f2e9463fdaf51ff95705cf6cce9f4"
+                }
+              ]
+            },
+            {
+              "lesson": 5,
+              "title": "加入子弹与敌机",
+              "completedAt": "2026-10-24T09:52:50.266Z",
+              "visible": true,
+              "responses": 5,
+              "observations": 0,
+              "reflections": 0,
+              "approvedArtifacts": 1,
+              "proofRefs": [
+                "task_submission:learning-4b6e6daf94942de2a9771388bf3c378951299222c57456753ea78baaf54f7a7c",
+                "task_submission:learning-ae1689c1156067c045dcd47b31fc340cae47100ec9377c1d3e71710e96427525",
+                "task_submission:learning-72bb40379083e3aa54a506ecc34ffac1c9ee6b6559edf11125e39e038fd82414",
+                "task_submission:learning-65aaabc7035fb76c257922d4d2ac52fac190071a452d310dca971cfe0674ab57",
+                "task_submission:learning-c63811a34a3fd140e2626fb5df32dd280da56a283a9692068b359d9ef2845ef2"
+              ],
+              "artifacts": [
+                {
+                  "artifactId": "art-f6062baa-325f-4c3d-a0e1-b19453e93806",
+                  "versionId": "artv-a39312ef-ba52-4db0-9fbf-30ad45db6a7e",
+                  "contentSha256": "7e133ad3c18a46e5f8ca48dd8c4152c88851f7e1d9558c370893228326d06dd9"
+                },
+                {
+                  "artifactId": "art-d7190177-4e65-4d64-9881-0456936b895f",
+                  "versionId": "artv-14fe1669-a7fa-40a3-9fec-d1bb09f32d83",
+                  "contentSha256": "947a13ad6af49893a9f284f87bd18511c44c184ddd5013baece8c0bd8123c5a7"
+                },
+                {
+                  "artifactId": "art-ae99248a-4b56-4166-89ba-0ec9a350c728",
+                  "versionId": "artv-00857864-c489-4752-a144-35490c3e7f91",
+                  "contentSha256": "8f9ccbe1c087a9d97818ab08468aeb52e9ecc459241d4f26923aa43d1a326117"
+                },
+                {
+                  "artifactId": "art-53d14f4d-2cf1-4d37-8c09-4620fdd8a8d8",
+                  "versionId": "artv-91584fee-c8ec-4b76-b012-0e792c937038",
+                  "contentSha256": "a1e97fe1b015ce5a452ec16b49b51c404c8445a0f4f983b1f1c1b004deb9376b"
+                },
+                {
+                  "artifactId": "art-51711abf-61b8-4458-b24c-afa7317fd631",
+                  "versionId": "artv-87f807ee-6343-400d-8d27-dbd501eb7944",
+                  "contentSha256": "47c4724cc0afb4a6dee6b9cb800755326dc51a8a8fe135f3acd18ce16236387d"
+                }
+              ]
+            },
+            {
+              "lesson": 6,
+              "title": "完成得分、生命和重新开始",
+              "completedAt": "2026-10-24T09:53:52.118Z",
+              "visible": true,
+              "responses": 5,
+              "observations": 0,
+              "reflections": 0,
+              "approvedArtifacts": 1,
+              "proofRefs": [
+                "task_submission:learning-8ae682a2242d06caeb0506e374d0050756d6d08b5afcecb53215540e8ccc2436",
+                "task_submission:learning-c180c61d641b1c9e1b42eb3a71bd7ec19e549548cf7fcfd0274b492e9dbbbb24",
+                "task_submission:learning-00fa3f1871e25b0723671559e7d801bb1f5c05f9d2d73a4413a05a107fe2c65c",
+                "task_submission:learning-7e402eceea34582ffa85f2bf68f60586e60665d49fc96f33688fab910724e68f",
+                "task_submission:learning-9fc4c81b432a06edfa1e067d722e32c7192fd8d64f9565f0ca9d2b361e2fc1d4"
+              ],
+              "artifacts": [
+                {
+                  "artifactId": "art-62c48c58-ec46-4209-b14e-4f5341ac0ae5",
+                  "versionId": "artv-d1fb1ad1-748a-4dbb-a945-afa21d62c218",
+                  "contentSha256": "c27ed8aad277ce365ed8b22f1308e20117891066fb6c8328f259c32db79e4023"
+                },
+                {
+                  "artifactId": "art-1ceda4fd-b981-44b1-84ec-7c828a2f5957",
+                  "versionId": "artv-8bef83a7-491c-4c94-b4e0-946775b6ed16",
+                  "contentSha256": "371959603b949f413da8c2a6fb4569fa6c651cc899ab62434803f47bb7aa8e5b"
+                },
+                {
+                  "artifactId": "art-f6580f54-58ab-4396-899d-4ebaf25ccd47",
+                  "versionId": "artv-49666278-5f06-47b5-a762-3b97934c31d9",
+                  "contentSha256": "749f4f75db87a1cf235ef8ac04619e60e475dcd8ef4530ecc0cd8f42c26ee49a"
+                },
+                {
+                  "artifactId": "art-5d83e3a4-3068-4f5c-913b-973e7d5f754c",
+                  "versionId": "artv-ab6afb62-bb68-43bf-a5ae-71e92c64ee0f",
+                  "contentSha256": "c8916b8b3274db9e938109dbe4d85a6fdd418a46ecab1fbf6796dd3983b588c7"
+                },
+                {
+                  "artifactId": "art-9ced3ab5-9bfd-4b6b-b1c0-f7b2197ded13",
+                  "versionId": "artv-3f29d151-c4f3-4266-a99d-f60f10e49894",
+                  "contentSha256": "74ab61d0c3e7962f2f3ae123c2d0f8b4468ab406c41ed95d3ecceb5747a79d91"
+                }
+              ]
+            },
+            {
+              "lesson": 7,
+              "title": "测试并交付可玩的游戏",
+              "completedAt": "2026-10-24T09:55:05.706Z",
+              "visible": true,
+              "responses": 5,
+              "observations": 0,
+              "reflections": 0,
+              "approvedArtifacts": 1,
+              "proofRefs": [
+                "task_submission:learning-effb54b3a4cde7e257842a2cd21a50318a0eec30da9e9581083b2a9ba8c56af0",
+                "task_submission:learning-c697fa77507060de5b0b272b42f2aaf31d618841bc071fd932f8da6c8df0f5f1",
+                "task_submission:learning-f4618bcf7d3c36444255eff4faba4fbf5e7cc3caa7921a441f7887e893d861b4",
+                "task_submission:learning-7a5995dcbbe1aed87fad6433933ad926924550315e38501814224c8f9d4c4ab5",
+                "task_submission:learning-5c7fb848e81e1eedbe6ce8339735f380f123430393ce5533559b02c67e293804"
+              ],
+              "artifacts": [
+                {
+                  "artifactId": "art-f0f9a66e-058c-4933-a156-56324af80a3f",
+                  "versionId": "artv-16bf36af-fd17-4df4-a338-cc5a34301c7e",
+                  "contentSha256": "020d0686712f516404fa76f27400a360355f5de6974d74c454d5b4aede88de06"
+                },
+                {
+                  "artifactId": "art-a893572b-a8ef-4e7f-87c9-66e55d50d82d",
+                  "versionId": "artv-a556d9d0-e31c-48d5-9f2b-ba126f3b39ac",
+                  "contentSha256": "e40c98c698c44343fd748147ab41f944b2c3e61994fb271ab13a6023626069dc"
+                },
+                {
+                  "artifactId": "art-6bc00200-6d8f-44ba-9a38-adc2e447029e",
+                  "versionId": "artv-bfa62e89-1ac9-4d5b-a57e-d9e85f4697dd",
+                  "contentSha256": "e9d7224c67a1df11a619d1fd0da88b689cbf8cff574c4aa6da152328e51a9289"
+                },
+                {
+                  "artifactId": "art-614950b2-277b-452c-9de1-f1346f6b3941",
+                  "versionId": "artv-3ce8dcef-29c8-4041-a2d9-abc597fbf54c",
+                  "contentSha256": "1e1ed467ae7b56e3fe9633080cfdc478ba2c00c4319ad6693e4cd01e3c64b830"
+                },
+                {
+                  "artifactId": "art-cfc60049-3eba-4079-8fc9-8980f021f928",
+                  "versionId": "artv-e6b67298-c150-424d-95b8-01deb6f5f1fb",
+                  "contentSha256": "12b20a4197f81d8dc8d0c4f18f5d3c7196ea67a7878281397edc2454382e77e9"
+                }
+              ]
+            },
+            {
+              "lesson": 8,
+              "title": "展示作品，解释我的设计",
+              "completedAt": "2026-10-24T09:56:03.167Z",
+              "visible": true,
+              "responses": 3,
+              "observations": 0,
+              "reflections": 1,
+              "approvedArtifacts": 1,
+              "proofRefs": [
+                "task_submission:learning-d383b88a5f112d560e646c12dc14521fa18caaed33b0ef171fcce2a19acbeae7",
+                "task_submission:learning-46ee9080fe63d11534eec5c2435148585c4d7cb049028c5dff87fa087e9bdbb7",
+                "task_submission:learning-fbe4abe6a3cec697d1d392feb997570bfe19c11aab4768e66b0258af5e725239",
+                "reflection:learning-1d8963706020a79e5fdff8fad14582789a28ce70972a6f1f871b998e185bff2f"
+              ],
+              "artifacts": [
+                {
+                  "artifactId": "art-34dcc5af-b1bb-4260-b719-24242ef0e1d8",
+                  "versionId": "artv-22454bf5-b48a-4704-b05a-ac0e4d975cc1",
+                  "contentSha256": "e93e916d2412240d094cc7991f79bc52d136fb587caabfc5cb952251b8d9b3c5"
+                },
+                {
+                  "artifactId": "art-4ba34e8d-c0ec-43ae-b768-f0998e9a53c2",
+                  "versionId": "artv-7fa0029b-2a1a-4e5c-88e9-8d3452ed0a65",
+                  "contentSha256": "e2e9ba1d68b133481f13a368539d7615f47c3ac9daa1122266ef671792c5c320"
+                },
+                {
+                  "artifactId": "art-be163930-ce5d-4dc9-bfeb-b1894345b213",
+                  "versionId": "artv-a4ce5fd3-3815-4aeb-be47-e321b66f0091",
+                  "contentSha256": "2a9a16bfd7d87f3a5561ed96d99e1b733d192fdcd9a8ebfa68e1c85284267759"
+                },
+                {
+                  "artifactId": "art-cf7aea9b-5c0f-45e6-8f7d-9322d61db959",
+                  "versionId": "artv-c5fcf1d8-f5a1-4736-9e58-adddf04d4cea",
+                  "contentSha256": "679e61e4f132f34d32c5512bfae475f261324467e32b80f58f5614b872aa236c"
+                }
+              ]
+            }
+          ],
+          "playableArtifactSourceVerified": true,
+          "offlineRecovery": true,
+          "reloadPersisted": true
+        }
+      ],
+      "issues": [],
+      "reloginRequiredAfterRestart": true,
+      "anonymousRecordDenied": true,
+      "visibleTemplates": 2,
+      "passed": true
+    },
+    "restart": {
+      "at": "2026-10-24T10:24:39.157426+00:00",
+      "services": {
+        "qitu-admin.service": {
+          "state": "active",
+          "activeSince": "Sat 2026-10-24 18:24:37 CST"
+        },
+        "qitu-api.service": {
+          "state": "active",
+          "activeSince": "Sat 2026-10-24 18:24:39 CST"
+        },
+        "qitu-auth.service": {
+          "state": "active",
+          "activeSince": "Sat 2026-10-24 18:24:37 CST"
+        },
+        "qitu-fix-admin.service": {
+          "state": "active",
+          "activeSince": "Sat 2026-10-24 18:24:37 CST"
+        },
+        "qitu-fix-auth.service": {
+          "state": "active",
+          "activeSince": "Sat 2026-10-24 18:24:37 CST"
+        },
+        "qitu-fix-parent.service": {
+          "state": "active",
+          "activeSince": "Sat 2026-10-24 18:24:37 CST"
+        },
+        "qitu-fix-student.service": {
+          "state": "active",
+          "activeSince": "Sat 2026-10-24 18:24:37 CST"
+        },
+        "qitu-fix-teacher.service": {
+          "state": "active",
+          "activeSince": "Sat 2026-10-24 18:24:37 CST"
+        },
+        "qitu-ima-mcp.service": {
+          "state": "active",
+          "activeSince": "Sat 2026-10-24 18:24:37 CST"
+        },
+        "qitu-local-embedding.service": {
+          "state": "active",
+          "activeSince": "Sat 2026-10-24 18:24:37 CST"
+        },
+        "qitu-parent.service": {
+          "state": "active",
+          "activeSince": "Sat 2026-10-24 18:24:37 CST"
+        },
+        "qitu-profile-growth.service": {
+          "state": "active",
+          "activeSince": "Sat 2026-10-24 18:24:39 CST"
+        },
+        "qitu-student.service": {
+          "state": "active",
+          "activeSince": "Sat 2026-10-24 18:24:37 CST"
+        },
+        "qitu-teacher.service": {
+          "state": "active",
+          "activeSince": "Sat 2026-10-24 18:24:37 CST"
+        },
+        "qitu-workers.service": {
+          "state": "active",
+          "activeSince": "Sat 2026-10-24 18:24:39 CST"
+        }
+      },
+      "http": {
+        "http://127.0.0.1:4100/api/v1/health/ready": {
+          "status": 200,
+          "body": {
+            "service": "qitu-zhixue-api",
+            "status": "ready",
+            "version": "0.1.0",
+            "checkedAt": "2026-10-24T10:24:47.417Z",
+            "dataMode": "live",
+            "dependencies": {
+              "database": {
+                "status": "ok"
+              },
+              "redis": {
+                "status": "ok"
+              }
+            }
+          }
+        },
+        "http://122.51.130.204/student/tutor": {
+          "status": 200
+        },
+        "http://122.51.130.204/login": {
+          "status": 200
+        },
+        "http://122.51.130.204/teacher/dashboard": {
+          "status": 200
+        },
+        "http://122.51.130.204/parent": {
+          "status": 200
+        },
+        "http://122.51.130.204/admin": {
+          "status": 200
+        }
+      },
+      "buildId": "N0sO24qAhmFbLtbdzHHw4"
+    },
+    "api-checks.txt": {
+      "tests": [
+        "23",
+        "33"
+      ],
+      "passed": [
+        "23",
+        "33"
+      ],
+      "failed": [
+        "0",
+        "0"
+      ]
+    },
+    "novice-checks.txt": {
+      "tests": [
+        "68"
+      ],
+      "passed": [
+        "68"
+      ],
+      "failed": [
+        "0"
+      ]
+    },
+    "ima-checks.txt": {
+      "tests": [
+        "38"
+      ],
+      "passed": [
+        "38"
+      ],
+      "failed": [
+        "0"
+      ]
+    },
+    "bridge-checks.txt": {
+      "tests": [
+        "17"
+      ],
+      "passed": [
+        "17"
+      ],
+      "failed": [
+        "0"
+      ]
+    },
+    "student-tests.txt": {
+      "tests": [
+        "9"
+      ],
+      "passed": [
+        "9"
+      ],
+      "failed": [
+        "0"
+      ]
+    }
+  }
+}

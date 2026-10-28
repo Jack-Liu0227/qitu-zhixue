@@ -1,0 +1,38 @@
+
+> @qitu/auth-portal@0.1.0 build /root/qitu-zhixue/apps/auth-portal
+> next build
+
+   ▲ Next.js 15.5.26
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 5.0s
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/12) ...
+   Generating static pages (3/12) 
+   Generating static pages (6/12) 
+   Generating static pages (9/12) 
+ ✓ Generating static pages (12/12)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                 Size  First Load JS  Revalidate  Expire
+┌ ○ /                                    12.6 kB         168 kB          1m      1y
+├ ○ /_not-found                            995 B         104 kB
+├ ○ /about                                 127 B         158 kB
+├ ○ /apple-icon.png                          0 B            0 B
+├ ○ /competencies                          127 B         158 kB
+├ ○ /contact                             5.97 kB         161 kB
+├ ○ /icon.png                                0 B            0 B
+├ ○ /learning                              127 B         158 kB
+├ ○ /login                               9.36 kB         161 kB
+└ ƒ /showcase                            2.71 kB         158 kB
++ First Load JS shared by all             103 kB
+  ├ chunks/12fcdf82-74e93b1570388252.js  54.2 kB
+  ├ chunks/212-30229486d6b53a80.js       46.4 kB
+  └ other shared chunks (total)          1.95 kB
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

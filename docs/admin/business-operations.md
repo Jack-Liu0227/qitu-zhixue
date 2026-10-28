@@ -1,6 +1,6 @@
 # 一人运营工作区
 
-入口为现有 `/admin/settings/ops`，主导航不变。官网 `/showcase` 展示项目包；家长首页提供课程订单；统一登录页支持受邀家庭开通。关联 [实施 Issue](../issues/20261026-one-person-operations.md)。
+入口为现有 `/admin/settings/ops`，主导航不变。官网 `/showcase` 展示项目包；家长首页提供课程订单；统一登录页 `/login?mode=register` 支持个人自助注册。关联 [实施 Issue](../../Plan/issues/20261026-one-person-operations.md) 和 [注册变更](../../Plan/issues/20261026-family-self-registration.md)。
 
 ## 商品与经营配置
 
@@ -8,11 +8,15 @@
 
 商品支持草稿、发布、下架。首次发布后课程版本与购买门槛冻结。后续价格/文案修改产生新修订，原订单继续使用其商品及条款快照。售卖开关和支付商户配置均通过后才能下单。已有项目不会因新增商业配置而改写教学状态。
 
-## 家庭开通与权限
+## 个人注册与权限
 
-管理员生成 72 小时家庭邀请，通过核实过的联系方式交付。链接凭据放在 URL fragment，打开后立即从地址栏移除，不放入页面请求路径。服务器用 `QITU_INVITATION_SIGNING_KEY` 验签，此变量需至少 32 字符且仅由受限服务器环境提供。生成凭据不会通过外部邮件/消息自动发送。
+学生和家长从首页或登录页分别注册，无需邀请。公开注册仅创建一个新账号，只允许学生或家长角色，不建立监护关系或覆盖已有账号。教师和管理员账号继续由平台管理。旧邀请接口已移除，历史邀请表与审计保留，不再使用邀请签名密钥。
 
-家长使用邀请读取条款，分别设置至少 12 位且不同的家长/学生密码，并明确同意监护授权。Directory owner 在同一事务创建账号、scrypt 密码记录、监护关系和审计；不创建正式项目。重复提交相同请求复用已有账号。已存在账号使用原关系绑定入口。邀请不是实名验证的替代，经营者须先核实联系人。
+用户填写自己的称呼，选择学生或家长身份、邮箱或短信验证手机号，设置至少 12 位密码，阅读服务端账号开通说明及已配置的服务/隐私文本，确认服务条款与成年或已获监护人同意的声明。注册不依赖商户、售卖开关或项目包；说明内容摘要用于版本校验。Directory owner 在同一事务创建一个账号、异步 scrypt 密码记录和审计，不创建正式项目。重复提交持久去重，写入后响应丢失可恢复。已有账号、订单和学习记录保留。家长查看孩子数据前，通过既有平台受控流程核验监护关系；注册本身不授予访问学生的权限。
+
+手机号注册采用阿里云短信；服务器配置、限额、错误码和真实短信验收见 [短信注册](./sms-registration.md)。配置不全时手机号注册明确不可用，邮箱方式继续开放。短信验证成功仅证明本次号码接收能力，不证明监护人实名身份。
+
+当前邮箱仅作为登录标识，没有发送验证邮件，也不宣称已核验邮箱或真实监护身份。注册接口按来源限流 15 分钟 10 次，并限制四个并发注册；计数为单实例内存状态，重启会清空，多实例前须改为共享限流。密码和原始请求不写入审计，审计只含说明版本、授权确认及来源。幂等请求摘要使用慢速加盐派生，不保存原始密码。正式售卖仍须补齐真实经营资料、条款和商户验收。
 
 家长每次读取订单、获取支付码、查询支付及申请退款，服务端核对购买人和当前监护关系。Admin-only 经营读取记录审计。咨询联系人、订单和成长原文不进入公开接口；用量记录不保存提示词或对话正文。
 
@@ -63,14 +67,14 @@ ModelGateway 在成功返回时记录调用用途、供应商、模型及有界 
 
 ## API 与错误
 
-Admin 端使用 `/admin/business`、`settings`、`offers`、`expenses`、`invitations`、`leads/:id`、`tasks/:id/resolve`、`check` 和 `orders/:id/refund`。家长端使用 `/parent/children/:studentId/orders`、`/parent/orders` 及订单 checkout、reconcile、refund。公开只读目录为 `/public/project-offers`；家庭邀请 inspect/accept 是持有签名凭据的有界公开命令。
+Admin 端使用 `/admin/business`、`settings`、`offers`、`expenses`、`leads/:id`、`tasks/:id/resolve`、`check` 和 `orders/:id/refund`。家长端使用 `/parent/children/:studentId/orders`、`/parent/orders` 及订单 checkout、reconcile、refund。公开只读目录为 `/public/project-offers`；`GET /public/account-registration` 读取注册说明，`POST /public/account-registration` 创建个人账号，要求 32 位随机十六进制 `Idempotency-Key`。
 
 所有配置/商品/订单/成本/线索写入使用原持久幂等服务，业务及审计同事务。支付与退款回执通过订单行锁、稳定交易身份和状态检查去重。运营检查通过待办唯一约束去重。响应成功后前端回读，回读失败显示“待核实”。
 
-主要错误码为 `BUSINESS_INPUT_INVALID`、`BUSINESS_NOT_READY`、`BUSINESS_CONFLICT`、`BUSINESS_ACCESS_DENIED`、`BUSINESS_COURSE_UNAVAILABLE`、`BUSINESS_ENTITLEMENT_REQUIRED`、`PAYMENT_UNAVAILABLE`、`PAYMENT_SIGNATURE_INVALID`、`PAYMENT_FACT_CONFLICT`、`FAMILY_INVITATION_UNAVAILABLE`。权限失败不返回其他家庭对象。
+主要错误码为 `BUSINESS_INPUT_INVALID`、`BUSINESS_NOT_READY`、`BUSINESS_CONFLICT`、`BUSINESS_ACCESS_DENIED`、`BUSINESS_COURSE_UNAVAILABLE`、`BUSINESS_ENTITLEMENT_REQUIRED`、`PAYMENT_UNAVAILABLE`、`PAYMENT_SIGNATURE_INVALID`、`PAYMENT_FACT_CONFLICT`。注册使用 `ACCOUNT_REGISTRATION_INVALID`、`ACCOUNT_REGISTRATION_CONSENT_REQUIRED`、`ACCOUNT_REGISTRATION_CONFLICT`、`ACCOUNT_REGISTRATION_POLICY_CHANGED`、`ACCOUNT_REGISTRATION_RATE_LIMITED`、`ACCOUNT_REGISTRATION_UNAVAILABLE`。权限失败不返回其他家庭对象。
 
 ## 验证
 
 `node tooling/verify-business-operations.mjs` 按真实依赖图构建源码包，检查 API 与三个应用类型，并执行业务、项目、计划、认证和模型网关回归。使用隔离输出及源码解析钩子，不覆盖 UNC 安装快照。
 
-`tooling/test-business-postgres.mjs` 仅接受专用本地非 5432 端口 fixture，创建并销毁独立数据库，执行真实 PostgreSQL 事务、幂等、回调事实、监护撤权、邀请和会话恢复测试。测试数据是合成 fixture，不构成真实支付或教学效果验收。
+`tooling/test-business-postgres.mjs` 仅接受专用本地非 5432 端口 fixture，创建并销毁独立数据库，执行真实 PostgreSQL 事务、幂等、回调事实、监护撤权、自助注册和会话恢复测试。注册场景由 `test-account-registration-postgres.mjs` 组合执行，包含并发邮箱竞争、说明变更、存量账号保护和丢失幂等回执后的恢复。测试数据是合成 fixture，不构成真实支付或教学效果验收。

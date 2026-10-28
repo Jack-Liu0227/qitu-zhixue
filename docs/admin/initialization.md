@@ -105,8 +105,4 @@ bash tooling/start-qitu-services.sh status
 
 至少验证 API、workers、auth、student、parent、teacher、admin 的健康状态，Provider/model 连接测试，以及一次真实 Team Run 的任务、事件和错误码回传。
 
-## 8. 未决事项
-
-- [ ] 完成 live 用户邀请、密码轮换、MFA 和持久化 session 撤销。
-- [ ] 为初始化任务补充可观测性、重试窗口和管理员审计查询。
-- [ ] 建立生产数据保留、删除和恢复演练记录。
+[相关计划与执行记录](../../Plan/maintenance/usage-records-20261028.md)。

@@ -474,7 +474,7 @@ export interface AdminRuntimeSnapshot {
     assistantId: string;
     /**
      * `'builtin' | 'generated' | 'user'`。内置助手的存量脏引用属已登记债务
-     * （见 docs/plan/20261018-skill-tool-governance-and-assignment.md §2.5），
+     * （见 Plan/20261018-skill-tool-governance-and-assignment.md §2.5），
      * 必须与新增脏引用分开看，否则信号恒定非空、无法当告警用。
      */
     source: string;

@@ -1,0 +1,13 @@
+{
+  "status": "passed",
+  "verifiedAt": "2026-10-26T16:50:48.282Z",
+  "origin": "http://122.51.130.204",
+  "checks": [
+    "live readiness, personal policy, unconfigured SMS closed, privileged signup refused and legacy APIs removed",
+    "production desktop/mobile personal signup, parent guidance, SMS pending state, legacy hash clearing and homepage link"
+  ],
+  "pageErrors": [],
+  "accountsCreated": 0,
+  "actualSms": false,
+  "actualPayments": false
+}

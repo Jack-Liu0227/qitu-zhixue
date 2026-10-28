@@ -18,6 +18,10 @@ import type { CoursewareStore } from '../knowledge/courseware.store';
 import { LEARNING_REVIEW_POLICY, type LessonQualityEvaluator } from './lesson-quality-evaluator';
 
 type Context = Awaited<ReturnType<typeof resolveLearningEvidenceContext>>;
+export function necessaryCriteriaMet(context: Pick<Context, 'lesson'>, criteria: readonly { id: string; required?: boolean }[], feedback: LessonQualityStatus['feedback']): boolean {
+  const necessary = criteria.filter(c => context.lesson.progression !== 'dialogue.v1' || c.required !== false);
+  return necessary.length > 0 && necessary.every(c => feedback.some(entry => entry.criterionId === c.id && entry.meets === true));
+}
 export function lessonQualityCriteria(context: Context, kind?: LearningEvidenceProof['kind']) {
   const spec = context.lesson.completionSpec;
   if (spec?.version === 'learning-session-completion.v2' && kind === 'submitted_artifact' && spec.qualityReview.artifactCriteria) {
@@ -72,7 +76,8 @@ export class WorksLessonQuality {
           && (subject.activityId === `${session.id}:activity:reflect` || subject.kind === 'submitted_artifact')
           ? related.submissions.filter(item => item.kind === 'session_response'
             && item.activityId === `${session.id}:activity:practice`) : [];
-        const proofs = [...related.observations, ...related.approvedArtifacts, ...currentPractice]
+        const drafts = context.lesson.progression === 'dialogue.v1' ? related.submissions.filter(item => item.kind === 'session_response') : [];
+        const proofs = [...related.observations, ...related.approvedArtifacts, ...currentPractice, ...drafts]
           .filter(item => item.scope.learningSessionId === session.id && item.scope.planId === context.scope.planId
             && item.scope.planRevision === context.scope.planRevision && item.ref !== subject.ref && !seen.has(item.ref));
         const accepted: LearningEvidenceProof[] = [];
@@ -131,7 +136,7 @@ export class WorksLessonQuality {
         && receipt.quality?.subjectDigest === subjectDigest && Array.isArray(receipt.quality.feedback)
         && receipt.quality.feedback.length === criteria.length
         && criteria.every(criterion => receipt.quality!.feedback.filter(entry => entry.criterionId === criterion.id).length === 1)
-        && receipt.quality.status === (receipt.quality.feedback.every(entry => entry.meets === true) ? 'accepted' : 'needs_revision')) return receipt.quality;
+        && receipt.quality.status === (necessaryCriteriaMet(context, criteria, receipt.quality.feedback) ? 'accepted' : 'needs_revision')) return receipt.quality;
     }
     return { status: 'pending', subjectDigest, feedback: [] };
   }
@@ -167,7 +172,7 @@ export class WorksLessonQuality {
       const current = await resolveLearningEvidenceContext(this.ports.plans, this.ports.bindings, this.ports.directory, actor, context.scope);
       if (current.bundle.plan.status !== 'active') conflict('LEARNING_PLAN_NOT_ACTIVE', '课程已结束，不能新增评价');
       if ((await this.subject(current, proof)).subjectDigest !== subject.subjectDigest) conflict('LESSON_QUALITY_VERSION_CHANGED', '产物已修改，请重新评价');
-      const quality: LessonQualityStatus = { status: criteria.every(entry => entry.meets) ? 'accepted' : 'needs_revision',
+      const quality: LessonQualityStatus = { status: necessaryCriteriaMet(context, requiredCriteria, criteria) ? 'accepted' : 'needs_revision',
         subjectDigest: subject.subjectDigest, feedback: criteria };
       const detail = JSON.stringify({ schema: 'qitu.lesson-quality.v2', policyVersion: LEARNING_REVIEW_POLICY,
         providerId: candidate.providerId, modelId: candidate.modelId, quality });

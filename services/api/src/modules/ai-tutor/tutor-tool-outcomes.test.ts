@@ -13,4 +13,8 @@ test('tool timeline distinguishes empty retrieval, accepted activity and denied 
   assert.match(denied.type === 'tool_result' ? denied.result : '', /已停用/);
   const accepted = tutorToolEvent({ ...base, name: 'tutor_propose_lesson_activity', outcome: 'accepted' });
   assert.match(accepted.type === 'tool_result' ? accepted.result : '', /已保存/);
+  const unavailable = tutorToolEvent({ ...base, name: 'tutor.propose_lesson_activity', isError: true, errorCode: 'TOOL_NOT_ALLOWED' });
+  assert.equal(unavailable.type === 'tool_result' && unavailable.status, 'error');
+  assert.match(unavailable.type === 'tool_result' ? unavailable.result : '', /当前步骤未提供/);
+  assert.doesNotMatch(unavailable.type === 'tool_result' ? unavailable.result : '', /可以重试|已保存/);
 });

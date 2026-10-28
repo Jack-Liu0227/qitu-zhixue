@@ -1,0 +1,68 @@
+{
+  "sourceFiles": 28,
+  "runtimeArtifacts": [
+    "services/api/dist/modules/ai-tutor/tutor-learning-reply.service.js",
+    "services/api/dist/modules/ai-tutor/gateway-tutor.provider.js",
+    "services/api/dist/modules/ai-tutor/gateway-tutor.provider.d.ts"
+  ],
+  "verifiedBuildInputs": 1627,
+  "units": [
+    "qitu-api.service",
+    "qitu-student.service",
+    "qitu-workers.service",
+    "qitu-profile-growth.service"
+  ],
+  "releasedAt": "2026-10-28T13:36:30.721344+00:00",
+  "backup": "/var/backups/qitu-dialogue-reliability-20261028-213626",
+  "studentBuildId": "w5LqjCPAxPZdcAzXTYio_",
+  "sourceHashes": {
+    "packages/contracts/src/learning-session-evidence.ts": "6af710396af72a885463a7f7a627af1a0a6fc40a7a2b91b2ce8705bcf5aa0ba7",
+    "services/api/src/modules/ai-tutor/tutor-learning-reply.service.ts": "e6c644cd702f0f0d057f4f16002ad5a4a87c72b65e42be29dc6cda5d4f1d2f95",
+    "services/api/src/modules/ai-tutor/tutor-lesson-activity.ts": "d15a926f6b251e932a6c6624466c126ad695459d4c342271a4582e8988fe3b00",
+    "services/api/src/modules/ai-tutor/tutor-lesson-activity.test.ts": "81f939646dd09476ef48dbc5f2eb6dce22f339a2651bf386a9660ce51f4a7517",
+    "services/api/src/modules/ai-tutor/gateway-tutor.provider.ts": "573eac44410f953ba14ad2a30d0cc9c129ce0d17c2eb6b331d993b050ee2a6ee",
+    "services/api/src/modules/works/lesson-evaluation-recovery.store.ts": "b060f62dd9168b21812da278e2a4883c967153876c6cae718ea5934852ef48ca",
+    "services/api/src/modules/works/works-learning-evidence.service.ts": "e06bc497dde3505fe56069b71d08a8021805d99959d22a7f1d0147a03e45a90d",
+    "services/api/src/modules/works/works-learning-evidence.types.ts": "ce7056162defc16c54df360531104fde3139cb86910f60923dd7f9f49e96c3a4",
+    "services/api/src/modules/works/works.module.ts": "401ccd7bb51d45d9f8b6f770283b019c1fe3d552d1ffbf6817de7de45d28d7ca",
+    "services/api/src/modules/projects/lesson-evaluation-recovery.service.ts": "4c57498339476b27142cd581c42d1a210136e9a37856fb7760b7c9d5d34f13f1",
+    "services/api/src/modules/projects/lesson-evaluation-recovery.test.ts": "06d8b204f13d0cd2b5b80f3004838e04c03eee3dee8f5803b8a2f87ca58d95ed",
+    "services/api/src/modules/projects/projects.module.ts": "c3931855e3664dd85048bc7aad7e65f8195fd676a86e1ffd10fd5468ccc628f8",
+    "services/api/src/modules/learning-plan/optics-fullflow.test-fixture.ts": "cac723adfec7a01695fa1db1a3eaeeb084d0fd843ba4a528dde037a13f949559",
+    "services/api/src/modules/learning-plan/dialogue-course-fullflow.test.ts": "28ed779efd93c772a26dd656c5cfbc56c8f2a982c7f3dd4520e5b3c2a8cad034",
+    "apps/student-center/features/tutor/components/DialogueLessonPanel.tsx": "755d8acf327558e8d2b7407c81f15f773765a8df76958c1a87280a7807f9ee92",
+    "apps/student-center/features/tutor/data/lessonTextImport.ts": "09404bd8d2b968f9ab6f75b69586f244ec160c4702a335cc60ae1d26c1956459",
+    "apps/student-center/features/tutor/data/lessonTextImport.test.ts": "501366fa1018ab5c8d2f3b3f3c0a02e81d9cb5cff3b8ba7c376be52034a2711e",
+    "tooling/verify-tutor-lessons.mjs": "2254bebe46f0ee3c5257f91956d7d4a71a48f40ebeb92748078db88e77d4296d",
+    "tooling/test-student-pbl-data.mjs": "2087d1e5335a8fa3609ca6a19a7d1de95c35ddaa9f796b866fd51b665147e492",
+    "packages/contracts/src/pbl-learning.ts": "cf1b3e81759e2e2ade45816be738621f388c1c505ee29956ed4f64f7b3abfd80",
+    "services/api/src/modules/templates/content/inspiration/dialogue-courses.ts": "3c0dbd4e3282089281f193da3a319073baa802380ca351e63ac2c66bf8b46ce7",
+    "services/api/src/modules/templates/inspiration-catalog-bootstrap.ts": "35bc5678b5419ae692d29cef3278e41d3a33db502f913b20422f13b0596e8c37",
+    "services/api/src/modules/templates/inspiration-catalog-bootstrap.test.ts": "6b4e7520b1a70b8b911b659c35325ccb847cd78cf9dbff42e8eb829f33393481",
+    "services/api/src/scripts/inspiration-catalog.ts": "079df04807bd9818a284f8f89ce3001a3654c43cc4ab42c235d87d676603012b",
+    "services/api/src/modules/learning-plan/inspiration-dialogue-fullflow.test.ts": "717e141006078316fc865b23f21dce2d3b3a0dcafbff9b227c4747eaff7756e2",
+    "services/api/src/modules/ai-tutor/tutor-courseware-activity.test.ts": "a7115050aaff13426416b96a8b9d04b11223038fc319711710cc26a2f7058e47",
+    "services/api/src/modules/ai-tutor/wave-teaching-resources.test.ts": "337414721b8b5a23b40ade9f03632da4b65fc0828c948f6de2e01b2c8e166145",
+    "services/api/src/modules/templates/teaching-bundle.catalog.ts": "80c88fdd376ccc557abfc86631e7e86fbeef55a0405d9cd4b13d97ebad8658d6"
+  },
+  "runtimeHashes": {
+    "services/api/dist/modules/ai-tutor/tutor-learning-reply.service.js": "83ad0dc8dcc570015330f393ded744479c7fbc33f8890e96823ec435bb5deb2b",
+    "services/api/dist/modules/ai-tutor/gateway-tutor.provider.js": "8c1c43e19f9e45f32aa1a8a4f3a41a32297b54912cad3fe29e469b22951ce774",
+    "services/api/dist/modules/ai-tutor/gateway-tutor.provider.d.ts": "731ed2c6ec14c4a26393ce2ae6ed434f4134f7fa4be792f92bffd97c96dfd85f"
+  },
+  "readiness": {
+    "service": "qitu-zhixue-api",
+    "status": "ready",
+    "version": "0.1.0",
+    "checkedAt": "2026-10-28T13:36:30.695Z",
+    "dataMode": "live",
+    "dependencies": {
+      "database": {
+        "status": "ok"
+      },
+      "redis": {
+        "status": "ok"
+      }
+    }
+  }
+}

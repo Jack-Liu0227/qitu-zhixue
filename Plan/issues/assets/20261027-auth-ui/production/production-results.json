@@ -1,0 +1,11 @@
+{
+  "status": "passed",
+  "origin": "http://122.51.130.204",
+  "checks": [
+    "320/390/768/1440 layouts without horizontal overflow; role headings stay horizontal and descriptions sit below",
+    "production metadata, pending SMS/email fallback, role and password controls, offline lock and homepage signup navigation"
+  ],
+  "pageErrors": [],
+  "actualSms": false,
+  "productionWrites": false
+}

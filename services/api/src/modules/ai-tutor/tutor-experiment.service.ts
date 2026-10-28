@@ -202,6 +202,8 @@ export class TutorExperimentService {
         // The saved observation remains available for a student-triggered evaluation retry.
         if (!(error instanceof ServiceUnavailableException)) throw error;
       }
+      if (this.lifecycle) await this.lifecycle.syncAfterAnswer({ id: actorId, role: 'student', email: '', displayName: '' }, block.scope.planId,
+        hashRequest({ source: 'experiment.observation.sync', ref: result.body.observationReceipt.evidenceRef }));
     }
     return result.body;
   }

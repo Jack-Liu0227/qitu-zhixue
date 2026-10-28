@@ -481,7 +481,7 @@ export function validateKnowledgeConfig(
 }
 
 /**
- * 助手绑定聚焦写入的纯校验（docs/design/20261018-knowledge-center-deeptutor-reference.md §2）。
+ * 助手绑定聚焦写入的纯校验（Plan/design/20261018-knowledge-center-deeptutor-reference.md §2）。
  * 服务层 `saveAssistantBindings` 使用；错误经 `CONFIG_INVALID`/绑定专用码抛出。
  */
 export function parseAssistantBindingsInput(body: unknown): {

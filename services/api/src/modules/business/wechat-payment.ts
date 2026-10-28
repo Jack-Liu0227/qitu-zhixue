@@ -185,7 +185,7 @@ export class WechatPayment {
     );
   }
 
-  async refund(order: { id: string; amountFen: number; refundId: string }): Promise<RefundFact> {
+  async refund(order: { id: string; amountFen: number; refundFen?: number; refundId: string }): Promise<RefundFact> {
     const c = this.readConfig();
     const data = readObject(
       await this.request(
@@ -195,7 +195,7 @@ export class WechatPayment {
           out_trade_no: order.id,
           out_refund_no: order.refundId,
           notify_url: `${c.notifyOrigin}/api/v1/business/payments/wechat`,
-          amount: { refund: order.amountFen, total: order.amountFen, currency: 'CNY' },
+          amount: { refund: order.refundFen ?? order.amountFen, total: order.amountFen, currency: 'CNY' },
         },
         c,
       ),

@@ -1,0 +1,127 @@
+[
+  {
+    "file": "report.json",
+    "bytes": 170733,
+    "sha256": "419d1140b6b8eaafc3aa1ca77d2b92a40af000182e23aac119abde292bea93e1"
+  },
+  {
+    "file": "final-readback.json",
+    "bytes": 97744,
+    "sha256": "5afd9d09115964fb75689fa5d17f4734cb8f29584690cfae995b9642ed9c3486"
+  },
+  {
+    "file": "final-artifact.txt",
+    "bytes": 2214,
+    "sha256": "6a2e706f3b594583deff2bdab92f293402aa4d84a9a64bda185017670936d43e"
+  },
+  {
+    "file": "restored-draft.txt",
+    "bytes": 1409,
+    "sha256": "a9a82441cd9d564b37c3bad4437e97fb5d3bb4126492655949cf1e76b2a468e6"
+  },
+  {
+    "file": "00-template-selection.png",
+    "bytes": 342229,
+    "sha256": "f11aec32941e40137c95ac4f9188d5c0c5bf09f898a14798d289b795483e5358"
+  },
+  {
+    "file": "01-initial.png",
+    "bytes": 259445,
+    "sha256": "9dc3df1898bb5e0b14b5995a6eb601e9685811eb2dbb7557e53c238331984090"
+  },
+  {
+    "file": "01-needs-revision.png",
+    "bytes": 187204,
+    "sha256": "409088504618d66daf222ebb735760b3fd66c2da491c6d609defab781c53cb5f"
+  },
+  {
+    "file": "01-complete-02-current.png",
+    "bytes": 179212,
+    "sha256": "7d045418edf126623d205e35b7c46c6e02d39d7aac541454437ec4649ea66496"
+  },
+  {
+    "file": "02-first-question.png",
+    "bytes": 154536,
+    "sha256": "ad73d645e5e02c0b26c8d58948f99bd39839ee6a61a718bfd23884f33369cf7e"
+  },
+  {
+    "file": "02-help-pending.png",
+    "bytes": 159158,
+    "sha256": "4d15e13f36d90e50c98e2fcd34bb5991565c2b679a8cc157b6754871244d06f3"
+  },
+  {
+    "file": "02-incorrect-choice.png",
+    "bytes": 161951,
+    "sha256": "cbe68572945193383a451031dc1d9dc5e3f988c80e4c3275f1b74b2d02abffc4"
+  },
+  {
+    "file": "02-theory-progress-explicit-choice.png",
+    "bytes": 170799,
+    "sha256": "4a4902698724687e17f38abdda8fae406c67142a790de5bfe5fc44c009cd1f8c"
+  },
+  {
+    "file": "04-complete-refresh.png",
+    "bytes": 115430,
+    "sha256": "652280c6b92e47104a30b799752016df9d7c7d4989046f9b188a2acae515e457"
+  },
+  {
+    "file": "07-complete-08-delivery-entry.png",
+    "bytes": 186735,
+    "sha256": "b333a3fd5d8a46ab60eebae4283a9a1fb3a172001866702e9acdd011bfa5d527"
+  },
+  {
+    "file": "08-final-needs-revision.png",
+    "bytes": 135835,
+    "sha256": "c90ba4bd839e94df10cc8de3714634c369c1e9e45cb238c12d1242bd12ee8254"
+  },
+  {
+    "file": "08-final-mobile-before-submit.png",
+    "bytes": 58041,
+    "sha256": "0452d8c97df5de607040c2fe124dce038b9e0e965044f793c3e29fc95edbed57"
+  },
+  {
+    "file": "08-final-approved-before-reflection.png",
+    "bytes": 56397,
+    "sha256": "d0670e4c9b05374942e5ba4659f35d73f798dc74e24161ed757d4b0da217b4b3"
+  },
+  {
+    "file": "08-completed-mobile.png",
+    "bytes": 66185,
+    "sha256": "88a483448bf1ad0a0ba0e683c70653a4b9deac0d59e5f23f14900fb37403fb04"
+  },
+  {
+    "file": "completed-progress-desktop.png",
+    "bytes": 284201,
+    "sha256": "9b1714cda205c4679973a3075016ebfe36cc333f6df96307e3ed14814d13141d"
+  },
+  {
+    "file": "completed-simulation-fullscreen.png",
+    "bytes": 116800,
+    "sha256": "7e817eac65706b0801dc133958e35a7ca7bd84e926ee5ee5438dea149c529ec5"
+  },
+  {
+    "file": "courseware-1-replay.png",
+    "bytes": 31180,
+    "sha256": "d7f6e420808734807aaddea8c041c1254fa12c2542b91a96153f680f3bab8490"
+  },
+  {
+    "file": "courseware-2-replay.png",
+    "bytes": 33945,
+    "sha256": "a043ce09c7ff9c0c0a9b10b08f64985e65f20b23db3e0dd459adc86f0b6996fe"
+  },
+  {
+    "file": "courseware-3-replay.png",
+    "bytes": 36295,
+    "sha256": "5440289f8570ef216d07b150c27f475c7d6e00a0a638abc91f882fd759071f0b"
+  },
+  {
+    "file": "courseware-4-replay.png",
+    "bytes": 23778,
+    "sha256": "15d7b7d51f7332eb89e8e76e8f0d291c00e83f33d85611f71e7266c54a1a08a0"
+  },
+  {
+    "file": "verification.json",
+    "bytes": 8644,
+    "sha256": "80a162362a98b0ab90932a93bc325a0ccdda54a0f0ce4081227d9aa26a7fe623"
+  }
+]

@@ -1,0 +1,94 @@
+{
+  "at": "2026-10-27T14:30:12.561849+00:00",
+  "sourceFiles": 11,
+  "runtimeArtifacts": 9,
+  "sourceMismatch": [],
+  "runtimeMismatch": [],
+  "services": [
+    {
+      "name": "api",
+      "ActiveState": "active",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    {
+      "name": "student",
+      "ActiveState": "active",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    {
+      "name": "admin",
+      "ActiveState": "active",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    {
+      "name": "auth",
+      "ActiveState": "active",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    {
+      "name": "parent",
+      "ActiveState": "active",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    {
+      "name": "teacher",
+      "ActiveState": "active",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    {
+      "name": "workers",
+      "ActiveState": "active",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    },
+    {
+      "name": "profile-growth",
+      "ActiveState": "active",
+      "WorkingDirectory": "/root/qitu-zhixue"
+    }
+  ],
+  "pages": [
+    {
+      "path": "/student/inspiration",
+      "status": 200
+    },
+    {
+      "path": "/student/tutor",
+      "status": 200
+    },
+    {
+      "path": "/admin/settings/templates",
+      "status": 200
+    },
+    {
+      "path": "/login",
+      "status": 200
+    },
+    {
+      "path": "/parent",
+      "status": 200
+    },
+    {
+      "path": "/teacher/dashboard",
+      "status": 200
+    }
+  ],
+  "staticResources": 80,
+  "failedResources": [],
+  "anonymousTutorStatus": 401,
+  "readiness": {
+    "service": "qitu-zhixue-api",
+    "status": "ready",
+    "version": "0.1.0",
+    "checkedAt": "2026-10-27T14:30:12.911Z",
+    "dataMode": "live",
+    "dependencies": {
+      "database": {
+        "status": "ok"
+      },
+      "redis": {
+        "status": "ok"
+      }
+    }
+  },
+  "studentBuildId": "6U6_wh0rebCHy26JqcTfU"
+}

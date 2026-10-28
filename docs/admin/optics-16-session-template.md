@@ -1,8 +1,8 @@
 # 光学 16 课时项目模板
 
-> Release update (2026-10-19 21:39:47 +08:00): `63e3be8` is deployed, main is synchronized, and migration 0036 is applied. Earlier offline-only statements below describe the pre-release round. Full teaching acceptance and 16-session bootstrap activation are still not complete. [Release evidence](./release-20261019-main.md).
+历史回执见 [计划与执行记录](../../Plan/maintenance/usage-records-20261028.md)。
 
-> 状态：2026-10-19，源码与隔离测试实现；未执行生产数据库迁移、模板初始化、绑定激活或部署。Admin 现有阶段编辑器尚不是逐课时编辑器。
+历史回执见 [计划与执行记录](../../Plan/maintenance/usage-records-20261028.md)。
 
 ## 模板制作方式
 
@@ -72,4 +72,4 @@
 
 审计沿用 `learning_plan.generate`、意图确认、模板和绑定生命周期现有事件，不新增客户端写入路径。验证覆盖课序、阶段、60 分钟合计、12 目标覆盖、四目标门禁、标题与活动回读、幂等草稿、跨学生拒绝、旧模板不改和初始化正文漂移拒绝。
 
-本次 `node tooling/verify-pbl-capability.mjs` 完整运行通过：1040 项 API 测试、78 suites、0 失败，依赖构建、AI 客户端断言与文档检查均通过。详情见[验证记录](../plan/codex/validation-20261019.md)。真实 PostgreSQL 集成因未配置测试数据库未执行，不据此声称 0036 迁移已验收或服务端 main 已同步。
+本次 `node tooling/verify-pbl-capability.mjs` 完整运行通过：1040 项 API 测试、78 suites、0 失败，依赖构建、AI 客户端断言与文档检查均通过。详情见[验证记录](../../Plan/codex/validation-20261019.md)。真实 PostgreSQL 集成因未配置测试数据库未执行，不据此声称 0036 迁移已验收或服务端 main 已同步。

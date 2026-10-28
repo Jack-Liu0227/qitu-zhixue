@@ -32,7 +32,7 @@ pnpm --filter @qitu/admin-console build
 
 六项回归覆盖真实分组、团队删除后的成员保留、重命名与停用、失效选择、跨请求旧响应、部分失败/重试、断网与卸载。浏览器验收还应覆盖当前团队名单、旧 localStorage 不污染名单、切回页面刷新以及无权限/断网时禁用选择。
 
-2026-10-19 已随 `63e3be8` 上线，并完成真实目录及浏览器响应 fixture 验证，结果与范围见 [发布记录](./release-20261019-main.md)。
+历史回执见 [计划与执行记录](../../Plan/maintenance/usage-records-20261028.md)。
 
 ## Display contract
 

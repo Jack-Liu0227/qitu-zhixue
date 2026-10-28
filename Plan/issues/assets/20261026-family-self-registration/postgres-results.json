@@ -1,0 +1,21 @@
+{
+  "success": true,
+  "runId": "run-1793028433363-59380",
+  "checks": [
+    "settings revision, published offer and current template binding",
+    "orders enforce guardian ownership, frozen price and durable idempotency",
+    "only matching signed-payment facts grant access, duplicate receipts audit once",
+    "refunds remain processing until verified, then revoke new-project access",
+    "revoked guardian link denies read immediately",
+    "expired orders block replacements until merchant closure is verified",
+    "operating checks persist one task per reference and lead handling resolves it",
+    "cost ledger is idempotent and never invents profitability or learning completions",
+    "self registration works without invitations, merchant configuration or sales settings",
+    "registration replay and a lost idempotency receipt do not duplicate accounts or links",
+    "new parent and student can log in, and sessions survive restart and revoke on logout",
+    "existing email, role injection and stale policy cannot create an orphan or hijack a student",
+    "concurrent registrations sharing an email have one atomic winner"
+  ],
+  "isolated": true,
+  "actualPayments": false
+}

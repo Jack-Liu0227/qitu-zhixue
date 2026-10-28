@@ -1,6 +1,6 @@
 # 学生管理
 
-2026-10-24 产品修订：教师只读学生学习记录、自动评价和问题。学生提交后由服务端自动评价、按反馈修订并推进，不再等待教师逐活动评价、作品批准或人工恢复。旧审批入口退役。策略与验证见 [自主学习评价](../issues/20261024-autonomous-learning.md)。
+2026-10-24 产品修订：教师只读学生学习记录、自动评价和问题。学生提交后由服务端自动评价、按反馈修订并推进，不再等待教师逐活动评价、作品批准或人工恢复。旧审批入口退役。策略与验证见 [自主学习评价](../../Plan/issues/20261024-autonomous-learning.md)。
 
 > Teacher 第 2 项（`/teacher/students`，详情 `/teacher/students/[id]`）。
 > 实现入口：`apps/teacher-workspace/app/(workspace)/students/**`、
@@ -53,11 +53,7 @@ POST /api/v1/teacher/feedback/:ticketId/replies  工单回复（幂等）
 | offline | 只读；禁止干预 / 回复 |
 | permission-denied | 403，不泄露学生存在性 |
 
-## 6. 未决事项
-
-- [ ] 掌握度安全投影对学生详情页的字段范围。
-- [ ] 干预动作的完整语汇与幂等范围。
-- [ ] 反馈工单与 `feedback` 模块的合并 / 归属。
+[相关计划与执行记录](../../Plan/maintenance/usage-records-20261028.md)。
 
 ## 7. 相关文档
 

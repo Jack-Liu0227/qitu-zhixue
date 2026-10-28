@@ -1,0 +1,338 @@
+{
+  "verifiedAt": "2026-10-26T11:13:09.228520+00:00",
+  "scope": "Resource display-name uniqueness and design asset ownership",
+  "sourceBuildRun": "run-1793012605020-89036",
+  "dependencyOrder": [
+    "contracts",
+    "database",
+    "infra",
+    "agent-memory",
+    "ai-client",
+    "model-runtime"
+  ],
+  "resolution": "Fresh isolated build outputs and test-only registerHooks. Admin checks map the current auth/ui source and installed external PDF types. Installed UNC dependency snapshots were not changed.",
+  "checks": {
+    "apiTypecheck": "passed",
+    "adminTypecheck": "passed",
+    "apiRegression": {
+      "passed": 363,
+      "failed": 0,
+      "skippedTests": 2,
+      "skippedSuites": 2
+    },
+    "growthRuntimeRegression": {
+      "passed": 19,
+      "failed": 0
+    },
+    "isolatedPostgres": {
+      "passed": 50,
+      "failed": 0,
+      "runner": "tooling/test-resource-names-postgres.mjs",
+      "engine": "PGlite ephemeral PostgreSQL"
+    },
+    "gitDiffCheck": "passed",
+    "codeLineLimit": 2500
+  },
+  "limitations": [
+    "No production database connection, migration, data cleanup or service deployment.",
+    "Skipped tests/suites require explicitly configured disposable databases; they are not counted as passed.",
+    "Skills-page behavior was source-reviewed and typechecked; no browser interaction test was run.",
+    "Runtime skill catalogue was copied unchanged into a local temporary fixture to avoid repeated UNC directory reads."
+  ],
+  "sources": [
+    {
+      "path": "apps/admin-console/app/(console)/settings/skills/page.tsx",
+      "sha256": "a6cc1de8be8f688c74f8c531ce920aeb4336500538903c4b2c0636014337dbb8"
+    },
+    {
+      "path": "packages/contracts/src/errors.ts",
+      "sha256": "e511558ca4724ea6e8a9cd666b45b84b82e438c361b9b8e63388a8deb3944f94"
+    },
+    {
+      "path": "packages/contracts/src/index.ts",
+      "sha256": "53904c304c7cf8698a4eb367833a38291cb79867f42409eb9d8ae50939f38554"
+    },
+    {
+      "path": "packages/database/src/schema/admin-ai-config.ts",
+      "sha256": "1b09959e8fcd50200d190a34be69732c638d7262d1ccc5368ccac8ce90a2365b"
+    },
+    {
+      "path": "packages/database/src/schema/agent-runtime.ts",
+      "sha256": "ae9851c67b96550eeace9dbc9da9c50bb0c341719ff7496fdf386dea3c695ff0"
+    },
+    {
+      "path": "packages/database/src/schema/knowledge.ts",
+      "sha256": "3d25791f24e30c71386a23e4c046d814ddf9b9119f218ad1bd85200e164a45dd"
+    },
+    {
+      "path": "packages/database/src/schema/model-registry.ts",
+      "sha256": "f580b7d8864761f255f66e85ab5c3747cdd4982aaecfa466f73de60a66b6843e"
+    },
+    {
+      "path": "packages/database/src/schema/project-templates.ts",
+      "sha256": "5764ad1acd896e23f6168b804a9c86f3527922a798835f428d6f81c24ec5462a"
+    },
+    {
+      "path": "services/api/src/common/http/problem-details.ts",
+      "sha256": "e0e5f08d3a6be72eef976a7981cc88b56bee2c7ecc2158b74ae795b1eac436fc"
+    },
+    {
+      "path": "services/api/src/modules/admin-copilot/copilot.service.ts",
+      "sha256": "982bc61e12d49547688669943ed3a400ee4b27778dff081728c80d4fd169aa30"
+    },
+    {
+      "path": "services/api/src/modules/admin-copilot/copilot.test.ts",
+      "sha256": "732d004c5d77c61df1a3af826dcffedad4263cee14077d43944b1b88c841400f"
+    },
+    {
+      "path": "services/api/src/modules/growth/growth-projection-runtime.test.ts",
+      "sha256": "f21eef6bd514d70d395dac875d03ff081f5b78d0b9bd6f48451ec2c747247cde"
+    },
+    {
+      "path": "services/api/src/modules/growth/growth-projection-runtime.ts",
+      "sha256": "f16116b653a04360a822709deafcb0e7547fd18d3c4198207b612acb859653f3"
+    },
+    {
+      "path": "services/api/src/modules/knowledge/knowledge-center.config.test.ts",
+      "sha256": "476a80c159bf80971073556834f6a45bc5da9763cb4d34648611f7abc00eb449"
+    },
+    {
+      "path": "services/api/src/modules/knowledge/knowledge-center.config.ts",
+      "sha256": "8db62918a13ef93239f20378601ec70a83c816f15eb870e7351b35abce323ce1"
+    },
+    {
+      "path": "services/api/src/modules/knowledge/knowledge-center.service.ts",
+      "sha256": "00df32c4a9a031c3e66c715645351b10c9f6589e7082b32995b608444eb50722"
+    },
+    {
+      "path": "services/api/src/modules/model-registry/model-registry.memory.test.ts",
+      "sha256": "a6ca0b6917ca359f461bfb96e2c1b1c0b18f83e8b9a552ff0bb28e4de98e7f08"
+    },
+    {
+      "path": "services/api/src/modules/model-registry/model-registry.service.ts",
+      "sha256": "f1ebbdc0748299beb4c590c7cb04a7872cac7c14c6fefed00fa123fc2a32af3d"
+    },
+    {
+      "path": "services/api/src/modules/platform-registry/platform-registry.service.test.ts",
+      "sha256": "7ce402bc1c6c30dcbd09194c3be2a91a687b9300623d7878d71f4c390158f4b1"
+    },
+    {
+      "path": "services/api/src/modules/platform-registry/platform-registry.service.ts",
+      "sha256": "f4ea90f6c6ce1c048411e2c271eeedf0b2f3f00f75c22dc31f908f8a8383cc60"
+    },
+    {
+      "path": "services/api/src/modules/templates/templates-governance.service.test.ts",
+      "sha256": "87fb452e1e1c4d71eaae71f0264ac44d7058e9f211549da65f65c8c310476c50"
+    },
+    {
+      "path": "services/api/src/modules/templates/templates.service.test.ts",
+      "sha256": "2dbd346383c6c25b18426ebc7cd8e845338e2ca6412b9a8d18d972634fe95fc3"
+    },
+    {
+      "path": "services/api/src/modules/templates/templates.store.postgres.ts",
+      "sha256": "61849774e779ced309cb405114491844f5e51cda9d7d3aec01811fbaff07197d"
+    },
+    {
+      "path": "services/api/src/modules/templates/templates.store.ts",
+      "sha256": "9f54db8f418400df7fdad8726b946bc67d77238e6bea562e8ec1b69376c70214"
+    },
+    {
+      "path": "database/migrations/0053_resource_name_uniqueness.down.sql",
+      "sha256": "6f9b8b23225f066793bce7b6aeab346f8676a3ed69b54497fc23c7686243cbf5"
+    },
+    {
+      "path": "database/migrations/0053_resource_name_uniqueness.sql",
+      "sha256": "ecd2d2e978847d391f64dbd49e16cbf8b340a2ccb076af38b2518b361f387b63"
+    },
+    {
+      "path": "packages/contracts/src/resource-name.ts",
+      "sha256": "32ad13a1e3dd4b88857543a7b1b364fb41aa237e723bc5efa3efd9944ed4aea0"
+    },
+    {
+      "path": "services/api/src/common/resource-name.test.ts",
+      "sha256": "51ed0376c0af115f92cbb990a77d4efc1d52edfd4f1e3f6dddc6165bcaeb66b9"
+    },
+    {
+      "path": "services/api/src/common/resource-name.ts",
+      "sha256": "e51cb6d0b9011a6ee008be5cdd2184e79b2b0382f97b58d7f699ceb24f12187a"
+    },
+    {
+      "path": "services/api/src/modules/templates/templates-name.test.ts",
+      "sha256": "4a5d79567738a6920ea30497630108e5354c29f5080658b130478a457a56de33"
+    },
+    {
+      "path": "tooling/check-resource-name-duplicates.sql",
+      "sha256": "408ff0a30c85a1ee6a68778e110635d7a4c2112a0a6d8b6da79aec630223aadd"
+    },
+    {
+      "path": "tooling/test-resource-names-postgres.mjs",
+      "sha256": "b65c95a21c25270e489878d822c25104bfa468595d754563565a8f5290369821"
+    }
+  ],
+  "unrelatedWorkspaceChangesPreserved": [
+    {
+      "status": " D",
+      "path": ".codex-patch-team-runtime.py"
+    },
+    {
+      "status": " M",
+      "path": "apps/admin-console/app/(console)/settings/layout.tsx"
+    },
+    {
+      "status": " M",
+      "path": "apps/admin-console/app/(console)/settings/settings-compact.css"
+    },
+    {
+      "status": " M",
+      "path": "apps/admin-console/app/detail-polish.css"
+    },
+    {
+      "status": " M",
+      "path": "apps/admin-console/app/globals.css"
+    },
+    {
+      "status": " M",
+      "path": "apps/student-center/features/tutor/TutorPage.tsx"
+    },
+    {
+      "status": " M",
+      "path": "apps/student-center/features/tutor/components/ChatThread.tsx"
+    },
+    {
+      "status": " M",
+      "path": "apps/student-center/features/tutor/components/CoursewarePresentation.module.css"
+    },
+    {
+      "status": " M",
+      "path": "apps/student-center/features/tutor/components/LessonCoursewareCard.tsx"
+    },
+    {
+      "status": " M",
+      "path": "apps/student-center/features/tutor/components/ProjectLearningHistory.tsx"
+    },
+    {
+      "status": " M",
+      "path": "apps/student-center/features/tutor/components/WaveOpticsExperimentCard.module.css"
+    },
+    {
+      "status": " M",
+      "path": "apps/student-center/features/tutor/lib/timelinePresentation.test.ts"
+    },
+    {
+      "status": " M",
+      "path": "apps/student-center/features/tutor/lib/timelinePresentation.ts"
+    },
+    {
+      "status": " M",
+      "path": "apps/student-center/styles/projects.css"
+    },
+    {
+      "status": " M",
+      "path": "apps/student-center/styles/tutor.css"
+    },
+    {
+      "status": " D",
+      "path": "Plan/codex/README.md"
+    },
+    {
+      "status": " D",
+      "path": "Plan/codex/inspiration-eight-project-expansion-20261024.md"
+    },
+    {
+      "status": " D",
+      "path": "Plan/codex/inspiration-eight-project-implementation-20261024.md"
+    },
+    {
+      "status": " D",
+      "path": "Plan/codex/interaction-remediation-20261024.md"
+    },
+    {
+      "status": " D",
+      "path": "Plan/codex/knowledge-center-config-matrix-20261022.md"
+    },
+    {
+      "status": " D",
+      "path": "Plan/codex/profile-growth-runtime-20261022.md"
+    },
+    {
+      "status": " D",
+      "path": "Plan/codex/student-entry-history-repair-20261021.json"
+    },
+    {
+      "status": " D",
+      "path": "Plan/codex/student-entry-history-repair-20261021.md"
+    },
+    {
+      "status": " D",
+      "path": "Plan/codex/student-permanent-cleanup-20261022.json"
+    },
+    {
+      "status": " D",
+      "path": "Plan/codex/student-permanent-cleanup-20261022.md"
+    },
+    {
+      "status": " D",
+      "path": "Plan/codex/teaching-profile-ui-20261022.md"
+    },
+    {
+      "status": " D",
+      "path": "Plan/codex/teaching-profile-ui-verification-20261022.md"
+    },
+    {
+      "status": " D",
+      "path": "Plan/codex/template-session-bindings-20261023.md"
+    },
+    {
+      "status": " M",
+      "path": "docs/student/tutor.md"
+    },
+    {
+      "status": " D",
+      "path": "snap.bat"
+    },
+    {
+      "status": " D",
+      "path": "test_courseware.bat"
+    },
+    {
+      "status": " D",
+      "path": "test_tutor_chat.bat"
+    },
+    {
+      "status": " D",
+      "path": "trigger_tutor_experiment.bat"
+    },
+    {
+      "status": " D",
+      "path": "view_theory.bat"
+    },
+    {
+      "status": " D",
+      "path": "启途智学作品介绍_详细参赛修订版.docx"
+    },
+    {
+      "status": " D",
+      "path": "新启途智学作品介绍_详细参赛修订版.docx"
+    },
+    {
+      "status": "??",
+      "path": "Plan/issues/20261025-recording-courseware-visibility.md"
+    },
+    {
+      "status": "??",
+      "path": "Plan/issues/20261025-tutor-inline-learning.md"
+    },
+    {
+      "status": "??",
+      "path": "Plan/issues/20261026-page-scroll-layout.md"
+    },
+    {
+      "status": "??",
+      "path": "Plan/issues/assets/20261025-tutor-inline-learning/"
+    },
+    {
+      "status": "??",
+      "path": "Plan/codex/fresh-journeys-recording-plan-20261025.md"
+    }
+  ]
+}

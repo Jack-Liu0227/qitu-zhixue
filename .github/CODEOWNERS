@@ -1,8 +1,9 @@
 # Default reviewers for the repository
 * @Jack-Liu0227
 
-# Product and architecture docs
+# Usage documentation and project plans
 /docs/ @Jack-Liu0227
+/Plan/ @Jack-Liu0227
 /AGENTS.md @Jack-Liu0227
 
 # Shared contracts and authorization require explicit review

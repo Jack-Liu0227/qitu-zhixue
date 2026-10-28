@@ -1,0 +1,16 @@
+{
+  "status": "passed",
+  "origin": "http://127.0.0.1:3710",
+  "checks": [
+    "login roles keyboard navigation, password visibility, busy lock, required validation, offline, 401/429 and forbidden notice; responsive and reduced motion",
+    "registration password visibility toggles and 320/390/768/1440 layouts",
+    "personal form replaces paired family fields; desktop/mobile layout, policy retry and offline write lock",
+    "student/parent independently register and authenticate; durable replay, role prefill and object permissions",
+    "synthetic SMS send/cooldown, personal phone registration and phone/password UI login; legacy APIs removed",
+    "unconfigured SMS is marked pending; email remains available and homepage has personal signup"
+  ],
+  "pageErrors": [],
+  "isolated": true,
+  "actualSms": false,
+  "actualPayments": false
+}

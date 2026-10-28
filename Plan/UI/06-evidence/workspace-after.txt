@@ -1,0 +1,76 @@
+ M apps/admin-console/app/(console)/copilot/page.tsx
+ M apps/admin-console/app/(console)/settings/skills/page.tsx
+ M apps/admin-console/app/(console)/settings/tools/page.tsx
+ M Plan/codex/README.md
+ M Plan/codex/optics-template-runtime/01-admin-teaching-bundle.md
+ M Plan/codex/optics-template-runtime/02-student-pbl-runtime.md
+ M Plan/codex/optics-template-runtime/03-optics-experiment-protocol.md
+ M Plan/codex/optics-template-runtime/04-verification.md
+ M Plan/codex/optics-template-runtime/05-student-tutor-flow-qa.md
+ M Plan/codex/optics-template-runtime/README.md
+ M Plan/codex/optics-template-runtime/TODO.csv
+ M Plan/codex/profile-growth-projection/01-evidence-contract.md
+ M Plan/codex/profile-growth-projection/02-owner-acceptance.md
+ M Plan/codex/profile-growth-projection/03-profile-read-model.md
+ M Plan/codex/profile-growth-projection/04-verification.md
+ M Plan/codex/profile-growth-projection/README.md
+ M Plan/codex/profile-growth-projection/TODO.csv
+ M packages/ai-client/src/qitu-sdk.test.ts
+ M packages/ai-client/src/qitu-sdk.ts
+ M packages/contracts/src/admin.ts
+ M packages/contracts/src/index.ts
+ M packages/model-runtime/src/runtime.test.ts
+ M packages/model-runtime/src/runtime.ts
+ M services/api/src/app.module.ts
+ M services/api/src/common/tutor-runtime/runtime-source.test.ts
+ M services/api/src/common/tutor-runtime/runtime-source.ts
+ M services/api/src/modules/ai-tutor/gateway-tutor.provider.ts
+ M services/api/src/modules/ai-tutor/ima-mcp.client.ts
+ M services/api/src/modules/ai-tutor/tutor.provider.ts
+ M services/api/src/modules/ai-tutor/tutor.service.ts
+ M services/api/src/modules/knowledge/knowledge-library-retrieval.test.ts
+ M services/api/src/modules/knowledge/knowledge-retrieval.service.ts
+ M services/api/src/modules/knowledge/knowledge-retrieval.test.ts
+ M services/api/src/modules/knowledge/knowledge-tool-catalog.service.ts
+ M services/api/src/modules/knowledge/knowledge-tool-catalog.test.ts
+ M services/api/src/modules/platform-registry/assistant-runtime.test.ts
+ M services/api/src/modules/platform-registry/built-in-tools.ts
+ M services/api/src/modules/platform-registry/ima-settings.service.ts
+ M services/api/src/modules/platform-registry/platform-registry.service.test.ts
+ M services/api/src/modules/platform-registry/platform-registry.service.ts
+ M services/api/src/modules/qitu-sdk/qitu-sdk.service.ts
+ M services/workers/src/team-runtime-executor.test.ts
+ M services/workers/src/team-runtime-executor.ts
+?? .agents/skills/qitu-project-configurator/
+?? apps/admin-console/lib/api/copilot.ts
+?? apps/admin-console/lib/copilot/use-project-catalog.ts
+?? Plan/UI/
+?? Plan/codex/agent-driven-pbl-requirements-20261021.md
+?? Plan/codex/optics-template-runtime/00-completion-audit.md
+?? Plan/codex/optics-template-runtime/06-copilot-skill-design.md
+?? Plan/codex/optics-template-runtime/07-remaining-tasks.md
+?? Plan/codex/optics-template-runtime/08-validation-20261021.md
+?? Plan/codex/optics-template-runtime/09-copilot-implementation-20261021.md
+?? Plan/codex/optics-template-runtime/10-template-team-assistant-knowledge-architecture.md
+?? Plan/codex/optics-template-runtime/11-copilot-verification-20261021.md
+?? Plan/codex/profile-growth-projection/00-completion-audit.md
+?? Plan/codex/profile-growth-projection/05-evidence-routing-design.md
+?? Plan/codex/profile-growth-projection/06-remaining-tasks.md
+?? Plan/codex/profile-growth-projection/07-validation-20261021.md
+?? Plan/codex/skills-mcp-tools-sdk-audit-20261021.md
+?? packages/contracts/src/admin-copilot.ts
+?? packages/contracts/src/runtime-skill-baseline.ts
+?? packages/contracts/src/runtime-skills.ts
+?? packages/contracts/src/runtime-tool-catalog.ts
+?? services/api/src/modules/admin-copilot/
+?? services/api/src/modules/ai-tutor/ima-tool-scope.test.ts
+?? services/api/src/modules/ai-tutor/ima-tool-scope.ts
+?? services/api/src/modules/ai-tutor/tool-event-stream.ts
+?? services/api/src/modules/ai-tutor/tutor-knowledge-access.ts
+?? snap.bat
+?? test_courseware.bat
+?? test_tutor_chat.bat
+?? tooling/verify-admin-copilot.mjs
+?? tooling/verify-runtime-governance.mjs
+?? trigger_tutor_experiment.bat
+?? view_theory.bat

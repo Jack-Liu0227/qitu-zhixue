@@ -77,10 +77,10 @@ Pi 配置导入只接受服务端受限目录中的 `models.json`、`models-stor
 
 Team Leader 和子 Agent 均保留显式模型覆盖；两个覆盖字段为空时，主导师与 mailbox worker 按同一用途目录解析绑定。worker 每次任务重新读取数据库，遵循目录声明的 fallback；直接模型不可用时不静默回退。文本 JSON 执行器拒绝向量和实时语音用途。Leader 通过启用的 route 委派任务，服务端写入 mailbox；worker 以租约领取并执行，结果写入 task、message、event 和 outbox。profile/growth 等结果先进入候选投影，领域 owner 校验、幂等接受和审计后才成为正式数据。
 
-## 7. 安全与未决事项
+## 7. 安全与使用限制
 
 - live 模式使用 `QITU_MODEL_SECRET_KEY` 加密保存 API Key，只对外返回 configured 状态和指纹。
 - Provider、Model、Agent 和测试操作写入审计；日志不得包含 API Key、原始模型响应或未脱敏学生对话。
 - 删除或停用前检查 Agent 直接引用和旧兼容绑定，避免运行时出现悬空模型。
-- [ ] 增加批量 Provider 健康检查和模型目录差异报告。
-- [ ] 将旧 `model_usage_bindings` 迁移完成后删除兼容读取入口。
+
+[相关计划与执行记录](../../Plan/maintenance/usage-records-20261028.md)。

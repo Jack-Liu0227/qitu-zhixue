@@ -1,11 +1,25 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
-import { BrandMark, OfflineBanner, VisualAsset } from '@qitu/ui';
-import type { CurrentUser, LoginRequest, LoginResponse, Role, TestLoginAccount } from '@qitu/contracts';
-import { getOrCreateDeviceId, readCachedSession, writeCachedSession, safeRoleDestination } from '@qitu/auth';
+import { OfflineBanner } from '@qitu/ui';
+import type {
+  CurrentUser,
+  LoginRequest,
+  LoginResponse,
+  Role,
+  TestLoginAccount,
+} from '@qitu/contracts';
+import {
+  getOrCreateDeviceId,
+  readCachedSession,
+  writeCachedSession,
+  safeRoleDestination,
+} from '@qitu/auth';
 import { parseTestLoginOptions } from './test-accounts';
-import { FamilyInvitation } from './FamilyInvitation';
+import { AccountRegistration } from './AccountRegistration';
+import { AuthFrame } from './AuthFrame';
+import { Icon } from '../home/icons';
+import styles from './auth.module.css';
 
 const REMEMBERED_ACCOUNT_KEY = 'qitu.auth.rememberedAccount';
 
@@ -81,7 +95,8 @@ async function requestLogin(body: LoginRequest, idempotencyKey: string): Promise
 
 type SubmitStatus = 'idle' | 'submitting' | 'error';
 type ErrorKind = 'invalid' | 'role' | 'network' | 'rate' | 'other' | null;
-type TestAccountState = { status: 'loading' } | { status: 'error' } | { status: 'ready'; accounts: TestLoginAccount[] };
+type TestAccountState =
+  { status: 'loading' } | { status: 'error' } | { status: 'ready'; accounts: TestLoginAccount[] };
 
 const ERROR_MESSAGES: Record<Exclude<ErrorKind, null>, string> = {
   invalid: '账号或密码错误，请检查后重试。',
@@ -92,11 +107,37 @@ const ERROR_MESSAGES: Record<Exclude<ErrorKind, null>, string> = {
 };
 
 function getErrorMessage(kind: Exclude<ErrorKind, null>): string {
-
   return ERROR_MESSAGES[kind];
 }
 
 export default function LoginPage() {
+  const [registering, setRegistering] = useState(false);
+  const [registrationBusy, setRegistrationBusy] = useState(false);
+  function showRegistration(value: boolean) {
+    setRegistering(value);
+    const url = new URL(window.location.href);
+    if (value) url.searchParams.set('mode', 'register');
+    else url.searchParams.delete('mode');
+    window.history.replaceState(null, '', url.pathname + url.search);
+  }
+  useEffect(() => {
+    const readRegistrationLocation = () => {
+      const url = new URL(window.location.href);
+      const oldInvite = new URLSearchParams(url.hash.slice(1)).has('invite');
+      setRegistering(url.searchParams.get('mode') === 'register' || oldInvite);
+      if (oldInvite) {
+        url.searchParams.set('mode', 'register');
+        window.history.replaceState(null, '', url.pathname + url.search);
+      }
+    };
+    readRegistrationLocation();
+    window.addEventListener('hashchange', readRegistrationLocation);
+    window.addEventListener('popstate', readRegistrationLocation);
+    return () => {
+      window.removeEventListener('hashchange', readRegistrationLocation);
+      window.removeEventListener('popstate', readRegistrationLocation);
+    };
+  }, []);
   const [role, setRole] = useState<LoginRole>('student');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -116,13 +157,18 @@ export default function LoginPage() {
     const controller = new AbortController();
     setTestAccounts({ status: 'loading' });
     void fetch('/api/v1/auth/test-accounts', { cache: 'no-store', signal: controller.signal })
-      .then(async response => {
+      .then(async (response) => {
         if (!response.ok) throw new Error('Test login unavailable');
         const payload: unknown = await response.json();
         return parseTestLoginOptions(payload);
       })
-      .then(options => { if (!controller.signal.aborted) setTestAccounts({ status: 'ready', accounts: options.accounts }); })
-      .catch(() => { if (!controller.signal.aborted) setTestAccounts({ status: 'error' }); });
+      .then((options) => {
+        if (!controller.signal.aborted)
+          setTestAccounts({ status: 'ready', accounts: options.accounts });
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setTestAccounts({ status: 'error' });
+      });
     return () => controller.abort();
   }, [testAccountRetry]);
 
@@ -131,7 +177,8 @@ export default function LoginPage() {
     const params = new URLSearchParams(window.location.search);
     setNextPath(params.get('next'));
     const requestedRole = params.get('role');
-    if (ROLE_OPTIONS.some((option) => option.role === requestedRole)) setRole(requestedRole as LoginRole);
+    if (ROLE_OPTIONS.some((option) => option.role === requestedRole))
+      setRole(requestedRole as LoginRole);
     if (params.get('reason') === 'forbidden') setNotice('请使用有权访问此页面的账号登录。');
     let rememberedEmail = '';
     try {
@@ -179,9 +226,9 @@ export default function LoginPage() {
     }
   }
 
-
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
+    if (status === 'submitting') return;
     if (offline) {
       setErrorKind('network');
       setStatus('error');
@@ -194,12 +241,15 @@ export default function LoginPage() {
 
     const idempotencyKey = makeIdempotencyKey();
     try {
-      const response = await requestLogin({
-        email,
-        password,
-        rememberMe: rememberAccount,
-        deviceId: getOrCreateDeviceId(),
-      }, idempotencyKey);
+      const response = await requestLogin(
+        {
+          email,
+          password,
+          rememberMe: rememberAccount,
+          deviceId: getOrCreateDeviceId(),
+        },
+        idempotencyKey,
+      );
 
       const payload = (await response.json().catch(() => null)) as {
         data?: LoginResponse;
@@ -208,8 +258,10 @@ export default function LoginPage() {
 
       if (!response.ok) {
         if (response.status === 401) setErrorKind('invalid');
-        else if (response.status === 409) { setErrorKind('other'); setNotice('此学生账号已登录两台设备，请先在“个人画像 → 登录设备”退出一台设备。'); }
-        else if (response.status === 429) setErrorKind('rate');
+        else if (response.status === 409) {
+          setErrorKind('other');
+          setNotice('此学生账号已登录两台设备，请先在“个人画像 → 登录设备”退出一台设备。');
+        } else if (response.status === 429) setErrorKind('rate');
         else setErrorKind('other');
         setStatus('error');
         return;
@@ -246,178 +298,235 @@ export default function LoginPage() {
     }
   }
 
+  function selectRole(value: LoginRole) {
+    setRole(value);
+    setErrorKind(null);
+    setStatus('idle');
+    setNotice('');
+  }
   return (
-    <main className="login-page">
-      <section className="login-panel" aria-labelledby="login-title">
-        <div className="login-brand-row">
-          <div className="login-brand">
-            <BrandMark size={36} decorative />
-            <span>启途智学</span>
+    <AuthFrame
+      registering={registering}
+      busy={status === 'submitting' || registrationBusy}
+      onModeChange={showRegistration}
+    >
+      {registering ? (
+        <AccountRegistration
+          onBusyChange={setRegistrationBusy}
+          onCancel={() => showRegistration(false)}
+          onComplete={(result) => {
+            showRegistration(false);
+            setRole(result.role);
+            setEmail(result.login);
+            setPassword('');
+            setCachedUser(null);
+            setStatus('idle');
+            setErrorKind(null);
+            setNotice('账号已创建，请使用刚设置的密码登录。');
+          }}
+        />
+      ) : (
+        <>
+          {cachedUser && (
+            <div className={styles.session} role="status">
+              <span>你有一个可继续使用的登录会话</span>
+              <button
+                type="button"
+                disabled={status === 'submitting'}
+                onClick={() =>
+                  window.location.assign(safeRoleDestination(nextPath, cachedUser.role))
+                }
+              >
+                继续进入上次的空间 →
+              </button>
+            </div>
+          )}
+          {offline && (
+            <div className={styles.offline}>
+              <OfflineBanner readOnly message="当前已断网，请恢复网络后再登录。" />
+            </div>
+          )}
+          <div className={styles.roles} role="tablist" aria-label="选择身份">
+            {ROLE_OPTIONS.map((option, index) => (
+              <button
+                key={option.role}
+                id={'login-role-' + option.role}
+                type="button"
+                role="tab"
+                aria-selected={role === option.role}
+                tabIndex={role === option.role ? 0 : -1}
+                disabled={status === 'submitting'}
+                onClick={() => selectRole(option.role)}
+                onKeyDown={(event) => {
+                  const next =
+                    event.key === 'ArrowRight'
+                      ? (index + 1) % ROLE_OPTIONS.length
+                      : event.key === 'ArrowLeft'
+                        ? (index + ROLE_OPTIONS.length - 1) % ROLE_OPTIONS.length
+                        : event.key === 'Home'
+                          ? 0
+                          : event.key === 'End'
+                            ? ROLE_OPTIONS.length - 1
+                            : null;
+                  const option = next === null ? undefined : ROLE_OPTIONS[next];
+                  if (option) {
+                    event.preventDefault();
+                    selectRole(option.role);
+                    document.getElementById('login-role-' + option.role)?.focus();
+                  }
+                }}
+              >
+                {option.label}
+              </button>
+            ))}
           </div>
-          <VisualAsset assetId="brand-collaboration-v1" size={72} />
-        </div>
-        <h2 id="login-title">登录你的工作空间</h2>
-        <p className="login-muted">选择身份后，将进入对应的学习系统。</p>
-        <FamilyInvitation />
-
-        {cachedUser ? (
-          <div className="login-session-banner" role="status">
-            <span>检测到上次登录的会话</span>
-            <button
-              type="button"
-              className="login-continue"
-              onClick={() => window.location.assign(safeRoleDestination(nextPath, cachedUser.role))}
-            >
-              继续进入上次的空间
-            </button>
-          </div>
-        ) : null}
-
-        {offline ? (
-          <div className="login-offline">
-            <OfflineBanner readOnly message="当前处于离线状态，无法验证账号。登录请求不会缓存在本机，请恢复网络后重新提交。" />
-          </div>
-        ) : null}
-
-        <div className="role-tabs" role="tablist" aria-label="选择身份">
-          {ROLE_OPTIONS.map((option) => (
-            <button
-              className={role === option.role ? 'role-tab active' : 'role-tab'}
-              key={option.role}
-              type="button"
-              onClick={() => {
-                setRole(option.role);
-                setErrorKind(null);
-                setStatus('idle');
-                setNotice('');
-              }}
-              role="tab"
-              aria-selected={role === option.role}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-
-        <form onSubmit={submit} aria-busy={status === 'submitting'}>
-          <label htmlFor="login-email">
-            邮箱
-            <input
-              id="login-email"
-              name="email"
-              type="email"
-              autoComplete="username"
-              required
-              value={email}
-              onChange={(event) => {
-                setEmail(event.target.value);
-                setStatus('idle');
-                setErrorKind(null);
-                setNotice('');
-                persistRememberedEmail(event.target.value, rememberAccount);
-              }}
-              placeholder="请输入学校统一发放的登录邮箱"
-            />
-          </label>
-
-          <label htmlFor="login-password">
-            密码
-            <span className="login-password-wrap">
+          <form className={styles.form} onSubmit={submit} aria-busy={status === 'submitting'}>
+            <label className={styles.field} htmlFor="login-email">
+              手机号或邮箱
               <input
-                id="login-password"
-                name="password"
-                type={showPassword ? 'text' : 'password'}
-                autoComplete="current-password"
+                id="login-email"
+                name="email"
+                type="text"
+                autoComplete="username"
+                autoCapitalize="none"
                 required
-                value={password}
+                disabled={status === 'submitting'}
+                value={email}
+                aria-invalid={status === 'error' && errorKind === 'invalid'}
                 onChange={(event) => {
-                  setPassword(event.target.value);
+                  setEmail(event.target.value);
                   setStatus('idle');
                   setErrorKind(null);
                   setNotice('');
+                  persistRememberedEmail(event.target.value, rememberAccount);
                 }}
-                placeholder="请输入密码"
+                placeholder="请输入手机号或登录邮箱"
               />
+            </label>
+            <div className={styles.field}>
+              <label htmlFor="login-password">密码</label>
+              <span className={styles.password}>
+                <input
+                  id="login-password"
+                  name="password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  required
+                  disabled={status === 'submitting'}
+                  value={password}
+                  aria-invalid={status === 'error' && errorKind === 'invalid'}
+                  onChange={(event) => {
+                    setPassword(event.target.value);
+                    setStatus('idle');
+                    setErrorKind(null);
+                    setNotice('');
+                  }}
+                  placeholder="请输入密码"
+                />
+                <button
+                  type="button"
+                  disabled={status === 'submitting'}
+                  aria-label={showPassword ? '隐藏密码' : '显示密码'}
+                  aria-pressed={showPassword}
+                  onClick={() => setShowPassword((value) => !value)}
+                >
+                  {showPassword ? '隐藏' : '显示'}
+                </button>
+              </span>
+            </div>
+            <div className={styles.options}>
+              <label className={styles.remember}>
+                <input
+                  type="checkbox"
+                  name="rememberAccount"
+                  checked={rememberAccount}
+                  disabled={status === 'submitting'}
+                  onChange={(event) => {
+                    setRememberAccount(event.target.checked);
+                    persistRememberedEmail(email, event.target.checked);
+                  }}
+                />
+                记住账号
+              </label>
+              <a href="/contact">忘记密码？</a>
+            </div>
+            {status === 'error' && errorKind && (
+              <p className={styles.error} role="alert">
+                {getErrorMessage(errorKind)}
+              </p>
+            )}
+            {notice && (
+              <p className={styles.message} role="status">
+                {notice}
+              </p>
+            )}
+            <button
+              className={styles.primary}
+              type="submit"
+              disabled={status === 'submitting' || offline}
+              aria-busy={status === 'submitting'}
+            >
+              {status === 'submitting' ? '正在登录…' : offline ? '离线，无法登录' : '进入系统'}
+              <Icon name="arrowRight" width={18} height={18} />
+            </button>
+          </form>
+          <p className={styles.hint}>记住账号仅在此设备保存登录信息，不保存密码。</p>
+          {testAccounts.status === 'loading' && (
+            <p className={styles.hint} role="status">
+              正在读取快捷账号…
+            </p>
+          )}
+          {testAccounts.status === 'error' && (
+            <div className={styles.shortcuts} role="status">
+              快捷账号暂不可用。
               <button
                 type="button"
-                className="login-password-toggle"
-                aria-label={showPassword ? '隐藏密码' : '显示密码'}
-                aria-pressed={showPassword}
-                onClick={() => setShowPassword((value) => !value)}
+                disabled={offline}
+                onClick={() => setTestAccountRetry((value) => value + 1)}
               >
-                {showPassword ? '隐藏' : '显示'}
+                重试
               </button>
-            </span>
-          </label>
-
-          <label className="login-remember">
-            <input
-              type="checkbox"
-              name="rememberAccount"
-              checked={rememberAccount}
-              onChange={(event) => {
-                setRememberAccount(event.target.checked);
-                persistRememberedEmail(email, event.target.checked);
-              }}
-            />
-            <span>记住账号（仅在本机保存邮箱，不保存密码）</span>
-          </label>
-
-          {status === 'error' && errorKind ? (
-            <p className="login-error" role="alert">
-              {getErrorMessage(errorKind)}
-            </p>
-          ) : null}
-
-          {notice ? (
-            <p className="login-notice" role="status">
-              {notice}
-            </p>
-          ) : null}
-
-          <button
-            className="login-submit"
-            disabled={status === 'submitting' || offline}
-            type="submit"
-            aria-busy={status === 'submitting'}
-          >
-            {status === 'submitting' ? '登录中…' : offline ? '离线，无法登录' : '进入系统'}
-          </button>
-        </form>
-
-        <p className="login-forgot">
-          忘记密码？请联系班主任或学校管理员重置。
-        </p>
-
-        {testAccounts.status === 'loading' ? <p className="login-muted" role="status">正在读取快捷账号…</p> : null}
-        {testAccounts.status === 'error' ? <p className="login-muted" role="status">
-          快捷账号暂不可用。<button type="button" disabled={offline} onClick={() => setTestAccountRetry(value => value + 1)}>重试</button>
-        </p> : null}
-        {testAccounts.status === 'ready' && testAccounts.accounts.length > 0 ? (
-          <section className="login-demo" aria-labelledby="test-account-title">
-            <h3 id="test-account-title" className="login-demo-title">账号快捷填充</h3>
-            <div className="login-demo-buttons">
-              {testAccounts.accounts.map(account => (
-                <button key={account.role} type="button" disabled={offline || status === 'submitting'} onClick={() => {
-                  setRole(account.role);
-                  setEmail(account.email);
-                  setPassword(account.password);
-                  setShowPassword(false);
-                  setErrorKind(null);
-                  setStatus('idle');
-                  setNotice('账号与密码已填入，点击“进入系统”登录。');
-                  persistRememberedEmail(account.email, rememberAccount);
-                }}>{ROLE_OPTIONS.find(option => option.role === account.role)?.label}账号</button>
-              ))}
             </div>
-            <p className="login-demo-note">点击按钮填入账号和密码，再点击“进入系统”。密码不会保存在本机。</p>
-          </section>
-        ) : null}
-
-        <p className="login-account-note">
-          使用学校或机构发放的账号登录。没有账号？请联系学校管理员，或<a href="/contact">联系启途团队</a>。
-        </p>
-      </section>
-    </main>
+          )}
+          {testAccounts.status === 'ready' && testAccounts.accounts.length > 0 && (
+            <details className={styles.shortcuts}>
+              <summary>账号快捷填充</summary>
+              <div>
+                {testAccounts.accounts.map((account) => (
+                  <button
+                    key={account.role}
+                    type="button"
+                    disabled={offline || status === 'submitting'}
+                    onClick={() => {
+                      setRole(account.role);
+                      setEmail(account.email);
+                      setPassword(account.password);
+                      setShowPassword(false);
+                      setErrorKind(null);
+                      setStatus('idle');
+                      setNotice('账号与密码已填入，点击“进入系统”登录。');
+                      persistRememberedEmail(account.email, rememberAccount);
+                    }}
+                  >
+                    {ROLE_OPTIONS.find((option) => option.role === account.role)?.label}账号
+                  </button>
+                ))}
+              </div>
+              <p>点击填入登录信息，密码不会保存在本机。</p>
+            </details>
+          )}
+          <div className={styles.alternate}>
+            <span>还没有账号？</span>
+            <button
+              type="button"
+              disabled={status === 'submitting'}
+              onClick={() => showRegistration(true)}
+            >
+              创建个人账号
+            </button>
+          </div>
+        </>
+      )}
+    </AuthFrame>
   );
 }

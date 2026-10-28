@@ -386,6 +386,20 @@
       "when": 1793001600000,
       "tag": "0054_business_operations",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1793029800000,
+      "tag": "0055_phone_registration",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1793199600000,
+      "tag": "0056_company_commerce",
+      "breakpoints": true
     }
   ]
 }

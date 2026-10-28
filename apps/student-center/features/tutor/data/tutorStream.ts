@@ -31,6 +31,7 @@ export const TUTOR_STREAM_PATH = (sessionId: string) =>
   `/api/v1/tutor/sessions/${encodeURIComponent(sessionId)}/stream`;
 
 export interface TutorStreamRequest {
+  learningReply?: import('@qitu/contracts').TutorLearningReplyScope;
   projectId?: string;
   sessionId?: string;
   content?: string;

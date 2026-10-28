@@ -30,6 +30,7 @@ import { assertTemplateTeachingContent } from '../modules/templates/templates.co
 import { WAVE_OPTICS_TEMPLATE_SLUG, WAVE_OPTICS_BOOTSTRAP_KEY, WAVE_OPTICS_TEMPLATE_INPUT,
   WAVE_OPTICS_VERSION_INPUT } from '../modules/templates/content/wave-optics';
 import { WAVE_TEACHING_TEMPLATE_SLUG, WAVE_TEACHING_BOOTSTRAP_KEY, WAVE_TEACHING_TEMPLATE_INPUT, WAVE_TEACHING_VERSION_INPUT } from '../modules/templates/content/wave-teaching';
+import { WAVE_DIALOGUE_TEMPLATE_SLUG, WAVE_DIALOGUE_BOOTSTRAP_KEY, WAVE_DIALOGUE_TEMPLATE_INPUT, WAVE_DIALOGUE_VERSION_INPUT } from '../modules/templates/content/wave-dialogue';
 import type {
   ProjectTemplateRecord,
   ProjectTemplateVersionRecord,
@@ -49,10 +50,10 @@ import type {
  * 绑定（先查 active，再 `listBindings` 去重）。
  *
  * 发布 / 验证**永远拒绝**：脚本不调用 `publishVersion` / `verifyVersion`，
- * 由操作员按 `docs/pedagogy/optics-pbl.md` 跑完整证据门。
+ * 由操作员按 `Plan/pedagogy/optics-pbl.md` 跑完整证据门。
  */
 
-const RUNBOOK_POINTER = '见 docs/pedagogy/optics-pbl.md「发布与验证」章节';
+const RUNBOOK_POINTER = '见 Plan/pedagogy/optics-pbl.md「发布与验证」章节';
 
 export class OpticsBootstrapError extends Error {
   constructor(message: string) {
@@ -69,6 +70,7 @@ export interface OpticsBootstrapDeps {
 }
 
 export interface OpticsBootstrapArgs {
+  dialogue?: boolean;
   zeroBase?: boolean;
   waveOptics?: boolean;
   guidedLessons?: boolean;
@@ -99,12 +101,13 @@ export async function runOpticsTemplateBootstrap(
   deps: OpticsBootstrapDeps,
   args: OpticsBootstrapArgs,
 ): Promise<OpticsBootstrapReport> {
+  if (args.dialogue && (args.zeroBase || args.waveOptics || args.guidedLessons || args.qualityReview)) throw new OpticsBootstrapError('问答版本须独立选择');
   if ((args.waveOptics || args.zeroBase) && (args.guidedLessons || args.qualityReview)) throw new OpticsBootstrapError('波动专题不能与旧课程版本类型混用');
-  const slug = args.zeroBase ? WAVE_TEACHING_TEMPLATE_SLUG : args.waveOptics ? WAVE_OPTICS_TEMPLATE_SLUG : args.guidedLessons ? OPTICS_GUIDED_TEMPLATE_SLUG : args.qualityReview ? OPTICS_16_QUALITY_TEMPLATE_SLUG : OPTICS_16_COMPLETION_TEMPLATE_SLUG;
-  const templateInput = args.zeroBase ? WAVE_TEACHING_TEMPLATE_INPUT : args.waveOptics ? WAVE_OPTICS_TEMPLATE_INPUT : args.guidedLessons ? OPTICS_GUIDED_TEMPLATE_INPUT : args.qualityReview ? OPTICS_16_QUALITY_TEMPLATE_INPUT : OPTICS_16_COMPLETION_TEMPLATE_INPUT;
-  const versionInput = args.zeroBase ? WAVE_TEACHING_VERSION_INPUT : args.waveOptics ? WAVE_OPTICS_VERSION_INPUT : args.guidedLessons ? OPTICS_GUIDED_VERSION_INPUT : args.qualityReview ? OPTICS_16_QUALITY_VERSION_INPUT : OPTICS_16_COMPLETION_VERSION_INPUT;
-  const bootstrapKey = args.zeroBase ? WAVE_TEACHING_BOOTSTRAP_KEY : args.waveOptics ? WAVE_OPTICS_BOOTSTRAP_KEY : args.guidedLessons ? OPTICS_GUIDED_BOOTSTRAP_KEY : args.qualityReview ? OPTICS_16_QUALITY_BOOTSTRAP_KEY : OPTICS_16_COMPLETION_BOOTSTRAP_KEY;
-  const keyPrefix = args.zeroBase ? 'wave8-zero-base-bootstrap-v2' : args.waveOptics ? 'wave8-bootstrap' : args.guidedLessons ? 'optics16-guided-bootstrap' : args.qualityReview ? 'optics16-quality-bootstrap' : 'optics16-completion-bootstrap';
+  const slug = args.dialogue ? WAVE_DIALOGUE_TEMPLATE_SLUG : args.zeroBase ? WAVE_TEACHING_TEMPLATE_SLUG : args.waveOptics ? WAVE_OPTICS_TEMPLATE_SLUG : args.guidedLessons ? OPTICS_GUIDED_TEMPLATE_SLUG : args.qualityReview ? OPTICS_16_QUALITY_TEMPLATE_SLUG : OPTICS_16_COMPLETION_TEMPLATE_SLUG;
+  const templateInput = args.dialogue ? WAVE_DIALOGUE_TEMPLATE_INPUT : args.zeroBase ? WAVE_TEACHING_TEMPLATE_INPUT : args.waveOptics ? WAVE_OPTICS_TEMPLATE_INPUT : args.guidedLessons ? OPTICS_GUIDED_TEMPLATE_INPUT : args.qualityReview ? OPTICS_16_QUALITY_TEMPLATE_INPUT : OPTICS_16_COMPLETION_TEMPLATE_INPUT;
+  const versionInput = args.dialogue ? WAVE_DIALOGUE_VERSION_INPUT : args.zeroBase ? WAVE_TEACHING_VERSION_INPUT : args.waveOptics ? WAVE_OPTICS_VERSION_INPUT : args.guidedLessons ? OPTICS_GUIDED_VERSION_INPUT : args.qualityReview ? OPTICS_16_QUALITY_VERSION_INPUT : OPTICS_16_COMPLETION_VERSION_INPUT;
+  const bootstrapKey = args.dialogue ? WAVE_DIALOGUE_BOOTSTRAP_KEY : args.zeroBase ? WAVE_TEACHING_BOOTSTRAP_KEY : args.waveOptics ? WAVE_OPTICS_BOOTSTRAP_KEY : args.guidedLessons ? OPTICS_GUIDED_BOOTSTRAP_KEY : args.qualityReview ? OPTICS_16_QUALITY_BOOTSTRAP_KEY : OPTICS_16_COMPLETION_BOOTSTRAP_KEY;
+  const keyPrefix = args.dialogue ? 'wave8-dialogue-bootstrap-v1' : args.zeroBase ? 'wave8-zero-base-bootstrap-v2' : args.waveOptics ? 'wave8-bootstrap' : args.guidedLessons ? 'optics16-guided-bootstrap' : args.qualityReview ? 'optics16-quality-bootstrap' : 'optics16-completion-bootstrap';
   assertOpticsTemplateStructure();
   assertTemplateTeachingContent(versionInput.content ?? {}, versionInput.stages);
 
@@ -240,7 +243,7 @@ async function ensureActiveBinding(
   version: ProjectTemplateVersionRecord,
   steps: OpticsBootstrapStep[],
 ): Promise<string> {
-  const keyPrefix = args.zeroBase ? 'wave8-zero-base-bootstrap-v2' : args.waveOptics ? 'wave8-bootstrap' : args.guidedLessons ? 'optics16-guided-bootstrap' : args.qualityReview ? 'optics16-quality-bootstrap' : 'optics16-completion-bootstrap';
+  const keyPrefix = args.dialogue ? 'wave8-dialogue-bootstrap-v1' : args.zeroBase ? 'wave8-zero-base-bootstrap-v2' : args.waveOptics ? 'wave8-bootstrap' : args.guidedLessons ? 'optics16-guided-bootstrap' : args.qualityReview ? 'optics16-quality-bootstrap' : 'optics16-completion-bootstrap';
   const active = await deps.bindingStore.findActiveBinding(version.id);
   if (active !== null) {
     if (active.teamVersionId === args.teamVersionId) {
@@ -337,6 +340,7 @@ async function ensureActiveBinding(
 
 interface CliArgs {
   zeroBase: boolean;
+  dialogue: boolean;
   waveOptics: boolean;
   guidedLessons: boolean;
   qualityReview: boolean;
@@ -350,6 +354,7 @@ interface CliArgs {
 function parseCliArgs(argv: string[]): CliArgs {
   const out: CliArgs = {
     zeroBase: false,
+    dialogue: false,
     waveOptics: false,
     guidedLessons: false,
     qualityReview: false,
@@ -362,6 +367,7 @@ function parseCliArgs(argv: string[]): CliArgs {
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === '--zero-base') out.zeroBase = true;
+    else if (arg === '--dialogue') out.dialogue = true;
     if (arg === '--wave-optics') out.waveOptics = true;
     if (arg === '--guided-lessons') out.guidedLessons = true;
     if (arg === '--quality-review') out.qualityReview = true;
@@ -424,6 +430,7 @@ async function main(): Promise<void> {
       { teamVersionId: capturedTeam.id, capturedTeam, actor, pilotReason: cli.pilotReason,
         waveOptics: cli.waveOptics,
         zeroBase: cli.zeroBase,
+        dialogue: cli.dialogue,
         qualityReview: cli.qualityReview,
         guidedLessons: cli.guidedLessons,
         ...(cli.teachingBundleFile ? { teachingBundle: JSON.parse(readFileSync(cli.teachingBundleFile, 'utf8')) } : {}) },

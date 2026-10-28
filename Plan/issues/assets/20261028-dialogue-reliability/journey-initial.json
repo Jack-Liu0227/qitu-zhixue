@@ -1,0 +1,2700 @@
+{
+  "startedAt": "2026-10-28T12:33:23.516Z",
+  "target": "http://122.51.130.204",
+  "requests": [
+    {
+      "at": "2026-10-28T13:14:21.641Z",
+      "path": "/api/v1/public/account-registration",
+      "method": "POST",
+      "status": 201
+    },
+    {
+      "at": "2026-10-28T13:14:23.597Z",
+      "path": "/api/v1/auth/login",
+      "method": "POST",
+      "status": 201
+    },
+    {
+      "at": "2026-10-28T13:14:27.756Z",
+      "path": "/api/v1/explorations",
+      "method": "POST",
+      "status": 201
+    },
+    {
+      "at": "2026-10-28T13:14:27.799Z",
+      "path": "/api/v1/explorations/exp-a04b077e-2d92-4bd8-a33f-c2cbcb33290b",
+      "method": "PATCH",
+      "status": 200
+    },
+    {
+      "at": "2026-10-28T13:14:27.888Z",
+      "path": "/api/v1/explorations/exp-a04b077e-2d92-4bd8-a33f-c2cbcb33290b/confirm-intent",
+      "method": "POST",
+      "status": 201
+    },
+    {
+      "at": "2026-10-28T13:14:55.318Z",
+      "path": "/api/v1/tutor/sessions/session-proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683/stream",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "at": "2026-10-28T13:15:31.011Z",
+      "path": "/api/v1/tutor/sessions/session-proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683/stream",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "at": "2026-10-28T13:15:53.642Z",
+      "path": "/api/v1/tutor/sessions/session-proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683/stream",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "at": "2026-10-28T13:17:10.808Z",
+      "path": "/api/v1/tutor/projects/proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683/lesson/assessment",
+      "method": "POST",
+      "status": 201
+    },
+    {
+      "at": "2026-10-28T13:17:16.535Z",
+      "path": "/api/v1/tutor/sessions/session-proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683/stream",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "at": "2026-10-28T13:17:32.665Z",
+      "path": "/api/v1/tutor/sessions/session-proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683/stream",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "at": "2026-10-28T13:17:42.878Z",
+      "path": "/api/v1/tutor/projects/proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683/lesson/assessment",
+      "method": "POST",
+      "status": 201
+    },
+    {
+      "at": "2026-10-28T13:17:48.940Z",
+      "path": "/api/v1/tutor/sessions/session-proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683/stream",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "at": "2026-10-28T13:17:59.623Z",
+      "path": "/api/v1/tutor/projects/proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683/lesson/assessment",
+      "method": "POST",
+      "status": 201
+    },
+    {
+      "at": "2026-10-28T13:18:03.967Z",
+      "path": "/api/v1/tutor/sessions/session-proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683/stream",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "at": "2026-10-28T13:18:13.738Z",
+      "path": "/api/v1/tutor/projects/proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683/lesson/assessment",
+      "method": "POST",
+      "status": 201
+    },
+    {
+      "at": "2026-10-28T13:18:18.027Z",
+      "path": "/api/v1/tutor/sessions/session-proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683/stream",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "at": "2026-10-28T13:18:47.365Z",
+      "path": "/api/v1/tutor/sessions/session-proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683/interactive/experiments/optics-36bc98c513341e4b68ba66e1c16e909c/action",
+      "method": "POST",
+      "status": 201
+    },
+    {
+      "at": "2026-10-28T13:18:49.378Z",
+      "path": "/api/v1/tutor/sessions/session-proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683/interactive/experiments/optics-36bc98c513341e4b68ba66e1c16e909c/action",
+      "method": "POST",
+      "status": 201
+    },
+    {
+      "at": "2026-10-28T13:18:55.109Z",
+      "path": "/api/v1/tutor/sessions/session-proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683/interactive/experiments/optics-36bc98c513341e4b68ba66e1c16e909c/action",
+      "method": "POST",
+      "status": 201
+    },
+    {
+      "at": "2026-10-28T13:19:05.064Z",
+      "path": "/api/v1/tutor/sessions/session-proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683/stream",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "at": "2026-10-28T13:19:21.367Z",
+      "path": "/api/v1/tutor/sessions/session-proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683/interactive/experiments/optics-62a9592156d91868dd2ae9fa69153032/action",
+      "method": "POST",
+      "status": 201
+    },
+    {
+      "at": "2026-10-28T13:19:23.426Z",
+      "path": "/api/v1/tutor/sessions/session-proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683/interactive/experiments/optics-62a9592156d91868dd2ae9fa69153032/action",
+      "method": "POST",
+      "status": 201
+    },
+    {
+      "at": "2026-10-28T13:19:29.166Z",
+      "path": "/api/v1/tutor/sessions/session-proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683/interactive/experiments/optics-62a9592156d91868dd2ae9fa69153032/action",
+      "method": "POST",
+      "status": 201
+    },
+    {
+      "at": "2026-10-28T13:19:37.661Z",
+      "path": "/api/v1/tutor/sessions/session-proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683/interactive/experiments/optics-62a9592156d91868dd2ae9fa69153032/action",
+      "method": "POST",
+      "status": 201
+    },
+    {
+      "at": "2026-10-28T13:19:43.195Z",
+      "path": "/api/v1/tutor/sessions/session-proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683/interactive/experiments/optics-62a9592156d91868dd2ae9fa69153032/action",
+      "method": "POST",
+      "status": 201
+    },
+    {
+      "at": "2026-10-28T13:19:56.213Z",
+      "path": "/api/v1/tutor/sessions/session-proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683/stream",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "at": "2026-10-28T13:20:13.382Z",
+      "path": "/api/v1/tutor/sessions/session-proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683/interactive/experiments/optics-a6de9bbfa53448b8efdbaced7aa6c414/action",
+      "method": "POST",
+      "status": 201
+    },
+    {
+      "at": "2026-10-28T13:20:15.396Z",
+      "path": "/api/v1/tutor/sessions/session-proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683/interactive/experiments/optics-a6de9bbfa53448b8efdbaced7aa6c414/action",
+      "method": "POST",
+      "status": 201
+    },
+    {
+      "at": "2026-10-28T13:20:20.863Z",
+      "path": "/api/v1/tutor/sessions/session-proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683/interactive/experiments/optics-a6de9bbfa53448b8efdbaced7aa6c414/action",
+      "method": "POST",
+      "status": 201
+    },
+    {
+      "at": "2026-10-28T13:20:32.289Z",
+      "path": "/api/v1/tutor/sessions/session-proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683/stream",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "at": "2026-10-28T13:20:48.510Z",
+      "path": "/api/v1/tutor/sessions/session-proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683/interactive/experiments/optics-2f6c8d30e3f1a8f815e0a2e58c5499ac/action",
+      "method": "POST",
+      "status": 201
+    },
+    {
+      "at": "2026-10-28T13:20:50.541Z",
+      "path": "/api/v1/tutor/sessions/session-proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683/interactive/experiments/optics-2f6c8d30e3f1a8f815e0a2e58c5499ac/action",
+      "method": "POST",
+      "status": 201
+    },
+    {
+      "at": "2026-10-28T13:20:56.643Z",
+      "path": "/api/v1/tutor/sessions/session-proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683/interactive/experiments/optics-2f6c8d30e3f1a8f815e0a2e58c5499ac/action",
+      "method": "POST",
+      "status": 201
+    },
+    {
+      "at": "2026-10-28T13:21:02.724Z",
+      "path": "/api/v1/tutor/sessions/session-proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683/interactive/experiments/optics-2f6c8d30e3f1a8f815e0a2e58c5499ac/action",
+      "method": "POST",
+      "status": 201
+    },
+    {
+      "at": "2026-10-28T13:21:08.717Z",
+      "path": "/api/v1/tutor/sessions/session-proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683/interactive/experiments/optics-2f6c8d30e3f1a8f815e0a2e58c5499ac/action",
+      "method": "POST",
+      "status": 201
+    },
+    {
+      "at": "2026-10-28T13:22:01.500Z",
+      "path": "/api/v1/tutor/sessions/session-proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683/stream",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "at": "2026-10-28T13:26:06.956Z",
+      "path": "/api/v1/learning-plans/plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60/sessions/plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60%3Awave-dialogue-session-8/artifacts",
+      "method": "POST",
+      "status": 201
+    },
+    {
+      "at": "2026-10-28T13:26:07.616Z",
+      "path": "/api/v1/projects/proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683/reconcile-learning",
+      "method": "POST",
+      "status": 201
+    },
+    {
+      "at": "2026-10-28T13:29:51.278Z",
+      "path": "/api/v1/learning-plans/plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60/sessions/plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60%3Awave-dialogue-session-8/artifacts",
+      "method": "POST",
+      "status": 409
+    },
+    {
+      "at": "2026-10-28T13:32:53.084Z",
+      "path": "/api/v1/tutor/sessions/session-proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683/stream",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "at": "2026-10-28T13:36:46.578Z",
+      "path": "/api/v1/explorations",
+      "method": "POST",
+      "status": 201
+    },
+    {
+      "at": "2026-10-28T13:36:46.626Z",
+      "path": "/api/v1/explorations/exp-3bca2939-e75f-4a4d-9ca5-68c6f3f24eae",
+      "method": "PATCH",
+      "status": 200
+    },
+    {
+      "at": "2026-10-28T13:36:46.737Z",
+      "path": "/api/v1/explorations/exp-3bca2939-e75f-4a4d-9ca5-68c6f3f24eae/confirm-intent",
+      "method": "POST",
+      "status": 201
+    }
+  ],
+  "pageErrors": [],
+  "steps": [
+    {
+      "lesson": 1,
+      "case": "help",
+      "at": "2026-10-28T13:15:28.911Z",
+      "completed": 0,
+      "submissions": 0
+    },
+    {
+      "lesson": 1,
+      "case": "insufficient-response",
+      "at": "2026-10-28T13:15:45.897Z",
+      "completed": 0,
+      "evidence": {
+        "submissions": [
+          {
+            "activityId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-1:activity:check",
+            "kind": "session_response",
+            "ref": "task_submission:learning-6029f22a177b9670c91cab26c9f066ca0447f9b6bc55679932d54d42dc922fc6",
+            "scope": {
+              "projectId": "proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683",
+              "planId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60",
+              "planRevision": 1,
+              "learningSessionId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-1",
+              "objectiveIds": [
+                "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-question"
+              ]
+            },
+            "objectiveId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-question",
+            "sourceKind": "task_submission",
+            "artifactId": "art-cea9d413-8524-4f82-a302-fb03d045f1ca",
+            "artifactVersionId": "artv-6b998f61-db33-4159-a739-14ffc6f53b80",
+            "quality": {
+              "status": "needs_revision",
+              "subjectDigest": "68048b1bff9fc24a239a11606ca6bdcbc77a2b6b0ae280ce56a155345bc49876",
+              "feedback": [
+                {
+                  "criterionId": "wave-dialogue-1-extension",
+                  "meets": false,
+                  "feedback": "本次没有尝试另一种表示，也没有提出后续探究问题。可以补充一种表示（如用示意图或表格对照两种图样的条纹间距、亮度分布），并提出一个后续可探究的问题，如“改变缝距时双缝条纹间距如何变化？”。"
+                },
+                {
+                  "criterionId": "wave-dialogue-1-necessary",
+                  "meets": false,
+                  "feedback": "你的回答没有先描述单缝和双缝图样，也没有提出可以比较的问题，而且“完全一样、没有差别”与两种图样的实际区别不符。建议先分别写出你看到的单缝图样（例如中央亮纹宽、两侧亮纹较窄较暗）和双缝图样（例如等间距的明暗条纹），再用一句话提出可比较的问题，如“单缝和双缝的条纹间距随缝数或缝距怎样变化？”。"
+                }
+              ]
+            }
+          }
+        ],
+        "observations": [],
+        "reflections": [],
+        "approved": []
+      }
+    },
+    {
+      "lesson": 1,
+      "case": "corrected-response",
+      "at": "2026-10-28T13:16:08.186Z",
+      "completed": 1,
+      "stage": "theory_check"
+    },
+    {
+      "lesson": 2,
+      "case": "fresh-theory-entry",
+      "at": "2026-10-28T13:17:09.795Z",
+      "stage": "theory_check",
+      "gate": {
+        "phaseId": "concept_mastery",
+        "orderIndex": 1,
+        "name": "概念奠基",
+        "assignedAssistantName": "光学原理与概念教练",
+        "assignedRole": "coach",
+        "gateRule": "TheoryMastered",
+        "requiresGateApproval": true,
+        "gateStatus": "pending",
+        "status": "active",
+        "requiredDeliverables": []
+      }
+    },
+    {
+      "lesson": 2,
+      "case": "help-preserves-pending",
+      "at": "2026-10-28T13:17:27.739Z",
+      "questionId": "q-plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-ready-superposition-0",
+      "completed": 1,
+      "submissions": 0
+    },
+    {
+      "lesson": 2,
+      "case": "deliberate-incorrect-choice",
+      "at": "2026-10-28T13:17:43.089Z",
+      "completed": 1,
+      "nextStep": {
+        "action": "answer_pending",
+        "objectiveId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-ready-superposition",
+        "knowledgeType": "concept",
+        "status": "new",
+        "gate": "qualitative",
+        "mastery": 0,
+        "threshold": 0.9,
+        "reason": "有一道题已下发，等待作答",
+        "theoryMastered": false,
+        "practiceUnlocked": false,
+        "question": {
+          "questionId": "q-plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-ready-superposition-1",
+          "prompt": "用示意波理解叠加：两列同频波在某点的波幅大小都是 1 个示意单位，方向相反。该点合成波幅如何？这里讨论波幅，不是光强。",
+          "questionType": "choice",
+          "options": [
+            {
+              "id": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-ready-superposition:option:1:0",
+              "label": "A",
+              "body": "合成波幅为 2 个示意单位"
+            },
+            {
+              "id": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-ready-superposition:option:1:1",
+              "label": "B",
+              "body": "合成波幅为 0 个示意单位"
+            },
+            {
+              "id": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-ready-superposition:option:1:2",
+              "label": "C",
+              "body": "合成波幅为 1 个示意单位"
+            },
+            {
+              "id": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-ready-superposition:option:1:3",
+              "label": "D",
+              "body": "光强变成负数"
+            }
+          ],
+          "allowFreeText": true,
+          "attempt": 2
+        }
+      }
+    },
+    {
+      "lesson": 3,
+      "case": "simulation-complete",
+      "at": "2026-10-28T13:19:01.654Z",
+      "before": {
+        "stage": "practice_building",
+        "lesson": 3,
+        "title": "双缝为什么出现明暗？",
+        "completed": 2,
+        "activity": {
+          "activityId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-3:activity:practice",
+          "kind": "practice",
+          "evidence": "experiment_observation",
+          "status": "current",
+          "guidance": "先预测再使用本课注册模型；一次只改一个变量，保存参数和模拟观察，不写成实测。 本活动需保存 1 条通过评价的独立观察记录，当前 0 / 1 条。请完成不同参数下的观察并分别保存；同一记录中描述多次运行仍计为一条。",
+          "minutes": 25,
+          "evidenceRefs": []
+        },
+        "pendingQuestionId": null,
+        "evidence": {
+          "submissions": [],
+          "observations": [],
+          "reflections": [],
+          "approved": []
+        }
+      },
+      "after": {
+        "stage": "practice_building",
+        "lesson": 4,
+        "title": "怎样改变干涉条纹间距？",
+        "completed": 3,
+        "activity": {
+          "activityId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-4:activity:practice",
+          "kind": "practice",
+          "evidence": "experiment_observation",
+          "status": "current",
+          "guidance": "先预测再使用本课注册模型；一次只改一个变量，保存参数和模拟观察，不写成实测。 本活动需保存 2 条通过评价的独立观察记录，当前 0 / 2 条。请完成不同参数下的观察并分别保存；同一记录中描述多次运行仍计为一条。",
+          "minutes": 25,
+          "evidenceRefs": []
+        },
+        "pendingQuestionId": null,
+        "evidence": {
+          "submissions": [],
+          "observations": [],
+          "reflections": [],
+          "approved": []
+        }
+      },
+      "evidence": {
+        "submissions": [],
+        "observations": [
+          {
+            "kind": "experiment_observation",
+            "ref": "experiment_observation:obs-fa950d2fd9106c9c45eb34bc070ff966",
+            "scope": {
+              "projectId": "proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683",
+              "planId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60",
+              "planRevision": 1,
+              "learningSessionId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-3",
+              "objectiveIds": [
+                "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-double-paths"
+              ]
+            },
+            "objectiveId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-double-paths",
+            "sourceKind": "experiment_observation",
+            "parameterDigest": "f03b982adb8f22ea83f81f21132d0081351d649f0b51e424997d43282683169f",
+            "activityId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-3:activity:practice",
+            "quality": {
+              "status": "accepted",
+              "subjectDigest": "570a35a223a5177e531183fc854c46e7df7bca13b90d6515338768a931179590",
+              "feedback": [
+                {
+                  "criterionId": "wave-dialogue-3-extension",
+                  "meets": false,
+                  "feedback": "可选提升：可再补充一种表示（如用相位差随位置变化的示意图或伪代码）说明条纹位置，或提出一个后续探究问题，例如固定d和λ只改a时，中央亮带宽度与细纹间距分别怎样变化。"
+                },
+                {
+                  "criterionId": "wave-dialogue-3-necessary",
+                  "meets": true,
+                  "feedback": "本轮模拟观察明确连接两条路径与相位：中央光程差为0、同相成亮，光程差为半波长时相消成暗；并区分d为缝中心间距、a为单缝宽，给出λ=550nm、a=20μm、d=150μm、L=2m下的中央亮带宽与细纹间距，说明依据和单位，符合当前观察核对要求。"
+                }
+              ]
+            }
+          }
+        ],
+        "approvedArtifacts": [],
+        "reflections": [],
+        "scope": {
+          "projectId": "proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683",
+          "planId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60",
+          "planRevision": 1,
+          "learningSessionId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-3",
+          "objectiveIds": [
+            "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-double-paths"
+          ]
+        },
+        "sessionType": "practice",
+        "allowedActions": [
+          "respond",
+          "submit_artifact"
+        ],
+        "qualityCriteria": [
+          {
+            "id": "wave-dialogue-3-necessary",
+            "required": true,
+            "description": "连接两条路径、到达相位与明暗位置，区分缝间距和缝宽。"
+          },
+          {
+            "id": "wave-dialogue-3-extension",
+            "required": false,
+            "description": "尝试另一种表示或提出一个后续探究问题；此项仅作提升建议。"
+          }
+        ]
+      }
+    },
+    {
+      "lesson": 4,
+      "case": "simulation-complete",
+      "at": "2026-10-28T13:19:50.899Z",
+      "before": {
+        "stage": "practice_building",
+        "lesson": 4,
+        "title": "怎样改变干涉条纹间距？",
+        "completed": 3,
+        "activity": {
+          "activityId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-4:activity:practice",
+          "kind": "practice",
+          "evidence": "experiment_observation",
+          "status": "current",
+          "guidance": "先预测再使用本课注册模型；一次只改一个变量，保存参数和模拟观察，不写成实测。 本活动需保存 2 条通过评价的独立观察记录，当前 0 / 2 条。请完成不同参数下的观察并分别保存；同一记录中描述多次运行仍计为一条。",
+          "minutes": 25,
+          "evidenceRefs": []
+        },
+        "pendingQuestionId": null,
+        "evidence": {
+          "submissions": [],
+          "observations": [],
+          "reflections": [],
+          "approved": []
+        }
+      },
+      "after": {
+        "stage": "practice_building",
+        "lesson": 5,
+        "title": "一条缝为什么仍有条纹？",
+        "completed": 4,
+        "activity": {
+          "activityId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-5:activity:practice",
+          "kind": "practice",
+          "evidence": "experiment_observation",
+          "status": "current",
+          "guidance": "先预测再使用本课注册模型；一次只改一个变量，保存参数和模拟观察，不写成实测。 本活动需保存 1 条通过评价的独立观察记录，当前 0 / 1 条。请完成不同参数下的观察并分别保存；同一记录中描述多次运行仍计为一条。",
+          "minutes": 25,
+          "evidenceRefs": []
+        },
+        "pendingQuestionId": null,
+        "evidence": {
+          "submissions": [],
+          "observations": [],
+          "reflections": [],
+          "approved": []
+        }
+      },
+      "evidence": {
+        "submissions": [],
+        "observations": [
+          {
+            "kind": "experiment_observation",
+            "ref": "experiment_observation:obs-af52a083bc73a6051ddfd2aaf1bb65d3",
+            "scope": {
+              "projectId": "proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683",
+              "planId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60",
+              "planRevision": 1,
+              "learningSessionId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-4",
+              "objectiveIds": [
+                "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-double-compare"
+              ]
+            },
+            "objectiveId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-double-compare",
+            "sourceKind": "experiment_observation",
+            "parameterDigest": "f03b982adb8f22ea83f81f21132d0081351d649f0b51e424997d43282683169f",
+            "activityId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-4:activity:practice",
+            "quality": {
+              "status": "accepted",
+              "subjectDigest": "8039fe1f1380cab5b5688a092046adf15a30084ec89ac8360e0fff73a390b70d",
+              "feedback": [
+                {
+                  "criterionId": "wave-dialogue-4-extension",
+                  "meets": false,
+                  "feedback": "可选提升建议：可在完成d加倍观察后，进一步比较只改波长（如改用650 nm）或只改屏距L的图样，并用细纹间距公式说明变化趋势；也可尝试用公式或图表表示间距与d、L、λ的关系，并提出一个后续探究问题。"
+                },
+                {
+                  "criterionId": "wave-dialogue-4-necessary",
+                  "meets": true,
+                  "feedback": "学生给出了已运行的模拟观察记录：参数齐全并带单位（λ=550 nm、a=20 μm、d=150 μm、L=2 m），记录了中央亮带宽110.04 mm和细纹间距7.33 mm，说明了光程差与明暗的关系，并明确这是模拟观察而非真实测量。同时记录了下一步只改缝间距d、预测细纹间距随d加倍而减半，符合“先只改缝间距，再按需比较、记录预测与结果”的目标。"
+                }
+              ]
+            }
+          },
+          {
+            "kind": "experiment_observation",
+            "ref": "experiment_observation:obs-06ea88ec98ad9efdbab491a1498f18af",
+            "scope": {
+              "projectId": "proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683",
+              "planId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60",
+              "planRevision": 1,
+              "learningSessionId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-4",
+              "objectiveIds": [
+                "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-double-compare"
+              ]
+            },
+            "objectiveId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-double-compare",
+            "sourceKind": "experiment_observation",
+            "parameterDigest": "e1091b9634108d37a4b276dc12ba7b1ca9fe30798f53c93f7aefc7eed30b8a52",
+            "activityId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-4:activity:practice",
+            "quality": {
+              "status": "accepted",
+              "subjectDigest": "4004ae6172d1d741e77d50913ebd4294720a762632530168050222e983fe142f",
+              "feedback": [
+                {
+                  "criterionId": "wave-dialogue-4-extension",
+                  "meets": false,
+                  "feedback": "可选提升建议：可尝试用公式 Δy=λL/d 写出本次与上一组细纹间距的比值关系，或提出一个后续探究问题（如保持 d 不变、改变屏距 L，细纹间距会怎样变化？）。"
+                },
+                {
+                  "criterionId": "wave-dialogue-4-necessary",
+                  "meets": true,
+                  "feedback": "本次观察记录完整：在波长、缝宽、屏距不变时把缝间距由 d=150 改为 300，记录了细纹间距由 7.33mm 变为 3.67mm，并注明是远场单色模型的模拟观察而非真实测量。两组数据只改变指定变量，比较解释符合当前课时目标（下一组只把d加倍，预测细纹间距减半，结果3.67mm约为7.33mm的一半）。"
+                }
+              ]
+            }
+          }
+        ],
+        "approvedArtifacts": [],
+        "reflections": [],
+        "scope": {
+          "projectId": "proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683",
+          "planId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60",
+          "planRevision": 1,
+          "learningSessionId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-4",
+          "objectiveIds": [
+            "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-double-compare"
+          ]
+        },
+        "sessionType": "practice",
+        "allowedActions": [
+          "respond",
+          "submit_artifact"
+        ],
+        "qualityCriteria": [
+          {
+            "id": "wave-dialogue-4-necessary",
+            "required": true,
+            "description": "先只改缝间距，再按需比较波长或屏距，记录预测与结果。"
+          },
+          {
+            "id": "wave-dialogue-4-extension",
+            "required": false,
+            "description": "尝试另一种表示或提出一个后续探究问题；此项仅作提升建议。"
+          }
+        ]
+      }
+    },
+    {
+      "lesson": 5,
+      "case": "simulation-complete",
+      "at": "2026-10-28T13:20:28.708Z",
+      "before": {
+        "stage": "practice_building",
+        "lesson": 5,
+        "title": "一条缝为什么仍有条纹？",
+        "completed": 4,
+        "activity": {
+          "activityId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-5:activity:practice",
+          "kind": "practice",
+          "evidence": "experiment_observation",
+          "status": "current",
+          "guidance": "先预测再使用本课注册模型；一次只改一个变量，保存参数和模拟观察，不写成实测。 本活动需保存 1 条通过评价的独立观察记录，当前 0 / 1 条。请完成不同参数下的观察并分别保存；同一记录中描述多次运行仍计为一条。",
+          "minutes": 25,
+          "evidenceRefs": []
+        },
+        "pendingQuestionId": null,
+        "evidence": {
+          "submissions": [],
+          "observations": [],
+          "reflections": [],
+          "approved": []
+        }
+      },
+      "after": {
+        "stage": "practice_building",
+        "lesson": 6,
+        "title": "缝变窄，图样怎样变化？",
+        "completed": 5,
+        "activity": {
+          "activityId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-6:activity:practice",
+          "kind": "practice",
+          "evidence": "experiment_observation",
+          "status": "current",
+          "guidance": "先预测再使用本课注册模型；一次只改一个变量，保存参数和模拟观察，不写成实测。 本活动需保存 2 条通过评价的独立观察记录，当前 0 / 2 条。请完成不同参数下的观察并分别保存；同一记录中描述多次运行仍计为一条。",
+          "minutes": 25,
+          "evidenceRefs": []
+        },
+        "pendingQuestionId": null,
+        "evidence": {
+          "submissions": [],
+          "observations": [],
+          "reflections": [],
+          "approved": []
+        }
+      },
+      "evidence": {
+        "submissions": [],
+        "observations": [
+          {
+            "kind": "experiment_observation",
+            "ref": "experiment_observation:obs-d4bc5a0871b3f28b7eda4cb9831b9563",
+            "scope": {
+              "projectId": "proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683",
+              "planId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60",
+              "planRevision": 1,
+              "learningSessionId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-5",
+              "objectiveIds": [
+                "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-single-observe"
+              ]
+            },
+            "objectiveId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-single-observe",
+            "sourceKind": "experiment_observation",
+            "parameterDigest": "29be4501d543047e6a979d15de904d5ed857214eb3e11ce6dbdf4dc38f56f9d1",
+            "activityId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-5:activity:practice",
+            "quality": {
+              "status": "accepted",
+              "subjectDigest": "619faa43e61db3a358e0eb1ce7f98d13dc36fa3f8107ab0b8740cc5eb7477aaf",
+              "feedback": [
+                {
+                  "criterionId": "wave-dialogue-5-extension",
+                  "meets": false,
+                  "feedback": "可补充尝试另一种表示（如用光程差或相位差图示）来解释孔径内叠加，或提出一个后续探究问题（例如保持波长和屏距不变仅改变缝宽时中央亮带如何变化）。"
+                },
+                {
+                  "criterionId": "wave-dialogue-5-necessary",
+                  "meets": true,
+                  "feedback": "本次正文给出了模拟观察参数与单位、中央亮带宽度结果，并用单缝内不同位置波叠加、第一暗纹条件解释了中央亮带较宽较亮、两侧较窄较弱的图样；同时说明是远场单色模拟而非真实测量，符合观察活动要求。"
+                }
+              ]
+            }
+          }
+        ],
+        "approvedArtifacts": [],
+        "reflections": [],
+        "scope": {
+          "projectId": "proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683",
+          "planId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60",
+          "planRevision": 1,
+          "learningSessionId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-5",
+          "objectiveIds": [
+            "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-single-observe"
+          ]
+        },
+        "sessionType": "practice",
+        "allowedActions": [
+          "respond",
+          "submit_artifact"
+        ],
+        "qualityCriteria": [
+          {
+            "id": "wave-dialogue-5-necessary",
+            "required": true,
+            "description": "观察中央亮带和两侧条纹，用孔径内波的叠加解释图样。"
+          },
+          {
+            "id": "wave-dialogue-5-extension",
+            "required": false,
+            "description": "尝试另一种表示或提出一个后续探究问题；此项仅作提升建议。"
+          }
+        ]
+      }
+    },
+    {
+      "lesson": 6,
+      "case": "simulation-complete",
+      "at": "2026-10-28T13:21:12.967Z",
+      "before": {
+        "stage": "practice_building",
+        "lesson": 6,
+        "title": "缝变窄，图样怎样变化？",
+        "completed": 5,
+        "activity": {
+          "activityId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-6:activity:practice",
+          "kind": "practice",
+          "evidence": "experiment_observation",
+          "status": "current",
+          "guidance": "先预测再使用本课注册模型；一次只改一个变量，保存参数和模拟观察，不写成实测。 本活动需保存 2 条通过评价的独立观察记录，当前 0 / 2 条。请完成不同参数下的观察并分别保存；同一记录中描述多次运行仍计为一条。",
+          "minutes": 25,
+          "evidenceRefs": []
+        },
+        "pendingQuestionId": null,
+        "evidence": {
+          "submissions": [],
+          "observations": [],
+          "reflections": [],
+          "approved": []
+        }
+      },
+      "after": {
+        "stage": "practice_building",
+        "lesson": 7,
+        "title": "干涉与衍射怎样联系？",
+        "completed": 6,
+        "activity": {
+          "activityId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-7:activity:check",
+          "kind": "check",
+          "evidence": "session_response",
+          "status": "current",
+          "guidance": "直接在对话中给出比较解释，系统自动保存为过程草稿；最后一课再整理并正式交付。",
+          "minutes": 15,
+          "evidenceRefs": []
+        },
+        "pendingQuestionId": null,
+        "evidence": {
+          "submissions": [],
+          "observations": [],
+          "reflections": [],
+          "approved": []
+        }
+      },
+      "evidence": {
+        "submissions": [],
+        "observations": [
+          {
+            "kind": "experiment_observation",
+            "ref": "experiment_observation:obs-18878d27aa8a04af0932f5b4db10dcac",
+            "scope": {
+              "projectId": "proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683",
+              "planId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60",
+              "planRevision": 1,
+              "learningSessionId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-6",
+              "objectiveIds": [
+                "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-single-compare"
+              ]
+            },
+            "objectiveId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-single-compare",
+            "sourceKind": "experiment_observation",
+            "parameterDigest": "29be4501d543047e6a979d15de904d5ed857214eb3e11ce6dbdf4dc38f56f9d1",
+            "activityId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-6:activity:practice",
+            "quality": {
+              "status": "accepted",
+              "subjectDigest": "7b7cac07fa2f76e180b5e35bd110c8bde66c0b94a5697bbd5da5b7fc2a178848",
+              "feedback": [
+                {
+                  "criterionId": "wave-dialogue-6-extension",
+                  "meets": false,
+                  "feedback": "本次正文给出了基准观察和下一组只减小缝宽的预测，但尚未尝试另一种表示（如用公式估算中央亮带宽度并与模拟值对照），也没有提出后续探究问题。可选提升建议：把 a sinθ≈λ 化简为中央亮带半宽 x≈λL/a，代入数值估算并与110.04 mm比较，或提出如“缝宽减小到多大时远场近似不再可靠”的后续探究问题。"
+                },
+                {
+                  "criterionId": "wave-dialogue-6-necessary",
+                  "meets": true,
+                  "feedback": "已保存的实验观察给出了本次单缝模拟的完整参数与单位（λ=550 nm、a=20 μm、L=2 m），记录中央亮带宽度110.04 mm，并明确这是远场单色模型的模拟观察而非真实测量，适用条件交代清楚。同时预测下一组只减小缝宽时中央亮带变宽，符合 a sinθ=λ 的规律方向。作为本次观察活动的产物，满足固定波长与屏距、比较缝宽、记录中央亮带宽度及适用条件的要求。"
+                }
+              ]
+            }
+          },
+          {
+            "kind": "experiment_observation",
+            "ref": "experiment_observation:obs-88fb9a1cb0ef2cb0c3d9ad771ba56e7d",
+            "scope": {
+              "projectId": "proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683",
+              "planId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60",
+              "planRevision": 1,
+              "learningSessionId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-6",
+              "objectiveIds": [
+                "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-single-compare"
+              ]
+            },
+            "objectiveId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-single-compare",
+            "sourceKind": "experiment_observation",
+            "parameterDigest": "a9ee9a085bff4d77ff8dea0201240e62f538661d2006cdb6a880b94c22aa81cf",
+            "activityId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-6:activity:practice",
+            "quality": {
+              "status": "accepted",
+              "subjectDigest": "911a132314e92a060a359d8b9f7d0ba491c60006173155336fa1d8af57f103d5",
+              "feedback": [
+                {
+                  "criterionId": "wave-dialogue-6-extension",
+                  "meets": false,
+                  "feedback": "可选提升：可尝试用公式a sinθ≈a x/L=λ估算中央亮带半宽，解释220.33mm与110.04mm约2倍关系，或提出“继续减小缝宽到何时偏离远场近似”的后续探究问题。"
+                },
+                {
+                  "criterionId": "wave-dialogue-6-necessary",
+                  "meets": true,
+                  "feedback": "本次模拟观察在固定波长550nm和屏距2m下，只把缝宽从20μm改为10μm，中央亮带由110.04mm变为220.33mm，符合缝宽减小、中央亮带变宽的趋势；正文给出参数单位与远场单色模型适用条件，并结合前课已有基准观察进行对照，达到本课目标。"
+                }
+              ]
+            }
+          }
+        ],
+        "approvedArtifacts": [],
+        "reflections": [],
+        "scope": {
+          "projectId": "proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683",
+          "planId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60",
+          "planRevision": 1,
+          "learningSessionId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-6",
+          "objectiveIds": [
+            "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-single-compare"
+          ]
+        },
+        "sessionType": "practice",
+        "allowedActions": [
+          "respond",
+          "submit_artifact"
+        ],
+        "qualityCriteria": [
+          {
+            "id": "wave-dialogue-6-necessary",
+            "required": true,
+            "description": "固定波长和屏距比较缝宽，记录中央亮带宽度及适用条件。"
+          },
+          {
+            "id": "wave-dialogue-6-extension",
+            "required": false,
+            "description": "尝试另一种表示或提出一个后续探究问题；此项仅作提升建议。"
+          }
+        ]
+      }
+    },
+    {
+      "lesson": 7,
+      "case": "comparison-draft",
+      "at": "2026-10-28T13:22:18.548Z",
+      "content": "两种图样都来自波的叠加。我的双缝观察中，只把d从150改为300μm，λ=550nm、a=20μm、L=2m不变，细纹间距由7.33变为3.67mm，而中央包络仍约110.04mm。单缝观察只把a从20减为10μm，中央亮带由110.04变为220.33mm。d控制双缝细纹，a控制衍射包络，有限宽双缝同时有两种结构。我把“单缝和双缝没有差别”修订为两者都叠加，但图样结构不同。结论仅适用于本次单色相干、远场模型和保存的参数，不是真实测量，也不能据此比较绝对亮度。",
+      "after": {
+        "stage": "artifact_review",
+        "lesson": 8,
+        "title": "别人能复核我的探究吗？",
+        "completed": 7,
+        "activity": {
+          "activityId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-8:activity:check",
+          "kind": "check",
+          "evidence": "submitted_artifact",
+          "status": "current",
+          "guidance": "参考已保存的过程草稿与观察，在对话区整理最终档案并确认交付；站内正文无需导出再上传。",
+          "minutes": 15,
+          "evidenceRefs": []
+        },
+        "pendingQuestionId": null,
+        "evidence": {
+          "submissions": [],
+          "observations": [],
+          "reflections": [],
+          "approved": []
+        }
+      }
+    },
+    {
+      "lesson": 8,
+      "case": "incomplete-final-rejected",
+      "at": "2026-10-28T13:26:07.909Z",
+      "receipt": {
+        "proof": {
+          "activityId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-8:activity:check",
+          "kind": "submitted_artifact",
+          "ref": "task_submission:learning-d5d9ceb42699a0cde048a76f8dad1f6d4ce4c89842330f0df637c3b93aeb036b",
+          "scope": {
+            "projectId": "proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683",
+            "planId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60",
+            "planRevision": 1,
+            "learningSessionId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-8",
+            "objectiveIds": [
+              "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-showcase",
+              "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-reflection"
+            ]
+          },
+          "objectiveId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-showcase",
+          "sourceKind": "task_submission",
+          "artifactId": "art-4ea7f356-98b6-49b9-845a-9adb0390f9d9",
+          "artifactVersionId": "artv-cbc7f858-0658-416f-ada2-8f50e7246e91",
+          "quality": {
+            "status": "needs_revision",
+            "subjectDigest": "0b5a729bb3611f6a827f7f6c13f48a2336e3e65c01e95846e21f24d9dd7cbf80",
+            "feedback": [
+              {
+                "criterionId": "wave-dialogue-final-evidence",
+                "meets": false,
+                "feedback": "本次最终档案只写了“条纹完全一样”且未记录参数，与已保存观察矛盾且不可追溯。建议直接引用已保存观察：双缝基准λ=550nm、a=20μm、d=150μm、L=2m，细纹间距7.33mm；把d改为300μm后为3.67mm；单缝a由20减为10μm时中央亮带宽由110.04变为220.33mm。并注明这些是远场单色模型的模拟观察，非真实测量。"
+              },
+              {
+                "criterionId": "wave-dialogue-final-explanation",
+                "meets": false,
+                "feedback": "当前结论没有解释两类图样的联系或差异，也没有说明受控变量、修订和适用边界。建议写明：d只影响双缝细纹间距（加倍后间距减半），a影响单缝衍射包络（减半后中央亮带加倍），有限宽双缝同时呈现两种结构；并用“把‘没有差别’修订为都源于叠加但结构不同”作为一次修订，注明结论仅适用于本次单色相干远场模型。"
+              },
+              {
+                "criterionId": "wave-dialogue-final-presentation",
+                "meets": false,
+                "feedback": "可选提升：把两组参数及间距、带宽数值列成对照表或简图，并标注模拟条件，便于复核。"
+              }
+            ]
+          }
+        },
+        "artifact": {
+          "id": "art-4ea7f356-98b6-49b9-845a-9adb0390f9d9",
+          "projectId": "proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683",
+          "studentId": "self-user-9e7850641d58a53c8c4bad5a28d5854c492553eea2a74541fb5e912f3c5e26a5",
+          "title": "别人能复核我的探究吗？",
+          "summary": "",
+          "tags": [],
+          "status": "draft",
+          "visibility": "class",
+          "currentVersionIndex": 1,
+          "publishedAt": null,
+          "createdAt": "2026-10-28T13:26:05.422Z",
+          "updatedAt": "2026-10-28T13:26:05.422Z",
+          "versionCount": 1,
+          "latestVersion": {
+            "id": "artv-cbc7f858-0658-416f-ada2-8f50e7246e91",
+            "ordinal": 1,
+            "title": "别人能复核我的探究吗？",
+            "note": "",
+            "inlineText": "我的结论是单缝和双缝的条纹都完全一样，我没有记录具体参数。",
+            "objectKey": null,
+            "thumbnailRef": null,
+            "capturedAt": null,
+            "createdAt": "2026-10-28T13:26:05.422Z"
+          },
+          "reviewStatus": "none"
+        },
+        "assessmentStatus": "assessment_required",
+        "masteryUpdated": false,
+        "replayed": false
+      },
+      "after": {
+        "stage": "artifact_review",
+        "lesson": 8,
+        "title": "别人能复核我的探究吗？",
+        "completed": 7,
+        "activity": {
+          "activityId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-8:activity:check",
+          "kind": "check",
+          "evidence": "submitted_artifact",
+          "status": "current",
+          "guidance": "参考已保存的过程草稿与观察，在对话区整理最终档案并确认交付；站内正文无需导出再上传。",
+          "minutes": 15,
+          "evidenceRefs": []
+        },
+        "pendingQuestionId": null,
+        "evidence": {
+          "submissions": [
+            {
+              "activityId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-8:activity:check",
+              "kind": "submitted_artifact",
+              "ref": "task_submission:learning-d5d9ceb42699a0cde048a76f8dad1f6d4ce4c89842330f0df637c3b93aeb036b",
+              "scope": {
+                "projectId": "proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683",
+                "planId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60",
+                "planRevision": 1,
+                "learningSessionId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-8",
+                "objectiveIds": [
+                  "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-showcase",
+                  "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-reflection"
+                ]
+              },
+              "objectiveId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-showcase",
+              "sourceKind": "task_submission",
+              "artifactId": "art-4ea7f356-98b6-49b9-845a-9adb0390f9d9",
+              "artifactVersionId": "artv-cbc7f858-0658-416f-ada2-8f50e7246e91",
+              "quality": {
+                "status": "needs_revision",
+                "subjectDigest": "0b5a729bb3611f6a827f7f6c13f48a2336e3e65c01e95846e21f24d9dd7cbf80",
+                "feedback": [
+                  {
+                    "criterionId": "wave-dialogue-final-evidence",
+                    "meets": false,
+                    "feedback": "本次最终档案只写了“条纹完全一样”且未记录参数，与已保存观察矛盾且不可追溯。建议直接引用已保存观察：双缝基准λ=550nm、a=20μm、d=150μm、L=2m，细纹间距7.33mm；把d改为300μm后为3.67mm；单缝a由20减为10μm时中央亮带宽由110.04变为220.33mm。并注明这些是远场单色模型的模拟观察，非真实测量。"
+                  },
+                  {
+                    "criterionId": "wave-dialogue-final-explanation",
+                    "meets": false,
+                    "feedback": "当前结论没有解释两类图样的联系或差异，也没有说明受控变量、修订和适用边界。建议写明：d只影响双缝细纹间距（加倍后间距减半），a影响单缝衍射包络（减半后中央亮带加倍），有限宽双缝同时呈现两种结构；并用“把‘没有差别’修订为都源于叠加但结构不同”作为一次修订，注明结论仅适用于本次单色相干远场模型。"
+                  },
+                  {
+                    "criterionId": "wave-dialogue-final-presentation",
+                    "meets": false,
+                    "feedback": "可选提升：把两组参数及间距、带宽数值列成对照表或简图，并标注模拟条件，便于复核。"
+                  }
+                ]
+              }
+            }
+          ],
+          "observations": [],
+          "reflections": [],
+          "approved": []
+        }
+      }
+    },
+    {
+      "lesson": 8,
+      "case": "final-reflection",
+      "at": "2026-10-28T13:33:08.588Z",
+      "after": {
+        "stage": "completed",
+        "lesson": 8,
+        "title": "别人能复核我的探究吗？",
+        "completed": 8,
+        "activity": null,
+        "pendingQuestionId": null,
+        "evidence": {
+          "submissions": [
+            {
+              "activityId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-8:activity:check",
+              "kind": "submitted_artifact",
+              "ref": "task_submission:learning-d5d9ceb42699a0cde048a76f8dad1f6d4ce4c89842330f0df637c3b93aeb036b",
+              "scope": {
+                "projectId": "proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683",
+                "planId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60",
+                "planRevision": 1,
+                "learningSessionId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-8",
+                "objectiveIds": [
+                  "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-showcase",
+                  "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-reflection"
+                ]
+              },
+              "objectiveId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-showcase",
+              "sourceKind": "task_submission",
+              "artifactId": "art-4ea7f356-98b6-49b9-845a-9adb0390f9d9",
+              "artifactVersionId": "artv-cbc7f858-0658-416f-ada2-8f50e7246e91",
+              "quality": {
+                "status": "needs_revision",
+                "subjectDigest": "0b5a729bb3611f6a827f7f6c13f48a2336e3e65c01e95846e21f24d9dd7cbf80",
+                "feedback": [
+                  {
+                    "criterionId": "wave-dialogue-final-evidence",
+                    "meets": false,
+                    "feedback": "本次最终档案只写了“条纹完全一样”且未记录参数，与已保存观察矛盾且不可追溯。建议直接引用已保存观察：双缝基准λ=550nm、a=20μm、d=150μm、L=2m，细纹间距7.33mm；把d改为300μm后为3.67mm；单缝a由20减为10μm时中央亮带宽由110.04变为220.33mm。并注明这些是远场单色模型的模拟观察，非真实测量。"
+                  },
+                  {
+                    "criterionId": "wave-dialogue-final-explanation",
+                    "meets": false,
+                    "feedback": "当前结论没有解释两类图样的联系或差异，也没有说明受控变量、修订和适用边界。建议写明：d只影响双缝细纹间距（加倍后间距减半），a影响单缝衍射包络（减半后中央亮带加倍），有限宽双缝同时呈现两种结构；并用“把‘没有差别’修订为都源于叠加但结构不同”作为一次修订，注明结论仅适用于本次单色相干远场模型。"
+                  },
+                  {
+                    "criterionId": "wave-dialogue-final-presentation",
+                    "meets": false,
+                    "feedback": "可选提升：把两组参数及间距、带宽数值列成对照表或简图，并标注模拟条件，便于复核。"
+                  }
+                ]
+              }
+            },
+            {
+              "activityId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-8:activity:check",
+              "kind": "submitted_artifact",
+              "ref": "task_submission:learning-e514851de6d8d2127354a2b0672b30e6ba3afbb0815f779a117ea9770565dca0",
+              "scope": {
+                "projectId": "proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683",
+                "planId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60",
+                "planRevision": 1,
+                "learningSessionId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-8",
+                "objectiveIds": [
+                  "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-showcase",
+                  "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-reflection"
+                ]
+              },
+              "objectiveId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-showcase",
+              "sourceKind": "task_submission",
+              "artifactId": "art-c697edf3-8916-4adc-b741-ec2a06940392",
+              "artifactVersionId": "artv-3e0e53bc-a3d0-446b-8a49-c9d8c5a00f38",
+              "quality": {
+                "status": "accepted",
+                "subjectDigest": "8d80230f27dc26490e53334c1f538adc2bff2847231e7dfd3080082703f451d4",
+                "feedback": [
+                  {
+                    "criterionId": "wave-dialogue-final-evidence",
+                    "meets": true,
+                    "feedback": "档案列出单缝与双缝各组的已保存参数和观察数值，并逐条引用 experiment_observation 证据；结论数值与引用记录一致（d 加倍细纹间距减半、a 减半中央亮带加倍），并明确这是远场单色模拟而非真实测量，可追溯到真实保存的观察记录。"
+                  },
+                  {
+                    "criterionId": "wave-dialogue-final-explanation",
+                    "meets": true,
+                    "feedback": "能说明两类图样都源于波叠加但结构不同，明确受控变量（只改 d 或只改 a，其余 λ、a、L 不变），给出一次修订（从“没有差别”改为“都叠加但结构不同”），并用 Δx≈λL/d、包络宽≈2λL/a 解释联系，同时说明适用边界（单色相干远场模型、归一化不可比绝对亮度、非真实测量）。"
+                  },
+                  {
+                    "criterionId": "wave-dialogue-final-presentation",
+                    "meets": false,
+                    "feedback": "当前为纯文本档案，缺少图表或排版呈现（如条纹示意、参数对比表）。建议补充单/双缝图样对照图或变量-观察对照表以提升展示效果，此项仅为提升建议，不影响达标。"
+                  }
+                ]
+              }
+            }
+          ],
+          "observations": [],
+          "reflections": [
+            {
+              "activityId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-8:activity:reflect",
+              "kind": "session_response",
+              "ref": "reflection:learning-38072cb26fdc24028cb121b340cde71d8a3d4e9e8a0656bb373329b8000af028",
+              "scope": {
+                "projectId": "proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683",
+                "planId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60",
+                "planRevision": 1,
+                "learningSessionId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-8",
+                "objectiveIds": [
+                  "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-showcase",
+                  "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-reflection"
+                ]
+              },
+              "objectiveId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-showcase",
+              "sourceKind": "reflection",
+              "artifactId": "art-5c931425-36a3-4320-a7ba-f0094438a797",
+              "artifactVersionId": "artv-cfd58117-fd5e-4a53-b5e4-7d240adbcb8d",
+              "quality": {
+                "status": "accepted",
+                "subjectDigest": "4495b6ecdf157530504f3622bc99e4103ded929971ea032100d1932cbf9cf054",
+                "feedback": [
+                  {
+                    "criterionId": "wave-dialogue-8-extension",
+                    "meets": false,
+                    "feedback": "可选提升项：可尝试用另一种表示（如示意图、公式推导或表格）呈现两变量对图样的影响，或提出一个后续可检验的真实测量问题（例如如何减小孔径误差对包络测量的影响）。"
+                  },
+                  {
+                    "criterionId": "wave-dialogue-8-necessary",
+                    "meets": true,
+                    "feedback": "学生用自己的话说明了认识变化：原先认为单缝和双缝没有差别，现在能区分双缝细条纹与单缝衍射包络，并引用已保存的受控观察（d加倍细纹间距7.33降至3.67mm；a减半中央亮带110.04增至220.33mm）作为依据，同时说明不确定性在真实装置的孔径误差和相干性影响，且指出本次只有模型模拟、没有真实测量。符合要求。"
+                  }
+                ]
+              }
+            }
+          ],
+          "approved": [
+            {
+              "activityId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-8:activity:check",
+              "kind": "approved_artifact",
+              "ref": "artifact:art-c697edf3-8916-4adc-b741-ec2a06940392",
+              "scope": {
+                "projectId": "proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683",
+                "planId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60",
+                "planRevision": 1,
+                "learningSessionId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-8",
+                "objectiveIds": [
+                  "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-showcase",
+                  "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-reflection"
+                ]
+              },
+              "objectiveId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-showcase",
+              "sourceKind": "task_submission",
+              "artifactId": "art-c697edf3-8916-4adc-b741-ec2a06940392",
+              "artifactVersionId": "artv-3e0e53bc-a3d0-446b-8a49-c9d8c5a00f38"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "streams": [
+    {
+      "at": "2026-10-28T13:15:24.166Z",
+      "status": 200,
+      "events": [
+        {
+          "type": "tool_call",
+          "name": "agent.runtime.run"
+        },
+        {
+          "type": "tool_result",
+          "name": "agent.runtime.run",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "model.gateway.complete"
+        },
+        {
+          "type": "tool_call",
+          "name": "ima.tools.list"
+        },
+        {
+          "type": "tool_result",
+          "name": "ima.tools.list",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "knowledge_search"
+        },
+        {
+          "type": "tool_result",
+          "name": "knowledge_search",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "knowledge_search"
+        },
+        {
+          "type": "tool_result",
+          "name": "knowledge_search",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "knowledge_read"
+        },
+        {
+          "type": "tool_result",
+          "name": "knowledge_read",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "knowledge_search"
+        },
+        {
+          "type": "tool_result",
+          "name": "knowledge_search",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "knowledge_read"
+        },
+        {
+          "type": "tool_result",
+          "name": "knowledge_read",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "tutor.propose_lesson_activity"
+        },
+        {
+          "type": "tool_result",
+          "name": "tutor.propose_lesson_activity",
+          "status": "done"
+        },
+        {
+          "type": "tool_result",
+          "name": "model.gateway.complete",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "safety.answer_leak.guard"
+        },
+        {
+          "type": "tool_result",
+          "name": "safety.answer_leak.guard",
+          "status": "done"
+        }
+      ],
+      "blocks": [
+        {
+          "kind": "board",
+          "title": "单缝 vs 双缝：要比较什么？"
+        },
+        {
+          "kind": "hint"
+        }
+      ],
+      "modelGateway": true
+    },
+    {
+      "at": "2026-10-28T13:15:45.099Z",
+      "status": 200,
+      "events": [
+        {
+          "type": "tool_call",
+          "name": "agent.runtime.run"
+        },
+        {
+          "type": "tool_result",
+          "name": "agent.runtime.run",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "model.gateway.complete"
+        },
+        {
+          "type": "tool_call",
+          "name": "ima.tools.list"
+        },
+        {
+          "type": "tool_result",
+          "name": "ima.tools.list",
+          "status": "done"
+        },
+        {
+          "type": "tool_result",
+          "name": "model.gateway.complete",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "safety.answer_leak.guard"
+        },
+        {
+          "type": "tool_result",
+          "name": "safety.answer_leak.guard",
+          "status": "done"
+        }
+      ],
+      "blocks": [
+        {
+          "kind": "text"
+        },
+        {
+          "kind": "hint"
+        }
+      ],
+      "modelGateway": true
+    },
+    {
+      "at": "2026-10-28T13:16:07.406Z",
+      "status": 200,
+      "events": [
+        {
+          "type": "tool_call",
+          "name": "agent.runtime.run"
+        },
+        {
+          "type": "tool_result",
+          "name": "agent.runtime.run",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "model.gateway.complete"
+        },
+        {
+          "type": "tool_call",
+          "name": "ima.tools.list"
+        },
+        {
+          "type": "tool_result",
+          "name": "ima.tools.list",
+          "status": "done"
+        },
+        {
+          "type": "tool_result",
+          "name": "model.gateway.complete",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "safety.answer_leak.guard"
+        },
+        {
+          "type": "tool_result",
+          "name": "safety.answer_leak.guard",
+          "status": "done"
+        }
+      ],
+      "blocks": [
+        {
+          "kind": "text"
+        },
+        {
+          "kind": "hint"
+        }
+      ],
+      "modelGateway": true
+    },
+    {
+      "at": "2026-10-28T13:17:27.034Z",
+      "status": 200,
+      "events": [
+        {
+          "type": "tool_call",
+          "name": "agent.runtime.run"
+        },
+        {
+          "type": "tool_result",
+          "name": "agent.runtime.run",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "model.gateway.complete"
+        },
+        {
+          "type": "tool_call",
+          "name": "ima.tools.list"
+        },
+        {
+          "type": "tool_result",
+          "name": "ima.tools.list",
+          "status": "done"
+        },
+        {
+          "type": "tool_result",
+          "name": "model.gateway.complete",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "safety.answer_leak.guard"
+        },
+        {
+          "type": "tool_result",
+          "name": "safety.answer_leak.guard",
+          "status": "done"
+        }
+      ],
+      "blocks": [
+        {
+          "kind": "hint"
+        }
+      ],
+      "modelGateway": true
+    },
+    {
+      "at": "2026-10-28T13:17:41.289Z",
+      "status": 200,
+      "events": [
+        {
+          "type": "tool_call",
+          "name": "agent.runtime.run"
+        },
+        {
+          "type": "tool_result",
+          "name": "agent.runtime.run",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "model.gateway.complete"
+        },
+        {
+          "type": "tool_call",
+          "name": "ima.tools.list"
+        },
+        {
+          "type": "tool_result",
+          "name": "ima.tools.list",
+          "status": "done"
+        },
+        {
+          "type": "tool_result",
+          "name": "model.gateway.complete",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "safety.answer_leak.guard"
+        },
+        {
+          "type": "tool_result",
+          "name": "safety.answer_leak.guard",
+          "status": "done"
+        }
+      ],
+      "blocks": [
+        {
+          "kind": "text"
+        },
+        {
+          "kind": "hint"
+        }
+      ],
+      "modelGateway": true
+    },
+    {
+      "at": "2026-10-28T13:17:57.808Z",
+      "status": 200,
+      "events": [
+        {
+          "type": "tool_call",
+          "name": "agent.runtime.run"
+        },
+        {
+          "type": "tool_result",
+          "name": "agent.runtime.run",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "model.gateway.complete"
+        },
+        {
+          "type": "tool_call",
+          "name": "ima.tools.list"
+        },
+        {
+          "type": "tool_result",
+          "name": "ima.tools.list",
+          "status": "done"
+        },
+        {
+          "type": "tool_result",
+          "name": "model.gateway.complete",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "safety.answer_leak.guard"
+        },
+        {
+          "type": "tool_result",
+          "name": "safety.answer_leak.guard",
+          "status": "done"
+        }
+      ],
+      "blocks": [
+        {
+          "kind": "text"
+        },
+        {
+          "kind": "hint"
+        }
+      ],
+      "modelGateway": true
+    },
+    {
+      "at": "2026-10-28T13:18:12.129Z",
+      "status": 200,
+      "events": [
+        {
+          "type": "tool_call",
+          "name": "agent.runtime.run"
+        },
+        {
+          "type": "tool_result",
+          "name": "agent.runtime.run",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "model.gateway.complete"
+        },
+        {
+          "type": "tool_call",
+          "name": "ima.tools.list"
+        },
+        {
+          "type": "tool_result",
+          "name": "ima.tools.list",
+          "status": "done"
+        },
+        {
+          "type": "tool_result",
+          "name": "model.gateway.complete",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "safety.answer_leak.guard"
+        },
+        {
+          "type": "tool_result",
+          "name": "safety.answer_leak.guard",
+          "status": "done"
+        }
+      ],
+      "blocks": [
+        {
+          "kind": "text"
+        },
+        {
+          "kind": "hint"
+        }
+      ],
+      "modelGateway": true
+    },
+    {
+      "at": "2026-10-28T13:18:28.571Z",
+      "status": 200,
+      "events": [
+        {
+          "type": "tool_call",
+          "name": "agent.runtime.run"
+        },
+        {
+          "type": "tool_result",
+          "name": "agent.runtime.run",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "model.gateway.complete"
+        },
+        {
+          "type": "tool_call",
+          "name": "ima.tools.list"
+        },
+        {
+          "type": "tool_result",
+          "name": "ima.tools.list",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "tutor.propose_lesson_activity"
+        },
+        {
+          "type": "tool_result",
+          "name": "tutor.propose_lesson_activity",
+          "status": "done"
+        },
+        {
+          "type": "tool_result",
+          "name": "model.gateway.complete",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "safety.answer_leak.guard"
+        },
+        {
+          "type": "tool_result",
+          "name": "safety.answer_leak.guard",
+          "status": "done"
+        }
+      ],
+      "blocks": [
+        {
+          "kind": "text"
+        },
+        {
+          "kind": "optics_experiment",
+          "title": "双缝干涉：只改缝间距 d"
+        },
+        {
+          "kind": "hint"
+        }
+      ],
+      "modelGateway": true
+    },
+    {
+      "at": "2026-10-28T13:19:16.419Z",
+      "status": 200,
+      "events": [
+        {
+          "type": "tool_call",
+          "name": "agent.runtime.run"
+        },
+        {
+          "type": "tool_result",
+          "name": "agent.runtime.run",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "model.gateway.complete"
+        },
+        {
+          "type": "tool_call",
+          "name": "ima.tools.list"
+        },
+        {
+          "type": "tool_result",
+          "name": "ima.tools.list",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "tutor.propose_lesson_activity"
+        },
+        {
+          "type": "tool_result",
+          "name": "tutor.propose_lesson_activity",
+          "status": "done"
+        },
+        {
+          "type": "tool_result",
+          "name": "model.gateway.complete",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "safety.answer_leak.guard"
+        },
+        {
+          "type": "tool_result",
+          "name": "safety.answer_leak.guard",
+          "status": "done"
+        }
+      ],
+      "blocks": [
+        {
+          "kind": "optics_experiment",
+          "title": "双缝干涉：只改缝间距 d 的受控比较"
+        },
+        {
+          "kind": "hint"
+        }
+      ],
+      "modelGateway": true
+    },
+    {
+      "at": "2026-10-28T13:20:08.262Z",
+      "status": 200,
+      "events": [
+        {
+          "type": "tool_call",
+          "name": "agent.runtime.run"
+        },
+        {
+          "type": "tool_result",
+          "name": "agent.runtime.run",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "model.gateway.complete"
+        },
+        {
+          "type": "tool_call",
+          "name": "ima.tools.list"
+        },
+        {
+          "type": "tool_result",
+          "name": "ima.tools.list",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "tutor.propose_lesson_activity"
+        },
+        {
+          "type": "tool_result",
+          "name": "tutor.propose_lesson_activity",
+          "status": "done"
+        },
+        {
+          "type": "tool_result",
+          "name": "model.gateway.complete",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "safety.answer_leak.guard"
+        },
+        {
+          "type": "tool_result",
+          "name": "safety.answer_leak.guard",
+          "status": "done"
+        }
+      ],
+      "blocks": [
+        {
+          "kind": "optics_experiment",
+          "title": "单缝衍射：一条缝也能出现明暗条纹"
+        },
+        {
+          "kind": "hint"
+        }
+      ],
+      "modelGateway": true
+    },
+    {
+      "at": "2026-10-28T13:20:43.489Z",
+      "status": 200,
+      "events": [
+        {
+          "type": "tool_call",
+          "name": "agent.runtime.run"
+        },
+        {
+          "type": "tool_result",
+          "name": "agent.runtime.run",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "model.gateway.complete"
+        },
+        {
+          "type": "tool_call",
+          "name": "ima.tools.list"
+        },
+        {
+          "type": "tool_result",
+          "name": "ima.tools.list",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "tutor.propose_lesson_activity"
+        },
+        {
+          "type": "tool_result",
+          "name": "tutor.propose_lesson_activity",
+          "status": "done"
+        },
+        {
+          "type": "tool_result",
+          "name": "model.gateway.complete",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "safety.answer_leak.guard"
+        },
+        {
+          "type": "tool_result",
+          "name": "safety.answer_leak.guard",
+          "status": "done"
+        }
+      ],
+      "blocks": [
+        {
+          "kind": "optics_experiment",
+          "title": "单缝衍射：只改缝宽看中央亮带"
+        },
+        {
+          "kind": "hint"
+        }
+      ],
+      "modelGateway": true
+    },
+    {
+      "at": "2026-10-28T13:22:17.781Z",
+      "status": 200,
+      "events": [
+        {
+          "type": "tool_call",
+          "name": "agent.runtime.run"
+        },
+        {
+          "type": "tool_result",
+          "name": "agent.runtime.run",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "model.gateway.complete"
+        },
+        {
+          "type": "tool_call",
+          "name": "ima.tools.list"
+        },
+        {
+          "type": "tool_result",
+          "name": "ima.tools.list",
+          "status": "done"
+        },
+        {
+          "type": "tool_result",
+          "name": "model.gateway.complete",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "safety.answer_leak.guard"
+        },
+        {
+          "type": "tool_result",
+          "name": "safety.answer_leak.guard",
+          "status": "done"
+        }
+      ],
+      "blocks": [
+        {
+          "kind": "text"
+        },
+        {
+          "kind": "hint"
+        }
+      ],
+      "modelGateway": true
+    },
+    {
+      "at": "2026-10-28T13:33:08.257Z",
+      "status": 200,
+      "events": [
+        {
+          "type": "tool_call",
+          "name": "agent.runtime.run"
+        },
+        {
+          "type": "tool_result",
+          "name": "agent.runtime.run",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "model.gateway.complete"
+        },
+        {
+          "type": "tool_call",
+          "name": "ima.tools.list"
+        },
+        {
+          "type": "tool_result",
+          "name": "ima.tools.list",
+          "status": "done"
+        },
+        {
+          "type": "tool_result",
+          "name": "model.gateway.complete",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "safety.answer_leak.guard"
+        },
+        {
+          "type": "tool_result",
+          "name": "safety.answer_leak.guard",
+          "status": "done"
+        }
+      ],
+      "blocks": [
+        {
+          "kind": "text"
+        },
+        {
+          "kind": "hint"
+        }
+      ],
+      "modelGateway": true
+    }
+  ],
+  "identity": {
+    "userId": "self-user-9e7850641d58a53c8c4bad5a28d5854c492553eea2a74541fb5e912f3c5e26a5",
+    "synthetic": true,
+    "fresh": true
+  },
+  "projectId": "proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683",
+  "questions": [
+    {
+      "lesson": 2,
+      "at": "2026-10-28T13:17:46.829Z",
+      "questionId": "q-plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-ready-superposition-1",
+      "prompt": "用示意波理解叠加：两列同频波在某点的波幅大小都是 1 个示意单位，方向相反。该点合成波幅如何？这里讨论波幅，不是光强。",
+      "answer": "B",
+      "objective": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-ready-superposition",
+      "errors": [],
+      "after": {
+        "stage": "theory_check",
+        "lesson": 2,
+        "title": "两列波相遇会怎样？",
+        "completed": 1,
+        "activity": {
+          "activityId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-2:activity:check",
+          "kind": "check",
+          "evidence": "mastery",
+          "status": "current",
+          "guidance": "通过服务端专题准备检查；求助不自动判错，未掌握则同目标补救。",
+          "minutes": 20,
+          "evidenceRefs": []
+        },
+        "pendingQuestionId": "q-plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-ready-coherence-0",
+        "evidence": {
+          "submissions": [],
+          "observations": [],
+          "reflections": [],
+          "approved": []
+        }
+      },
+      "finishedAt": "2026-10-28T13:17:58.647Z"
+    },
+    {
+      "lesson": 2,
+      "at": "2026-10-28T13:18:00.496Z",
+      "questionId": "q-plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-ready-coherence-0",
+      "prompt": "在本课的等幅、同频、相同偏振示意模型中，哪一组条件能保持稳定的明暗条纹？",
+      "answer": "D",
+      "objective": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-ready-coherence",
+      "errors": [],
+      "after": {
+        "stage": "theory_check",
+        "lesson": 2,
+        "title": "两列波相遇会怎样？",
+        "completed": 1,
+        "activity": {
+          "activityId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-2:activity:check",
+          "kind": "check",
+          "evidence": "mastery",
+          "status": "current",
+          "guidance": "通过服务端专题准备检查；求助不自动判错，未掌握则同目标补救。",
+          "minutes": 20,
+          "evidenceRefs": []
+        },
+        "pendingQuestionId": "q-plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-ready-comparison-0",
+        "evidence": {
+          "submissions": [],
+          "observations": [],
+          "reflections": [],
+          "approved": []
+        }
+      },
+      "finishedAt": "2026-10-28T13:18:12.917Z"
+    },
+    {
+      "lesson": 2,
+      "at": "2026-10-28T13:18:14.751Z",
+      "questionId": "q-plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-ready-comparison-0",
+      "prompt": "要检验缝间距 d 对双缝条纹的影响，哪种模拟比较能支持这个判断？",
+      "answer": "A",
+      "objective": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-ready-comparison",
+      "errors": [],
+      "after": {
+        "stage": "practice_building",
+        "lesson": 3,
+        "title": "双缝为什么出现明暗？",
+        "completed": 2,
+        "activity": {
+          "activityId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-3:activity:practice",
+          "kind": "practice",
+          "evidence": "experiment_observation",
+          "status": "current",
+          "guidance": "先预测再使用本课注册模型；一次只改一个变量，保存参数和模拟观察，不写成实测。 本活动需保存 1 条通过评价的独立观察记录，当前 0 / 1 条。请完成不同参数下的观察并分别保存；同一记录中描述多次运行仍计为一条。",
+          "minutes": 25,
+          "evidenceRefs": []
+        },
+        "pendingQuestionId": null,
+        "evidence": {
+          "submissions": [],
+          "observations": [],
+          "reflections": [],
+          "approved": []
+        }
+      },
+      "finishedAt": "2026-10-28T13:18:29.362Z"
+    }
+  ],
+  "waveRuns": [
+    {
+      "lesson": 3,
+      "sample": 1,
+      "at": "2026-10-28T13:18:49.454Z",
+      "parameters": [
+        {
+          "parameter": "波长 λ",
+          "value": 550
+        },
+        {
+          "parameter": "每条缝宽 a",
+          "value": 20
+        },
+        {
+          "parameter": "两缝中心间距 d",
+          "value": 150
+        },
+        {
+          "parameter": "光屏距离 L",
+          "value": 2
+        }
+      ],
+      "runActionId": "4bc5c5a8f0a5939bc99071fabb85638a",
+      "centralBandWidthMm": 110.04161735633245,
+      "fringeSpacingMm": 7.333333333333333,
+      "fresnelNumber": 0.026272727272727267,
+      "evidenceRef": "experiment_observation:obs-fa950d2fd9106c9c45eb34bc070ff966",
+      "observation": "光源到S1、S2再到屏上P是两条路径；中央光程差0，同相成亮，光程差半波长时相消成暗。d为缝中心间距，a为单缝宽。本次：波长 λ=550，每条缝宽 a=20，两缝中心间距 d=150，光屏距离 L=2；中央亮带宽110.04mm，细纹间距7.33mm。这是本课基准观察。波长nm、缝尺寸μm、屏距m。这是远场单色模型的模拟观察，非真实测量。"
+    },
+    {
+      "lesson": 4,
+      "sample": 1,
+      "at": "2026-10-28T13:19:23.506Z",
+      "parameters": [
+        {
+          "parameter": "波长 λ",
+          "value": 550
+        },
+        {
+          "parameter": "每条缝宽 a",
+          "value": 20
+        },
+        {
+          "parameter": "两缝中心间距 d",
+          "value": 150
+        },
+        {
+          "parameter": "光屏距离 L",
+          "value": 2
+        }
+      ],
+      "runActionId": "1c9bbf8af4cd45e77d2031f4ca3048b8",
+      "centralBandWidthMm": 110.04161735633245,
+      "fringeSpacingMm": 7.333333333333333,
+      "fresnelNumber": 0.026272727272727267,
+      "evidenceRef": "experiment_observation:obs-af52a083bc73a6051ddfd2aaf1bb65d3",
+      "observation": "光源到S1、S2再到屏上P是两条路径；中央光程差0，同相成亮，光程差半波长时相消成暗。d为缝中心间距，a为单缝宽。本次：波长 λ=550，每条缝宽 a=20，两缝中心间距 d=150，光屏距离 L=2；中央亮带宽110.04mm，细纹间距7.33mm。本组是比较基准，下一组只把d加倍，预测细纹间距减半。波长nm、缝尺寸μm、屏距m。这是远场单色模型的模拟观察，非真实测量。"
+    },
+    {
+      "lesson": 4,
+      "sample": 2,
+      "at": "2026-10-28T13:19:37.745Z",
+      "parameters": [
+        {
+          "parameter": "波长 λ",
+          "value": 550
+        },
+        {
+          "parameter": "每条缝宽 a",
+          "value": 20
+        },
+        {
+          "parameter": "两缝中心间距 d",
+          "value": 300
+        },
+        {
+          "parameter": "光屏距离 L",
+          "value": 2
+        }
+      ],
+      "runActionId": "2f18b18a70aa89878d168238f0355dd0",
+      "centralBandWidthMm": 110.04161735633245,
+      "fringeSpacingMm": 3.6666666666666665,
+      "fresnelNumber": 0.09309090909090907,
+      "evidenceRef": "experiment_observation:obs-06ea88ec98ad9efdbab491a1498f18af",
+      "observation": "光源到S1、S2再到屏上P是两条路径；中央光程差0，同相成亮，光程差半波长时相消成暗。d为缝中心间距，a为单缝宽。本次：波长 λ=550，每条缝宽 a=20，两缝中心间距 d=300，光屏距离 L=2；中央亮带宽110.04mm，细纹间距3.67mm。上一组：波长 λ=550，每条缝宽 a=20，两缝中心间距 d=150，光屏距离 L=2；中央亮带宽110.04mm，细纹间距7.33mm。只改变本课指定变量。波长nm、缝尺寸μm、屏距m。这是远场单色模型的模拟观察，非真实测量。"
+    },
+    {
+      "lesson": 5,
+      "sample": 1,
+      "at": "2026-10-28T13:20:15.472Z",
+      "parameters": [
+        {
+          "parameter": "波长 λ",
+          "value": 550
+        },
+        {
+          "parameter": "每条缝宽 a",
+          "value": 20
+        },
+        {
+          "parameter": "光屏距离 L",
+          "value": 2
+        }
+      ],
+      "runActionId": "2333446724ebd1fc5a1b052ca54e3cd1",
+      "centralBandWidthMm": 110.04161735633245,
+      "fringeSpacingMm": null,
+      "fresnelNumber": 0.00036363636363636356,
+      "evidenceRef": "experiment_observation:obs-d4bc5a0871b3f28b7eda4cb9831b9563",
+      "observation": "单缝内不同位置的波相互叠加，中央亮带宽且亮，两侧较窄且弱；第一暗纹满足a sinθ=λ。本次：波长 λ=550，每条缝宽 a=20，光屏距离 L=2；中央亮带宽110.04mm。这是本课基准观察。波长nm、缝尺寸μm、屏距m。这是远场单色模型的模拟观察，非真实测量。"
+    },
+    {
+      "lesson": 6,
+      "sample": 1,
+      "at": "2026-10-28T13:20:50.613Z",
+      "parameters": [
+        {
+          "parameter": "波长 λ",
+          "value": 550
+        },
+        {
+          "parameter": "每条缝宽 a",
+          "value": 20
+        },
+        {
+          "parameter": "光屏距离 L",
+          "value": 2
+        }
+      ],
+      "runActionId": "f152a86e32a523917e070af62c85d269",
+      "centralBandWidthMm": 110.04161735633245,
+      "fringeSpacingMm": null,
+      "fresnelNumber": 0.00036363636363636356,
+      "evidenceRef": "experiment_observation:obs-18878d27aa8a04af0932f5b4db10dcac",
+      "observation": "单缝内不同位置的波相互叠加，中央亮带宽且亮，两侧较窄且弱；第一暗纹满足a sinθ=λ。本次：波长 λ=550，每条缝宽 a=20，光屏距离 L=2；中央亮带宽110.04mm。本组是比较基准，下一组只减小a，预测中央亮带变宽。波长nm、缝尺寸μm、屏距m。这是远场单色模型的模拟观察，非真实测量。"
+    },
+    {
+      "lesson": 6,
+      "sample": 2,
+      "at": "2026-10-28T13:21:02.795Z",
+      "parameters": [
+        {
+          "parameter": "波长 λ",
+          "value": 550
+        },
+        {
+          "parameter": "每条缝宽 a",
+          "value": 10
+        },
+        {
+          "parameter": "光屏距离 L",
+          "value": 2
+        }
+      ],
+      "runActionId": "877c9fce97987e391aa5ebcfa3f662a1",
+      "centralBandWidthMm": 220.3335068346574,
+      "fringeSpacingMm": null,
+      "fresnelNumber": 0.00009090909090909089,
+      "evidenceRef": "experiment_observation:obs-88fb9a1cb0ef2cb0c3d9ad771ba56e7d",
+      "observation": "单缝内不同位置的波相互叠加，中央亮带宽且亮，两侧较窄且弱；第一暗纹满足a sinθ=λ。本次：波长 λ=550，每条缝宽 a=10，光屏距离 L=2；中央亮带宽220.33mm。上一组：波长 λ=550，每条缝宽 a=20，光屏距离 L=2；中央亮带宽110.04mm。只改变本课指定变量。波长nm、缝尺寸μm、屏距m。这是远场单色模型的模拟观察，非真实测量。"
+    }
+  ],
+  "finalEntry": {
+    "at": "2026-10-28T13:22:18.548Z",
+    "stage": "artifact_review",
+    "completed": 7,
+    "approvedArtifacts": 0
+  },
+  "handoffNarration": "回答已保存，本次必要要求已满足。\n上一课的观察记录已经保存好了，必要要求已满足。现在进入最后一课：**别人能复核我的探究吗？**\n\n这一课不是再做一个新实验，而是把你已有的东西整理成一份**别人照着能重做、能检查**的档案。我先讲清“可复核”到底指什么。\n\n**打个比方**：你给同学一份做菜记录，只写“很好吃”没法复核；写成“200 ℃、烤 15 分钟、中层、成品边缘微焦”，别人才能重做并判断。科学档案也一样——**参数、观察、解释、修订**四样齐全，别人才查得动。\n\n具体到你的探究，档案里需要能追溯到这几项：\n\n- **单缝**：缝宽 a、波长 λ、屏距，以及你保存的模拟观察（中央亮带宽度、图样）\n- **双缝**：缝间距 d、缝宽 a、波长、屏距，以及条纹间距的观察\n- **标注**：哪些是模型计算结果、哪些是模拟观察，不能写成“真实测量”\n- **解释**：两类图样的联系与差异，以及你控制了什么变量\n- **修订**：你改过的一次解释，依据是哪条观察\n- **边界**：这个模型在什么条件下才适用\n\n**一个容易混的点，先分清**：单缝看的是**缝宽 a**（一条缝内各处的波互相叠加，形成中央亮带加两侧次级亮带）；双缝看的是**缝间距 d**（两条缝的光程差决定细密条纹），但缝本身有宽度，所以细条纹外面还套着一个“衍射包络”。a 和 d 是两个不同的量，别写混。\n\n现在请你先做一件事，不用写完整档案：\n\n**翻一下你已保存的观察记录，告诉我你手上有哪几条？**（比如“单缝 a=20 μm 一条、a=40 μm 一条、双缝一条”）如果记不清具体数值，说个大概也行，我们一起看还缺什么。",
+  "draftRestore": {
+    "at": "2026-10-28T13:28:15.889Z",
+    "length": 789,
+    "allSixObservationRefs": true,
+    "hasFirstLesson": true,
+    "hasComparison": true
+  },
+  "fileImport": {
+    "count": 2,
+    "hasBoth": true,
+    "allObservationRefs": true,
+    "rejectedUnsupportedAtomically": true
+  },
+  "offlineDelivery": {
+    "retainedText": true,
+    "submissionDisabled": true
+  },
+  "mobileFinal": {
+    "width": 390,
+    "documentWidth": 390,
+    "viewport": 390
+  },
+  "finalDelivery": {
+    "at": "2026-10-28T13:32:50.063Z",
+    "receipt": {
+      "proof": {
+        "activityId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-8:activity:check",
+        "kind": "submitted_artifact",
+        "ref": "task_submission:learning-e514851de6d8d2127354a2b0672b30e6ba3afbb0815f779a117ea9770565dca0",
+        "scope": {
+          "projectId": "proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683",
+          "planId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60",
+          "planRevision": 1,
+          "learningSessionId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-8",
+          "objectiveIds": [
+            "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-showcase",
+            "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-reflection"
+          ]
+        },
+        "objectiveId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-showcase",
+        "sourceKind": "task_submission",
+        "artifactId": "art-c697edf3-8916-4adc-b741-ec2a06940392",
+        "artifactVersionId": "artv-3e0e53bc-a3d0-446b-8a49-c9d8c5a00f38",
+        "quality": {
+          "status": "accepted",
+          "subjectDigest": "8d80230f27dc26490e53334c1f538adc2bff2847231e7dfd3080082703f451d4",
+          "feedback": [
+            {
+              "criterionId": "wave-dialogue-final-evidence",
+              "meets": true,
+              "feedback": "档案列出单缝与双缝各组的已保存参数和观察数值，并逐条引用 experiment_observation 证据；结论数值与引用记录一致（d 加倍细纹间距减半、a 减半中央亮带加倍），并明确这是远场单色模拟而非真实测量，可追溯到真实保存的观察记录。"
+            },
+            {
+              "criterionId": "wave-dialogue-final-explanation",
+              "meets": true,
+              "feedback": "能说明两类图样都源于波叠加但结构不同，明确受控变量（只改 d 或只改 a，其余 λ、a、L 不变），给出一次修订（从“没有差别”改为“都叠加但结构不同”），并用 Δx≈λL/d、包络宽≈2λL/a 解释联系，同时说明适用边界（单色相干远场模型、归一化不可比绝对亮度、非真实测量）。"
+            },
+            {
+              "criterionId": "wave-dialogue-final-presentation",
+              "meets": false,
+              "feedback": "当前为纯文本档案，缺少图表或排版呈现（如条纹示意、参数对比表）。建议补充单/双缝图样对照图或变量-观察对照表以提升展示效果，此项仅为提升建议，不影响达标。"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "concurrentDelivery": {
+    "primaryStatus": 409,
+    "approvedProofs": 1,
+    "ref": "task_submission:learning-e514851de6d8d2127354a2b0672b30e6ba3afbb0815f779a117ea9770565dca0",
+    "manualReloadRequired": true
+  },
+  "completion": {
+    "at": "2026-10-28T13:33:08.588Z",
+    "stage": "completed",
+    "completed": 8,
+    "plan": {
+      "planId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60",
+      "projectId": "proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683",
+      "planRevision": 1,
+      "currentSessionId": null,
+      "completedCount": 8,
+      "totalCount": 8,
+      "contractReady": true,
+      "sessions": [
+        {
+          "sessionId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-1",
+          "lessonIndex": 1,
+          "title": "条纹从哪里来？",
+          "activities": [
+            {
+              "activityId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-1:activity:check",
+              "kind": "check",
+              "evidence": "session_response",
+              "status": "completed",
+              "guidance": "根据学生本轮解释提出一个检查问题；题目可动态生成，不覆盖已有待答题。",
+              "minutes": 20,
+              "evidenceRefs": []
+            }
+          ],
+          "status": "completed",
+          "completedAt": "2026-10-28T13:15:58.024Z",
+          "canComplete": false,
+          "blockers": []
+        },
+        {
+          "sessionId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-2",
+          "lessonIndex": 2,
+          "title": "两列波相遇会怎样？",
+          "activities": [
+            {
+              "activityId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-2:activity:check",
+              "kind": "check",
+              "evidence": "mastery",
+              "status": "completed",
+              "guidance": "通过服务端专题准备检查；求助不自动判错，未掌握则同目标补救。",
+              "minutes": 20,
+              "evidenceRefs": []
+            }
+          ],
+          "status": "completed",
+          "completedAt": "2026-10-28T13:18:19.788Z",
+          "canComplete": false,
+          "blockers": []
+        },
+        {
+          "sessionId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-3",
+          "lessonIndex": 3,
+          "title": "双缝为什么出现明暗？",
+          "activities": [
+            {
+              "activityId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-3:activity:practice",
+              "kind": "practice",
+              "evidence": "experiment_observation",
+              "status": "completed",
+              "guidance": "先预测再使用本课注册模型；一次只改一个变量，保存参数和模拟观察，不写成实测。 本活动需保存 1 条通过评价的独立观察记录，当前 0 / 1 条。请完成不同参数下的观察并分别保存；同一记录中描述多次运行仍计为一条。",
+              "minutes": 25,
+              "evidenceRefs": []
+            }
+          ],
+          "status": "completed",
+          "completedAt": "2026-10-28T13:18:56.246Z",
+          "canComplete": false,
+          "blockers": []
+        },
+        {
+          "sessionId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-4",
+          "lessonIndex": 4,
+          "title": "怎样改变干涉条纹间距？",
+          "activities": [
+            {
+              "activityId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-4:activity:practice",
+              "kind": "practice",
+              "evidence": "experiment_observation",
+              "status": "completed",
+              "guidance": "先预测再使用本课注册模型；一次只改一个变量，保存参数和模拟观察，不写成实测。 本活动需保存 2 条通过评价的独立观察记录，当前 0 / 2 条。请完成不同参数下的观察并分别保存；同一记录中描述多次运行仍计为一条。",
+              "minutes": 25,
+              "evidenceRefs": []
+            }
+          ],
+          "status": "completed",
+          "completedAt": "2026-10-28T13:19:44.334Z",
+          "canComplete": false,
+          "blockers": []
+        },
+        {
+          "sessionId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-5",
+          "lessonIndex": 5,
+          "title": "一条缝为什么仍有条纹？",
+          "activities": [
+            {
+              "activityId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-5:activity:practice",
+              "kind": "practice",
+              "evidence": "experiment_observation",
+              "status": "completed",
+              "guidance": "先预测再使用本课注册模型；一次只改一个变量，保存参数和模拟观察，不写成实测。 本活动需保存 1 条通过评价的独立观察记录，当前 0 / 1 条。请完成不同参数下的观察并分别保存；同一记录中描述多次运行仍计为一条。",
+              "minutes": 25,
+              "evidenceRefs": []
+            }
+          ],
+          "status": "completed",
+          "completedAt": "2026-10-28T13:20:21.996Z",
+          "canComplete": false,
+          "blockers": []
+        },
+        {
+          "sessionId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-6",
+          "lessonIndex": 6,
+          "title": "缝变窄，图样怎样变化？",
+          "activities": [
+            {
+              "activityId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-6:activity:practice",
+              "kind": "practice",
+              "evidence": "experiment_observation",
+              "status": "completed",
+              "guidance": "先预测再使用本课注册模型；一次只改一个变量，保存参数和模拟观察，不写成实测。 本活动需保存 2 条通过评价的独立观察记录，当前 0 / 2 条。请完成不同参数下的观察并分别保存；同一记录中描述多次运行仍计为一条。",
+              "minutes": 25,
+              "evidenceRefs": []
+            }
+          ],
+          "status": "completed",
+          "completedAt": "2026-10-28T13:21:09.814Z",
+          "canComplete": false,
+          "blockers": []
+        },
+        {
+          "sessionId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-7",
+          "lessonIndex": 7,
+          "title": "干涉与衍射怎样联系？",
+          "activities": [
+            {
+              "activityId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-7:activity:check",
+              "kind": "check",
+              "evidence": "session_response",
+              "status": "completed",
+              "guidance": "直接在对话中给出比较解释，系统自动保存为过程草稿；最后一课再整理并正式交付。",
+              "minutes": 15,
+              "evidenceRefs": []
+            }
+          ],
+          "status": "completed",
+          "completedAt": "2026-10-28T13:22:08.835Z",
+          "canComplete": false,
+          "blockers": []
+        },
+        {
+          "sessionId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-8",
+          "lessonIndex": 8,
+          "title": "别人能复核我的探究吗？",
+          "activities": [
+            {
+              "activityId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-8:activity:check",
+              "kind": "check",
+              "evidence": "submitted_artifact",
+              "status": "completed",
+              "guidance": "参考已保存的过程草稿与观察，在对话区整理最终档案并确认交付；站内正文无需导出再上传。",
+              "minutes": 15,
+              "evidenceRefs": []
+            },
+            {
+              "activityId": "plan-ce3e4b03-87fb-4df5-8a5e-7bfa76454d60:wave-dialogue-session-8:activity:reflect",
+              "kind": "reflect",
+              "evidence": "session_response",
+              "status": "completed",
+              "guidance": "作品通过后，直接说说一次认识变化、相应依据和仍不确定的地方。",
+              "minutes": 30,
+              "evidenceRefs": []
+            }
+          ],
+          "status": "completed",
+          "completedAt": "2026-10-28T13:32:59.550Z",
+          "canComplete": false,
+          "blockers": []
+        }
+      ]
+    }
+  },
+  "finalReload": {
+    "at": "2026-10-28T13:33:09.245Z",
+    "stage": "completed",
+    "completed": 8
+  },
+  "toolErrors": [],
+  "visualChecks": [
+    {
+      "title": "单缝 vs 双缝：要比较什么？",
+      "steps": [
+        {
+          "step": 1,
+          "mermaid": true,
+          "tex": false,
+          "visualCount": 1
+        },
+        {
+          "step": 2,
+          "mermaid": false,
+          "tex": true,
+          "visualCount": 1
+        },
+        {
+          "step": 3,
+          "mermaid": false,
+          "tex": true,
+          "visualCount": 1
+        },
+        {
+          "step": 4,
+          "mermaid": false,
+          "tex": true,
+          "visualCount": 1
+        },
+        {
+          "step": 5,
+          "mermaid": false,
+          "tex": false,
+          "visualCount": 1
+        }
+      ],
+      "replay": true
+    }
+  ],
+  "simulationReplay": {
+    "at": "2026-10-28T13:35:10.747Z",
+    "completedBefore": 8,
+    "completedAfter": 8,
+    "newWriteRequests": 0
+  },
+  "finalReadback": {
+    "at": "2026-10-28T13:35:12.216Z",
+    "projectId": "proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683",
+    "templateVersionId": "tplv-55d940f7-24f8-4740-b5ff-258259b3d3bf",
+    "stage": "completed",
+    "completedCount": 8,
+    "totalCount": 8,
+    "lessonCount": 8,
+    "acceptedObservationCount": 6,
+    "allLessonsCompleted": true,
+    "finalArtifact": {
+      "id": "art-c697edf3-8916-4adc-b741-ec2a06940392",
+      "status": "published",
+      "versionId": "artv-3e0e53bc-a3d0-446b-8a49-c9d8c5a00f38",
+      "approvedVersionId": "artv-3e0e53bc-a3d0-446b-8a49-c9d8c5a00f38",
+      "exactContentMatched": true,
+      "contentSha256": "4c887c2279272a4f407dd69b3b16e66382874973596d8b92c4e058edadcb2f5a"
+    },
+    "manualLessonCompletionRequests": 0,
+    "fileUploadRequests": 0,
+    "teacherMutationRequests": 0
+  },
+  "finishedAt": "2026-10-28T13:37:49.755Z",
+  "outcome": "completed_before_followup",
+  "finalPlanStatus": "completed",
+  "fixedChecks": {
+    "plainOptions": 3,
+    "toolFailures": [],
+    "handoffNarration": "回答已保存，本次必要要求已满足。\n上一课的观察记录已经保存好了，必要要求已满足。现在进入最后一课：**别人能复核我的探究吗？**\n\n这一课不是再做一个新实验，而是把你已有的东西整理成一份**别人照着能重做、能检查**的档案。我先讲清“可复核”到底指什么。\n\n**打个比方**：你给同学一份做菜记录，只写“很好吃”没法复核；写成“200 ℃、烤 15 分钟、中层、成品边缘微焦”，别人才能重做并判断。科学档案也一样——**参数、观察、解释、修订**四样齐全，别人才查得动。\n\n具体到你的探究，档案里需要能追溯到这几项：\n\n- **单缝**：缝宽 a、波长 λ、屏距，以及你保存的模拟观察（中央亮带宽度、图样）\n- **双缝**：缝间距 d、缝宽 a、波长、屏距，以及条纹间距的观察\n- **标注**：哪些是模型计算结果、哪些是模拟观察，不能写成“真实测量”\n- **解释**：两类图样的联系与差异，以及你控制了什么变量\n- **修订**：你改过的一次解释，依据是哪条观察\n- **边界**：这个模型在什么条件下才适用\n\n**一个容易混的点，先分清**：单缝看的是**缝宽 a**（一条缝内各处的波互相叠加，形成中央亮带加两侧次级亮带）；双缝看的是**缝间距 d**（两条缝的光程差决定细密条纹），但缝本身有宽度，所以细条纹外面还套着一个“衍射包络”。a 和 d 是两个不同的量，别写混。\n\n现在请你先做一件事，不用写完整档案：\n\n**翻一下你已保存的观察记录，告诉我你手上有哪几条？**（比如“单缝 a=20 μm 一条、a=40 μm 一条、双缝一条”）如果记不清具体数值，说个大概也行，我们一起看还缺什么。",
+    "exactFinalLabel": true,
+    "recoveredToolFailures": [],
+    "unrecoveredToolFailures": [],
+    "pendingHelpStream": {
+      "at": "2026-10-28T13:17:27.034Z",
+      "status": 200,
+      "events": [
+        {
+          "type": "tool_call",
+          "name": "agent.runtime.run"
+        },
+        {
+          "type": "tool_result",
+          "name": "agent.runtime.run",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "model.gateway.complete"
+        },
+        {
+          "type": "tool_call",
+          "name": "ima.tools.list"
+        },
+        {
+          "type": "tool_result",
+          "name": "ima.tools.list",
+          "status": "done"
+        },
+        {
+          "type": "tool_result",
+          "name": "model.gateway.complete",
+          "status": "done"
+        },
+        {
+          "type": "tool_call",
+          "name": "safety.answer_leak.guard"
+        },
+        {
+          "type": "tool_result",
+          "name": "safety.answer_leak.guard",
+          "status": "done"
+        }
+      ],
+      "blocks": [
+        {
+          "kind": "hint"
+        }
+      ],
+      "modelGateway": true
+    }
+  },
+  "scopeSwitch": {
+    "lateResponseCaptured": true,
+    "originalProject": "proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683",
+    "secondProject": "proj-45146e3c-5bf6-4bba-bb50-cb640b6c168e",
+    "originalCompleted": 8,
+    "originalStage": "completed",
+    "secondCompleted": 0,
+    "visibleUrl": "http://122.51.130.204/student/tutor/proj-8d401fd9-7740-4a19-8ac8-030b3bcc6683"
+  },
+  "courseRuntime": "tutor.chat.v10-reliable-dialogue",
+  "scopeSwitchRuntime": "tutor.chat.v11-delivery-receipt",
+  "followupIssues": [
+    "Final handoff sometimes omitted the inline delivery entry.",
+    "Concurrent loser tab required manual reload and exposed a technical conflict message."
+  ],
+  "testCorrections": [
+    "Offline UI deliberately disables submission; assert disabled state rather than clicking it.",
+    "Either concurrent tab may win; accept one success plus conflict, then verify one saved version."
+  ]
+}

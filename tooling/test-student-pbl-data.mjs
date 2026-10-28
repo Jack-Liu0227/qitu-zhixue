@@ -21,6 +21,6 @@ function load(path){
   },exports);
   return exports;
 }
-for(const test of ['features/projects/data/api-projects-data-source.test.ts','features/tutor/data/lessonWorkspaceApi.test.ts','features/tutor/data/tutor-confirmation.test.ts','features/tutor/data/tutor-exploration.test.ts','features/inspiration/data/inspiration-api-data-source.test.ts']){
+for(const test of ['features/projects/data/api-projects-data-source.test.ts','features/tutor/data/lessonWorkspaceApi.test.ts','features/tutor/data/tutor-confirmation.test.ts','features/tutor/data/tutor-exploration.test.ts','features/tutor/data/lessonTextImport.test.ts','features/inspiration/data/inspiration-api-data-source.test.ts']){
   load(resolve(root,'apps/student-center',test));
 }

@@ -6,6 +6,7 @@ import type {
 } from '@qitu/contracts';
 import type { TutorContextPacket } from '@qitu/ai-client';
 import { leaksPendingAnswer, type TutorDisclosure } from './tutor-disclosure';
+import type { LearningReplyReceipt } from './tutor-learning-reply.service';
 
 /**
  * AI搭档的回合引擎接口（provider seam）。
@@ -15,6 +16,8 @@ import { leaksPendingAnswer, type TutorDisclosure } from './tutor-disclosure';
  * 任何改动。契约与流式事件是与前端共享的，换实现不会改变线上协议。
  */
 export interface TutorTurnInput {
+  /** Server-owned reply receipt; the browser cannot populate evaluation feedback. */
+  learningReceipt?: Readonly<LearningReplyReceipt & { sourceLearningSessionId: string; sourceQuestionId: string | null }>;
   /** Server-only assessment state. Never populated from browser content or serialized wholesale. */
   disclosure?: TutorDisclosure;
   refreshDisclosure?: () => Promise<TutorDisclosure>;

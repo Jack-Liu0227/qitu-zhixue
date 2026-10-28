@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, Optional, ServiceUnavailableException } from '@nestjs/common';
 import { LessonQualityEvaluator } from './lesson-quality-evaluator';
+import { LessonEvaluationRecoveryStore, type LessonEvaluationRecoveryRequest } from './lesson-evaluation-recovery.store';
 import { createHash } from 'node:crypto';
 import type { CurrentUser, TutorExperimentActionResponse, LessonQualityDecision } from '@qitu/contracts';
 import { WorksLessonQuality, lessonQualityCriteria } from './works-lesson-quality';
@@ -56,6 +57,7 @@ export class WorksLearningEvidenceService {
     private readonly audit: AuditWriter,
     @Optional() private readonly courseware?: CoursewareStore,
     @Optional() evaluator?: LessonQualityEvaluator,
+    @Optional() private readonly recovery?: LessonEvaluationRecoveryStore,
   ) {
     this.quality = new WorksLessonQuality({ plans, bindings, directory, artifacts, facts, evidence, idempotency, audit, evaluator, mastery, courseware,
       readProofs: (actor, scope, refs) => this.readLessonProofs(actor, scope, refs) });
@@ -72,7 +74,34 @@ export class WorksLearningEvidenceService {
     const proofs = await this.readLessonProofs(actor, context.scope, [evidenceRef]);
     const proof = [...proofs.submissions, ...proofs.observations, ...proofs.reflections].find(item => item.ref === evidenceRef);
     if (!proof) conflict('LESSON_QUALITY_SCOPE_INVALID', '仅能评价本课已保存的证据');
-    return { quality: await this.quality.evaluate(actor, context, proof) };
+    const request = { studentId: actor.id, ...context.scope, evidenceRef };
+    if (context.lesson.progression === 'dialogue.v1') await this.recovery?.schedule(request);
+    const quality = await this.quality.evaluate(actor, context, proof);
+    // The consumer also restores a requested final publication and lifecycle synchronization.
+    return { quality };
+  }
+
+  async resumeLessonEvaluation(actor: CurrentUser, request: LessonEvaluationRecoveryRequest) {
+    const context = await this.context(actor, request);
+    if (context.lesson.progression !== 'dialogue.v1' || actor.id !== request.studentId) conflict('LESSON_RECOVERY_SCOPE_INVALID', '学习恢复范围已变化');
+    const proofs = await this.readLessonProofs(actor, context.scope);
+    const proof = [...proofs.submissions, ...proofs.observations, ...proofs.reflections].find(item => item.ref === request.evidenceRef);
+    if (!proof) conflict('LESSON_QUALITY_SCOPE_INVALID', '需引用本课已保存证据');
+    let quality = await this.quality.read(context, proof);
+    if (quality.status !== 'accepted' && quality.status !== 'needs_revision') {
+      await this.context(actor, request, true);
+      quality = await this.quality.evaluate(actor, context, proof);
+    }
+    if (proof.kind === 'submitted_artifact' && quality.status === 'accepted' && proof.artifactId) {
+      const row = (await this.facts.listByProject(context.project.id)).find(item => `${item.sourceKind}:${item.sourceId}` === proof.ref);
+      const receipt = row && readSubmission(row);
+      if (receipt?.requestReview === true && receipt.artifactVersionId === proof.artifactVersionId
+        && !proofs.approvedArtifacts.some(item => item.artifactVersionId === proof.artifactVersionId)) {
+        await this.context(actor, request, true);
+        await this.works.publishArtifact(actor.id, proof.artifactId, `lesson-recovery:${proof.artifactVersionId}:publish`);
+      }
+    }
+    return quality;
   }
 
   async lessonQualityAccepted(actor: CurrentUser, scope: LearningEvidenceScope, proof: LearningEvidenceProof) {
@@ -87,6 +116,9 @@ export class WorksLearningEvidenceService {
     const proofs = await this.readLessonProofs(actor, context.scope);
     for (const proof of [...proofs.submissions, ...proofs.observations, ...proofs.reflections]) {
       proof.quality = await this.quality.read(context, proof);
+      if (proof.quality.status === 'pending' && context.lesson.progression === 'dialogue.v1') {
+        proof.quality.recovery = await this.recovery?.read({ studentId: context.project.studentId, ...context.scope, evidenceRef: proof.ref });
+      }
     }
     return { ...proofs, scope: context.scope, sessionType: context.lesson.sessionType, allowedActions,
       qualityCriteria: lessonQualityCriteria(context) };
@@ -186,7 +218,7 @@ export class WorksLearningEvidenceService {
     const initial = await this.context(actor, inputScope, true);
     if (body.activityId !== undefined && (typeof body.activityId !== 'string'
       || !initial.lesson.activityRequirements?.some(requirement => body.activityId === `${learningSessionId}:activity:${requirement.activity}`
-        && requirement.evidence === kind))) invalid('活动标识与本课任务或提交类型不一致');
+        && (requirement.evidence === kind || initial.lesson.progression === 'dialogue.v1' && kind === 'session_response' && requirement.evidence === 'submitted_artifact')))) invalid('活动标识与本课任务或提交类型不一致');
     if (initial.lesson.activityRequirements && body.activityId === undefined) invalid('本课提交需要明确的活动标识');
     const objectiveIds = body.objectiveId === undefined ? initial.scope.objectiveIds : [body.objectiveId];
     if (!objectiveIds.every((id) => initial.scope.objectiveIds.includes(id))) conflict('LEARNING_EVIDENCE_OBJECTIVE_MISMATCH', '目标不属于该课时');
@@ -196,8 +228,9 @@ export class WorksLearningEvidenceService {
     const normalized = { content, evidenceRefs, objectiveId: body.objectiveId ?? null, title: body.title ?? null,
       requestReview: body.requestReview === true, planRevision: body.planRevision,
       ...(body.activityId ? { activityId: body.activityId } : {}) };
+    const submissionKey = initial.lesson.progression === 'dialogue.v1' ? digest(JSON.stringify([initial.scope, normalized])) : key;
     try {
-      const result = await this.idempotency.execute(idemScope, key, hashIdempotentInput(idemScope, inputScope, normalized), async () => {
+      const result = await this.idempotency.execute(idemScope, submissionKey, hashIdempotentInput(idemScope, inputScope, normalized), async () => {
         const context = await this.context(actor, inputScope, true);
         if (context.lesson.activityRequirements) {
           const view = await this.getLessonProofs(actor, planId, learningSessionId, body.planRevision);
@@ -206,7 +239,7 @@ export class WorksLearningEvidenceService {
           const activities = projectLessonActivities({ lesson: context.lesson, sessionId: learningSessionId,
             teachingDeliveries: context.lesson.teachingSpec && this.courseware
               ? await this.courseware.instances(context.project.id, planId, body.planRevision, learningSessionId) : [],
-            proofs: [...view.submissions, ...view.observations, ...view.reflections],
+            proofs: [...view.submissions, ...view.observations, ...view.reflections, ...view.approvedArtifacts],
             masteryAccepted: !pending && ids.length > 0 && await this.mastery.checkRequiredObjectives(actor, actor.id, planId, ids, this.plans) });
           if (activities.find(activity => activity.status === 'current')?.activityId !== body.activityId) {
             conflict('LESSON_ACTIVITY_OUT_OF_ORDER', '当前活动已变化或前置活动尚未完成，请刷新后继续');
@@ -221,7 +254,7 @@ export class WorksLearningEvidenceService {
           const projectProofs = await this.readLessonProofs(actor, context.scope);
           if (!projectProofs.approvedArtifacts.length) conflict('PROJECT_REVIEW_REQUIRED', '需先完成自动评价并发布作品');
         }
-        const childKey = digest(`${idemScope}:${key}`);
+        const childKey = digest(`${idemScope}:${submissionKey}`);
         const artifact = await this.works.createArtifact(actor.id, {
           projectId: context.project.id, title: body.title ?? `${context.lesson.title} · ${reflection ? '反思' : kind === 'session_response' ? '学习回应' : '作品'}`,
           summary: '', version: { inlineText: content },
@@ -232,6 +265,7 @@ export class WorksLearningEvidenceService {
           ...(body.activityId ? { activityId: body.activityId } : {}),
           scope: context.scope, artifactId: artifact.id, artifactVersionId: versionId,
           contentDigest: digest(content), evidenceRefs };
+        if (kind === 'submitted_artifact' && body.requestReview === true) receipt.requestReview = true;
         const sourceKind = reflection ? 'reflection' as const : 'task_submission' as const;
         const sourceId = `learning-${childKey}`;
         await this.evidence.ingestServerFacts([{
@@ -256,16 +290,20 @@ export class WorksLearningEvidenceService {
       let quality = result.body.proof.quality;
       let evaluationError: string | undefined;
       let artifact = result.body.artifact;
+      const recoveryRequest = { studentId: actor.id, ...initial.scope, evidenceRef: result.body.proof.ref };
+      const automaticRecovery = initial.lesson.progression === 'dialogue.v1' && await this.recovery?.schedule(recoveryRequest);
       if (initial.lesson) {
         try {
           quality = await this.quality.evaluate(actor, await this.context(actor, inputScope), result.body.proof);
           if (kind === 'submitted_artifact' && body.requestReview && quality.status === 'accepted') {
-            artifact = await this.works.publishArtifact(actor.id, artifact.id, `${digest(`${idemScope}:${key}`)}:publish`);
+            artifact = await this.works.publishArtifact(actor.id, artifact.id, `${digest(`${idemScope}:${submissionKey}`)}:publish`);
           }
         } catch (error) {
           if (!(error instanceof ServiceUnavailableException)) throw error;
           quality = await this.quality.read(initial, result.body.proof);
-          evaluationError = '记录已保存，自动评价暂未完成，请重试评价；无需等待老师。';
+          if (automaticRecovery) quality.recovery = await this.recovery?.read(recoveryRequest);
+          evaluationError = automaticRecovery ? '记录已保存，系统将自动重试评价，无需再次提交正文。'
+            : '记录已保存，自动评价暂未完成，请重试评价；无需等待老师。';
         }
       }
       return { ...result.body, proof: { ...result.body.proof, ...(quality ? { quality } : {}) }, artifact,

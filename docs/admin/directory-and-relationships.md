@@ -69,12 +69,7 @@ GET /api/v1/admin/students/statistics   学生数据统计（聚合）
 - 校域：`school_id` 可空列约定 `NULL` = 平台共享。行级安全（RLS）与多校租户切换**尚未实现**，
   当前 `school_id` 仅供应用层过滤，权限仍由后端逐对象校验。
 
-## 6. 未决事项
-
-- [ ] `roles` / `identities` / `sessions` / `consents` / `student_profiles` / `mentor_profiles` 正式结构与迁移。
-- [ ] `student_profiles.school_id` 落表。
-- [ ] 行级安全（RLS）/ `SET LOCAL` 会话变量与跨校写入强制校验。
-- [ ] 数据保留与删除 / 匿名化策略。
+[相关计划与执行记录](../../Plan/maintenance/usage-records-20261028.md)。
 
 ## 7. 相关文档
 

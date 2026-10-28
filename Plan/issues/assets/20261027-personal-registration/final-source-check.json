@@ -1,0 +1,16 @@
+{
+  "status": "passed",
+  "verifiedAt": "2026-10-26T16:51:39.415098+00:00",
+  "sourceFiles": 46,
+  "currentHead": "b4a0b870327800e55170db631343ad8a582345bc",
+  "services": {
+    "api": "active",
+    "auth": "active",
+    "admin": "active",
+    "parent": "active",
+    "student": "active",
+    "teacher": "active",
+    "workers": "active",
+    "profile-growth": "active"
+  }
+}

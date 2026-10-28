@@ -1,4 +1,7 @@
 import { coordinateLessonCollaboration } from './tutor-lesson-collaboration';
+import { TutorLearningReplyService } from './tutor-learning-reply.service';
+import { CommerceAccess } from '../business/commerce.access';
+import type { TutorLearningReplyScope } from '@qitu/contracts';
 import { startTutorTeamRun } from './tutor-team-run';
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, Logger, NotFoundException, Optional, ServiceUnavailableException } from '@nestjs/common';
 import { LearningPlanService } from '../learning-plan/learning-plan.service';
@@ -328,6 +331,8 @@ export class TutorService {
     @Optional() private readonly lessonProgress?: LearningSessionProgressService,
     @Optional() private readonly projectHistory?: ProjectHistoryService,
     @Optional() private readonly courseware?: CoursewareService,
+    @Optional() private readonly learningReplies?: TutorLearningReplyService,
+    @Optional() private readonly commerce?: CommerceAccess,
   ) {
     const runtime = loadTutorRuntimeSource();
     this.provider = createTutorProvider(dataMode, gateway, buildTutorRuntimeBlocks(runtime, []), ima);
@@ -447,7 +452,7 @@ export class TutorService {
   }
   /**
    * 解析当前会话的团队／助手身份与阶段投影（服务端事实，见
-   * docs/design/20261018-tutor-workspace-interaction-contract.md §3）。
+   * Plan/design/20261018-tutor-workspace-interaction-contract.md §3）。
    *
    * - 自由探索：`assistantId = qitu-intake-assistant`，`teamId/teamName = null`；
    * - 正式项目：只读确认时冻结的绑定与团队版本；缺失/旧回填时显式要求重新确认。
@@ -612,7 +617,7 @@ export class TutorService {
         requiresGateApproval: requiresGate,
         gateStatus: requiresGate ? (gatePassed ? 'passed' : 'pending') : 'not_required',
         status,
-        requiredDeliverables: phase.deliverableType
+        requiredDeliverables: phase.deliverableType && phase.gateCondition !== 'practice_evidence_ready'
           ? [{ id: `${phase.phase}:${phase.deliverableType}`, title: phase.deliverableType, submitted: false }]
           : [],
       };
@@ -796,7 +801,7 @@ export class TutorService {
       throw new ConflictException({ code: 'PROJECT_TEACHING_BUNDLE_UNAVAILABLE', message: '项目教学包与冻结团队不一致。' });
     }
     const context = await resolveTutorTeachingContext(this.learningStore, project, bundle);
-    if (bundle.template.lessonPolicy === 'lesson-guided.v1') {
+    if (bundle.template.lessonPolicy) {
       if (!this.lessonProgress) throw new ConflictException({ code: 'LESSON_PROGRESS_UNAVAILABLE', message: '课时活动服务尚未接通' });
       const progress = await this.lessonProgress.readProgress({ id: studentId, email: '', displayName: '', role: 'student' }, context.planId);
       context.lesson.currentActivity = progress.sessions.find(entry => entry.sessionId === progress.currentSessionId)
@@ -808,6 +813,10 @@ export class TutorService {
       const lessonSpec = context.bundle.template.curriculum?.profiles.find(entry => entry.id === context.bundle.scheduleProfileId)
         ?.sessions.find(entry => entry.sessionIndex === context.session.lessonIndex);
       if (lessonSpec?.teachingSpec) context.lesson.teachingMode = lessonSpec.teachingSpec.version;
+      if (lessonSpec?.progression) {
+        context.lesson.progression = lessonSpec.progression;
+        context.lesson.pendingQuestionId = (await this.learningStore.findAwaitingQuestion(studentId, context.planId))?.id ?? null;
+      }
       context.lesson.collaborationAvailable = lessonSpec?.collaborators?.some(entry => entry.activity === context.lesson.currentActivity?.kind
         && (entry.trigger === 'on_request' || (context.lesson.evidenceRefs?.length ?? 0) > 0)) ?? false;
       const activity = context.lesson.currentActivity;
@@ -1406,6 +1415,7 @@ export class TutorService {
   async *runTurn(
     record: TutorSessionRecord,
     request: {
+      learningReply?: TutorLearningReplyScope;
       content?: string;
       pedagogicMove?: TutorTurnInput['pedagogicMove'];
       optionLabel?: string;
@@ -1441,13 +1451,14 @@ export class TutorService {
         content: request.content ?? null,
         pedagogicMove: request.pedagogicMove ?? null,
         optionLabel: request.optionLabel ?? null,
+        learningReply: request.learningReply ?? null,
       });
       const result = await this.idempotencyStore.execute(
         scope,
         request.idempotencyKey,
         requestHash,
         async () => {
-          const events = await this.executeTurn(record, request);
+          const events = await this.executeMeteredTurn(record, request);
           return { status: 200, body: { events } };
         },
         { processingLeaseMs: TUTOR_TURN_LEASE_MS },
@@ -1484,7 +1495,7 @@ export class TutorService {
       return;
     }
 
-    const events = await this.executeTurn(record, request);
+    const events = await this.executeMeteredTurn(record, request);
     this.idempotency.set(request.idempotencyKey, {
       turnId: `${record.sessionId}:assistant:${record.lastSeq}`,
       events,
@@ -1495,6 +1506,20 @@ export class TutorService {
     }
     } finally {
       releaseTurnLock();
+    }
+  }
+
+  private async executeMeteredTurn(record: TutorSessionRecord, request: Parameters<TutorService['executeTurn']>[1]) {
+    // Opening turns have no user input. Internal model calls never touch this ledger.
+    const billable = record.turns.length > 0 || !!(request.content?.trim() || request.pedagogicMove || request.optionLabel);
+    const reservation = billable ? await this.commerce?.reserve(request.actorId, record.projectId, `${record.sessionId}:${request.idempotencyKey}`) : null;
+    try {
+      const events = await this.executeTurn(record, request);
+      await this.commerce?.settle(reservation ?? null, !events.some(e => e.event.type === 'error'));
+      return events;
+    } catch (error) {
+      await this.commerce?.settle(reservation ?? null, false);
+      throw error;
     }
   }
 
@@ -1520,6 +1545,7 @@ export class TutorService {
   private async executeTurn(
     record: TutorSessionRecord,
     request: {
+      learningReply?: TutorLearningReplyScope;
       content?: string;
       pedagogicMove?: TutorTurnInput['pedagogicMove'];
       optionLabel?: string;
@@ -1530,6 +1556,12 @@ export class TutorService {
     const baseSeq = record.lastSeq;
     const turnCount = record.turns.filter((turn) => turn.role === 'student').length;
     await this.domainWriter.initialize();
+    const learningResult = record.projectId && request.learningReply && request.content && this.learningReplies
+      ? await this.learningReplies.acceptWithReceipt({ id: request.actorId, role: 'student', email: '', displayName: '' }, record.projectId,
+        request.learningReply, request.content, request.idempotencyKey) : null;
+    const learningNotice = learningResult?.notice ?? null;
+    const learningReceipt = learningResult && request.learningReply ? { ...learningResult,
+      sourceLearningSessionId: request.learningReply.learningSessionId, sourceQuestionId: request.learningReply.questionId } : undefined;
     const teaching = record.projectId === null ? null : await this.resolveTeaching(record.projectId, request.actorId);
     const handoff = record.projectId === null
       ? await this.explorationHandoff(request.actorId, await this.loadExploration(request.actorId, record.explorationId ?? undefined)) : null;
@@ -1673,6 +1705,7 @@ export class TutorService {
         const generated: TutorStreamEvent[] = [];
         for await (const event of this.provider.generateTurn({
           ...providerInput,
+          learningReceipt,
           knowledgeTools, learnerReadTools, knowledgeState, knowledgeScope: knowledgeAccess.scope, lessonActivities, disclosure, refreshDisclosure,
           authorizeKnowledgeTool, imaKnowledgeScope: knowledgeAccess.ima,
           modelUsage: purpose.usageId,
@@ -1705,6 +1738,7 @@ export class TutorService {
     }
 
     const input: TutorTurnInput = {
+      learningReceipt,
       knowledgeTools, learnerReadTools, knowledgeState, knowledgeScope: knowledgeAccess.scope, lessonActivities, disclosure, refreshDisclosure,
       authorizeKnowledgeTool, imaKnowledgeScope: knowledgeAccess.ima,
       modelUsage: effectiveRuntime === null ? contextPacket.partner.modelUsage : 'agent.model',
@@ -1748,6 +1782,11 @@ export class TutorService {
     let assistantBlocks: TutorTurn['blocks'] = [];
     let assistantHintLevel: TutorHintLevel | null = null;
     let guardBlocked = false;
+    if (learningNotice) {
+      const block: TutorReplyBlock = { kind: 'text', text: learningNotice };
+      assistantBlocks.push(block);
+      events.push({ seq: ++nextSeq, event: { type: 'block', block } });
+    }
     const pending = new Map<string, TutorToolCall>();
     if (teaching && !knowledgeAccess.scope) {
       const block: TutorReplyBlock = { kind: 'text', text: '本项目的知识库检索暂不可用，本轮资料尚未核验。你可以继续讨论，教材依据需要恢复检索后确认。' };
@@ -1823,7 +1862,7 @@ export class TutorService {
       assistantBlocks.push(block);
       events.push({ seq: ++nextSeq, event: { type: 'block', block } });
     }
-    const asideBlock = teaching?.bundle.template.lessonPolicy === 'lesson-guided.v1' ? null : await this.buildCoPilotAsideBlock(
+    const asideBlock = teaching?.bundle.template.lessonPolicy ? null : await this.buildCoPilotAsideBlock(
       record,
       projectContext,
       conversationAssistantId,
@@ -1940,7 +1979,7 @@ export class TutorService {
       try {
         const delegationInput = buildTeamDelegationInput(record, request, studentTurn.turnId, projectStage);
         const leaderActor = { id: request.actorId, email: '', displayName: '', role: 'student' as const };
-        const tasks = teaching?.bundle.template.lessonPolicy === 'lesson-guided.v1' ? [] : record.projectId === null
+        const tasks = teaching?.bundle.template.lessonPolicy ? [] : record.projectId === null
           ? [{
               recipientAgentId: 'interest-confirmation',
               taskType: 'interest.confirm',

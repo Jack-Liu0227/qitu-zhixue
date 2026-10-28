@@ -1,0 +1,284 @@
+{
+  "schemaVersion": 1,
+  "mode": "tutor-lessons-current",
+  "startedAt": "2026-10-28T13:32:49.167Z",
+  "finishedAt": "2026-10-28T13:33:33.842Z",
+  "success": true,
+  "resolution": "isolated per-run package outputs via test-only registerHooks and declaration paths; installed snapshots and ordinary dist unchanged",
+  "runDirectory": "services/api/.tmp/pbl-capability/run-1793194369166-451721",
+  "externalDependencyRoot": null,
+  "steps": [
+    {
+      "name": "build-contracts",
+      "command": [
+        "node",
+        "node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/bin/tsc",
+        "-p",
+        "services/api/.tmp/pbl-capability/run-1793194369166-451721/contracts.json"
+      ],
+      "cwd": ".",
+      "exitCode": 0,
+      "log": "services/api/.tmp/pbl-capability/run-1793194369166-451721/1-build-contracts.log"
+    },
+    {
+      "name": "contracts-esm-extensions",
+      "command": [
+        "node",
+        "tooling/fix-esm-extensions.mjs",
+        "packages/contracts/.tmp/pbl-capability/run-1793194369166-451721/dist"
+      ],
+      "cwd": ".",
+      "exitCode": 0,
+      "log": "services/api/.tmp/pbl-capability/run-1793194369166-451721/2-contracts-esm-extensions.log"
+    },
+    {
+      "name": "build-database",
+      "command": [
+        "node",
+        "node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/bin/tsc",
+        "-p",
+        "services/api/.tmp/pbl-capability/run-1793194369166-451721/database.json"
+      ],
+      "cwd": ".",
+      "exitCode": 0,
+      "log": "services/api/.tmp/pbl-capability/run-1793194369166-451721/3-build-database.log"
+    },
+    {
+      "name": "build-infra",
+      "command": [
+        "node",
+        "node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/bin/tsc",
+        "-p",
+        "services/api/.tmp/pbl-capability/run-1793194369166-451721/infra.json"
+      ],
+      "cwd": ".",
+      "exitCode": 0,
+      "log": "services/api/.tmp/pbl-capability/run-1793194369166-451721/4-build-infra.log"
+    },
+    {
+      "name": "build-agent-memory",
+      "command": [
+        "node",
+        "node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/bin/tsc",
+        "-p",
+        "services/api/.tmp/pbl-capability/run-1793194369166-451721/agent-memory.json"
+      ],
+      "cwd": ".",
+      "exitCode": 0,
+      "log": "services/api/.tmp/pbl-capability/run-1793194369166-451721/5-build-agent-memory.log"
+    },
+    {
+      "name": "build-ai-client",
+      "command": [
+        "node",
+        "node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/bin/tsc",
+        "-p",
+        "services/api/.tmp/pbl-capability/run-1793194369166-451721/ai-client.json"
+      ],
+      "cwd": ".",
+      "exitCode": 0,
+      "log": "services/api/.tmp/pbl-capability/run-1793194369166-451721/6-build-ai-client.log"
+    },
+    {
+      "name": "build-model-runtime",
+      "command": [
+        "node",
+        "node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/bin/tsc",
+        "-p",
+        "services/api/.tmp/pbl-capability/run-1793194369166-451721/model-runtime.json"
+      ],
+      "cwd": ".",
+      "exitCode": 0,
+      "log": "services/api/.tmp/pbl-capability/run-1793194369166-451721/7-build-model-runtime.log"
+    },
+    {
+      "name": "build-api",
+      "command": [
+        "node",
+        "node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/bin/tsc",
+        "-p",
+        "services/api/.tmp/pbl-capability/run-1793194369166-451721/api.json"
+      ],
+      "cwd": ".",
+      "exitCode": 0,
+      "log": "services/api/.tmp/pbl-capability/run-1793194369166-451721/8-build-api.log"
+    },
+    {
+      "name": "api-behavior-tests",
+      "command": [
+        "node",
+        "--import",
+        "file:///tmp/qitu-dialogue-reliability-build-20261028/tooling/verify-workspace-source.mjs",
+        "--test",
+        "--test-concurrency=4",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/common/tutor-runtime/catalog-skills.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/common/tutor-runtime/runtime-source.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/ai-tutor/gateway-tutor.provider.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/ai-tutor/lesson-collaboration-scope.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/ai-tutor/lesson-collaboration.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/ai-tutor/tutor-activity-optics.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/ai-tutor/tutor-courseware-activity.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/ai-tutor/tutor-courseware.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/ai-tutor/tutor-disclosure.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/ai-tutor/tutor-exploration.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/ai-tutor/tutor-knowledge-access.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/ai-tutor/tutor-lesson-activity.feedback.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/ai-tutor/tutor-lesson-activity.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/ai-tutor/tutor-lesson-assessment.service.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/ai-tutor/tutor-opening.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/ai-tutor/tutor-teaching-context.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/ai-tutor/tutor-tool-outcomes.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/ai-tutor/tutor.runtime-identity.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/ai-tutor/tutor.service.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/ai-tutor/tutor.team-resolution.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/ai-tutor/wave-optics-experiment.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/ai-tutor/wave-optics-model.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/ai-tutor/wave-teaching-resources.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/knowledge/courseware.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/knowledge/knowledge-library-retrieval.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/knowledge/knowledge-retrieval.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/learning-plan/dialogue-course-fullflow.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/learning-plan/guided-lesson-flow.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/learning-plan/inspiration-dialogue-fullflow.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/learning-plan/learning-plan.service.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/learning-plan/learning-session-progress.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/learning-plan/lesson-activity-progress.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/learning-plan/optics-fullflow.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/learning-plan/wave-course-fullflow.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/learning-plan/wave-optics-curriculum.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/platform-registry/assistant-runtime.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/platform-registry/teaching-team-capture.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/platform-registry/team-version.runtime.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/projects/lesson-evaluation-recovery.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/projects/project-learning-lifecycle.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/team-runtime/team-runtime.gate.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/team-runtime/team-runtime.protocol.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/team-runtime/team-runtime.session-routing.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/team-runtime/team-runtime.student-status.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/templates/inspiration-catalog-bootstrap.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/templates/teaching-bundle.compiler.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/templates/teaching-bundle.draft.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/templates/templates-binding.service.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/templates/wave-course-authoring.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/works/works-learning-evidence.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/modules/works/works-lesson-quality.test.js",
+        ".tmp/pbl-capability/run-1793194369166-451721/dist/scripts/optics-template-bootstrap.test.js"
+      ],
+      "cwd": "services/api",
+      "exitCode": 0,
+      "log": "services/api/.tmp/pbl-capability/run-1793194369166-451721/9-api-behavior-tests.log"
+    },
+    {
+      "name": "ai-client-assertions",
+      "command": [
+        "node",
+        "--import",
+        "file:///tmp/qitu-dialogue-reliability-build-20261028/tooling/verify-workspace-source.mjs",
+        "--input-type=module",
+        "-e",
+        "await (await import(\"file:///tmp/qitu-dialogue-reliability-build-20261028/packages/ai-client/.tmp/pbl-capability/run-1793194369166-451721/dist/tutor-context.test.js\")).runTutorContextAssertions();\nawait (await import(\"file:///tmp/qitu-dialogue-reliability-build-20261028/packages/ai-client/.tmp/pbl-capability/run-1793194369166-451721/dist/agent-runtime.test.js\")).runAgentRuntimeAssertions();\nawait (await import(\"file:///tmp/qitu-dialogue-reliability-build-20261028/packages/ai-client/.tmp/pbl-capability/run-1793194369166-451721/dist/team-runtime.test.js\")).runTeamRuntimeAssertions();\nawait (await import(\"file:///tmp/qitu-dialogue-reliability-build-20261028/packages/ai-client/.tmp/pbl-capability/run-1793194369166-451721/dist/mastery/mastery.test.js\")).runMasteryAssertions();\nawait (await import(\"file:///tmp/qitu-dialogue-reliability-build-20261028/packages/ai-client/.tmp/pbl-capability/run-1793194369166-451721/dist/questions/questions.test.js\")).runQuestionAssertions();\nawait (await import(\"file:///tmp/qitu-dialogue-reliability-build-20261028/packages/ai-client/.tmp/pbl-capability/run-1793194369166-451721/dist/grading/grading.test.js\")).runGradingAssertions();\nawait (await import(\"file:///tmp/qitu-dialogue-reliability-build-20261028/packages/ai-client/.tmp/pbl-capability/run-1793194369166-451721/dist/quiz-bank/optics-quiz-bank.test.js\")).runOpticsQuizBankAssertions();\nawait (await import(\"file:///tmp/qitu-dialogue-reliability-build-20261028/packages/ai-client/.tmp/pbl-capability/run-1793194369166-451721/dist/curriculum.test.js\")).runCurriculumAssertions();\nawait (await import(\"file:///tmp/qitu-dialogue-reliability-build-20261028/packages/ai-client/.tmp/pbl-capability/run-1793194369166-451721/dist/qitu-sdk.test.js\")).runQituSDKAssertions();"
+      ],
+      "cwd": "packages/ai-client",
+      "exitCode": 0,
+      "log": "services/api/.tmp/pbl-capability/run-1793194369166-451721/10-ai-client-assertions.log"
+    },
+    {
+      "name": "build-student-center-types",
+      "command": [
+        "node",
+        "node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/bin/tsc",
+        "-p",
+        "services/api/.tmp/pbl-capability/run-1793194369166-451721/student-center-types.json"
+      ],
+      "cwd": ".",
+      "exitCode": 0,
+      "log": "services/api/.tmp/pbl-capability/run-1793194369166-451721/11-build-student-center-types.log"
+    },
+    {
+      "name": "build-teacher-workspace-types",
+      "command": [
+        "node",
+        "node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/bin/tsc",
+        "-p",
+        "services/api/.tmp/pbl-capability/run-1793194369166-451721/teacher-workspace-types.json"
+      ],
+      "cwd": ".",
+      "exitCode": 0,
+      "log": "services/api/.tmp/pbl-capability/run-1793194369166-451721/12-build-teacher-workspace-types.log"
+    },
+    {
+      "name": "build-admin-console-types",
+      "command": [
+        "node",
+        "node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/bin/tsc",
+        "-p",
+        "services/api/.tmp/pbl-capability/run-1793194369166-451721/admin-console-types.json"
+      ],
+      "cwd": ".",
+      "exitCode": 0,
+      "log": "services/api/.tmp/pbl-capability/run-1793194369166-451721/13-build-admin-console-types.log"
+    },
+    {
+      "name": "student-pbl-data-tests",
+      "command": [
+        "node",
+        "--test",
+        "tooling/test-student-pbl-data.mjs"
+      ],
+      "cwd": ".",
+      "exitCode": 0,
+      "log": "services/api/.tmp/pbl-capability/run-1793194369166-451721/14-student-pbl-data-tests.log"
+    },
+    {
+      "name": "student-live-boundary-tests",
+      "command": [
+        "node",
+        "--test",
+        "tooling/test-tutor-live-boundary.mjs"
+      ],
+      "cwd": ".",
+      "exitCode": 0,
+      "log": "services/api/.tmp/pbl-capability/run-1793194369166-451721/15-student-live-boundary-tests.log"
+    },
+    {
+      "name": "build-workers",
+      "command": [
+        "node",
+        "node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/bin/tsc",
+        "-p",
+        "services/api/.tmp/pbl-capability/run-1793194369166-451721/workers.json"
+      ],
+      "cwd": ".",
+      "exitCode": 0,
+      "log": "services/api/.tmp/pbl-capability/run-1793194369166-451721/16-build-workers.log"
+    },
+    {
+      "name": "workers-esm-extensions",
+      "command": [
+        "node",
+        "tooling/fix-esm-extensions.mjs",
+        "services/api/.tmp/pbl-capability/run-1793194369166-451721/workers"
+      ],
+      "cwd": ".",
+      "exitCode": 0,
+      "log": "services/api/.tmp/pbl-capability/run-1793194369166-451721/17-workers-esm-extensions.log"
+    },
+    {
+      "name": "team-worker-tests",
+      "command": [
+        "node",
+        "--import",
+        "file:///tmp/qitu-dialogue-reliability-build-20261028/tooling/verify-workspace-source.mjs",
+        "--test",
+        "services/api/.tmp/pbl-capability/run-1793194369166-451721/workers/team-runtime-executor.test.js",
+        "services/api/.tmp/pbl-capability/run-1793194369166-451721/workers/team-runtime-projection-config.test.js",
+        "services/api/.tmp/pbl-capability/run-1793194369166-451721/workers/team-runtime-projection-settings.test.js",
+        "services/api/.tmp/pbl-capability/run-1793194369166-451721/workers/team-runtime-projection-source.test.js",
+        "services/api/.tmp/pbl-capability/run-1793194369166-451721/workers/team-runtime-route.test.js"
+      ],
+      "cwd": "services/workers",
+      "exitCode": 0,
+      "log": "services/api/.tmp/pbl-capability/run-1793194369166-451721/18-team-worker-tests.log"
+    }
+  ]
+}

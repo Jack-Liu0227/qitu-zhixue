@@ -32,11 +32,7 @@ GET /api/v1/teacher/statistics   负责学生范围的聚合统计
 | offline | 只读缓存，标注数据时间 |
 | permission-denied | 403 页面 |
 
-## 5. 未决事项
-
-- [ ] 统计指标清单与口径（活跃定义、完成口径）。
-- [ ] 时间窗口（周 / 月 / 自定义）。
-- [ ] 是否导出。
+[相关计划与执行记录](../../Plan/maintenance/usage-records-20261028.md)。
 
 ## 6. 相关文档
 

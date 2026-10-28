@@ -50,8 +50,11 @@ export type BusinessOrderStatus =
 
 export interface BusinessOrder {
   id: string;
-  studentId: string;
-  offer: ProjectOffer;
+  studentId: string | null;
+  offer: ProjectOffer | null;
+  subscription?: import('./commerce.js').CommerceOrderSnapshot | null;
+  serviceStartsAt?: string | null;
+  refundAmountFen?: number | null;
   amountFen: number;
   status: BusinessOrderStatus;
   createdAt: string;

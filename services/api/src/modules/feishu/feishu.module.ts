@@ -10,5 +10,5 @@ import { FeishuInboxService } from './feishu-inbox.service';
 import { FeishuSocketFactory } from './feishu-socket.factory';
 import { FeishuAssistantHandlers } from './feishu-assistant-handlers';
 
-@Module({ imports: [AuthModule], controllers: [FeishuController, FeishuOAuthController, FeishuBridgeController], providers: [FeishuService, ReportingService, FeishuReportWorker, FeishuBridgeService, FeishuInboxService, FeishuSocketFactory, FeishuAssistantHandlers], exports: [FeishuService, ReportingService, FeishuReportWorker, FeishuAssistantHandlers] })
+@Module({ imports: [AuthModule], controllers: [FeishuController, FeishuOAuthController, FeishuBridgeController], providers: [FeishuService, ReportingService, FeishuReportWorker, FeishuBridgeService, FeishuInboxService, FeishuSocketFactory, FeishuAssistantHandlers], exports: [FeishuService, ReportingService, FeishuReportWorker, FeishuAssistantHandlers, FeishuInboxService, FeishuBridgeService] })
 export class FeishuModule {}

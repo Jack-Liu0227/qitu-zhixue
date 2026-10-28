@@ -1,0 +1,121 @@
+{
+  "verifiedAt": "2026-10-26T14:28:08.591Z",
+  "runId": "run-1793022703645-80176",
+  "scope": "Current working-tree sources; isolated PostgreSQL and synthetic merchant; no production deployment",
+  "buildAndTypes": [
+    {
+      "name": "build-contracts",
+      "exitCode": 0
+    },
+    {
+      "name": "contracts-esm",
+      "exitCode": 0
+    },
+    {
+      "name": "build-database",
+      "exitCode": 0
+    },
+    {
+      "name": "build-infra",
+      "exitCode": 0
+    },
+    {
+      "name": "build-agent-memory",
+      "exitCode": 0
+    },
+    {
+      "name": "build-ai-client",
+      "exitCode": 0
+    },
+    {
+      "name": "build-model-runtime",
+      "exitCode": 0
+    },
+    {
+      "name": "api",
+      "exitCode": 0
+    },
+    {
+      "name": "types-admin-console",
+      "exitCode": 0
+    },
+    {
+      "name": "types-parent-companion",
+      "exitCode": 0
+    },
+    {
+      "name": "types-auth-portal",
+      "exitCode": 0
+    }
+  ],
+  "regression": {
+    "tests": 168,
+    "pass": 168,
+    "fail": 0,
+    "skipped": 0,
+    "cancelled": 0
+  },
+  "finalPaymentRecheck": {
+    "tests": 7,
+    "pass": 7,
+    "fail": 0,
+    "skipped": 0,
+    "cancelled": 0,
+    "overlapsRegression": true
+  },
+  "postgres": {
+    "groups": 9,
+    "checks": [
+      "settings revision, published offer and current template binding",
+      "orders enforce guardian ownership, frozen price and durable idempotency",
+      "only matching signed-payment facts grant access, duplicate receipts audit once",
+      "refunds remain processing until verified, then revoke new-project access",
+      "revoked guardian link denies read immediately",
+      "expired orders block replacements until merchant closure is verified",
+      "operating checks persist one task per reference and lead handling resolves it",
+      "cost ledger is idempotent and never invents profitability or learning completions",
+      "family invitation acceptance creates independent identities exactly once and sessions survive restart"
+    ]
+  },
+  "browser": {
+    "success": true,
+    "fixtureOnly": true,
+    "actualPayments": false,
+    "pageErrors": [],
+    "adminOverflow": false,
+    "checks": [
+      "admin desktop/mobile",
+      "public desktop/mobile",
+      "admin creates family invitation",
+      "signed invitation opens independent accounts",
+      "invitation fragment removed",
+      "guardian checkout QR",
+      "verified query opens access",
+      "parent cannot read admin",
+      "offline write disabled"
+    ],
+    "mobileWidths": [
+      390
+    ],
+    "additionalChecks": [
+      "family invitation mobile acceptance",
+      "public mobile no document overflow",
+      "parent mobile no document overflow"
+    ]
+  },
+  "basePath": {
+    "apps": 4,
+    "files": 465,
+    "passed": true
+  },
+  "actualPayments": false,
+  "actualLearnerOutcomes": false,
+  "productionMigrationApplied": false,
+  "productionDeployed": false,
+  "cleanup": {
+    "previewServicesStopped": true,
+    "isolatedDatabasesRemoved": 2,
+    "isolatedPostgresStopped": true,
+    "temporaryDriveMappingRemoved": true
+  }
+}

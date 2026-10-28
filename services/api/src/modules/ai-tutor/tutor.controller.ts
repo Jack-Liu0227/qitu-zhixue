@@ -42,6 +42,7 @@ import type { StreamedTutorEvent } from './tutor.service';
 const SESSION_COOKIE = 'qitu_session';
 
 interface StreamBody {
+  learningReply?: import('@qitu/contracts').TutorLearningReplyScope;
   projectId?: unknown;
   sessionId?: unknown;
   explorationId?: unknown;
@@ -275,6 +276,7 @@ export class TutorController {
       for await (const streamed of this.tutorService.runTurn(record, {
         actorId: actor.id,
         idempotencyKey,
+        ...(body.learningReply !== undefined ? { learningReply: body.learningReply } : {}),
         ...(typeof body.content === 'string' ? { content: body.content } : {}),
         ...(isMove(body.pedagogicMove) ? { pedagogicMove: body.pedagogicMove } : {}),
         ...(typeof body.optionLabel === 'string' ? { optionLabel: body.optionLabel } : {}),

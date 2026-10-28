@@ -48,12 +48,13 @@ async function call(url: string, body: object, token?: string): Promise<Record<s
 /** Only tenant tokens may be used to send messages as this bot. */
 export async function sendFeishuText(input: {
   appId: string; appSecret: string; domain: FeishuDomain; recipient: string; text: string; uuid: string;
+  recipientType?: 'open_id' | 'chat_id';
 }): Promise<{ messageId: string; requestId?: string }> {
   if (!input.text.trim() || Buffer.byteLength(input.text, 'utf8') > 20_000) throw new FeishuApiError('FEISHU_MESSAGE_SIZE_INVALID');
   const base = `https://${input.domain === 'lark' ? 'open.larksuite.com' : 'open.feishu.cn'}/open-apis`;
   const auth = await call(`${base}/auth/v3/tenant_access_token/internal`, { app_id: input.appId, app_secret: input.appSecret });
   if (typeof auth.tenant_access_token !== 'string' || !auth.tenant_access_token) throw new FeishuApiError('FEISHU_TENANT_TOKEN_MISSING');
-  const payload = await call(`${base}/im/v1/messages?receive_id_type=open_id`, {
+  const payload = await call(`${base}/im/v1/messages?receive_id_type=${input.recipientType ?? 'open_id'}`, {
     receive_id: input.recipient, msg_type: 'text', content: JSON.stringify({ text: input.text }), uuid: input.uuid,
   }, auth.tenant_access_token);
   const data = record(payload.data);

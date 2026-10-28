@@ -47,6 +47,19 @@ export function LessonDraftEditor({ spec, teams, disabled, onChange, profileId, 
           {members.map(member => <option key={member.assistantId} value={member.assistantId}>{member.assistantName} · {member.roleLabel ?? member.role}</option>)}</select></label>
       </div>
       <label>学习目标<textarea value={displayText(lesson.learningGoal ?? '')} maxLength={1000} onChange={event => update(lesson.id, { learningGoal: event.target.value })} /></label>
+      {lesson.progression === 'dialogue.v1' ? <section aria-label="问答达标标准"><p>本课采用问答自动留证。仅下列必要标准阻塞推进；正式交付只在最后一课。</p>
+        {lesson.completionSpec?.version === 'learning-session-completion.v2' ? lesson.completionSpec.qualityReview.criteria.map((criterion, index) => <div key={criterion.id}>
+          <label><input type="checkbox" checked={criterion.required !== false} onChange={event => {
+            const spec = lesson.completionSpec;
+            if (spec?.version === 'learning-session-completion.v2') update(lesson.id, { completionSpec: { ...spec, qualityReview: { ...spec.qualityReview,
+              criteria: spec.qualityReview.criteria.map((item, i) => i === index ? { ...item, required: event.target.checked } : item) } } });
+          }} />必要标准</label>
+          <textarea value={criterion.description} maxLength={600} onChange={event => {
+            const spec = lesson.completionSpec;
+            if (spec?.version === 'learning-session-completion.v2') update(lesson.id, { completionSpec: { ...spec, qualityReview: { ...spec.qualityReview,
+              criteria: spec.qualityReview.criteria.map((item, i) => i === index ? { ...item, description: event.target.value } : item) } } });
+          }} />
+        </div>) : null}</section> : null}
       {lesson.opening ? <details className={styles.opening}><summary>首轮开场</summary>
         <label>观察情境<textarea value={displayText(lesson.opening.scenario)} maxLength={1000} onChange={event => update(lesson.id, { opening: { ...lesson.opening!, scenario: event.target.value } })} /></label>
         <label>第一个问题<textarea value={displayText(lesson.opening.prompt)} maxLength={500} onChange={event => update(lesson.id, { opening: { ...lesson.opening!, prompt: event.target.value } })} /></label>
@@ -64,7 +77,7 @@ export function LessonDraftEditor({ spec, teams, disabled, onChange, profileId, 
           ) : null}
           {members.filter(member => member.assistantId !== lesson.leadAssistantId).map(member => <option key={member.assistantId} value={member.assistantId}>{member.assistantName}</option>)}</select></label>
         <label>参与活动<select value={collaborator.activity} onChange={event => update(lesson.id, { collaborators: lesson.collaborators!.map((entry, i) => i === index ? { ...entry, activity: event.target.value as LessonActivity } : entry) })}>
-          {ACTIVITIES.filter(activity => lesson.blocks[activity.id] > 0).map(activity => <option key={activity.id} value={activity.id}>{activity.label}</option>)}</select></label>
+          {ACTIVITIES.filter(activity => lesson.progression === 'dialogue.v1' ? lesson.activityRequirements?.some(item => item.activity === activity.id) : lesson.blocks[activity.id] > 0).map(activity => <option key={activity.id} value={activity.id}>{activity.label}</option>)}</select></label>
         <label>触发方式<select value={collaborator.trigger} onChange={event => update(lesson.id, { collaborators: lesson.collaborators!.map((entry, i) => i === index ? { ...entry, trigger: event.target.value as 'on_request' | 'after_evidence' } : entry) })}>
           <option value="after_evidence">已有本课证据后</option><option value="on_request">学生请求帮助时</option></select></label>
         <label>协作用途<select value={collaborator.purpose} onChange={event => update(lesson.id, { collaborators: lesson.collaborators!.map((entry, i) => i === index ? { ...entry, purpose: event.target.value as 'explain' | 'critique' } : entry) })}>
@@ -73,7 +86,7 @@ export function LessonDraftEditor({ spec, teams, disabled, onChange, profileId, 
       </div>)}
       <button type="button" disabled={!members.some(member => member.assistantId !== lesson.leadAssistantId) || (lesson.collaborators?.length ?? 0) >= 8}
         onClick={() => { const member = members.find(entry => entry.assistantId !== lesson.leadAssistantId); if (!member) return;
-          update(lesson.id, { collaborators: [...(lesson.collaborators ?? []), { assistantId: member.assistantId, activity: 'reflect', trigger: 'on_request', purpose: 'critique',
+          update(lesson.id, { collaborators: [...(lesson.collaborators ?? []), { assistantId: member.assistantId, activity: lesson.progression === 'dialogue.v1' ? lesson.activityRequirements![0]!.activity : 'reflect', trigger: 'on_request', purpose: 'critique',
             requiredSkillIds: ['tutor-guided-learning'] }] }); }}>添加协作导师</button>
       <details className={styles.requirements}><summary>证据与安全要求</summary>
         {spec.safetyRequirements?.length ? <p>{displayText(spec.safetyRequirements.join('；'))}</p> : null}

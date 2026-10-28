@@ -1,0 +1,57 @@
+[
+  {
+    "name": "bootstrap",
+    "exitCode": 0,
+    "log": "/tmp/qitu-dialogue-release-20261027-t7j8exy7/bootstrap.log"
+  },
+  {
+    "name": "build-contracts",
+    "exitCode": 0,
+    "log": "/tmp/qitu-dialogue-release-20261027-t7j8exy7/build-contracts.log"
+  },
+  {
+    "name": "build-database",
+    "exitCode": 0,
+    "log": "/tmp/qitu-dialogue-release-20261027-t7j8exy7/build-database.log"
+  },
+  {
+    "name": "build-infra",
+    "exitCode": 0,
+    "log": "/tmp/qitu-dialogue-release-20261027-t7j8exy7/build-infra.log"
+  },
+  {
+    "name": "build-agent-memory",
+    "exitCode": 0,
+    "log": "/tmp/qitu-dialogue-release-20261027-t7j8exy7/build-agent-memory.log"
+  },
+  {
+    "name": "build-ai-client",
+    "exitCode": 0,
+    "log": "/tmp/qitu-dialogue-release-20261027-t7j8exy7/build-ai-client.log"
+  },
+  {
+    "name": "build-model-runtime",
+    "exitCode": 0,
+    "log": "/tmp/qitu-dialogue-release-20261027-t7j8exy7/build-model-runtime.log"
+  },
+  {
+    "name": "build-api",
+    "exitCode": 0,
+    "log": "/tmp/qitu-dialogue-release-20261027-t7j8exy7/build-api.log"
+  },
+  {
+    "name": "build-workers",
+    "exitCode": 0,
+    "log": "/tmp/qitu-dialogue-release-20261027-t7j8exy7/build-workers.log"
+  },
+  {
+    "name": "build-student-center",
+    "exitCode": 0,
+    "log": "/tmp/qitu-dialogue-release-20261027-t7j8exy7/build-student-center.log"
+  },
+  {
+    "name": "build-admin-console",
+    "exitCode": 0,
+    "log": "/tmp/qitu-dialogue-release-20261027-t7j8exy7/build-admin-console.log"
+  }
+]

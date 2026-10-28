@@ -57,3 +57,10 @@ PR 必须包含：
 ## 代码安全
 
 不要在提交、日志、截图或 Issue 中放置密码、Token、API Key、SSH 私钥或未脱敏的学生数据。
+
+## 文档归属
+
+- `docs/` 仅保存项目使用说明，包括角色操作、部署配置与 SDK/API 接入。
+- 所有计划、研究、设计、Issue、实施、发布、验收及历史归档统一进入根目录 `Plan/`，从 [计划总入口](./Plan/README.md) 查阅。
+- 迁移文档时同步更新链接、脚本和索引；历史快照保留原文，未提交内容不得覆盖。
+- 文档变更运行 `python -B tooling/validate-docs.py`；修改校验规则时运行 `python -B tooling/validate-docs.test.py`；归档清单运行 `node tooling/check-codex-plan.mjs`。

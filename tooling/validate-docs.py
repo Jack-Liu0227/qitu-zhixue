@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check local Markdown links and archive coverage; never fetch URLs or write files."""
+"""Check usage/plan layout, local Markdown links and archive coverage without writes."""
 
 import argparse
 import re
@@ -7,7 +7,30 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 
-ARCHIVE = Path('docs/archive/pre-20261018')
+ARCHIVE = Path('Plan/archive/pre-20261018')
+USAGE_DIRECTORIES = {'aboutus', 'admin', 'student', 'teacher', 'parent', 'company', 'sdk', 'assets'}
+PLAN_FILENAME = re.compile(r'(^release[-.]|[-](?:plan|report|implementation|verification|audit|design)(?:[-.]|$)|-release-)')
+PLAN_HEADING = re.compile(r'^#{1,6} .*?(?:未决事项|实施计划|分阶段实施|发布回执)\s*$', re.MULTILINE)
+
+
+def layout_issues(root):
+    issues = []
+    if 'Plan' not in {p.name for p in root.iterdir() if p.is_dir()}:
+        issues.append('Plan: missing case-sensitive plan directory')
+    if not (root / 'Plan/README.md').is_file():
+        issues.append('Plan/README.md: missing plan index')
+    for path in sorted((root / 'docs').rglob('*')):
+        relative = path.relative_to(root / 'docs')
+        location = path.relative_to(root).as_posix()
+        if path.is_dir() and len(relative.parts) == 1 and path.name not in USAGE_DIRECTORIES:
+            issues.append(f'{location}: docs is for usage guides; move planning/evidence directories to Plan/')
+        if path.is_file() and path.suffix == '.md' and path.name != 'learning-plan.md' and PLAN_FILENAME.search(path.name):
+            issues.append(f'{location}: planning/report filename belongs in Plan/')
+        if path.is_file() and path.suffix == '.md':
+            body = mask_code(path.read_text(encoding='utf-8-sig'))
+            if PLAN_HEADING.search(body):
+                issues.append(f'{location}: planning/release sections belong in Plan/')
+    return issues
 
 
 def mask_code(text):
@@ -87,12 +110,20 @@ def local_target(root, document, href):
 def validate(root):
     root = Path(root).resolve()
     docs = root / 'docs'
+    plans = root / 'Plan'
     archive = root / ARCHIVE
     index = archive / 'README.md'
-    issues = []
-    documents = sorted(p for p in docs.rglob('*.md') if 'archive' not in p.relative_to(docs).parts or p == index)
     if not docs.is_dir():
         return ['docs: missing documentation directory'], 0, 0
+    issues = layout_issues(root)
+    documents = list(docs.rglob('*.md'))
+    for document in plans.rglob('*.md'):
+        relative = document.relative_to(plans)
+        # Validate archive entry indexes, while preserving historical snapshot bodies.
+        if relative.parts[0] != 'archive' or (document.name == 'README.md' and len(relative.parts) <= 3):
+            documents.append(document)
+    documents.extend(root / name for name in ('README.md', 'AGENTS.md', 'CONTRIBUTING.md') if (root / name).is_file())
+    documents = sorted(documents)
     covered = {index}
     link_count = 0
     for document in documents:
@@ -133,7 +164,7 @@ def main():
     for issue in issues:
         print(f'FAIL {issue}')
     print(f'{"FAIL" if issues else "PASS"}: {documents} current/index documents, {links} local links, {len(issues)} issues')
-    print('Scope: current Markdown and archive index; historical snapshot bodies, remote URLs and anchors are not validated.')
+    print('Scope: docs/ usage layout, Plan/ current Markdown, root guides and archive indexes; historical bodies, remote URLs and anchors are not validated.')
     return 1 if issues else 0
 
 

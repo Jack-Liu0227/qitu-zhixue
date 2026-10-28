@@ -71,6 +71,7 @@ export function useTutorSession(projectId?: string, explorationKey = 0, requeste
   const dataSource = useTutorDataSource();
 
   const [project, setProject] = useState<TutorProjectContext | null>(null);
+  const replyScopes = useRef(new Map<string, import('@qitu/contracts').TutorLearningReplyScope>());
   /**
    * 真实项目摘要；自由探索会话为 `null`。
    *
@@ -324,7 +325,16 @@ export function useTutorSession(projectId?: string, explorationKey = 0, requeste
       // this, a fresh conversation has a blank gap before the first event.
       setStreaming(true);
       try {
-        const accepted = await dataSource.submitTurn(sessionIdValue, payload);
+        const scopeKey = `${sessionIdValue}:${payload.idempotencyKey}`;
+        const lesson = project?.lesson;
+        if (!replyScopes.current.has(scopeKey) && lesson?.progression === 'dialogue.v1' && lesson.planId && lesson.planRevision
+          && lesson.learningSessionId && lesson.currentActivity) {
+          replyScopes.current.set(scopeKey, { planId: lesson.planId, planRevision: lesson.planRevision,
+            learningSessionId: lesson.learningSessionId, activityId: lesson.currentActivity.activityId, questionId: lesson.pendingQuestionId ?? null });
+          if (replyScopes.current.size > 30) replyScopes.current.delete(replyScopes.current.keys().next().value!);
+        }
+        const learningReply = replyScopes.current.get(scopeKey);
+        const accepted = await dataSource.submitTurn(sessionIdValue, { ...payload, ...(learningReply ? { learningReply } : {}) });
         if (generation !== projectLoadGenerationRef.current || activeSessionRef.current !== sessionIdValue) {
           throw new TutorDataError('会话入口已变化，请在当前对话重试。', undefined, 'SESSION_CHANGED');
         }
@@ -362,7 +372,7 @@ export function useTutorSession(projectId?: string, explorationKey = 0, requeste
         if (generation === projectLoadGenerationRef.current) setSubmitting(false);
       }
     },
-    [dataSource],
+    [dataSource, project],
   );
 
   const submitText = useCallback(

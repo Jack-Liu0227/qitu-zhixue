@@ -65,12 +65,7 @@ GET    /api/v1/artifacts/:id/stats        互动计数
 | offline | 只读；禁止发布 / 点赞 |
 | permission-denied | 403 页面 |
 
-## 6. 未决事项
-
-- [ ] 作品详情独立路由（`/works/[artifactId]`）与反思编辑接线。
-- [ ] 「评论」是否开放给同学（未成年人社交面）。
-- [ ] 展厅是否只展示已发布作品（与「我的项目」语义重叠）。
-- [ ] 浏览计数的近似口径。
+[相关计划与执行记录](../../Plan/maintenance/usage-records-20261028.md)。
 
 ## 7. 相关文档
 

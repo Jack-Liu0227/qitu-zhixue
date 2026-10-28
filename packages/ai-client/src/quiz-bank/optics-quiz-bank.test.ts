@@ -11,6 +11,7 @@ import {
 import { MISCONCEPTION_REMEDIATIONS, knownMisconceptionTag } from './optics/misconceptions.js';
 import { QUIZ_BANK, toQuizBlockProjection } from './index.js';
 import { THUNDER_QUIZ_BANK } from './thunder-fighter.js';
+import { INSPIRATION_QUIZ_BANK } from './inspiration.js';
 import { runOpticsCurriculumAssertions } from './optics/curriculum.test.js';
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -129,7 +130,7 @@ export function runOpticsQuizBankAssertions(): void {
     assert(entry.explanation.length > 0, `${entry.questionId} 解析非空`);
     assert(entry.rationaleHint.length > 0, `${entry.questionId} 引导非空`);
     assert(
-      THUNDER_QUIZ_BANK.some(question => question.conceptId === entry.conceptId) || opticsConceptExists(entry.conceptId),
+      [...THUNDER_QUIZ_BANK, ...INSPIRATION_QUIZ_BANK].some(question => question.conceptId === entry.conceptId) || opticsConceptExists(entry.conceptId),
       `${entry.questionId} 的 conceptId ${entry.conceptId} 必须在内容层存在`,
     );
     for (const key of entry.expectedKeys) {

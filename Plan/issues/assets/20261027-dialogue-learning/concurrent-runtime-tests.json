@@ -1,0 +1,16 @@
+{
+  "concurrentCommit": "59bee84806b7f22ee816eb8e29a48779f97beb64",
+  "runtimeModules": [
+    "modules/platform-registry/legacy-mcp-catalog.js",
+    "modules/platform-registry/platform-registry.service.js",
+    "modules/knowledge/knowledge-tool-catalog.service.js",
+    "modules/knowledge/knowledge-center.service.js"
+  ],
+  "exitCode": 0,
+  "summary": [
+    "# tests 42",
+    "# pass 42",
+    "# fail 0",
+    "# skipped 0"
+  ]
+}

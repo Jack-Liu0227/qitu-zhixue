@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { BusinessModule } from './modules/business/business.module';
+import { CompanyModule } from './modules/company/company.module';
 import { VisualAssetsModule } from './modules/visual-assets/visual-assets.module';
 import { DatabaseModule } from './database';
 import { AccessModule } from './common/access/access.module';
@@ -40,6 +41,7 @@ import { CopilotModule } from './modules/admin-copilot/copilot.module';
 @Module({
   imports: [
     BusinessModule,
+    CompanyModule,
     DatabaseModule,
     VisualAssetsModule,
     AccessModule,

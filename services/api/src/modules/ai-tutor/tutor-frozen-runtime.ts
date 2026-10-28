@@ -5,7 +5,7 @@ import { teachingValueDigest } from '../templates/teaching-bundle.canonical';
 import type { TutorTeachingContext } from './tutor-teaching-context';
 
 export function scopeTutorRuntimeToLesson(runtime: EffectiveAgentRuntime, teaching?: TutorTeachingContext | null): EffectiveAgentRuntime {
-  if (teaching?.bundle.template.lessonPolicy !== 'lesson-guided.v1') return runtime;
+  if (!teaching?.bundle.template.lessonPolicy) return runtime;
   const lesson = teaching.bundle.template.curriculum?.profiles.find(profile => profile.id === teaching.bundle.scheduleProfileId)
     ?.sessions.find(session => session.sessionIndex === teaching.session.lessonIndex);
   const required = lesson?.requiredSkillIds;

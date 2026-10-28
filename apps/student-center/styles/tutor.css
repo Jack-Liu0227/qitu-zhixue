@@ -12,7 +12,7 @@
   box-sizing: border-box;
 }
 
-/* 布局层级合同（docs/design/20261018-tutor-workspace-interaction-contract.md §2.1）：
+/* 布局层级合同（Plan/design/20261018-tutor-workspace-interaction-contract.md §2.1）：
    header / 侧栏 / 中列各自独立层级，任何情况下侧栏与 header 不得覆盖中列对话区；
    中列 Composer 在文档流内（见 .qitu-tutor-col-center .qitu-composer），不使用 fixed/sticky。 */
 .qitu-tutor-header { position: relative; z-index: 3; }

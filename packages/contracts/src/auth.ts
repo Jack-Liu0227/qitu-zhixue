@@ -16,6 +16,7 @@ export interface CurrentUser {
 }
 
 export interface LoginRequest {
+  /** Historical field name; accepts an email or a verified mainland mobile number. */
   email: string;
   password: string;
   /**
@@ -58,4 +59,46 @@ export interface TestLoginAccount extends Pick<LoginRequest, 'email' | 'password
 
 export interface TestLoginOptions {
   accounts: TestLoginAccount[];
+}
+
+/** Public registration creates one account; privileged roles and relationships stay governed. */
+interface AccountRegistrationBase {
+  displayName: string;
+  role: 'student' | 'parent';
+  password: string;
+  policyVersion: string;
+  acceptedTerms: true;
+  ageConsent: true;
+}
+
+export type AccountRegistrationRequest = AccountRegistrationBase &
+  (
+    | { method: 'email'; email: string }
+    | { method: 'phone'; phone: string; challengeId: string; code: string }
+  );
+
+export interface AccountRegistrationPolicy {
+  version: string;
+  notice: string;
+  operatorName: string;
+  supportEmail: string;
+  termsText: string;
+  privacyText: string;
+  phoneRegistration: { available: boolean; reason: string };
+}
+
+export interface AccountRegistrationResult {
+  login: string;
+  role: 'student' | 'parent';
+}
+export interface RegistrationSmsReceipt {
+  challengeId: string;
+  expiresAt: string;
+  retryAfterSeconds: number;
+}
+
+/** Mainland China mobile numbers are stored in E.164 format. */
+export function normalizeRegistrationPhone(value: string): string | null {
+  const local = value.trim().replace(/^\+86/, '');
+  return /^1[3-9]\d{9}$/.test(local) ? `+86${local}` : null;
 }

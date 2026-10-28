@@ -1,0 +1,124 @@
+{
+  "files": [
+    {
+      "path": "services/api/src/modules/platform-registry/platform-registry.service.ts",
+      "expected": "f4ea90f6c6ce1c048411e2c271eeedf0b2f3f00f75c22dc31f908f8a8383cc60",
+      "target": "04bb74e887d921c26e206b6f3b95aca878e3b8f479f9ffc87afc71d9b3e230ac",
+      "localSource": "ea142e2ce48f1af52cf875e2d43ebd2b0c45c1abd76b6dbc70c9a0ab7f9245b4"
+    },
+    {
+      "path": "services/api/src/modules/platform-registry/platform-registry.controller.ts",
+      "expected": "df718b03daed534e9069602abeac7a370c46cdf6d2a43cc877ba8f52412cdb4b",
+      "target": "4b226412eb09597f68fb1abf8af5216fa986f8faf9ef4336e37feba70dbbfacf",
+      "localSource": "f164991f60ed9b9a762ab139a8ccb7fe2f9c6a9f3412ed719790d5715184fa98"
+    },
+    {
+      "path": "packages/contracts/src/index.ts",
+      "expected": "53904c304c7cf8698a4eb367833a38291cb79867f42409eb9d8ae50939f38554",
+      "target": "a38613bcbefd5ccf4796fd41116c6eff52e319a19fa7c6010171f181c226b778",
+      "localSource": "2f01069b9cdf482c38c7ad9a3ffc86a03309079a501737b01047d7bdb7a974c7"
+    },
+    {
+      "path": "packages/contracts/src/admin-copilot.ts",
+      "expected": "8a9b165e1e3bcb8038ed96383d64f9d8dfb6c331aa6b47d4d7435fffa5f7bfea",
+      "target": "daf7e838a07e8171a919983017e4e6911e37e7ee3bf1ba5631cca32a395fca5a",
+      "localSource": "7c90a7aec1319c1b891bbaaad3b3f08d861558fdf393eb3aee7d56d16b2f51c8"
+    },
+    {
+      "path": "apps/admin-console/lib/api/teams.ts",
+      "expected": "d3d10a53c9fbacecd27176e6fc37fb5adf271412c2c1c678adf94969910cbd49",
+      "target": "bfe88d00e8c18bb2c4a4b8b610e8f4cfae7c6f44b53614d0159f6fc1178a509d",
+      "localSource": "756a7e7cfd4cd15d6ef067dca46bfc4d218d26bcd6307e0ecfcb79f2bf229d89"
+    },
+    {
+      "path": "apps/admin-console/app/(console)/settings/teams/page.tsx",
+      "expected": "dc06f9418e1475332ccc4529d858bac4c2d009f08a0aa0690454dc20ba8082be",
+      "target": "031e01e7f62ca49cbba20d6b6a0810f512b297502f4e0abecc38fdd300c1dcf8",
+      "localSource": "dd482a610cfb809b67cbb708c36bc435aface5d41227f32eb8f93da5b57e106a"
+    },
+    {
+      "path": "apps/admin-console/app/(console)/settings/teams/components/TeamDetailView.tsx",
+      "expected": "147b120f226f09be955d89cb91347b2d67419bc3a5c45c4b00c9362b5a67bc25",
+      "target": "fced528d45449471ec26e9158974b474549c597c3a9ab24ebf2147dc00f8c7d6",
+      "localSource": "56ce99e266569e113ce4bd133d3b07ac42b042fd290e3d07feb088e9d7110562"
+    },
+    {
+      "path": "apps/admin-console/app/(console)/settings/teams/components/TeamCard.tsx",
+      "expected": "cff9ce0a4f99e1488a2a11a9558b97d1d5c857714965caa2d43ab55793060f27",
+      "target": "f62b8ff0f325ffa765d846efa8f3fa6da3f9093ae3578d703f0536f1c881be5d",
+      "localSource": "60bb5328ce61bfab6354e219b280a5d15d528622a89ef7dfa5861651169fdd4c"
+    },
+    {
+      "path": "docs/admin/platform-governance.md",
+      "expected": "39123efe15ed54b494569cfa1988b15e09d82531bc36d224a7f01f1ee864219a",
+      "target": "41f2d4bb34c99a32e283dc6a95eb47f66820f1c093b3f86ad4d9105eb0555a24",
+      "localSource": "3d0eab6b3619be7ee4b7bfd42d4fbaca7493b639fa62eb85c094b4f1841825f6"
+    },
+    {
+      "path": ".agents/skills/qitu-project-configurator/SKILL.md",
+      "expected": "5f86769c215a297f80249dc615dfc4aad80a27ffb328cc65b387921c5b1735d3",
+      "target": "f341da72af08f3ca04855908ef54fcf6ed6d0b6d005a8c707396a2f47bb2a41e",
+      "localSource": "14098139ad74764185f8d6d679653feb7738faeb5bd34e3fd5cc9932a1ee7bb7"
+    },
+    {
+      "path": ".agents/skills/qitu-project-configurator/references/catalog.json",
+      "expected": "e965b142d0b35dbfb8a90dadd031f7e7e1ea88e2fb867558cac8c719e6bd38f5",
+      "target": "39b165086bd4fb7c05d32628a61af6a274249a25675457fe6316395ceace0205",
+      "localSource": "865ac4cda7805e1d2f18245f3fe6fada7df76d8ab60ac59de05404c76f399fc2"
+    },
+    {
+      "path": ".agents/skills/qitu-project-configurator/references/teams-workflows.md",
+      "expected": "7b6e8395e458a66dc7b6d445dd4208eb2395b00d742c505eade0e3fa3188febd",
+      "target": "3b92c7813cb34b150ef205700e2d69de41d157cd305b7f17596f0791b5c12b73",
+      "localSource": "54a0b0ff4fb2a1caea204405ccd1ee0f1c0f44f41c078d81ada42a7af548940a"
+    },
+    {
+      "path": "packages/contracts/src/team-template-usage.ts",
+      "expected": null,
+      "target": "da8c29354b5aa20f67e81e840e890a5294dc8cb6d106689f81e22c1f4cd51dea",
+      "localSource": "da8c29354b5aa20f67e81e840e890a5294dc8cb6d106689f81e22c1f4cd51dea"
+    },
+    {
+      "path": "services/api/src/modules/platform-registry/team-template-usage.ts",
+      "expected": null,
+      "target": "715e34b2a721260e5001f5dda003b2f8cd3c8c851ca38918bc89b0b3ad27e1f6",
+      "localSource": "715e34b2a721260e5001f5dda003b2f8cd3c8c851ca38918bc89b0b3ad27e1f6"
+    },
+    {
+      "path": "services/api/src/modules/platform-registry/team-deletion.test.ts",
+      "expected": null,
+      "target": "09ede5026d9a9049bc6235ebba545b457a17d2bfcd76964bc3f75b4f81f879b0",
+      "localSource": "09ede5026d9a9049bc6235ebba545b457a17d2bfcd76964bc3f75b4f81f879b0"
+    },
+    {
+      "path": "apps/admin-console/app/(console)/settings/teams/components/TeamTemplatePanel.tsx",
+      "expected": null,
+      "target": "1f2e34e831733a2023cad6e74bc01fc4c54e8ab2b306f64237c54fd6c14a9cba",
+      "localSource": "1f2e34e831733a2023cad6e74bc01fc4c54e8ab2b306f64237c54fd6c14a9cba"
+    },
+    {
+      "path": "apps/admin-console/app/(console)/settings/teams/components/team-templates.css",
+      "expected": null,
+      "target": "f586104e95631b088c6603d6e82f57446236e0d93c2a1b5dbefa272428094a2e",
+      "localSource": "f586104e95631b088c6603d6e82f57446236e0d93c2a1b5dbefa272428094a2e"
+    },
+    {
+      "path": "tooling/test-team-deletion-postgres.mjs",
+      "expected": null,
+      "target": "8dfcf9c1203eb1bcb9030752c849d3f0e47c8dce1e450962f1e6c5401aa49063",
+      "localSource": "8dfcf9c1203eb1bcb9030752c849d3f0e47c8dce1e450962f1e6c5401aa49063"
+    },
+    {
+      "path": "Plan/issues/20261026-team-deletion-template-links.md",
+      "expected": null,
+      "target": "8e1422bcfddf2dad39326b28f141ffd19616999cd8b1849bf73a9267b7a0386e",
+      "localSource": "8e1422bcfddf2dad39326b28f141ffd19616999cd8b1849bf73a9267b7a0386e"
+    },
+    {
+      "path": "services/api/src/modules/admin-copilot/copilot.lifecycle.test.ts",
+      "expected": "aa60736542e210a3107eca4b499897842bffbf394dc5b0eeb8e5c735b7c63a75",
+      "target": "5c3b820f0c92246a942dbe49d72f014c3881c317f155648e644dba039ed1a84d",
+      "localSource": "5c3b820f0c92246a942dbe49d72f014c3881c317f155648e644dba039ed1a84d"
+    }
+  ]
+}

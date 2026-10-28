@@ -211,7 +211,7 @@ export function compileTeachingBundle(source: TeachingBundleSource): CompiledTea
     .map((role) => compileRole(source, role));
   // Historical contracts included intake in their pre-confirmation exploration phase.
   // Explicit lesson-guided contracts describe formal lessons and may never route to intake.
-  if (template.lessonPolicy === 'lesson-guided.v1' || source.sessionScope) for (const role of roles) assertFormalTeachingAssistant(role.assistantId);
+  if (template.lessonPolicy || source.sessionScope) for (const role of roles) assertFormalTeachingAssistant(role.assistantId);
   const routeIndices = new Set<number>();
   const sessionRoutes = source.sessionRoutes.map((route) => {
     if (!Number.isSafeInteger(route.sessionIndex) ||
@@ -250,7 +250,7 @@ export function compileTeachingBundle(source: TeachingBundleSource): CompiledTea
       reject('LESSON_KNOWLEDGE_CAPABILITY_REQUIRED', `sessionRoutes.${route.sessionIndex}`);
     }
     const phase = template.phases.find((entry) => entry.phase === session.phase);
-    const assigned = template.lessonPolicy === 'lesson-guided.v1' ? session.leadAssistantId : phase?.assignedAssistantId;
+    const assigned = template.lessonPolicy ? session.leadAssistantId : phase?.assignedAssistantId;
     if (!source.sessionScope && assigned != null && assigned !== role.assistantId) {
       reject('TEMPLATE_ROLE_MISMATCH', 'sessionRoutes.roleSlotId');
     }

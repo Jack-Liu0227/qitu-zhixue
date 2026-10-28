@@ -1,3 +1,5 @@
+import { verifyAccountRegistration } from './test-account-registration-postgres.mjs';
+import { FixtureRegistrationSms, verifyRegistrationSms } from './test-registration-sms-postgres.mjs';
 import assert from 'node:assert/strict';
 import 'reflect-metadata';
 import { createHash, randomBytes } from 'node:crypto';
@@ -43,7 +45,7 @@ try {
   await client.query(`
     CREATE TABLE schools(id text PRIMARY KEY,status text);
     CREATE TABLE users(id text PRIMARY KEY,email text NOT NULL,display_name text NOT NULL,role text NOT NULL,password_hash text NOT NULL,school_id text,created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now(),disabled_at timestamptz);
-    CREATE UNIQUE INDEX fixture_users_email ON users(lower(email));
+    CREATE UNIQUE INDEX users_email_lower_idx ON users(lower(email));
     CREATE TABLE guardian_links(id text PRIMARY KEY,parent_user_id text REFERENCES users(id),student_user_id text REFERENCES users(id),relationship text,status text,created_at timestamptz DEFAULT now(),ended_at timestamptz);
     CREATE TABLE project_templates(id text PRIMARY KEY,title text,status text,school_id text);
     CREATE TABLE project_template_versions(id text PRIMARY KEY,template_id text REFERENCES project_templates(id),version text,status text);
@@ -57,6 +59,7 @@ try {
   await client.query(
     readFileSync(join(root, 'database/migrations/0054_business_operations.sql'), 'utf8'),
   );
+  await client.query(readFileSync(join(root, 'database/migrations/0055_phone_registration.sql'), 'utf8'));
   await client.query(`INSERT INTO users(id,email,display_name,role,password_hash) VALUES ('admin','admin@example.test','测试管理员','admin','fixture'),('parent','parent@example.test','测试家长','parent','fixture'),('other','other@example.test','另一家庭','parent','fixture'),('student','student@example.test','测试学生','student','fixture');
     INSERT INTO guardian_links(id,parent_user_id,student_user_id,relationship,status) VALUES ('link','parent','student','guardian','active');
     INSERT INTO project_templates VALUES ('template','测试课程','published',NULL);
@@ -292,57 +295,8 @@ try {
       assert.equal(dashboard.metrics.modelCalls, 0);
     },
   );
-  await check(
-    'family invitation acceptance creates independent identities exactly once and sessions survive restart',
-    async () => {
-      const { FamilyInvitationService } = await load('directory/family-invitation.service.js');
-      const { AuthService } = await load('identity-auth/auth.service.js');
-      const { AuthSessionPersistence } = await load('identity-auth/auth-session.persistence.js');
-      const secretBefore = process.env.QITU_INVITATION_SIGNING_KEY;
-      process.env.QITU_INVITATION_SIGNING_KEY = randomBytes(32).toString('hex');
-      try {
-        const invitations = new FamilyInvitationService(db, audit, idempotency);
-        const invitation = await invitations.create(admin, 'invite-1', {
-          parentEmail: 'invited-parent@example.test',
-          parentName: '受邀测试家长',
-          studentEmail: 'invited-student@example.test',
-          studentName: '受邀测试学生',
-        });
-        assert.equal((await invitations.inspect(invitation.token)).accepted, false);
-        await assert.rejects(() => invitations.inspect(`${invitation.token}0`));
-        const body = {
-          token: invitation.token,
-          parentPassword: 'parent-fixture-password',
-          studentPassword: 'student-fixture-password',
-          policyRevision: settings.revision,
-          guardianConsent: true,
-        };
-        await invitations.accept(body);
-        await invitations.accept(body);
-        assert.equal(
-          Number(
-            (await client.query("SELECT count(*) FROM users WHERE email LIKE 'invited-%'")).rows[0]
-              .count,
-          ),
-          2,
-        );
-        await assert.rejects(() => invitations.accept({ ...body, guardianConsent: false }));
-        const persistence = new AuthSessionPersistence(db);
-        const first = new AuthService(directory, persistence);
-        const login = await first.login('invited-parent@example.test', body.parentPassword);
-        const restarted = new AuthService(directory, persistence);
-        await restarted.onModuleInit();
-        assert.equal(restarted.getSession(login.token).user.role, 'parent');
-        await restarted.logoutPersisted(login.token);
-        const again = new AuthService(directory, persistence);
-        await again.onModuleInit();
-        assert.throws(() => again.getSession(login.token));
-      } finally {
-        if (secretBefore === undefined) delete process.env.QITU_INVITATION_SIGNING_KEY;
-        else process.env.QITU_INVITATION_SIGNING_KEY = secretBefore;
-      }
-    },
-  );
+  await verifyAccountRegistration({ db, client, audit, idempotency, directory, load, check });
+  await verifyRegistrationSms({ db, client, audit, idempotency, directory, load, check });
   writeFileSync(
     join(root, 'services/api/.tmp/business-postgres-results.json'),
     JSON.stringify(
@@ -357,7 +311,6 @@ try {
     process.env.QITU_DATA_MODE = 'test';
     process.env.NODE_ENV = 'development';
     delete process.env.REDIS_URL;
-    process.env.QITU_INVITATION_SIGNING_KEY = randomBytes(32).toString('hex');
     const password = 'FixtureOnly-2026-password';
     await client.query(
       "UPDATE users SET password_hash=$1 WHERE id IN ('admin','parent','other','student')",
@@ -388,7 +341,11 @@ try {
     const { DirectoryModule } = await load('directory/directory.module.js');
     const { BusinessController } = await load('business/business.controller.js');
     const { BusinessUsage } = await load('business/business.usage.js');
-    const { FamilyInvitationService } = await load('directory/family-invitation.service.js');
+    const { AccountRegistrationService } = await load('directory/account-registration.service.js');
+    const { RegistrationSmsService } = await load('directory/registration-sms.service.js');
+    const { AliyunRegistrationSms } = await load('directory/aliyun-registration-sms.js');
+    const fixtureSms = new FixtureRegistrationSms();
+    process.env.QITU_SMS_VERIFICATION_KEY = randomBytes(32).toString('hex');
     class PreviewPayment extends FixturePayment {
       async query(id) {
         const row = (await client.query('SELECT amount_fen FROM business_orders WHERE id=$1', [id]))
@@ -423,13 +380,18 @@ try {
         BusinessAutomation,
         BusinessUsage,
         BusinessAccess,
-        FamilyInvitationService,
+        AccountRegistrationService,
+        RegistrationSmsService,
+        { provide: AliyunRegistrationSms, useValue: fixtureSms },
         { provide: WechatPayment, useClass: PreviewPayment },
       ],
     })(PreviewModule);
     const app = await NestFactory.create(PreviewModule, { logger: ['error', 'warn'] });
     app.setGlobalPrefix('api/v1');
     app.use((request, response, next) => {
+      // Test runner only, bound to loopback and backed by this disposable database.
+      if (request.path === '/api/v1/fixture/sms-code')
+        return response.json({ code: fixtureSms.codes.get(String(request.query.phone)) ?? null });
       if (request.path === '/api/v1/public/home')
         return response.json({
           data: {

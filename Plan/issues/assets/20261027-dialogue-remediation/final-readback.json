@@ -1,0 +1,2017 @@
+{
+  "summary": {
+    "at": "2026-10-27T14:18:50.136Z",
+    "projectId": "proj-d412f071-5812-4e58-a77e-0469a792b341",
+    "templateVersionId": "tplv-55d940f7-24f8-4740-b5ff-258259b3d3bf",
+    "stage": "completed",
+    "completedCount": 8,
+    "totalCount": 8,
+    "lessonCount": 8,
+    "acceptedObservationCount": 6,
+    "allLessonsCompleted": true,
+    "finalArtifact": {
+      "id": "art-02c704cf-35a1-4729-a8e2-067cfe07af52",
+      "status": "published",
+      "versionId": "artv-6135100a-2e7a-4232-a069-e555960bcedd",
+      "approvedVersionId": "artv-6135100a-2e7a-4232-a069-e555960bcedd",
+      "exactContentMatched": true,
+      "contentSha256": "089ce9bdc7f254bcb5936116572eb2b8aaa54f5d8c33fe8b688ef1a102677aba"
+    },
+    "manualLessonCompletionRequests": 0,
+    "fileUploadRequests": 0,
+    "teacherMutationRequests": 0,
+    "planStatus": "completed"
+  },
+  "context": {
+    "project": {
+      "id": "proj-d412f071-5812-4e58-a77e-0469a792b341",
+      "title": "光为什么会出现明暗条纹？问答探究",
+      "stage": "completed",
+      "progress": 100,
+      "templateVersionId": "tplv-55d940f7-24f8-4740-b5ff-258259b3d3bf"
+    },
+    "progress": {
+      "currentStageIndex": 9,
+      "stageTotal": 10,
+      "progressPercent": 100
+    },
+    "stages": [
+      {
+        "id": "exploration",
+        "label": "探索"
+      },
+      {
+        "id": "intent_confirmed",
+        "label": "确认意图"
+      },
+      {
+        "id": "theory_learning",
+        "label": "理论学习"
+      },
+      {
+        "id": "theory_check",
+        "label": "理论检验"
+      },
+      {
+        "id": "practice_ready",
+        "label": "实践就绪"
+      },
+      {
+        "id": "practice_building",
+        "label": "动手制作"
+      },
+      {
+        "id": "artifact_review",
+        "label": "作品评审"
+      },
+      {
+        "id": "reflection",
+        "label": "反思"
+      },
+      {
+        "id": "published",
+        "label": "已发布"
+      },
+      {
+        "id": "completed",
+        "label": "完成"
+      }
+    ],
+    "currentTask": {
+      "id": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-8",
+      "title": "别人能复核我的探究吗？",
+      "detail": "展示档案、回应质疑、根据证据修订并完成个人反思。",
+      "isTodayFocus": true
+    },
+    "team": {
+      "teamId": "team-wave-optics-dialogue",
+      "teamName": "波动光学问答探究团队",
+      "assistantId": "optics-review-assessor",
+      "assistantName": "光学探究答辩与评审导师",
+      "assistantAvatar": "asset:avatar-general-v1"
+    },
+    "phases": [
+      {
+        "phaseId": "exploration",
+        "orderIndex": 0,
+        "name": "探索破冰",
+        "assignedAssistantName": "光学探究总导师",
+        "assignedRole": "leader",
+        "gateRule": "student_confirmed_intent",
+        "requiresGateApproval": true,
+        "gateStatus": "passed",
+        "status": "completed",
+        "requiredDeliverables": []
+      },
+      {
+        "phaseId": "concept_mastery",
+        "orderIndex": 1,
+        "name": "概念奠基",
+        "assignedAssistantName": "光学原理与概念教练",
+        "assignedRole": "coach",
+        "gateRule": "TheoryMastered",
+        "requiresGateApproval": true,
+        "gateStatus": "passed",
+        "status": "completed",
+        "requiredDeliverables": []
+      },
+      {
+        "phaseId": "guided_practice",
+        "orderIndex": 2,
+        "name": "探究实践",
+        "assignedAssistantName": "光学仿真与实验向导",
+        "assignedRole": "teammate",
+        "gateRule": "practice_evidence_ready",
+        "requiresGateApproval": true,
+        "gateStatus": "passed",
+        "status": "completed",
+        "requiredDeliverables": []
+      },
+      {
+        "phaseId": "deliverable_review",
+        "orderIndex": 3,
+        "name": "成果答辩与归档",
+        "assignedAssistantName": "光学探究答辩与评审导师",
+        "assignedRole": "reviewer",
+        "gateRule": "review_completed_and_archived",
+        "requiresGateApproval": true,
+        "gateStatus": "pending",
+        "status": "active",
+        "requiredDeliverables": [
+          {
+            "id": "deliverable_review:optics_project_showcase",
+            "title": "optics_project_showcase",
+            "submitted": false
+          }
+        ]
+      }
+    ],
+    "lesson": {
+      "progression": "dialogue.v1",
+      "pendingQuestionId": null,
+      "opening": {
+        "prompt": "你最想展示哪条结论？先指出它对应的观察记录。",
+        "options": [
+          {
+            "id": "start",
+            "text": "你最想展示哪条结论？先指出它对应的观察记录。",
+            "label": "开始探究"
+          },
+          {
+            "id": "example",
+            "text": "先用一个简单例子，帮我理解这次要比较什么。",
+            "label": "看一个例子"
+          },
+          {
+            "id": "question",
+            "text": "我想先说说自己的疑问。",
+            "label": "我有疑问"
+          }
+        ],
+        "version": "lesson-opening.v1",
+        "scenario": "请把你的探究讲给一个没有参加过程的人听，让对方能够找到依据。"
+      },
+      "learningGoal": "展示档案、回应质疑、根据证据修订并完成个人反思。",
+      "assessmentAvailable": false,
+      "completedCount": 8,
+      "lessonIndex": 8,
+      "lessonCount": 8,
+      "title": "别人能复核我的探究吗？",
+      "status": "completed",
+      "checkpoint": "review_completed_and_archived",
+      "planId": "plan-45a05829-505c-47f4-bf62-904ca80d2616",
+      "planRevision": 1,
+      "learningSessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-8",
+      "roleSlotId": "slot-optics-review",
+      "assistantId": "optics-review-assessor",
+      "objectiveId": null,
+      "currentActivity": null,
+      "evidenceRefs": [],
+      "teachingMode": "zero-base.v1",
+      "collaborationAvailable": false
+    }
+  },
+  "progress": {
+    "planId": "plan-45a05829-505c-47f4-bf62-904ca80d2616",
+    "projectId": "proj-d412f071-5812-4e58-a77e-0469a792b341",
+    "planRevision": 1,
+    "currentSessionId": null,
+    "completedCount": 8,
+    "totalCount": 8,
+    "contractReady": true,
+    "sessions": [
+      {
+        "sessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-1",
+        "lessonIndex": 1,
+        "title": "条纹从哪里来？",
+        "activities": [
+          {
+            "activityId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-1:activity:check",
+            "kind": "check",
+            "evidence": "session_response",
+            "status": "completed",
+            "guidance": "根据学生本轮解释提出一个检查问题；题目可动态生成，不覆盖已有待答题。",
+            "minutes": 20,
+            "evidenceRefs": []
+          }
+        ],
+        "status": "completed",
+        "completedAt": "2026-10-27T14:12:01.816Z",
+        "canComplete": false,
+        "blockers": []
+      },
+      {
+        "sessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-2",
+        "lessonIndex": 2,
+        "title": "两列波相遇会怎样？",
+        "activities": [
+          {
+            "activityId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-2:activity:check",
+            "kind": "check",
+            "evidence": "mastery",
+            "status": "completed",
+            "guidance": "通过服务端专题准备检查；求助不自动判错，未掌握则同目标补救。",
+            "minutes": 20,
+            "evidenceRefs": []
+          }
+        ],
+        "status": "completed",
+        "completedAt": "2026-10-27T14:13:23.387Z",
+        "canComplete": false,
+        "blockers": []
+      },
+      {
+        "sessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-3",
+        "lessonIndex": 3,
+        "title": "双缝为什么出现明暗？",
+        "activities": [
+          {
+            "activityId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-3:activity:practice",
+            "kind": "practice",
+            "evidence": "experiment_observation",
+            "status": "completed",
+            "guidance": "先预测再使用本课注册模型；一次只改一个变量，保存参数和模拟观察，不写成实测。 本活动需保存 1 条通过评价的独立观察记录，当前 0 / 1 条。请完成不同参数下的观察并分别保存；同一记录中描述多次运行仍计为一条。",
+            "minutes": 25,
+            "evidenceRefs": []
+          }
+        ],
+        "status": "completed",
+        "completedAt": "2026-10-27T14:13:42.713Z",
+        "canComplete": false,
+        "blockers": []
+      },
+      {
+        "sessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-4",
+        "lessonIndex": 4,
+        "title": "怎样改变干涉条纹间距？",
+        "activities": [
+          {
+            "activityId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-4:activity:practice",
+            "kind": "practice",
+            "evidence": "experiment_observation",
+            "status": "completed",
+            "guidance": "先预测再使用本课注册模型；一次只改一个变量，保存参数和模拟观察，不写成实测。 本活动需保存 2 条通过评价的独立观察记录，当前 0 / 2 条。请完成不同参数下的观察并分别保存；同一记录中描述多次运行仍计为一条。",
+            "minutes": 25,
+            "evidenceRefs": []
+          }
+        ],
+        "status": "completed",
+        "completedAt": "2026-10-27T14:14:04.702Z",
+        "canComplete": false,
+        "blockers": []
+      },
+      {
+        "sessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-5",
+        "lessonIndex": 5,
+        "title": "一条缝为什么仍有条纹？",
+        "activities": [
+          {
+            "activityId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-5:activity:practice",
+            "kind": "practice",
+            "evidence": "experiment_observation",
+            "status": "completed",
+            "guidance": "先预测再使用本课注册模型；一次只改一个变量，保存参数和模拟观察，不写成实测。 本活动需保存 1 条通过评价的独立观察记录，当前 0 / 1 条。请完成不同参数下的观察并分别保存；同一记录中描述多次运行仍计为一条。",
+            "minutes": 25,
+            "evidenceRefs": []
+          }
+        ],
+        "status": "completed",
+        "completedAt": "2026-10-27T14:14:30.385Z",
+        "canComplete": false,
+        "blockers": []
+      },
+      {
+        "sessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-6",
+        "lessonIndex": 6,
+        "title": "缝变窄，图样怎样变化？",
+        "activities": [
+          {
+            "activityId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-6:activity:practice",
+            "kind": "practice",
+            "evidence": "experiment_observation",
+            "status": "completed",
+            "guidance": "先预测再使用本课注册模型；一次只改一个变量，保存参数和模拟观察，不写成实测。 本活动需保存 2 条通过评价的独立观察记录，当前 0 / 2 条。请完成不同参数下的观察并分别保存；同一记录中描述多次运行仍计为一条。",
+            "minutes": 25,
+            "evidenceRefs": []
+          }
+        ],
+        "status": "completed",
+        "completedAt": "2026-10-27T14:14:55.654Z",
+        "canComplete": false,
+        "blockers": []
+      },
+      {
+        "sessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-7",
+        "lessonIndex": 7,
+        "title": "干涉与衍射怎样联系？",
+        "activities": [
+          {
+            "activityId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-7:activity:check",
+            "kind": "check",
+            "evidence": "session_response",
+            "status": "completed",
+            "guidance": "直接在对话中给出比较解释，系统自动保存为过程草稿；最后一课再整理并正式交付。",
+            "minutes": 15,
+            "evidenceRefs": []
+          }
+        ],
+        "status": "completed",
+        "completedAt": "2026-10-27T14:17:24.258Z",
+        "canComplete": false,
+        "blockers": []
+      },
+      {
+        "sessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-8",
+        "lessonIndex": 8,
+        "title": "别人能复核我的探究吗？",
+        "activities": [
+          {
+            "activityId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-8:activity:check",
+            "kind": "check",
+            "evidence": "submitted_artifact",
+            "status": "completed",
+            "guidance": "参考已保存的过程草稿与观察，在对话区整理最终档案并确认交付；站内正文无需导出再上传。",
+            "minutes": 15,
+            "evidenceRefs": []
+          },
+          {
+            "activityId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-8:activity:reflect",
+            "kind": "reflect",
+            "evidence": "session_response",
+            "status": "completed",
+            "guidance": "作品通过后，直接说说一次认识变化、相应依据和仍不确定的地方。",
+            "minutes": 30,
+            "evidenceRefs": []
+          }
+        ],
+        "status": "completed",
+        "completedAt": "2026-10-27T14:18:35.656Z",
+        "canComplete": false,
+        "blockers": []
+      }
+    ]
+  },
+  "lessons": [
+    {
+      "session": {
+        "sessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-1",
+        "lessonIndex": 1,
+        "title": "条纹从哪里来？",
+        "activities": [
+          {
+            "activityId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-1:activity:check",
+            "kind": "check",
+            "evidence": "session_response",
+            "status": "completed",
+            "guidance": "根据学生本轮解释提出一个检查问题；题目可动态生成，不覆盖已有待答题。",
+            "minutes": 20,
+            "evidenceRefs": []
+          }
+        ],
+        "status": "completed",
+        "completedAt": "2026-10-27T14:12:01.816Z",
+        "canComplete": false,
+        "blockers": []
+      },
+      "evidence": {
+        "submissions": [
+          {
+            "activityId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-1:activity:check",
+            "kind": "session_response",
+            "ref": "task_submission:learning-d7606f6158cc19ec6fe6b0d52894dff6ae34a4832142637e16e5f95e523cd59c",
+            "scope": {
+              "projectId": "proj-d412f071-5812-4e58-a77e-0469a792b341",
+              "planId": "plan-45a05829-505c-47f4-bf62-904ca80d2616",
+              "planRevision": 1,
+              "learningSessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-1",
+              "objectiveIds": [
+                "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-question"
+              ]
+            },
+            "objectiveId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-question",
+            "sourceKind": "task_submission",
+            "artifactId": "art-830c379a-8021-407e-8599-aaf690b5ae71",
+            "artifactVersionId": "artv-11e6866d-470b-446e-a83b-d539cc44b97c",
+            "quality": {
+              "status": "needs_revision",
+              "subjectDigest": "c030935a510f89e07908611f704626c3b7924eacbaf5d6665ab9260d2295e34d",
+              "feedback": [
+                {
+                  "criterionId": "wave-dialogue-1-extension",
+                  "meets": false,
+                  "feedback": "可选提升：在描述两种图样并写出比较问题后，可以尝试用光波叠加或示意图说明你预测的条纹变化，或再提出一个后续探究问题。"
+                },
+                {
+                  "criterionId": "wave-dialogue-1-necessary",
+                  "meets": false,
+                  "feedback": "你的回答只有一句结论，没有分别描述单缝和双缝的图样，也没有提出一个可以比较的问题。请先写清单缝图样的主要特征（例如中央亮纹与两侧条纹的关系），再写清双缝图样的特征，然后据此提出一个可比较的问题，如“改变缝数后，条纹间距或亮纹宽度会怎样变化？”"
+                }
+              ]
+            }
+          },
+          {
+            "activityId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-1:activity:check",
+            "kind": "session_response",
+            "ref": "task_submission:learning-8b50bf088d569484c94a466bf784bde24bd6bfc127bc4ec21e0cc4daafad8764",
+            "scope": {
+              "projectId": "proj-d412f071-5812-4e58-a77e-0469a792b341",
+              "planId": "plan-45a05829-505c-47f4-bf62-904ca80d2616",
+              "planRevision": 1,
+              "learningSessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-1",
+              "objectiveIds": [
+                "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-question"
+              ]
+            },
+            "objectiveId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-question",
+            "sourceKind": "task_submission",
+            "artifactId": "art-2088cd1c-4492-4070-806d-b6dce8fa55e7",
+            "artifactVersionId": "artv-0cc7b87c-d839-49b3-bf9f-33e35db5a010",
+            "quality": {
+              "status": "accepted",
+              "subjectDigest": "09e9e0637f81c7b8ab7de49ff0da356745f4a780f753cd866bdca10494d707b1",
+              "feedback": [
+                {
+                  "criterionId": "wave-dialogue-1-extension",
+                  "meets": false,
+                  "feedback": "可选提升：可尝试用示意简图或光强分布草图表示两种图样，或追问“缝宽变化时中央亮带宽度与亮度如何定量变化”，使后续探究问题更具体。"
+                },
+                {
+                  "criterionId": "wave-dialogue-1-necessary",
+                  "meets": true,
+                  "feedback": "先分别描述了单缝（中央亮带较宽、两侧较弱）和双缝（更细密的明暗条纹）图样，再提出了控制波长和屏距、只改变缝宽以比较中央亮带变化的问题，符合本课目标。"
+                }
+              ]
+            }
+          }
+        ],
+        "observations": [],
+        "approvedArtifacts": [
+          {
+            "activityId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-8:activity:check",
+            "kind": "approved_artifact",
+            "ref": "artifact:art-02c704cf-35a1-4729-a8e2-067cfe07af52",
+            "scope": {
+              "projectId": "proj-d412f071-5812-4e58-a77e-0469a792b341",
+              "planId": "plan-45a05829-505c-47f4-bf62-904ca80d2616",
+              "planRevision": 1,
+              "learningSessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-8",
+              "objectiveIds": [
+                "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-showcase",
+                "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-reflection"
+              ]
+            },
+            "objectiveId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-showcase",
+            "sourceKind": "task_submission",
+            "artifactId": "art-02c704cf-35a1-4729-a8e2-067cfe07af52",
+            "artifactVersionId": "artv-6135100a-2e7a-4232-a069-e555960bcedd"
+          }
+        ],
+        "reflections": [],
+        "scope": {
+          "projectId": "proj-d412f071-5812-4e58-a77e-0469a792b341",
+          "planId": "plan-45a05829-505c-47f4-bf62-904ca80d2616",
+          "planRevision": 1,
+          "learningSessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-1",
+          "objectiveIds": [
+            "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-question"
+          ]
+        },
+        "sessionType": "theory",
+        "allowedActions": [],
+        "qualityCriteria": [
+          {
+            "id": "wave-dialogue-1-necessary",
+            "required": true,
+            "description": "先描述单缝和双缝图样，再提出一个可以比较的问题。"
+          },
+          {
+            "id": "wave-dialogue-1-extension",
+            "required": false,
+            "description": "尝试另一种表示或提出一个后续探究问题；此项仅作提升建议。"
+          }
+        ]
+      }
+    },
+    {
+      "session": {
+        "sessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-2",
+        "lessonIndex": 2,
+        "title": "两列波相遇会怎样？",
+        "activities": [
+          {
+            "activityId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-2:activity:check",
+            "kind": "check",
+            "evidence": "mastery",
+            "status": "completed",
+            "guidance": "通过服务端专题准备检查；求助不自动判错，未掌握则同目标补救。",
+            "minutes": 20,
+            "evidenceRefs": []
+          }
+        ],
+        "status": "completed",
+        "completedAt": "2026-10-27T14:13:23.387Z",
+        "canComplete": false,
+        "blockers": []
+      },
+      "evidence": {
+        "submissions": [],
+        "observations": [],
+        "approvedArtifacts": [
+          {
+            "activityId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-8:activity:check",
+            "kind": "approved_artifact",
+            "ref": "artifact:art-02c704cf-35a1-4729-a8e2-067cfe07af52",
+            "scope": {
+              "projectId": "proj-d412f071-5812-4e58-a77e-0469a792b341",
+              "planId": "plan-45a05829-505c-47f4-bf62-904ca80d2616",
+              "planRevision": 1,
+              "learningSessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-8",
+              "objectiveIds": [
+                "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-showcase",
+                "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-reflection"
+              ]
+            },
+            "objectiveId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-showcase",
+            "sourceKind": "task_submission",
+            "artifactId": "art-02c704cf-35a1-4729-a8e2-067cfe07af52",
+            "artifactVersionId": "artv-6135100a-2e7a-4232-a069-e555960bcedd"
+          }
+        ],
+        "reflections": [],
+        "scope": {
+          "projectId": "proj-d412f071-5812-4e58-a77e-0469a792b341",
+          "planId": "plan-45a05829-505c-47f4-bf62-904ca80d2616",
+          "planRevision": 1,
+          "learningSessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-2",
+          "objectiveIds": [
+            "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-ready-superposition",
+            "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-ready-coherence",
+            "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-ready-comparison"
+          ]
+        },
+        "sessionType": "theory",
+        "allowedActions": [],
+        "qualityCriteria": [
+          {
+            "id": "wave-dialogue-2-necessary",
+            "required": true,
+            "description": "用图示解释波的叠加、稳定相位关系和受控比较，完成专题准备检查。"
+          },
+          {
+            "id": "wave-dialogue-2-extension",
+            "required": false,
+            "description": "尝试另一种表示或提出一个后续探究问题；此项仅作提升建议。"
+          }
+        ]
+      }
+    },
+    {
+      "session": {
+        "sessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-3",
+        "lessonIndex": 3,
+        "title": "双缝为什么出现明暗？",
+        "activities": [
+          {
+            "activityId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-3:activity:practice",
+            "kind": "practice",
+            "evidence": "experiment_observation",
+            "status": "completed",
+            "guidance": "先预测再使用本课注册模型；一次只改一个变量，保存参数和模拟观察，不写成实测。 本活动需保存 1 条通过评价的独立观察记录，当前 0 / 1 条。请完成不同参数下的观察并分别保存；同一记录中描述多次运行仍计为一条。",
+            "minutes": 25,
+            "evidenceRefs": []
+          }
+        ],
+        "status": "completed",
+        "completedAt": "2026-10-27T14:13:42.713Z",
+        "canComplete": false,
+        "blockers": []
+      },
+      "evidence": {
+        "submissions": [],
+        "observations": [
+          {
+            "kind": "experiment_observation",
+            "ref": "experiment_observation:obs-1501c84c2a20cbd9e181f4beadf87a34",
+            "scope": {
+              "projectId": "proj-d412f071-5812-4e58-a77e-0469a792b341",
+              "planId": "plan-45a05829-505c-47f4-bf62-904ca80d2616",
+              "planRevision": 1,
+              "learningSessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-3",
+              "objectiveIds": [
+                "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-double-paths"
+              ]
+            },
+            "objectiveId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-double-paths",
+            "sourceKind": "experiment_observation",
+            "parameterDigest": "f03b982adb8f22ea83f81f21132d0081351d649f0b51e424997d43282683169f",
+            "activityId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-3:activity:practice",
+            "quality": {
+              "status": "accepted",
+              "subjectDigest": "497d1749888e4ac95ff3334fd10d91949f1a7936f60a8ff9e9026385edfeab03",
+              "feedback": [
+                {
+                  "criterionId": "wave-dialogue-3-extension",
+                  "meets": false,
+                  "feedback": "本次正文只给出基准观察，尚未尝试另一种表示或提出后续探究问题。可以补充一个后续问题，例如保持波长和屏距不变只改变缝宽 a 时中央亮带宽度如何变化，并预期它与 d 决定的细纹间距分别如何改变。"
+                },
+                {
+                  "criterionId": "wave-dialogue-3-necessary",
+                  "meets": true,
+                  "feedback": "本次正文连接了两条路径（S1、S2 到屏上 P）、光程差与相位关系，说明中央光程差为 0 同相成亮、半波长时相消成暗，并明确区分缝间距 d（两缝中心间距 150 μm）与缝宽 a（单缝宽 20 μm）；同时给出本次模拟观察的完整参数、单位（λ=550 nm、a=20 μm、d=150 μm、L=2 m）与结果，且如实说明是远场单色模型的模拟观察而非真实测量，符合当前观察阶段要求。"
+                }
+              ]
+            }
+          }
+        ],
+        "approvedArtifacts": [
+          {
+            "activityId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-8:activity:check",
+            "kind": "approved_artifact",
+            "ref": "artifact:art-02c704cf-35a1-4729-a8e2-067cfe07af52",
+            "scope": {
+              "projectId": "proj-d412f071-5812-4e58-a77e-0469a792b341",
+              "planId": "plan-45a05829-505c-47f4-bf62-904ca80d2616",
+              "planRevision": 1,
+              "learningSessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-8",
+              "objectiveIds": [
+                "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-showcase",
+                "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-reflection"
+              ]
+            },
+            "objectiveId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-showcase",
+            "sourceKind": "task_submission",
+            "artifactId": "art-02c704cf-35a1-4729-a8e2-067cfe07af52",
+            "artifactVersionId": "artv-6135100a-2e7a-4232-a069-e555960bcedd"
+          }
+        ],
+        "reflections": [],
+        "scope": {
+          "projectId": "proj-d412f071-5812-4e58-a77e-0469a792b341",
+          "planId": "plan-45a05829-505c-47f4-bf62-904ca80d2616",
+          "planRevision": 1,
+          "learningSessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-3",
+          "objectiveIds": [
+            "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-double-paths"
+          ]
+        },
+        "sessionType": "practice",
+        "allowedActions": [],
+        "qualityCriteria": [
+          {
+            "id": "wave-dialogue-3-necessary",
+            "required": true,
+            "description": "连接两条路径、到达相位与明暗位置，区分缝间距和缝宽。"
+          },
+          {
+            "id": "wave-dialogue-3-extension",
+            "required": false,
+            "description": "尝试另一种表示或提出一个后续探究问题；此项仅作提升建议。"
+          }
+        ]
+      }
+    },
+    {
+      "session": {
+        "sessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-4",
+        "lessonIndex": 4,
+        "title": "怎样改变干涉条纹间距？",
+        "activities": [
+          {
+            "activityId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-4:activity:practice",
+            "kind": "practice",
+            "evidence": "experiment_observation",
+            "status": "completed",
+            "guidance": "先预测再使用本课注册模型；一次只改一个变量，保存参数和模拟观察，不写成实测。 本活动需保存 2 条通过评价的独立观察记录，当前 0 / 2 条。请完成不同参数下的观察并分别保存；同一记录中描述多次运行仍计为一条。",
+            "minutes": 25,
+            "evidenceRefs": []
+          }
+        ],
+        "status": "completed",
+        "completedAt": "2026-10-27T14:14:04.702Z",
+        "canComplete": false,
+        "blockers": []
+      },
+      "evidence": {
+        "submissions": [],
+        "observations": [
+          {
+            "kind": "experiment_observation",
+            "ref": "experiment_observation:obs-bb3a42b98a1e70411f29bd70503f145f",
+            "scope": {
+              "projectId": "proj-d412f071-5812-4e58-a77e-0469a792b341",
+              "planId": "plan-45a05829-505c-47f4-bf62-904ca80d2616",
+              "planRevision": 1,
+              "learningSessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-4",
+              "objectiveIds": [
+                "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-double-compare"
+              ]
+            },
+            "objectiveId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-double-compare",
+            "sourceKind": "experiment_observation",
+            "parameterDigest": "f03b982adb8f22ea83f81f21132d0081351d649f0b51e424997d43282683169f",
+            "activityId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-4:activity:practice",
+            "quality": {
+              "status": "accepted",
+              "subjectDigest": "9d118790fe1b4f52c194637af13bae4b3894fd5537b9db852dfedf9d8ce0713c",
+              "feedback": [
+                {
+                  "criterionId": "wave-dialogue-4-extension",
+                  "meets": false,
+                  "feedback": "可选提升：可尝试用公式 Δy=λL/d 表达该预测，或提出一个后续探究问题，例如保持d和L不变时改变波长对条纹间距的影响。"
+                },
+                {
+                  "criterionId": "wave-dialogue-4-necessary",
+                  "meets": true,
+                  "feedback": "本次记录了一组受控模拟观察：明确波长550nm、缝宽20μm、缝间距150μm、屏距2m及单位，给出细纹间距7.33mm，并说明这是比较基准；还提出下一步只把d加倍并预测细纹间距减半，符合先只改缝间距、记录预测与结果的课时目标。"
+                }
+              ]
+            }
+          },
+          {
+            "kind": "experiment_observation",
+            "ref": "experiment_observation:obs-225f7c094770ff6899e8028dd6487a65",
+            "scope": {
+              "projectId": "proj-d412f071-5812-4e58-a77e-0469a792b341",
+              "planId": "plan-45a05829-505c-47f4-bf62-904ca80d2616",
+              "planRevision": 1,
+              "learningSessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-4",
+              "objectiveIds": [
+                "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-double-compare"
+              ]
+            },
+            "objectiveId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-double-compare",
+            "sourceKind": "experiment_observation",
+            "parameterDigest": "e1091b9634108d37a4b276dc12ba7b1ca9fe30798f53c93f7aefc7eed30b8a52",
+            "activityId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-4:activity:practice",
+            "quality": {
+              "status": "accepted",
+              "subjectDigest": "a9350196a21e838c4f6134bb8402f236629f87c46f3567ee01dd6bfa0cc388f4",
+              "feedback": [
+                {
+                  "criterionId": "wave-dialogue-4-extension",
+                  "meets": false,
+                  "feedback": "可选提升建议：在完成缝间距比较后，可再提出一个后续探究问题，例如“保持 d 和 L 不变，把波长改为 650nm，细纹间距会怎样变？”并给出你的预测，再用本课注册模型验证。"
+                },
+                {
+                  "criterionId": "wave-dialogue-4-necessary",
+                  "meets": true,
+                  "feedback": "已记录两组受控模拟观察：上一组 d=150μm，细纹间距 7.33mm；本次仅将 d 改为 300μm，其余 λ=550nm、a=20μm、L=2m 保持不变，细纹间距变为 3.67mm。d 加倍、间距约减半，与双缝条纹间距规则一致；单位标注清楚，并明确说明是远场单色模型模拟观察而非真实测量，符合本课“先只改缝间距、记录预测与结果”的要求。"
+                }
+              ]
+            }
+          }
+        ],
+        "approvedArtifacts": [
+          {
+            "activityId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-8:activity:check",
+            "kind": "approved_artifact",
+            "ref": "artifact:art-02c704cf-35a1-4729-a8e2-067cfe07af52",
+            "scope": {
+              "projectId": "proj-d412f071-5812-4e58-a77e-0469a792b341",
+              "planId": "plan-45a05829-505c-47f4-bf62-904ca80d2616",
+              "planRevision": 1,
+              "learningSessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-8",
+              "objectiveIds": [
+                "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-showcase",
+                "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-reflection"
+              ]
+            },
+            "objectiveId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-showcase",
+            "sourceKind": "task_submission",
+            "artifactId": "art-02c704cf-35a1-4729-a8e2-067cfe07af52",
+            "artifactVersionId": "artv-6135100a-2e7a-4232-a069-e555960bcedd"
+          }
+        ],
+        "reflections": [],
+        "scope": {
+          "projectId": "proj-d412f071-5812-4e58-a77e-0469a792b341",
+          "planId": "plan-45a05829-505c-47f4-bf62-904ca80d2616",
+          "planRevision": 1,
+          "learningSessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-4",
+          "objectiveIds": [
+            "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-double-compare"
+          ]
+        },
+        "sessionType": "practice",
+        "allowedActions": [],
+        "qualityCriteria": [
+          {
+            "id": "wave-dialogue-4-necessary",
+            "required": true,
+            "description": "先只改缝间距，再按需比较波长或屏距，记录预测与结果。"
+          },
+          {
+            "id": "wave-dialogue-4-extension",
+            "required": false,
+            "description": "尝试另一种表示或提出一个后续探究问题；此项仅作提升建议。"
+          }
+        ]
+      }
+    },
+    {
+      "session": {
+        "sessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-5",
+        "lessonIndex": 5,
+        "title": "一条缝为什么仍有条纹？",
+        "activities": [
+          {
+            "activityId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-5:activity:practice",
+            "kind": "practice",
+            "evidence": "experiment_observation",
+            "status": "completed",
+            "guidance": "先预测再使用本课注册模型；一次只改一个变量，保存参数和模拟观察，不写成实测。 本活动需保存 1 条通过评价的独立观察记录，当前 0 / 1 条。请完成不同参数下的观察并分别保存；同一记录中描述多次运行仍计为一条。",
+            "minutes": 25,
+            "evidenceRefs": []
+          }
+        ],
+        "status": "completed",
+        "completedAt": "2026-10-27T14:14:30.385Z",
+        "canComplete": false,
+        "blockers": []
+      },
+      "evidence": {
+        "submissions": [],
+        "observations": [
+          {
+            "kind": "experiment_observation",
+            "ref": "experiment_observation:obs-4a34f2b5cdd3a8b5d872b39dde7fc9c5",
+            "scope": {
+              "projectId": "proj-d412f071-5812-4e58-a77e-0469a792b341",
+              "planId": "plan-45a05829-505c-47f4-bf62-904ca80d2616",
+              "planRevision": 1,
+              "learningSessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-5",
+              "objectiveIds": [
+                "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-single-observe"
+              ]
+            },
+            "objectiveId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-single-observe",
+            "sourceKind": "experiment_observation",
+            "parameterDigest": "29be4501d543047e6a979d15de904d5ed857214eb3e11ce6dbdf4dc38f56f9d1",
+            "activityId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-5:activity:practice",
+            "quality": {
+              "status": "accepted",
+              "subjectDigest": "dbd163c87312ec668851893c6d61c2e43393bf5ee85c2319ac2ae73ce4ad2f31",
+              "feedback": [
+                {
+                  "criterionId": "wave-dialogue-5-extension",
+                  "meets": true,
+                  "feedback": "已体现一次变量控制观察并联系前课双缝比较：单缝中央亮带宽度随缝宽变化可与双缝细纹间距随 d 变化的结论对照，后续继续探究时建议预测并验证“只改变缝宽 a 时中央亮带如何变化”，可加深对 a sinθ=λ 的理解。"
+                },
+                {
+                  "criterionId": "wave-dialogue-5-necessary",
+                  "meets": true,
+                  "feedback": "本轮解释正确：说明了单缝内不同位置波叠加导致中央亮带宽而强、两侧窄而弱，并给出第一暗纹条件 a sinθ=λ；模拟观察保存了波长550nm、缝宽20μm、屏距2m及中央亮带宽110.04mm，注明为远场单色模型模拟而非实测，符合课时目标与观察活动要求。"
+                }
+              ]
+            }
+          }
+        ],
+        "approvedArtifacts": [
+          {
+            "activityId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-8:activity:check",
+            "kind": "approved_artifact",
+            "ref": "artifact:art-02c704cf-35a1-4729-a8e2-067cfe07af52",
+            "scope": {
+              "projectId": "proj-d412f071-5812-4e58-a77e-0469a792b341",
+              "planId": "plan-45a05829-505c-47f4-bf62-904ca80d2616",
+              "planRevision": 1,
+              "learningSessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-8",
+              "objectiveIds": [
+                "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-showcase",
+                "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-reflection"
+              ]
+            },
+            "objectiveId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-showcase",
+            "sourceKind": "task_submission",
+            "artifactId": "art-02c704cf-35a1-4729-a8e2-067cfe07af52",
+            "artifactVersionId": "artv-6135100a-2e7a-4232-a069-e555960bcedd"
+          }
+        ],
+        "reflections": [],
+        "scope": {
+          "projectId": "proj-d412f071-5812-4e58-a77e-0469a792b341",
+          "planId": "plan-45a05829-505c-47f4-bf62-904ca80d2616",
+          "planRevision": 1,
+          "learningSessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-5",
+          "objectiveIds": [
+            "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-single-observe"
+          ]
+        },
+        "sessionType": "practice",
+        "allowedActions": [],
+        "qualityCriteria": [
+          {
+            "id": "wave-dialogue-5-necessary",
+            "required": true,
+            "description": "观察中央亮带和两侧条纹，用孔径内波的叠加解释图样。"
+          },
+          {
+            "id": "wave-dialogue-5-extension",
+            "required": false,
+            "description": "尝试另一种表示或提出一个后续探究问题；此项仅作提升建议。"
+          }
+        ]
+      }
+    },
+    {
+      "session": {
+        "sessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-6",
+        "lessonIndex": 6,
+        "title": "缝变窄，图样怎样变化？",
+        "activities": [
+          {
+            "activityId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-6:activity:practice",
+            "kind": "practice",
+            "evidence": "experiment_observation",
+            "status": "completed",
+            "guidance": "先预测再使用本课注册模型；一次只改一个变量，保存参数和模拟观察，不写成实测。 本活动需保存 2 条通过评价的独立观察记录，当前 0 / 2 条。请完成不同参数下的观察并分别保存；同一记录中描述多次运行仍计为一条。",
+            "minutes": 25,
+            "evidenceRefs": []
+          }
+        ],
+        "status": "completed",
+        "completedAt": "2026-10-27T14:14:55.654Z",
+        "canComplete": false,
+        "blockers": []
+      },
+      "evidence": {
+        "submissions": [],
+        "observations": [
+          {
+            "kind": "experiment_observation",
+            "ref": "experiment_observation:obs-be0bfc410e0650729ba8bbe626c3fbcf",
+            "scope": {
+              "projectId": "proj-d412f071-5812-4e58-a77e-0469a792b341",
+              "planId": "plan-45a05829-505c-47f4-bf62-904ca80d2616",
+              "planRevision": 1,
+              "learningSessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-6",
+              "objectiveIds": [
+                "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-single-compare"
+              ]
+            },
+            "objectiveId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-single-compare",
+            "sourceKind": "experiment_observation",
+            "parameterDigest": "29be4501d543047e6a979d15de904d5ed857214eb3e11ce6dbdf4dc38f56f9d1",
+            "activityId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-6:activity:practice",
+            "quality": {
+              "status": "accepted",
+              "subjectDigest": "4379200d97832ab5104dfd7271eb50cd5928be5c336e2c4a8d20894ec81df6bf",
+              "feedback": [
+                {
+                  "criterionId": "wave-dialogue-6-extension",
+                  "meets": false,
+                  "feedback": "当前回应只给出预测，未提出后续探究问题或尝试另一种表示；可将预测与a sinθ=λ结合，提出例如比较不同缝宽下中央亮带宽度与1/a关系的后续探究。"
+                },
+                {
+                  "criterionId": "wave-dialogue-6-necessary",
+                  "meets": true,
+                  "feedback": "本次已保存一组受控模拟观察：明确给出λ=550 nm、a=20 μm、L=2 m及中央亮带宽110.04 mm，说明是远场单色模型模拟而非实测，并预测只减小a时中央亮带变宽，符合固定波长和屏距比较缝宽、记录宽度及适用条件的要求。建议下一组实际保存减小a后的观察数值，以形成完整对照。"
+                }
+              ]
+            }
+          },
+          {
+            "kind": "experiment_observation",
+            "ref": "experiment_observation:obs-2153d4f5a69bbbd08bb7382ca392685e",
+            "scope": {
+              "projectId": "proj-d412f071-5812-4e58-a77e-0469a792b341",
+              "planId": "plan-45a05829-505c-47f4-bf62-904ca80d2616",
+              "planRevision": 1,
+              "learningSessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-6",
+              "objectiveIds": [
+                "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-single-compare"
+              ]
+            },
+            "objectiveId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-single-compare",
+            "sourceKind": "experiment_observation",
+            "parameterDigest": "a9ee9a085bff4d77ff8dea0201240e62f538661d2006cdb6a880b94c22aa81cf",
+            "activityId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-6:activity:practice",
+            "quality": {
+              "status": "accepted",
+              "subjectDigest": "372aed20904196906865287eb46c18f784b446022d1abe3edc49216bc908beee",
+              "feedback": [
+                {
+                  "criterionId": "wave-dialogue-6-extension",
+                  "meets": false,
+                  "feedback": "本次观察没有尝试另一种表示（如用a sinθ=λ估算中央亮带宽度并与模拟值对照），也没有提出后续探究问题。可在记录中补一句用公式估算或说明为何两侧条纹更弱，作为提升建议，不影响本次达标。"
+                },
+                {
+                  "criterionId": "wave-dialogue-6-necessary",
+                  "meets": true,
+                  "feedback": "本次保存的模拟观察固定了波长（550nm）和屏距（2m），只把缝宽从20μm改为10μm，记录中央亮带宽度由110.04mm变为220.33mm；参数、单位齐全，并注明是远场单色模型的模拟观察而非真实测量。结果与“缝变窄，中央亮带变宽”的规律一致，且与上一课的基准观察衔接，符合本课目标。"
+                }
+              ]
+            }
+          }
+        ],
+        "approvedArtifacts": [
+          {
+            "activityId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-8:activity:check",
+            "kind": "approved_artifact",
+            "ref": "artifact:art-02c704cf-35a1-4729-a8e2-067cfe07af52",
+            "scope": {
+              "projectId": "proj-d412f071-5812-4e58-a77e-0469a792b341",
+              "planId": "plan-45a05829-505c-47f4-bf62-904ca80d2616",
+              "planRevision": 1,
+              "learningSessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-8",
+              "objectiveIds": [
+                "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-showcase",
+                "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-reflection"
+              ]
+            },
+            "objectiveId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-showcase",
+            "sourceKind": "task_submission",
+            "artifactId": "art-02c704cf-35a1-4729-a8e2-067cfe07af52",
+            "artifactVersionId": "artv-6135100a-2e7a-4232-a069-e555960bcedd"
+          }
+        ],
+        "reflections": [],
+        "scope": {
+          "projectId": "proj-d412f071-5812-4e58-a77e-0469a792b341",
+          "planId": "plan-45a05829-505c-47f4-bf62-904ca80d2616",
+          "planRevision": 1,
+          "learningSessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-6",
+          "objectiveIds": [
+            "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-single-compare"
+          ]
+        },
+        "sessionType": "practice",
+        "allowedActions": [],
+        "qualityCriteria": [
+          {
+            "id": "wave-dialogue-6-necessary",
+            "required": true,
+            "description": "固定波长和屏距比较缝宽，记录中央亮带宽度及适用条件。"
+          },
+          {
+            "id": "wave-dialogue-6-extension",
+            "required": false,
+            "description": "尝试另一种表示或提出一个后续探究问题；此项仅作提升建议。"
+          }
+        ]
+      }
+    },
+    {
+      "session": {
+        "sessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-7",
+        "lessonIndex": 7,
+        "title": "干涉与衍射怎样联系？",
+        "activities": [
+          {
+            "activityId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-7:activity:check",
+            "kind": "check",
+            "evidence": "session_response",
+            "status": "completed",
+            "guidance": "直接在对话中给出比较解释，系统自动保存为过程草稿；最后一课再整理并正式交付。",
+            "minutes": 15,
+            "evidenceRefs": []
+          }
+        ],
+        "status": "completed",
+        "completedAt": "2026-10-27T14:17:24.258Z",
+        "canComplete": false,
+        "blockers": []
+      },
+      "evidence": {
+        "submissions": [
+          {
+            "activityId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-7:activity:check",
+            "kind": "session_response",
+            "ref": "task_submission:learning-18630a150d68bd3becf45d05e0755e418232910de25d18c8e74b5be1c089ccb6",
+            "scope": {
+              "projectId": "proj-d412f071-5812-4e58-a77e-0469a792b341",
+              "planId": "plan-45a05829-505c-47f4-bf62-904ca80d2616",
+              "planRevision": 1,
+              "learningSessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-7",
+              "objectiveIds": [
+                "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-evidence-compare"
+              ]
+            },
+            "objectiveId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-evidence-compare",
+            "sourceKind": "task_submission",
+            "artifactId": "art-bc2e7622-49ee-4975-a913-90125e60cc4e",
+            "artifactVersionId": "artv-6302d890-38c3-433c-a921-90892835f4a0",
+            "quality": {
+              "status": "accepted",
+              "subjectDigest": "2eea075e03285e53809a08343357b81d2f5fd04c2db5824d70503accd267cde1",
+              "feedback": [
+                {
+                  "criterionId": "wave-dialogue-7-extension",
+                  "meets": false,
+                  "feedback": "本次回应没有尝试另一种表示（如公式、示意或伪代码）或提出后续探究问题。可选改进：补充用 d sinθ=mλ 和 a sinθ=λ 说明两套条纹间距来源，或提出一个（如改变波长时两类图样如何同步变化）的后续探究问题。"
+                },
+                {
+                  "criterionId": "wave-dialogue-7-necessary",
+                  "meets": true,
+                  "feedback": "结合已保存的双缝与单缝模拟观察，说明了两者的共同基础（波的叠加）和结构差异（d控制细纹、a控制包络），并用具体参数变化支持；同时明确限定了单色相干、远场模型和所保存参数等适用边界，并声明不是真实测量、不能比较绝对亮度，符合要求。"
+                }
+              ]
+            }
+          }
+        ],
+        "observations": [],
+        "approvedArtifacts": [
+          {
+            "activityId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-8:activity:check",
+            "kind": "approved_artifact",
+            "ref": "artifact:art-02c704cf-35a1-4729-a8e2-067cfe07af52",
+            "scope": {
+              "projectId": "proj-d412f071-5812-4e58-a77e-0469a792b341",
+              "planId": "plan-45a05829-505c-47f4-bf62-904ca80d2616",
+              "planRevision": 1,
+              "learningSessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-8",
+              "objectiveIds": [
+                "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-showcase",
+                "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-reflection"
+              ]
+            },
+            "objectiveId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-showcase",
+            "sourceKind": "task_submission",
+            "artifactId": "art-02c704cf-35a1-4729-a8e2-067cfe07af52",
+            "artifactVersionId": "artv-6135100a-2e7a-4232-a069-e555960bcedd"
+          }
+        ],
+        "reflections": [],
+        "scope": {
+          "projectId": "proj-d412f071-5812-4e58-a77e-0469a792b341",
+          "planId": "plan-45a05829-505c-47f4-bf62-904ca80d2616",
+          "planRevision": 1,
+          "learningSessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-7",
+          "objectiveIds": [
+            "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-evidence-compare"
+          ]
+        },
+        "sessionType": "practice",
+        "allowedActions": [],
+        "qualityCriteria": [
+          {
+            "id": "wave-dialogue-7-necessary",
+            "required": true,
+            "description": "结合已保存的单缝和双缝观察，解释一个共同点或差异，并说明模型的适用边界。"
+          },
+          {
+            "id": "wave-dialogue-7-extension",
+            "required": false,
+            "description": "尝试另一种表示或提出一个后续探究问题；此项仅作提升建议。"
+          }
+        ]
+      }
+    },
+    {
+      "session": {
+        "sessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-8",
+        "lessonIndex": 8,
+        "title": "别人能复核我的探究吗？",
+        "activities": [
+          {
+            "activityId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-8:activity:check",
+            "kind": "check",
+            "evidence": "submitted_artifact",
+            "status": "completed",
+            "guidance": "参考已保存的过程草稿与观察，在对话区整理最终档案并确认交付；站内正文无需导出再上传。",
+            "minutes": 15,
+            "evidenceRefs": []
+          },
+          {
+            "activityId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-8:activity:reflect",
+            "kind": "reflect",
+            "evidence": "session_response",
+            "status": "completed",
+            "guidance": "作品通过后，直接说说一次认识变化、相应依据和仍不确定的地方。",
+            "minutes": 30,
+            "evidenceRefs": []
+          }
+        ],
+        "status": "completed",
+        "completedAt": "2026-10-27T14:18:35.656Z",
+        "canComplete": false,
+        "blockers": []
+      },
+      "evidence": {
+        "submissions": [
+          {
+            "activityId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-8:activity:check",
+            "kind": "submitted_artifact",
+            "ref": "task_submission:learning-080ed50076a007140c8c511005739c1e3802ac1f02a262a57f32364d04adf386",
+            "scope": {
+              "projectId": "proj-d412f071-5812-4e58-a77e-0469a792b341",
+              "planId": "plan-45a05829-505c-47f4-bf62-904ca80d2616",
+              "planRevision": 1,
+              "learningSessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-8",
+              "objectiveIds": [
+                "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-showcase",
+                "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-reflection"
+              ]
+            },
+            "objectiveId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-showcase",
+            "sourceKind": "task_submission",
+            "artifactId": "art-2157846e-531a-4f01-b17b-edeca4edabf5",
+            "artifactVersionId": "artv-0097758e-f644-4a10-a20b-050a04a1d200",
+            "quality": {
+              "status": "needs_revision",
+              "subjectDigest": "2e5175bcc17ae229db781c436f294f09d512cd19b20c84f49de19120f80afc37",
+              "feedback": [
+                {
+                  "criterionId": "wave-dialogue-final-evidence",
+                  "meets": false,
+                  "feedback": "当前提交的最终档案只有一句“单缝和双缝的条纹都完全一样，我没有记录具体参数”，与已保存的模拟观察直接矛盾：观察记录里单缝中央亮带约110.04mm、双缝细纹间距约7.33mm，修订记录也说明两者结构不同。请把最终档案写成完整交付：列出单缝和双缝各自的λ、a、d、L参数与模拟观察数值，逐条注明依据来自哪次观察记录，并把结论改为与记录相符（两者都来自叠加但图样结构不同），同时标明这些是远场单色模型的模拟观察而非真实测量。"
+                },
+                {
+                  "criterionId": "wave-dialogue-final-explanation",
+                  "meets": false,
+                  "feedback": "当前文字没有解释两类图样的联系或差异，也未说明受控变量、修订和适用边界。请根据已有观察补充：双缝组只改变d（150→300μm），细纹间距7.33→3.67mm而中央包络约110.04mm不变；单缝组只改变a（20→10μm），中央亮带110.04→220.33mm；说明d控制双缝细纹、a控制衍射包络，有限宽双缝同时有两种结构。再明确写出你把“单缝和双缝没有差别”修订为“两者都靠波叠加但结构不同”，依据是上述对照，边界限于本次单色相干、远场模型和保存参数，非真实测量。"
+                },
+                {
+                  "criterionId": "wave-dialogue-final-presentation",
+                  "meets": false,
+                  "feedback": "当前最终档案没有图表、排版或拓展以帮助展示。可在档案中用一张对照表并列单缝与双缝的参数和观察量，并标注哪一项是受控变量、哪一项是观测变化，便于他人复核；此项为提升建议，不影响必达评价。"
+                }
+              ]
+            }
+          },
+          {
+            "activityId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-8:activity:check",
+            "kind": "submitted_artifact",
+            "ref": "task_submission:learning-881d89e34ae03cf90f2aa031dc5a649812f7c20c9f535097fe51d3c141588a84",
+            "scope": {
+              "projectId": "proj-d412f071-5812-4e58-a77e-0469a792b341",
+              "planId": "plan-45a05829-505c-47f4-bf62-904ca80d2616",
+              "planRevision": 1,
+              "learningSessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-8",
+              "objectiveIds": [
+                "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-showcase",
+                "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-reflection"
+              ]
+            },
+            "objectiveId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-showcase",
+            "sourceKind": "task_submission",
+            "artifactId": "art-02c704cf-35a1-4729-a8e2-067cfe07af52",
+            "artifactVersionId": "artv-6135100a-2e7a-4232-a069-e555960bcedd",
+            "quality": {
+              "status": "accepted",
+              "subjectDigest": "12ae35c1233df82ef638e0285df870f474a83b3742403eb4cc58ce7105fa33fc",
+              "feedback": [
+                {
+                  "criterionId": "wave-dialogue-final-evidence",
+                  "meets": true,
+                  "feedback": "档案逐条列出单缝与双缝各组的参数（λ、a、d、L）和观察值，并附可追溯的 experiment_observation 引用，与所含证据一致；同时明确声明这是模拟观察而非真实测量，未把模型结果冒充测量。"
+                },
+                {
+                  "criterionId": "wave-dialogue-final-explanation",
+                  "meets": true,
+                  "feedback": "解释了单缝与双缝都源于波叠加但图样结构不同，分别以受控变量（仅改 d 或仅改 a，其余不变）说明细纹间距与包络宽度的变化，交代了“两者没有差别”到“结构不同”的一次修订，并以单色相干远场模型与归一化不能比较绝对亮度限定适用边界。"
+                },
+                {
+                  "criterionId": "wave-dialogue-final-presentation",
+                  "meets": false,
+                  "feedback": "当前以文字条目列出参数与观察，可读但缺少对比表格或图示让单缝/双缝变化更直观。建议补一张对比表（组别、a、d、包络宽、细纹间距）或标注关键量的示意图作为提升项，此项仅为展示建议，不影响主体达标。"
+                }
+              ]
+            }
+          }
+        ],
+        "observations": [],
+        "approvedArtifacts": [
+          {
+            "activityId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-8:activity:check",
+            "kind": "approved_artifact",
+            "ref": "artifact:art-02c704cf-35a1-4729-a8e2-067cfe07af52",
+            "scope": {
+              "projectId": "proj-d412f071-5812-4e58-a77e-0469a792b341",
+              "planId": "plan-45a05829-505c-47f4-bf62-904ca80d2616",
+              "planRevision": 1,
+              "learningSessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-8",
+              "objectiveIds": [
+                "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-showcase",
+                "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-reflection"
+              ]
+            },
+            "objectiveId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-showcase",
+            "sourceKind": "task_submission",
+            "artifactId": "art-02c704cf-35a1-4729-a8e2-067cfe07af52",
+            "artifactVersionId": "artv-6135100a-2e7a-4232-a069-e555960bcedd"
+          }
+        ],
+        "reflections": [
+          {
+            "activityId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-8:activity:reflect",
+            "kind": "session_response",
+            "ref": "reflection:learning-24872d3f7dad8d2c4fea3d71777af40f8c958de82fc3883924efe9696b34d206",
+            "scope": {
+              "projectId": "proj-d412f071-5812-4e58-a77e-0469a792b341",
+              "planId": "plan-45a05829-505c-47f4-bf62-904ca80d2616",
+              "planRevision": 1,
+              "learningSessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-8",
+              "objectiveIds": [
+                "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-showcase",
+                "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-reflection"
+              ]
+            },
+            "objectiveId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-showcase",
+            "sourceKind": "reflection",
+            "artifactId": "art-5901e2fd-56e2-43a0-bd54-79f802a6734d",
+            "artifactVersionId": "artv-2f7ee3e2-9558-4937-8920-02164f274136",
+            "quality": {
+              "status": "accepted",
+              "subjectDigest": "ef917a3195f8167a2ced54d58c5f0b698402750398de7e35f4b007ecc2199430",
+              "feedback": [
+                {
+                  "criterionId": "wave-dialogue-8-extension",
+                  "meets": false,
+                  "feedback": "本次正文未尝试另一种表示（如用公式或图示表达图样结构），也未提出后续探究问题。可选改进：提出一个可检验的后续问题，例如“如何在真实装置中测量孔径误差对包络宽度的影响”，或用Δx≈λL/d与2λL/a两种表达式画出图样结构示意。"
+                },
+                {
+                  "criterionId": "wave-dialogue-8-necessary",
+                  "meets": true,
+                  "feedback": "学生用自己的话说清了修订：从“单缝和双缝没有差别”改为“两者都叠加但图样结构不同”，并以已保存的受控观察支持（d加倍细纹间距7.33→3.67mm；a减半中央亮带110.04→220.33mm），且说明了不确定性（真实装置的孔径误差和相干性影响未知，仅有模型模拟无真实测量）。三项齐备。"
+                }
+              ]
+            }
+          }
+        ],
+        "scope": {
+          "projectId": "proj-d412f071-5812-4e58-a77e-0469a792b341",
+          "planId": "plan-45a05829-505c-47f4-bf62-904ca80d2616",
+          "planRevision": 1,
+          "learningSessionId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-8",
+          "objectiveIds": [
+            "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-showcase",
+            "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-reflection"
+          ]
+        },
+        "sessionType": "review",
+        "allowedActions": [],
+        "qualityCriteria": [
+          {
+            "id": "wave-dialogue-8-necessary",
+            "required": true,
+            "description": "用自己的话说明探究中改变的一项认识及支持它的已保存观察，能说明一处不确定性。"
+          },
+          {
+            "id": "wave-dialogue-8-extension",
+            "required": false,
+            "description": "尝试另一种表示或提出一个后续探究问题；此项仅作提升建议。"
+          }
+        ]
+      }
+    }
+  ],
+  "artifact": {
+    "id": "art-02c704cf-35a1-4729-a8e2-067cfe07af52",
+    "projectId": "proj-d412f071-5812-4e58-a77e-0469a792b341",
+    "studentId": "self-user-a1dcbe0a6387cdf9c7274224a86fcb60679b02e87ec5ccbe0deb90fac42c3e05",
+    "title": "别人能复核我的探究吗？",
+    "summary": "",
+    "tags": [],
+    "status": "published",
+    "visibility": "class",
+    "currentVersionIndex": 1,
+    "publishedAt": "2026-10-27T14:18:28.770Z",
+    "createdAt": "2026-10-27T14:18:25.492Z",
+    "updatedAt": "2026-10-27T14:18:28.770Z",
+    "versionCount": 1,
+    "latestVersion": {
+      "id": "artv-6135100a-2e7a-4232-a069-e555960bcedd",
+      "ordinal": 1,
+      "title": "别人能复核我的探究吗？",
+      "note": "",
+      "inlineText": "明暗条纹探究档案\n\n探究问题：双缝的细条纹与单缝衍射包络怎样联系？改变缝中心间距和缝宽各会改变什么？\n\n方法：采用本项目获准的单色相干远场模拟。先保存预测，再实际运行并保存观察，每次只改一个变量。\n\n已保存的参数与模拟观察：\n第3课第1组：λ=550nm，a=20μm，d=150μm，L=2m；中央亮带宽110.04mm，细纹间距7.33mm。观察引用：experiment_observation:obs-1501c84c2a20cbd9e181f4beadf87a34\n第4课第1组：λ=550nm，a=20μm，d=150μm，L=2m；中央亮带宽110.04mm，细纹间距7.33mm。观察引用：experiment_observation:obs-bb3a42b98a1e70411f29bd70503f145f\n第4课第2组：λ=550nm，a=20μm，d=300μm，L=2m；中央亮带宽110.04mm，细纹间距3.67mm。观察引用：experiment_observation:obs-225f7c094770ff6899e8028dd6487a65\n第5课第1组：λ=550nm，a=20μm，L=2m；中央亮带宽110.04mm。观察引用：experiment_observation:obs-4a34f2b5cdd3a8b5d872b39dde7fc9c5\n第6课第1组：λ=550nm，a=20μm，L=2m；中央亮带宽110.04mm。观察引用：experiment_observation:obs-be0bfc410e0650729ba8bbe626c3fbcf\n第6课第2组：λ=550nm，a=10μm，L=2m；中央亮带宽220.33mm。观察引用：experiment_observation:obs-2153d4f5a69bbbd08bb7382ca392685e\n\n比较、解释与修订：\n两种图样都来自波的叠加。我的双缝观察中，只把d从150改为300μm，λ=550nm、a=20μm、L=2m不变，细纹间距由7.33变为3.67mm，而中央包络仍约110.04mm。单缝观察只把a从20减为10μm，中央亮带由110.04变为220.33mm。d控制双缝细纹，a控制衍射包络，有限宽双缝同时有两种结构。我把“单缝和双缝没有差别”修订为两者都叠加，但图样结构不同。结论仅适用于本次单色相干、远场模型和保存的参数，不是真实测量，也不能据此比较绝对亮度。\n\n模型边界与不确定性：这是批准参数范围内的远场单色归一化模型。公式Δx≈λL/d解释细纹间距，中央包络宽度近似2λL/a。每次中央峰归一化，不能比较绝对光强；尚未测量真实光源、孔径误差和仪器分辨率，不能把模拟数值声称为真实测量。",
+      "objectKey": null,
+      "thumbnailRef": null,
+      "capturedAt": null,
+      "createdAt": "2026-10-27T14:18:25.492Z"
+    },
+    "reviewStatus": "approved"
+  },
+  "plan": {
+    "id": "plan-45a05829-505c-47f4-bf62-904ca80d2616",
+    "studentUserId": "self-user-a1dcbe0a6387cdf9c7274224a86fcb60679b02e87ec5ccbe0deb90fac42c3e05",
+    "projectId": "proj-d412f071-5812-4e58-a77e-0469a792b341",
+    "interest": "光为什么会出现明暗条纹？问答探究",
+    "goal": "明暗条纹探究档案",
+    "lessonCount": 8,
+    "lessonMinutes": 60,
+    "minutesPerSession": 60,
+    "templateVersion": "tplv-55d940f7-24f8-4740-b5ff-258259b3d3bf",
+    "status": "completed",
+    "version": 1,
+    "sessionCount": 8,
+    "modules": [
+      {
+        "id": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-optics-8x60-dialogue-v1-lesson-1",
+        "name": "第 1 课时 · 条纹从哪里来？",
+        "lessonIndex": 1,
+        "objective": "条纹从哪里来？",
+        "ordinal": 1,
+        "objectives": [
+          {
+            "id": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-question",
+            "moduleId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-optics-8x60-dialogue-v1-lesson-1",
+            "name": "从条纹提出可比较的问题",
+            "type": "design",
+            "objective": "区分单缝和双缝图样的观察与猜想，提出一个能通过比较检验的问题。",
+            "prerequisiteIds": [],
+            "ordinal": 1
+          }
+        ]
+      },
+      {
+        "id": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-optics-8x60-dialogue-v1-lesson-2",
+        "name": "第 2 课时 · 两列波相遇会怎样？",
+        "lessonIndex": 2,
+        "objective": "两列波相遇会怎样？",
+        "ordinal": 2,
+        "objectives": [
+          {
+            "id": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-ready-superposition",
+            "moduleId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-optics-8x60-dialogue-v1-lesson-2",
+            "name": "波叠加的准备理解",
+            "type": "concept",
+            "objective": "区分同向和反向波幅的叠加；光强不为负，波的叠加不是能量凭空消失。",
+            "prerequisiteIds": [],
+            "ordinal": 2,
+            "conceptId": "wave.readiness.superposition"
+          },
+          {
+            "id": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-ready-coherence",
+            "moduleId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-optics-8x60-dialogue-v1-lesson-2",
+            "name": "稳定相干条件的准备理解",
+            "type": "concept",
+            "objective": "认识稳定条纹需要稳定的相位关系；两个任意独立光源不保证形成稳定条纹。",
+            "prerequisiteIds": [],
+            "ordinal": 3,
+            "conceptId": "wave.readiness.coherence"
+          },
+          {
+            "id": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-ready-comparison",
+            "moduleId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-optics-8x60-dialogue-v1-lesson-2",
+            "name": "受控比较与模型边界",
+            "type": "concept",
+            "objective": "一次只改一个变量，区分模型计算、模拟观察与真实测量；只使用获准模型和范围。",
+            "prerequisiteIds": [],
+            "ordinal": 4,
+            "conceptId": "wave.readiness.comparison"
+          }
+        ]
+      },
+      {
+        "id": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-optics-8x60-dialogue-v1-lesson-3",
+        "name": "第 3 课时 · 双缝为什么出现明暗？",
+        "lessonIndex": 3,
+        "objective": "双缝为什么出现明暗？",
+        "ordinal": 3,
+        "objectives": [
+          {
+            "id": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-double-paths",
+            "moduleId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-optics-8x60-dialogue-v1-lesson-3",
+            "name": "双缝路径与明暗解释",
+            "type": "design",
+            "objective": "用两条路径和相位关系解释明暗，区分缝间距 d 与缝宽 a。",
+            "prerequisiteIds": [
+              "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-ready-superposition",
+              "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-ready-coherence",
+              "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-ready-comparison"
+            ],
+            "ordinal": 5
+          }
+        ]
+      },
+      {
+        "id": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-optics-8x60-dialogue-v1-lesson-4",
+        "name": "第 4 课时 · 怎样改变干涉条纹间距？",
+        "lessonIndex": 4,
+        "objective": "怎样改变干涉条纹间距？",
+        "ordinal": 4,
+        "objectives": [
+          {
+            "id": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-double-compare",
+            "moduleId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-optics-8x60-dialogue-v1-lesson-4",
+            "name": "双缝受控比较",
+            "type": "design",
+            "objective": "预测并记录缝间距、波长或屏距变化对条纹间距的影响，每次只改一个变量。",
+            "prerequisiteIds": [
+              "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-ready-superposition",
+              "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-ready-coherence",
+              "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-ready-comparison"
+            ],
+            "ordinal": 6
+          }
+        ]
+      },
+      {
+        "id": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-optics-8x60-dialogue-v1-lesson-5",
+        "name": "第 5 课时 · 一条缝为什么仍有条纹？",
+        "lessonIndex": 5,
+        "objective": "一条缝为什么仍有条纹？",
+        "ordinal": 5,
+        "objectives": [
+          {
+            "id": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-single-observe",
+            "moduleId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-optics-8x60-dialogue-v1-lesson-5",
+            "name": "单缝图样观察",
+            "type": "design",
+            "objective": "标注中央亮带及两侧条纹，用孔径内波的叠加解释单缝衍射。",
+            "prerequisiteIds": [
+              "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-ready-superposition",
+              "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-ready-coherence",
+              "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-ready-comparison"
+            ],
+            "ordinal": 7
+          }
+        ]
+      },
+      {
+        "id": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-optics-8x60-dialogue-v1-lesson-6",
+        "name": "第 6 课时 · 缝变窄，图样怎样变化？",
+        "lessonIndex": 6,
+        "objective": "缝变窄，图样怎样变化？",
+        "ordinal": 6,
+        "objectives": [
+          {
+            "id": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-single-compare",
+            "moduleId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-optics-8x60-dialogue-v1-lesson-6",
+            "name": "单缝受控比较",
+            "type": "design",
+            "objective": "固定波长与屏距比较缝宽变化，记录中央亮带宽度及解释。",
+            "prerequisiteIds": [
+              "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-ready-superposition",
+              "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-ready-coherence",
+              "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-ready-comparison"
+            ],
+            "ordinal": 8
+          }
+        ]
+      },
+      {
+        "id": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-optics-8x60-dialogue-v1-lesson-7",
+        "name": "第 7 课时 · 干涉与衍射怎样联系？",
+        "lessonIndex": 7,
+        "objective": "干涉与衍射怎样联系？",
+        "ordinal": 7,
+        "objectives": [
+          {
+            "id": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-evidence-compare",
+            "moduleId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-optics-8x60-dialogue-v1-lesson-7",
+            "name": "干涉与衍射证据比较",
+            "type": "design",
+            "objective": "结合两组记录解释细条纹与衍射包络，说明结论的模型边界。",
+            "prerequisiteIds": [
+              "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-ready-superposition",
+              "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-ready-coherence",
+              "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-ready-comparison"
+            ],
+            "ordinal": 9
+          }
+        ]
+      },
+      {
+        "id": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-optics-8x60-dialogue-v1-lesson-8",
+        "name": "第 8 课时 · 别人能复核我的探究吗？",
+        "lessonIndex": 8,
+        "objective": "别人能复核我的探究吗？",
+        "ordinal": 8,
+        "objectives": [
+          {
+            "id": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-showcase",
+            "moduleId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-optics-8x60-dialogue-v1-lesson-8",
+            "name": "明暗条纹探究档案",
+            "type": "design",
+            "objective": "展示可复核的参数、观察、解释和修订，回答同伴质疑。",
+            "prerequisiteIds": [
+              "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-evidence-compare"
+            ],
+            "ordinal": 10
+          },
+          {
+            "id": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-reflection",
+            "moduleId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-optics-8x60-dialogue-v1-lesson-8",
+            "name": "证据与理解反思",
+            "type": "design",
+            "objective": "说明自己改变了什么解释、依据是什么，以及还不能确定的地方。",
+            "prerequisiteIds": [
+              "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-evidence-compare"
+            ],
+            "ordinal": 11
+          }
+        ]
+      }
+    ],
+    "sessions": [
+      {
+        "id": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-1",
+        "moduleId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-optics-8x60-dialogue-v1-lesson-1",
+        "index": 0,
+        "lessonIndex": 1,
+        "title": "条纹从哪里来？",
+        "blocks": [
+          {
+            "kind": "review",
+            "minutes": 5,
+            "title": "衔接回顾",
+            "guidance": "从已保存的课件和上一课证据衔接；首次学习先解释观察对象，不把不会视为答错。"
+          },
+          {
+            "kind": "theory",
+            "minutes": 25,
+            "title": "概念探究",
+            "guidance": "先描述单缝和双缝图样，再提出一个可以比较的问题。\n依据本课授权知识库，逐个解释概念与符号，展示有来源的交互板书。先查找已审核课件，适配不够时生成本项目课件。讲解与演示后让学生选择继续、再解释或看例子；继续只记录教学展示，不代表掌握。"
+          },
+          {
+            "kind": "check",
+            "minutes": 20,
+            "title": "理解检查",
+            "guidance": "根据学生本轮解释提出一个检查问题；题目可动态生成，不覆盖已有待答题。"
+          },
+          {
+            "kind": "reflect",
+            "minutes": 10,
+            "title": "反思迁移",
+            "guidance": "现象对照卡与一个可探究问题。用自己的话说明依据和一次修订；保存真实学习产物。",
+            "evidenceRequirements": [
+              "现象对照卡与一个可探究问题"
+            ]
+          }
+        ],
+        "theoryObjectiveIds": [],
+        "practiceObjectiveIds": [],
+        "mode": "study",
+        "theoryMastered": false,
+        "practiceUnlocked": false
+      },
+      {
+        "id": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-2",
+        "moduleId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-optics-8x60-dialogue-v1-lesson-2",
+        "index": 1,
+        "lessonIndex": 2,
+        "title": "两列波相遇会怎样？",
+        "blocks": [
+          {
+            "kind": "review",
+            "minutes": 5,
+            "title": "衔接回顾",
+            "guidance": "从已保存的课件和上一课证据衔接；首次学习先解释观察对象，不把不会视为答错。"
+          },
+          {
+            "kind": "theory",
+            "minutes": 25,
+            "title": "概念探究",
+            "guidance": "用图示解释波的叠加、稳定相位关系和受控比较，完成专题准备检查。\n依据本课授权知识库，逐个解释概念与符号，展示有来源的交互板书。先查找已审核课件，适配不够时生成本项目课件。讲解与演示后让学生选择继续、再解释或看例子；继续只记录教学展示，不代表掌握。"
+          },
+          {
+            "kind": "check",
+            "minutes": 20,
+            "title": "理解检查",
+            "guidance": "通过服务端专题准备检查；求助不自动判错，未掌握则同目标补救。"
+          },
+          {
+            "kind": "reflect",
+            "minutes": 10,
+            "title": "反思迁移",
+            "guidance": "波叠加解释、相干条件与受控比较的服务端检查回执。用自己的话说明依据和一次修订；保存真实学习产物。",
+            "evidenceRequirements": [
+              "波叠加解释、相干条件与受控比较的服务端检查回执"
+            ]
+          }
+        ],
+        "theoryObjectiveIds": [
+          "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-ready-superposition",
+          "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-ready-coherence",
+          "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-ready-comparison"
+        ],
+        "practiceObjectiveIds": [],
+        "mode": "study",
+        "theoryMastered": true,
+        "practiceUnlocked": false
+      },
+      {
+        "id": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-3",
+        "moduleId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-optics-8x60-dialogue-v1-lesson-3",
+        "index": 2,
+        "lessonIndex": 3,
+        "title": "双缝为什么出现明暗？",
+        "blocks": [
+          {
+            "kind": "review",
+            "minutes": 5,
+            "title": "衔接回顾",
+            "guidance": "从已保存的课件和上一课证据衔接；首次学习先解释观察对象，不把不会视为答错。"
+          },
+          {
+            "kind": "theory",
+            "minutes": 15,
+            "title": "概念探究",
+            "guidance": "连接两条路径、到达相位与明暗位置，区分缝间距和缝宽。\n依据本课授权知识库，逐个解释概念与符号，展示有来源的交互板书。先查找已审核课件，适配不够时生成本项目课件。讲解与演示后让学生选择继续、再解释或看例子；继续只记录教学展示，不代表掌握。"
+          },
+          {
+            "kind": "check",
+            "minutes": 10,
+            "title": "理解检查",
+            "guidance": "根据学生本轮解释提出一个检查问题；题目可动态生成，不覆盖已有待答题。"
+          },
+          {
+            "kind": "practice",
+            "minutes": 25,
+            "title": "探究实践",
+            "guidance": "先预测再使用本课注册模型；一次只改一个变量，保存参数和模拟观察，不写成实测。"
+          },
+          {
+            "kind": "reflect",
+            "minutes": 5,
+            "title": "反思迁移",
+            "guidance": "双缝标注图与一次基于路径的判断。用自己的话说明依据和一次修订；保存真实学习产物。",
+            "evidenceRequirements": [
+              "双缝标注图与一次基于路径的判断"
+            ]
+          }
+        ],
+        "theoryObjectiveIds": [
+          "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-ready-superposition",
+          "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-ready-coherence",
+          "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-ready-comparison"
+        ],
+        "practiceObjectiveIds": [
+          "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-double-paths"
+        ],
+        "mode": "study",
+        "theoryMastered": true,
+        "practiceUnlocked": true
+      },
+      {
+        "id": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-4",
+        "moduleId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-optics-8x60-dialogue-v1-lesson-4",
+        "index": 3,
+        "lessonIndex": 4,
+        "title": "怎样改变干涉条纹间距？",
+        "blocks": [
+          {
+            "kind": "review",
+            "minutes": 5,
+            "title": "衔接回顾",
+            "guidance": "从已保存的课件和上一课证据衔接；首次学习先解释观察对象，不把不会视为答错。"
+          },
+          {
+            "kind": "theory",
+            "minutes": 15,
+            "title": "概念探究",
+            "guidance": "先只改缝间距，再按需比较波长或屏距，记录预测与结果。\n依据本课授权知识库，逐个解释概念与符号，展示有来源的交互板书。先查找已审核课件，适配不够时生成本项目课件。讲解与演示后让学生选择继续、再解释或看例子；继续只记录教学展示，不代表掌握。"
+          },
+          {
+            "kind": "check",
+            "minutes": 10,
+            "title": "理解检查",
+            "guidance": "根据学生本轮解释提出一个检查问题；题目可动态生成，不覆盖已有待答题。"
+          },
+          {
+            "kind": "practice",
+            "minutes": 25,
+            "title": "探究实践",
+            "guidance": "先预测再使用本课注册模型；一次只改一个变量，保存参数和模拟观察，不写成实测。"
+          },
+          {
+            "kind": "reflect",
+            "minutes": 5,
+            "title": "反思迁移",
+            "guidance": "至少一组受控双缝模拟观察与比较解释。用自己的话说明依据和一次修订；保存真实学习产物。",
+            "evidenceRequirements": [
+              "至少一组受控双缝模拟观察与比较解释"
+            ]
+          }
+        ],
+        "theoryObjectiveIds": [
+          "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-ready-superposition",
+          "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-ready-coherence",
+          "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-ready-comparison"
+        ],
+        "practiceObjectiveIds": [
+          "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-double-compare"
+        ],
+        "mode": "study",
+        "theoryMastered": true,
+        "practiceUnlocked": true
+      },
+      {
+        "id": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-5",
+        "moduleId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-optics-8x60-dialogue-v1-lesson-5",
+        "index": 4,
+        "lessonIndex": 5,
+        "title": "一条缝为什么仍有条纹？",
+        "blocks": [
+          {
+            "kind": "review",
+            "minutes": 5,
+            "title": "衔接回顾",
+            "guidance": "从已保存的课件和上一课证据衔接；首次学习先解释观察对象，不把不会视为答错。"
+          },
+          {
+            "kind": "theory",
+            "minutes": 15,
+            "title": "概念探究",
+            "guidance": "观察中央亮带和两侧条纹，用孔径内波的叠加解释图样。\n依据本课授权知识库，逐个解释概念与符号，展示有来源的交互板书。先查找已审核课件，适配不够时生成本项目课件。讲解与演示后让学生选择继续、再解释或看例子；继续只记录教学展示，不代表掌握。"
+          },
+          {
+            "kind": "check",
+            "minutes": 10,
+            "title": "理解检查",
+            "guidance": "根据学生本轮解释提出一个检查问题；题目可动态生成，不覆盖已有待答题。"
+          },
+          {
+            "kind": "practice",
+            "minutes": 25,
+            "title": "探究实践",
+            "guidance": "先预测再使用本课注册模型；一次只改一个变量，保存参数和模拟观察，不写成实测。"
+          },
+          {
+            "kind": "reflect",
+            "minutes": 5,
+            "title": "反思迁移",
+            "guidance": "单缝特征标注与初步解释。用自己的话说明依据和一次修订；保存真实学习产物。",
+            "evidenceRequirements": [
+              "单缝特征标注与初步解释"
+            ]
+          }
+        ],
+        "theoryObjectiveIds": [
+          "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-ready-superposition",
+          "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-ready-coherence",
+          "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-ready-comparison"
+        ],
+        "practiceObjectiveIds": [
+          "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-single-observe"
+        ],
+        "mode": "study",
+        "theoryMastered": true,
+        "practiceUnlocked": true
+      },
+      {
+        "id": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-6",
+        "moduleId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-optics-8x60-dialogue-v1-lesson-6",
+        "index": 5,
+        "lessonIndex": 6,
+        "title": "缝变窄，图样怎样变化？",
+        "blocks": [
+          {
+            "kind": "review",
+            "minutes": 5,
+            "title": "衔接回顾",
+            "guidance": "从已保存的课件和上一课证据衔接；首次学习先解释观察对象，不把不会视为答错。"
+          },
+          {
+            "kind": "theory",
+            "minutes": 15,
+            "title": "概念探究",
+            "guidance": "固定波长和屏距比较缝宽，记录中央亮带宽度及适用条件。\n依据本课授权知识库，逐个解释概念与符号，展示有来源的交互板书。先查找已审核课件，适配不够时生成本项目课件。讲解与演示后让学生选择继续、再解释或看例子；继续只记录教学展示，不代表掌握。"
+          },
+          {
+            "kind": "check",
+            "minutes": 10,
+            "title": "理解检查",
+            "guidance": "根据学生本轮解释提出一个检查问题；题目可动态生成，不覆盖已有待答题。"
+          },
+          {
+            "kind": "practice",
+            "minutes": 25,
+            "title": "探究实践",
+            "guidance": "先预测再使用本课注册模型；一次只改一个变量，保存参数和模拟观察，不写成实测。"
+          },
+          {
+            "kind": "reflect",
+            "minutes": 5,
+            "title": "反思迁移",
+            "guidance": "至少一组受控单缝模拟观察、单位与修订解释。用自己的话说明依据和一次修订；保存真实学习产物。",
+            "evidenceRequirements": [
+              "至少一组受控单缝模拟观察、单位与修订解释"
+            ]
+          }
+        ],
+        "theoryObjectiveIds": [
+          "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-ready-superposition",
+          "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-ready-coherence",
+          "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-ready-comparison"
+        ],
+        "practiceObjectiveIds": [
+          "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-single-compare"
+        ],
+        "mode": "study",
+        "theoryMastered": true,
+        "practiceUnlocked": true
+      },
+      {
+        "id": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-7",
+        "moduleId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-optics-8x60-dialogue-v1-lesson-7",
+        "index": 6,
+        "lessonIndex": 7,
+        "title": "干涉与衍射怎样联系？",
+        "blocks": [
+          {
+            "kind": "review",
+            "minutes": 5,
+            "title": "衔接回顾",
+            "guidance": "从已保存的课件和上一课证据衔接；首次学习先解释观察对象，不把不会视为答错。"
+          },
+          {
+            "kind": "theory",
+            "minutes": 20,
+            "title": "概念探究",
+            "guidance": "用已保存的观察形成比较草稿，为最后一课的正式交付作准备。\n依据本课授权知识库，逐个解释概念与符号，展示有来源的交互板书。先查找已审核课件，适配不够时生成本项目课件。讲解与演示后让学生选择继续、再解释或看例子；继续只记录教学展示，不代表掌握。"
+          },
+          {
+            "kind": "check",
+            "minutes": 15,
+            "title": "理解检查",
+            "guidance": "直接在对话中给出比较解释，系统自动保存为过程草稿；最后一课再整理并正式交付。"
+          },
+          {
+            "kind": "practice",
+            "minutes": 15,
+            "title": "探究实践",
+            "guidance": "先预测再使用本课注册模型；一次只改一个变量，保存参数和模拟观察，不写成实测。"
+          },
+          {
+            "kind": "reflect",
+            "minutes": 5,
+            "title": "反思迁移",
+            "guidance": "两类现象的证据比较档案及作品审核回执。用自己的话说明依据和一次修订；保存真实学习产物。",
+            "evidenceRequirements": [
+              "依据已保存观察，用自己的话解释两类现象的联系或差异。"
+            ]
+          }
+        ],
+        "theoryObjectiveIds": [
+          "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-ready-superposition",
+          "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-ready-coherence",
+          "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-ready-comparison"
+        ],
+        "practiceObjectiveIds": [
+          "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-evidence-compare"
+        ],
+        "mode": "study",
+        "theoryMastered": true,
+        "practiceUnlocked": true
+      },
+      {
+        "id": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-dialogue-session-8",
+        "moduleId": "plan-45a05829-505c-47f4-bf62-904ca80d2616:wave-optics-8x60-dialogue-v1-lesson-8",
+        "index": 7,
+        "lessonIndex": 8,
+        "title": "别人能复核我的探究吗？",
+        "blocks": [
+          {
+            "kind": "review",
+            "minutes": 5,
+            "title": "衔接回顾",
+            "guidance": "从已保存的课件和上一课证据衔接；首次学习先解释观察对象，不把不会视为答错。"
+          },
+          {
+            "kind": "theory",
+            "minutes": 10,
+            "title": "概念探究",
+            "guidance": "展示档案、回应质疑、根据证据修订并完成个人反思。\n依据本课授权知识库，逐个解释概念与符号，展示有来源的交互板书。先查找已审核课件，适配不够时生成本项目课件。讲解与演示后让学生选择继续、再解释或看例子；继续只记录教学展示，不代表掌握。"
+          },
+          {
+            "kind": "check",
+            "minutes": 15,
+            "title": "理解检查",
+            "guidance": "参考已保存的过程草稿与观察，在对话区整理最终档案并确认交付；站内正文无需导出再上传。"
+          },
+          {
+            "kind": "reflect",
+            "minutes": 30,
+            "title": "反思迁移",
+            "guidance": "作品通过后，直接说说一次认识变化、相应依据和仍不确定的地方。",
+            "evidenceRequirements": [
+              "最终作品、答辩回应、真实反思与归档回执"
+            ]
+          }
+        ],
+        "theoryObjectiveIds": [],
+        "practiceObjectiveIds": [],
+        "mode": "study",
+        "theoryMastered": false,
+        "practiceUnlocked": false
+      }
+    ],
+    "confirmedAt": "2026-10-27T14:11:06.626Z",
+    "createdAt": "2026-10-27T14:11:06.626Z",
+    "updatedAt": "2026-10-27T14:18:35.745Z"
+  }
+}

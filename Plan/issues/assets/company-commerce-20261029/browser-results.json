@@ -1,0 +1,19 @@
+{
+  "success": true,
+  "synthetic": true,
+  "actualPayments": false,
+  "actualFeishuMessages": false,
+  "checks": [
+    "nine Company routes",
+    "durable Agent task receipt",
+    "desktop/mobile overflow",
+    "offline state",
+    "unauthenticated state",
+    "guardian trial checkout",
+    "QR payment fixture reconciliation",
+    "389.10 discount after payment",
+    "customer lead status persisted",
+    "recorded expense reread from server"
+  ],
+  "browserErrors": []
+}

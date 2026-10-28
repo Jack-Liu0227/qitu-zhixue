@@ -8,6 +8,7 @@ import { StudentLink } from '../../components/student-link';
 import { DeviceManagement } from './DeviceManagement';
 import { CompetencyRadar } from './CompetencyRadar';
 import { FamilyLearningCard } from './FamilyLearningCard';
+import { SubscriptionUsage } from './SubscriptionUsage';
 import { loadStudentProfile, ProfileOfflineError, ProfilePermissionError } from './api';
 import type { StudentProfileProjection } from './types';
 import { AnalysisStatus } from '../growth/components/AnalysisStatus';
@@ -89,6 +90,7 @@ function ProfileContent({ data }: { data: StudentProfileProjection }) {
     </header>
     <CompetencyRadar overview={data.competencyOverview ?? null} />
     <FamilyLearningCard />
+    <SubscriptionUsage />
     <ResizablePanels storageKey="student-profile" initialSizes={[52, 48]} minWidths={[300, 300]} className={styles.supportGrid}>
       <section className={styles.section} aria-labelledby="profile-interests-title">
         <div className={styles.sectionHeader}><h2 id="profile-interests-title">我的兴趣与学习方式</h2><StudentLink className={styles.textLink} href="/student/inspiration">去探索 →</StudentLink></div>

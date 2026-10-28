@@ -1,8 +1,0 @@
-{
-  "source": "copy-before/002-copy-before-source-0.py",
-  "method": "DOM code extraction, not OS clipboard read",
-  "lines": 128,
-  "syntaxValid": false,
-  "line": 128,
-  "message": "invalid character '：' (U+FF1A)"
-}

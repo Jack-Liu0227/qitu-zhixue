@@ -17,7 +17,7 @@ import { ARTIFACT_BYTES_READ_NOT_CONFIGURED, type ArtifactBytesReader } from './
  *
  * 它**绝不**、任何情况下都**不得**被表述为「已验证可运行 / 可玩」：
  *
- * - `docs/sdk/pbl-gate-producers.md` §方案 C 已用仓库自己的话写下这个陷阱：
+ * - `Plan/research/pbl-gate-producers.md` §方案 C 已用仓库自己的话写下这个陷阱：
  *   **语法通过 ≠ 能运行 ≠ 可玩**（`import pygame` 静态能过，无显示器就崩）。
  * - 因此本生产者**不写** `code_playable_run_verified` 门禁。静态结论与门禁名
  *   （playable / run / verified）语义相反，写了就是伪造。

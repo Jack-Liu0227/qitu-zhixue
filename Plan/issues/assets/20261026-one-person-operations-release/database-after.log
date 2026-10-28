@@ -1,0 +1,1 @@
+{"mode":"after","migrations":{"count":56,"latest":"1793001600000"},"businessTables":["business_settings","business_offers","business_orders","business_tasks","business_model_usage","business_expenses","auth_sessions","family_invitations"]}
