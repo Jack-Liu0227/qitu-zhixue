@@ -2,7 +2,6 @@ import { verifyCompanyCommerce } from './test-company-commerce-postgres.mjs';
 import { verifyAccountRegistration } from './test-account-registration-postgres.mjs';
 import { FixtureRegistrationSms, verifyRegistrationSms } from './test-registration-sms-postgres.mjs';
 import assert from 'node:assert/strict';
-import 'reflect-metadata';
 import { createHash, randomBytes } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -10,7 +9,8 @@ import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-const require = createRequire(import.meta.url);
+const require = createRequire(new URL('../services/api/package.json', import.meta.url));
+require('reflect-metadata');
 const { Client } = require('pg');
 const report = JSON.parse(
   readFileSync(join(root, 'services/api/.tmp/company-verification.json'), 'utf8'),
